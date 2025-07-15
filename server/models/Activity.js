@@ -9,6 +9,15 @@ const ActivitySchema = new mongoose.Schema({
     maxlength: 100
   },
   
+  urlName: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 50,
+    unique: true,
+    match: /^[a-z0-9-]+$/
+  },
+  
   // Map configuration
   mapQuestion: {
     type: String,
@@ -193,6 +202,7 @@ const ActivitySchema = new mongoose.Schema({
 
 // Indexes for performance
 ActivitySchema.index({ status: 1, createdAt: -1 });
+ActivitySchema.index({ urlName: 1 });
 ActivitySchema.index({ 'participants.id': 1 });
 ActivitySchema.index({ 'ratings.userId': 1 });
 ActivitySchema.index({ 'comments.userId': 1 });

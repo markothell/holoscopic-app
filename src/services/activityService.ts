@@ -1,6 +1,7 @@
 // Activity service for API calls and data management
 
 import { WeAllExplainActivity, ActivityFormData, ApiResponse, ActivityListResponse, Rating, Comment } from '@/models/Activity';
+import { UrlUtils } from '@/utils/urlUtils';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -38,11 +39,52 @@ export class ActivityService {
     }
   }
 
+  // Get single activity by URL name
+  static async getActivityByUrlName(urlName: string): Promise<WeAllExplainActivity | null> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/activities/by-url/${urlName}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null;
+        }
+        throw new Error('Failed to fetch activity');
+      }
+      const data: ApiResponse<WeAllExplainActivity> = await response.json();
+      if (!data.success || !data.data) {
+        return null;
+      }
+      return data.data;
+    } catch (error) {
+      console.error('Error fetching activity by URL name:', error);
+      throw error;
+    }
+  }
+
   // Create new activity
   static async createActivity(formData: ActivityFormData): Promise<WeAllExplainActivity> {
     try {
+      // Generate URL name if not provided
+      let urlName = formData.urlName;
+      if (!urlName) {
+        // Get existing activities to check for conflicts
+        const existingActivities = await this.getActivities();
+        const existingUrlNames = existingActivities.map(a => a.urlName);
+        urlName = UrlUtils.generateUniqueActivityName(formData.title, existingUrlNames);
+      } else {
+        // Validate provided URL name
+        const cleanedUrlName = UrlUtils.cleanActivityName(urlName);
+        if (!UrlUtils.isValidActivityName(cleanedUrlName)) {
+          throw new Error('Invalid activity URL name');
+        }
+        if (UrlUtils.hasRouteConflict(cleanedUrlName)) {
+          throw new Error('Activity URL name conflicts with system routes');
+        }
+        urlName = cleanedUrlName;
+      }
+
       const activityData: Partial<WeAllExplainActivity> = {
         title: formData.title,
+        urlName,
         mapQuestion: formData.mapQuestion,
         xAxis: {
           label: formData.xAxisLabel,
@@ -88,7 +130,28 @@ export class ActivityService {
   // Update existing activity
   static async updateActivity(id: string, formData: ActivityFormData): Promise<WeAllExplainActivity> {
     try {
-      const activityData = {
+      // Handle URL name updates
+      let urlName = formData.urlName;
+      if (urlName) {
+        const cleanedUrlName = UrlUtils.cleanActivityName(urlName);
+        if (!UrlUtils.isValidActivityName(cleanedUrlName)) {
+          throw new Error('Invalid activity URL name');
+        }
+        if (UrlUtils.hasRouteConflict(cleanedUrlName)) {
+          throw new Error('Activity URL name conflicts with system routes');
+        }
+        
+        // Check for duplicates (excluding current activity)
+        const existingActivities = await this.getActivities();
+        const existingUrlNames = existingActivities.filter(a => a.id !== id).map(a => a.urlName);
+        if (existingUrlNames.includes(cleanedUrlName)) {
+          throw new Error('Activity URL name already exists');
+        }
+        
+        urlName = cleanedUrlName;
+      }
+
+      const activityData: any = {
         title: formData.title,
         mapQuestion: formData.mapQuestion,
         xAxis: {
@@ -103,6 +166,11 @@ export class ActivityService {
         },
         commentQuestion: formData.commentQuestion,
       };
+
+      // Only include urlName if it's provided
+      if (urlName) {
+        activityData.urlName = urlName;
+      }
 
       const response = await fetch(`${API_BASE_URL}/api/activities/${id}`, {
         method: 'PATCH',

@@ -3,6 +3,7 @@
 export interface WeAllExplainActivity {
   id: string;
   title: string;
+  urlName: string; // URL-friendly name for routing (e.g., "gratitude")
   
   // Map configuration
   mapQuestion: string;
@@ -88,6 +89,7 @@ export interface WebSocketEvents {
 // Form interfaces for admin panel
 export interface ActivityFormData {
   title: string;
+  urlName?: string; // Optional - will be generated from title if not provided
   mapQuestion: string;
   xAxisLabel: string;
   xAxisMin: string;

@@ -34,6 +34,37 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get activity by URL name
+router.get('/by-url/:urlName', async (req, res) => {
+  try {
+    const activity = await Activity.findOne({ urlName: req.params.urlName }).select('-__v');
+    
+    if (!activity) {
+      return res.status(404).json({
+        success: false,
+        error: 'Activity not found'
+      });
+    }
+    
+    // Transform _id to id for frontend compatibility
+    const transformedActivity = {
+      ...activity.toObject(),
+      id: activity._id.toString()
+    };
+    
+    res.json({
+      success: true,
+      data: transformedActivity
+    });
+  } catch (error) {
+    console.error('Error fetching activity by URL name:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch activity'
+    });
+  }
+});
+
 // Get single activity
 router.get('/:id', async (req, res) => {
   try {
@@ -70,6 +101,7 @@ router.post('/', async (req, res) => {
   try {
     const {
       title,
+      urlName,
       mapQuestion,
       xAxis,
       yAxis,
@@ -77,10 +109,10 @@ router.post('/', async (req, res) => {
     } = req.body;
     
     // Validate required fields
-    if (!title || !mapQuestion || !commentQuestion) {
+    if (!title || !urlName || !mapQuestion || !commentQuestion) {
       return res.status(400).json({
         success: false,
-        error: 'Title, map question, and comment question are required'
+        error: 'Title, URL name, map question, and comment question are required'
       });
     }
     
@@ -101,6 +133,7 @@ router.post('/', async (req, res) => {
     // Create new activity
     const activity = new Activity({
       title: title.trim(),
+      urlName: urlName.trim(),
       mapQuestion: mapQuestion.trim(),
       xAxis: {
         label: xAxis.label.trim(),
@@ -153,7 +186,7 @@ router.patch('/:id', async (req, res) => {
     }
     
     // Update allowed fields
-    const allowedUpdates = ['title', 'mapQuestion', 'xAxis', 'yAxis', 'commentQuestion', 'status'];
+    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'xAxis', 'yAxis', 'commentQuestion', 'status'];
     const updates = {};
     
     for (const key of allowedUpdates) {

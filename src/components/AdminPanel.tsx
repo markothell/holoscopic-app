@@ -5,6 +5,7 @@ import { WeAllExplainActivity, ActivityFormData } from '@/models/Activity';
 import { ActivityService } from '@/services/activityService';
 import { ValidationService } from '@/utils/validation';
 import { FormattingService } from '@/utils/formatting';
+import { UrlUtils } from '@/utils/urlUtils';
 
 interface AdminPanelProps {
   editingActivity?: WeAllExplainActivity;
@@ -21,6 +22,7 @@ export default function AdminPanel({
 }: AdminPanelProps) {
   const [formData, setFormData] = useState<ActivityFormData>({
     title: '',
+    urlName: '',
     mapQuestion: '',
     xAxisLabel: '',
     xAxisMin: '',
@@ -40,6 +42,7 @@ export default function AdminPanel({
     if (editingActivity) {
       setFormData({
         title: editingActivity.title,
+        urlName: editingActivity.urlName,
         mapQuestion: editingActivity.mapQuestion,
         xAxisLabel: editingActivity.xAxis.label,
         xAxisMin: editingActivity.xAxis.min,
@@ -137,6 +140,34 @@ export default function AdminPanel({
             />
             {validationErrors.title && (
               <p className="text-red-600 text-sm mt-1">{validationErrors.title}</p>
+            )}
+          </div>
+
+          {/* URL Name */}
+          <div>
+            <label htmlFor="urlName" className="block text-sm font-medium text-gray-700 mb-2">
+              URL Name
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 text-sm">weallexplain.com/</span>
+              <input
+                type="text"
+                id="urlName"
+                value={formData.urlName || ''}
+                onChange={(e) => handleFieldChange('urlName', e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                placeholder="e.g., gratitude"
+                maxLength={50}
+              />
+            </div>
+            <p className="text-gray-500 text-sm mt-1">
+              {formData.urlName ? 
+                `URL: weallexplain.com/${UrlUtils.cleanActivityName(formData.urlName)}` : 
+                'Leave empty to auto-generate from title'
+              }
+            </p>
+            {validationErrors.urlName && (
+              <p className="text-red-600 text-sm mt-1">{validationErrors.urlName}</p>
             )}
           </div>
 

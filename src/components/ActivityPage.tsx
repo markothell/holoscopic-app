@@ -318,10 +318,10 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading activity...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white">Loading activity...</p>
         </div>
       </div>
     );
@@ -330,15 +330,15 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-red-500 mb-4">
+          <div className="text-red-400 mb-4">
             <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <h2 className="text-xl font-semibold text-white mb-2">Error</h2>
+          <p className="text-gray-300 mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
@@ -385,9 +385,18 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
               </h2>
             </div>
             
+            {/* Completed Activity Notice */}
+            {activity.status === 'completed' && (
+              <div className="bg-yellow-900 border border-yellow-700 rounded-lg px-4 py-3 mb-6 sm:mb-8">
+                <p className="text-yellow-200 text-center">
+                  This activity is closed. View the social map.
+                </p>
+              </div>
+            )}
+            
             {/* Navigation Arrow */}
             <button 
-              onClick={() => navigateToScreen(1)}
+              onClick={() => activity.status === 'completed' ? navigateToScreen(3) : navigateToScreen(1)}
               className="text-white hover:text-gray-300 transition-colors"
             >
               <img 
@@ -419,7 +428,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             <div className="bg-transparent">
               <MappingGrid
                 activity={activity}
-                onRatingSubmit={handleRatingSubmit}
+                onRatingSubmit={activity.status === 'completed' ? () => {} : handleRatingSubmit}
                 userRating={userRating || undefined}
                 showAllRatings={false}
               />
@@ -462,9 +471,10 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 lg:p-8 w-full max-w-2xl">
               <CommentSection
                 activity={activity}
-                onCommentSubmit={handleCommentSubmit}
+                onCommentSubmit={activity.status === 'completed' ? () => {} : handleCommentSubmit}
                 userComment={userComment || undefined}
                 showAllComments={false}
+                readOnly={activity.status === 'completed'}
               />
             </div>
           </div>
@@ -500,7 +510,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
                 activity={activity}
                 isVisible={true}
                 onToggle={handleResultsToggle}
-                onCommentVote={handleCommentVote}
+                onCommentVote={activity.status === 'completed' ? undefined : handleCommentVote}
                 currentUserId={userId}
               />
             </div>

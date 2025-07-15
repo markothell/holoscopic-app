@@ -1,6 +1,7 @@
 // Validation utilities for forms and data
 
 import { ActivityFormData } from '@/models/Activity';
+import { UrlUtils } from './urlUtils';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -17,6 +18,15 @@ export class ValidationService {
       errors.title = 'Title is required';
     } else if (data.title.trim().length > 100) {
       errors.title = 'Title must be less than 100 characters';
+    }
+
+    // URL name validation (optional)
+    if (data.urlName && data.urlName.trim().length > 0) {
+      if (!UrlUtils.isValidActivityName(data.urlName)) {
+        errors.urlName = 'URL name must be 1-50 characters, letters, numbers, and hyphens only';
+      } else if (UrlUtils.hasRouteConflict(UrlUtils.cleanActivityName(data.urlName))) {
+        errors.urlName = 'URL name conflicts with system routes';
+      }
     }
 
     // Map question validation
