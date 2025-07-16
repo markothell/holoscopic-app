@@ -2,6 +2,14 @@ const mongoose = require('mongoose');
 
 // WeAllExplain Activity Schema - simplified for single-page functionality
 const ActivitySchema = new mongoose.Schema({
+  id: {
+    type: String,
+    unique: true,
+    default: function() {
+      return require('crypto').randomUUID().substring(0, 8);
+    }
+  },
+  
   title: {
     type: String,
     required: true,
