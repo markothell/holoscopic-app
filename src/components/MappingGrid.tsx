@@ -197,14 +197,6 @@ export default function MappingGrid({
         <div className="text-white text-sm font-semibold text-center p-2" style={{ width: 'min(500px, 90vw)' }}>{activity.yAxis.min}</div>
       </div>
 
-      {/* Instructions */}
-      {!showAllRatings && (
-        <div className="text-center text-sm text-gray-600">
-          {!userRating && (
-            <p>Click or tap anywhere on the map to place your rating</p>
-          )}
-        </div>
-      )}
     </div>
   );
 }
