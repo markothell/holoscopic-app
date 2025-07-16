@@ -395,7 +395,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
               <img 
                 src="/nextArrows.svg" 
                 alt="Next" 
-                className="w-12 h-12"
+                className="w-24 h-24"
               />
             </button>
           </div>
@@ -434,11 +434,10 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-colors"
           >
             <div className="flex flex-col items-center">
-              <span className="text-sm opacity-75 mb-2">(2/2)</span>
               <img 
                 src="/nextArrows.svg" 
                 alt="Next" 
-                className="w-12 h-12"
+                className="w-24 h-24"
               />
             </div>
           </button>
@@ -478,11 +477,10 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-colors"
           >
             <div className="flex flex-col items-center">
-              <span className="text-sm opacity-75 mb-2">Social Map</span>
               <img 
                 src="/nextArrows.svg" 
                 alt="Next" 
-                className="w-12 h-12"
+                className="w-24 h-24"
               />
             </div>
           </button>
@@ -493,7 +491,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
             <h1 className="text-xl sm:text-2xl font-bold text-white">
-              We All Explain
+              We All Explain <span className="text-pink-600">{activity?.title}</span>
             </h1>
           </div>
           

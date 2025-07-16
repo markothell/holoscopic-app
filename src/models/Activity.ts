@@ -118,6 +118,9 @@ export interface MappingGridProps {
   onRatingSubmit: (position: { x: number; y: number }) => void;
   userRating?: Rating;
   showAllRatings?: boolean;
+  hoveredCommentId?: string | null;
+  onDotClick?: (userId: string) => void;
+  visibleCommentIds?: string[];
 }
 
 export interface CommentSectionProps {
@@ -128,6 +131,10 @@ export interface CommentSectionProps {
   showAllComments?: boolean;
   readOnly?: boolean;
   currentUserId?: string;
+  onCommentHover?: (commentId: string | null) => void;
+  selectedCommentId?: string | null;
+  onSelectedCommentChange?: (commentId: string | null) => void;
+  onVisibleCommentsChange?: (commentIds: string[]) => void;
 }
 
 export type CommentSortOrder = 'newest' | 'oldest' | 'votes' | 'quadrant-i' | 'quadrant-ii' | 'quadrant-iii' | 'quadrant-iv';

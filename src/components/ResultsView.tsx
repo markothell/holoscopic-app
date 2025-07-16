@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { WeAllExplainActivity, ResultsViewProps } from '@/models/Activity';
 import { FormattingService } from '@/utils/formatting';
 import MappingGrid from './MappingGrid';
@@ -14,6 +14,39 @@ export default function ResultsView({
   currentUserId
 }: ResultsViewProps) {
   const [activeTab, setActiveTab] = useState<'map' | 'comments'>('map');
+  const [hoveredCommentId, setHoveredCommentId] = useState<string | null>(null);
+  const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
+  const [visibleCommentIds, setVisibleCommentIds] = useState<string[]>([]);
+  const [mobilePopupComment, setMobilePopupComment] = useState<string | null>(null);
+
+  // Handle comment hover
+  const handleCommentHover = useCallback((commentId: string | null) => {
+    setHoveredCommentId(commentId);
+  }, []);
+
+  // Handle map dot click
+  const handleMapDotClick = useCallback((userId: string) => {
+    // Find the comment for this user
+    const comment = activity.comments.find(c => c.userId === userId);
+    if (comment && visibleCommentIds.includes(comment.id)) {
+      setSelectedCommentId(comment.id);
+      // Scroll to comment will be handled by CommentSection
+    }
+  }, [activity.comments, visibleCommentIds]);
+
+  // Handle mobile map dot tap
+  const handleMobileMapDotTap = useCallback((userId: string) => {
+    // Find the comment for this user
+    const comment = activity.comments.find(c => c.userId === userId);
+    if (comment && visibleCommentIds.includes(comment.id)) {
+      setMobilePopupComment(comment.id);
+    }
+  }, [activity.comments, visibleCommentIds]);
+
+  // Handle visible comments change from CommentSection
+  const handleVisibleCommentsChange = useCallback((commentIds: string[]) => {
+    setVisibleCommentIds(commentIds);
+  }, []);
 
   // Calculate basic statistics
   const stats = {
@@ -32,12 +65,6 @@ export default function ResultsView({
       {/* Results Content */}
       {isVisible && (
         <div className="space-y-6 bg-transparent p-6 rounded-lg">
-          {/* Results Header */}
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-white mb-2">{activity.title}</h2>
-          </div>
-
-
           {/* Desktop: Side-by-side layout, Mobile: Tab Navigation */}
           <div className="lg:hidden">
             {/* Mobile Tab Navigation */}
@@ -70,11 +97,19 @@ export default function ResultsView({
             <div className="bg-transparent rounded-lg p-6">
               {activeTab === 'map' && (
                 <div>
+                  {/* Mobile Map Title */}
+                  <h3 className="text-xl font-semibold text-white mb-4 text-center mx-auto" style={{ fontSize: 'clamp(1rem, 4vw, 1.25rem)', lineHeight: '1.2', maxWidth: '90vw' }}>
+                    {activity.mapQuestion}
+                  </h3>
+                  
                   {stats.totalRatings > 0 ? (
                     <MappingGrid
                       activity={activity}
                       onRatingSubmit={() => {}} // No submission in results view
                       showAllRatings={true}
+                      hoveredCommentId={hoveredCommentId}
+                      onDotClick={handleMobileMapDotTap}
+                      visibleCommentIds={visibleCommentIds}
                     />
                   ) : (
                     <div className="text-center py-12 text-gray-300">
@@ -98,28 +133,119 @@ export default function ResultsView({
               )}
 
               {activeTab === 'comments' && (
-                <CommentSection
-                  activity={activity}
-                  onCommentSubmit={() => {}} // No submission in results view
-                  onCommentVote={onCommentVote}
-                  showAllComments={true}
-                  readOnly={true}
-                  currentUserId={currentUserId}
-                />
+                <div>
+                  {/* Mobile Comments Title */}
+                  <h3 className="text-xl font-semibold text-white mb-4 text-center mx-auto" style={{ fontSize: 'clamp(1rem, 4vw, 1.25rem)', lineHeight: '1.2', maxWidth: '90vw' }}>
+                    {activity.commentQuestion}
+                  </h3>
+                  
+                  <CommentSection
+                    activity={activity}
+                    onCommentSubmit={() => {}} // No submission in results view
+                    onCommentVote={onCommentVote}
+                    showAllComments={true}
+                    readOnly={true}
+                    currentUserId={currentUserId}
+                    onCommentHover={handleCommentHover}
+                    selectedCommentId={selectedCommentId}
+                    onSelectedCommentChange={setSelectedCommentId}
+                    onVisibleCommentsChange={handleVisibleCommentsChange}
+                  />
+                </div>
               )}
             </div>
           </div>
+
+          {/* Mobile Comment Popup */}
+          {mobilePopupComment && (
+            <div className="lg:hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-lg p-6 max-w-sm w-full max-h-[70vh] overflow-y-auto shadow-xl border border-gray-200">
+                {(() => {
+                  const comment = activity.comments.find(c => c.id === mobilePopupComment);
+                  if (!comment) return null;
+                  
+                  return (
+                    <div>
+                      <div className="flex justify-between items-start mb-4">
+                        <h3 className="text-lg font-semibold text-gray-900">Comment</h3>
+                        <button
+                          onClick={() => setMobilePopupComment(null)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <div
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: FormattingService.generateColorFromString(comment.username) }}
+                          />
+                          <span className="font-medium text-sm" style={{ color: FormattingService.generateColorFromString(comment.username) }}>
+                            {comment.username}
+                          </span>
+                        </div>
+                        
+                        <p className="text-gray-700 text-sm whitespace-pre-wrap">
+                          {comment.text}
+                        </p>
+                        
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <span className="text-xs text-gray-500">
+                            {FormattingService.formatTimestamp(comment.timestamp)}
+                          </span>
+                          {onCommentVote && currentUserId ? (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await onCommentVote(comment.id);
+                                } catch (error) {
+                                  console.error('Vote failed:', error);
+                                }
+                              }}
+                              className="flex items-center space-x-1 px-2 py-1 rounded text-xs transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200"
+                            >
+                              <span>▲</span>
+                              <span>{comment.voteCount || 0}</span>
+                            </button>
+                          ) : (
+                            <div className="flex items-center space-x-1 text-xs text-gray-600">
+                              <span>▲</span>
+                              <span>{comment.voteCount || 0}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
 
           {/* Desktop Side-by-side Layout */}
           <div className="hidden lg:flex lg:flex-col lg:items-center lg:justify-between lg:min-h-[60vh]">
             <div className="flex gap-8 justify-center items-start">
               {/* Left: Map */}
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 flex flex-col">
+                {/* Map Title */}
+                <div className="mb-4" style={{ height: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <h3 className="text-xl font-semibold text-white text-center mx-auto" style={{ width: 'min(500px, 90vw)', fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', lineHeight: '1.2' }}>
+                    {activity.mapQuestion}
+                  </h3>
+                </div>
+                
                 {stats.totalRatings > 0 ? (
                   <MappingGrid
                     activity={activity}
                     onRatingSubmit={() => {}} // No submission in results view
                     showAllRatings={true}
+                    hoveredCommentId={hoveredCommentId}
+                    onDotClick={handleMapDotClick}
+                    visibleCommentIds={visibleCommentIds}
                   />
                 ) : (
                   <div className="text-center py-12 text-gray-300" style={{ width: 'min(500px, 90vw)', height: 'min(500px, 90vw)' }}>
@@ -142,7 +268,14 @@ export default function ResultsView({
               </div>
 
               {/* Right: Narrow Comments */}
-              <div className="w-96 flex-shrink-0 min-h-0" style={{ marginTop: '2.5rem' }}>
+              <div className="w-96 flex-shrink-0 min-h-0 flex flex-col">
+                {/* Comments Title */}
+                <div style={{ height: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '3rem' }}>
+                  <h3 className="text-xl font-semibold text-white text-center w-full" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', lineHeight: '1.2' }}>
+                    {activity.commentQuestion}
+                  </h3>
+                </div>
+                
                 <div className="bg-slate-700 rounded-lg p-4 overflow-hidden w-full" style={{ height: 'min(500px, 90vw)' }}>
                   <CommentSection
                     activity={activity}
@@ -151,6 +284,10 @@ export default function ResultsView({
                     showAllComments={true}
                     readOnly={true}
                     currentUserId={currentUserId}
+                    onCommentHover={handleCommentHover}
+                    selectedCommentId={selectedCommentId}
+                    onSelectedCommentChange={setSelectedCommentId}
+                    onVisibleCommentsChange={handleVisibleCommentsChange}
                   />
                 </div>
               </div>

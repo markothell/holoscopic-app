@@ -12,13 +12,91 @@ export default function CommentSection({
   userComment, 
   showAllComments = false,
   readOnly = false,
-  currentUserId
+  currentUserId,
+  onCommentHover,
+  selectedCommentId,
+  onSelectedCommentChange,
+  onVisibleCommentsChange
 }: CommentSectionProps) {
   const [commentText, setCommentText] = useState(userComment?.text || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<CommentSortOrder>('newest');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const commentRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  // Notify parent of visible comments when sort order changes
+  useEffect(() => {
+    if (onVisibleCommentsChange) {
+      const comments = [...activity.comments];
+      let visibleComments: Comment[] = [];
+      
+      switch (sortOrder) {
+        case 'newest':
+          visibleComments = comments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          break;
+        case 'oldest':
+          visibleComments = comments.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+          break;
+        case 'votes':
+          visibleComments = comments.sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
+          break;
+        case 'quadrant-i':
+          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'i')
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          break;
+        case 'quadrant-ii':
+          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'ii')
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          break;
+        case 'quadrant-iii':
+          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'iii')
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          break;
+        case 'quadrant-iv':
+          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'iv')
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          break;
+        default:
+          visibleComments = comments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      }
+      
+      onVisibleCommentsChange(visibleComments.map(c => c.id));
+    }
+  }, [sortOrder, activity.comments, onVisibleCommentsChange]);
+
+  // Scroll to selected comment
+  useEffect(() => {
+    if (selectedCommentId && commentRefs.current[selectedCommentId]) {
+      // Only scroll within the comment container, not the whole page
+      const commentElement = commentRefs.current[selectedCommentId];
+      const container = commentElement?.closest('.overflow-y-auto');
+      
+      if (container && commentElement) {
+        const containerRect = container.getBoundingClientRect();
+        const elementRect = commentElement.getBoundingClientRect();
+        
+        // Check if element is already visible in container
+        const isVisible = elementRect.top >= containerRect.top && 
+                         elementRect.bottom <= containerRect.bottom;
+        
+        if (!isVisible) {
+          // Scroll within container only
+          const scrollTop = elementRect.top - containerRect.top + container.scrollTop - 
+                           (containerRect.height - elementRect.height) / 2;
+          container.scrollTo({
+            top: scrollTop,
+            behavior: 'smooth'
+          });
+        }
+      }
+      
+      // Clear selection after highlighting
+      setTimeout(() => {
+        onSelectedCommentChange?.(null);
+      }, 1000);
+    }
+  }, [selectedCommentId, onSelectedCommentChange]);
 
   // Remove auto-resize functionality since we want fixed size
 
@@ -195,8 +273,13 @@ export default function CommentSection({
               {getSortedComments().map((comment) => (
                   <div
                     key={comment.id}
-                    className={`p-3 rounded-lg border-l-4 ${readOnly ? "bg-slate-600" : "bg-gray-50"}`}
+                    ref={(el) => { commentRefs.current[comment.id] = el; }}
+                    className={`p-3 rounded-lg border-l-4 transition-all duration-200 ${
+                      readOnly ? "bg-slate-600" : "bg-gray-50"
+                    } ${selectedCommentId === comment.id ? 'ring-2 ring-blue-500' : ''}`}
                     style={{ borderLeftColor: getUserColor(comment.username) }}
+                    onMouseEnter={() => onCommentHover?.(comment.id)}
+                    onMouseLeave={() => onCommentHover?.(null)}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <span 

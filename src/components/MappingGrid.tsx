@@ -8,7 +8,10 @@ export default function MappingGrid({
   activity, 
   onRatingSubmit, 
   userRating, 
-  showAllRatings = false 
+  showAllRatings = false,
+  hoveredCommentId,
+  onDotClick,
+  visibleCommentIds = []
 }: MappingGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -37,6 +40,33 @@ export default function MappingGrid({
 
   // Get user color
   const getUserColor = (username: string) => FormattingService.generateColorFromString(username);
+
+  // Get comment for user
+  const getCommentForUser = (userId: string) => {
+    return activity.comments.find(c => c.userId === userId);
+  };
+
+  // Check if rating should be highlighted
+  const isRatingHighlighted = (rating: Rating): boolean => {
+    if (!hoveredCommentId) return false;
+    const comment = getCommentForUser(rating.userId);
+    return comment?.id === hoveredCommentId;
+  };
+
+  // Check if rating should be visible (based on comment filters)
+  const isRatingVisible = (rating: Rating): boolean => {
+    if (visibleCommentIds.length === 0) return true;
+    const comment = getCommentForUser(rating.userId);
+    return comment ? visibleCommentIds.includes(comment.id) : false;
+  };
+
+  // Handle rating dot click
+  const handleRatingClick = (rating: Rating, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (onDotClick) {
+      onDotClick(rating.userId);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -119,17 +149,27 @@ export default function MappingGrid({
           </div>
 
           {/* Existing Ratings */}
-          {showAllRatings && activity.ratings.map((rating) => (
-            <div
-              key={rating.id}
-              className="absolute w-3 h-3 rounded-full border-2 border-white shadow-md z-10"
-              style={{
-                ...getPositionStyle(rating),
-                backgroundColor: getUserColor(rating.username),
-              }}
-              title={`${rating.username} - ${FormattingService.formatTimestamp(rating.timestamp)}`}
-            />
-          ))}
+          {showAllRatings && activity.ratings.filter(isRatingVisible).map((rating) => {
+            const comment = getCommentForUser(rating.userId);
+            const highlighted = isRatingHighlighted(rating);
+            const hasComment = !!comment;
+            
+            return (
+              <div
+                key={rating.id}
+                className={`absolute rounded-full border-2 border-white shadow-md z-10 transition-all duration-200 ${
+                  highlighted ? 'w-4 h-4 shadow-lg' : 'w-3 h-3'
+                } ${hasComment && onDotClick ? 'cursor-pointer hover:scale-110' : ''}`}
+                style={{
+                  ...getPositionStyle(rating),
+                  backgroundColor: getUserColor(rating.username),
+                  boxShadow: highlighted ? '0 0 0 2px rgba(59, 130, 246, 0.8)' : undefined,
+                }}
+                title={comment ? comment.text : `${rating.username} - ${FormattingService.formatTimestamp(rating.timestamp)}`}
+                onClick={hasComment ? (e) => handleRatingClick(rating, e) : undefined}
+              />
+            );
+          })}
 
           {/* User's Current Rating */}
           {userRating && (
