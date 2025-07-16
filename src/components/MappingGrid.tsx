@@ -62,7 +62,7 @@ export default function MappingGrid({
           {/* Grid Container */}
           <div
             ref={gridRef}
-            className="relative bg-gray-50 border-2 border-gray-200 rounded-lg cursor-crosshair select-none aspect-square"
+            className="relative bg-slate-600 border-2 border-slate-500 rounded-lg cursor-crosshair select-none aspect-square"
             onClick={handleGridClick}
             style={{ width: 'min(500px, 90vw)', height: 'min(500px, 90vw)' }}
           >
@@ -72,7 +72,7 @@ export default function MappingGrid({
             {[...Array(5)].map((_, i) => (
               <div
                 key={`v-${i}`}
-                className="absolute top-0 bottom-0 w-px bg-gray-300"
+                className="absolute top-0 bottom-0 w-px bg-slate-400"
                 style={{ left: `${(i + 1) * 16.666}%` }}
               />
             ))}
@@ -80,7 +80,7 @@ export default function MappingGrid({
             {[...Array(5)].map((_, i) => (
               <div
                 key={`h-${i}`}
-                className="absolute left-0 right-0 h-px bg-gray-300"
+                className="absolute left-0 right-0 h-px bg-slate-400"
                 style={{ top: `${(i + 1) * 16.666}%` }}
               />
             ))}
@@ -90,12 +90,12 @@ export default function MappingGrid({
           <div className="absolute inset-0">
             {/* Vertical center line */}
             <div
-              className="absolute top-0 bottom-0 w-0.5 bg-gray-600"
+              className="absolute top-0 bottom-0 w-0.5 bg-slate-300"
               style={{ left: '50%', transform: 'translateX(-50%)' }}
             />
             {/* Horizontal center line */}
             <div
-              className="absolute left-0 right-0 h-0.5 bg-gray-600"
+              className="absolute left-0 right-0 h-0.5 bg-slate-300"
               style={{ top: '50%', transform: 'translateY(-50%)' }}
             />
           </div>
@@ -103,14 +103,17 @@ export default function MappingGrid({
           {/* Axis Labels on Grid */}
           {/* X-axis label (horizontal, positioned to the right of the horizontal axis line) */}
           <div className="absolute transform -translate-y-1/2" style={{ top: '50%', left: '55%' }}>
-            <span className="text-gray-800 text-xs font-semibold bg-white bg-opacity-90 px-2 py-1 rounded">
+            <span className="text-slate-200 text-sm font-semibold bg-slate-800 bg-opacity-95 px-2 py-1 rounded shadow-sm">
               {activity.xAxis.label}
             </span>
           </div>
           
           {/* Y-axis label (vertical, positioned to the left of the vertical axis line) */}
-          <div className="absolute transform -translate-y-1/2 -rotate-90" style={{ left: '32%', top: '35%' }}>
-            <span className="text-gray-800 text-xs font-semibold bg-white bg-opacity-90 px-2 py-1 rounded whitespace-nowrap">
+          <div 
+            className="absolute transform -translate-x-1/2 -translate-y-1/2 -rotate-90" 
+            style={{ left: '50%', top: '25%', transformOrigin: 'center' }}
+          >
+            <span className="text-slate-200 text-sm font-semibold bg-slate-800 bg-opacity-95 px-2 py-1 rounded whitespace-nowrap shadow-sm">
               {activity.yAxis.label}
             </span>
           </div>

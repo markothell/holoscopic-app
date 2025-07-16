@@ -117,26 +117,18 @@ export default function CommentSection({
 
   return (
     <div className={readOnly ? "h-full flex flex-col" : "space-y-4"}>
-      {/* Comment Question */}
-      {!readOnly && (
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">
-            {activity.commentQuestion}
-          </h3>
-        </div>
-      )}
 
       {/* Comment Input */}
       {!readOnly && (
-        <form onSubmit={handleSubmit} className="space-y-3 flex flex-col items-center">
-          <div className="relative" style={{ width: '500px' }}>
+        <form onSubmit={handleSubmit} className="space-y-3 flex flex-col items-center px-4">
+          <div className="relative w-full max-w-[500px]">
             <textarea
               ref={textareaRef}
               value={commentText}
               onChange={handleTextChange}
               placeholder="Share your thoughts..."
-              className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-black"
-              style={{ width: '500px', height: '150px' }}
+              className="w-full p-3 border border-slate-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-black bg-slate-300"
+              style={{ height: '150px' }}
               maxLength={280}
               disabled={isSubmitting}
             />

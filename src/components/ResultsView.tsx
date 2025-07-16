@@ -35,9 +35,6 @@ export default function ResultsView({
           {/* Results Header */}
           <div className="text-center">
             <h2 className="text-2xl font-bold text-white mb-2">{activity.title}</h2>
-            <div className="flex justify-center text-sm text-gray-300">
-              <span>{FormattingService.formatParticipantCount(stats.totalParticipants)}</span>
-            </div>
           </div>
 
 
@@ -106,7 +103,7 @@ export default function ResultsView({
                   onCommentSubmit={() => {}} // No submission in results view
                   onCommentVote={onCommentVote}
                   showAllComments={true}
-                  readOnly={false}
+                  readOnly={true}
                   currentUserId={currentUserId}
                 />
               )}
@@ -114,52 +111,72 @@ export default function ResultsView({
           </div>
 
           {/* Desktop Side-by-side Layout */}
-          <div className="hidden lg:flex lg:gap-8 lg:justify-center lg:items-start">
-            {/* Left: Map */}
-            <div className="flex-shrink-0">
-              {stats.totalRatings > 0 ? (
-                <MappingGrid
-                  activity={activity}
-                  onRatingSubmit={() => {}} // No submission in results view
-                  showAllRatings={true}
-                />
-              ) : (
-                <div className="text-center py-12 text-gray-300" style={{ width: 'min(500px, 90vw)', height: 'min(500px, 90vw)' }}>
-                  <svg
-                    className="w-12 h-12 mx-auto mb-4 text-gray-300"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                    />
-                  </svg>
-                  <p>No ratings submitted yet</p>
-                </div>
-              )}
-            </div>
+          <div className="hidden lg:flex lg:flex-col lg:items-center lg:justify-between lg:min-h-[60vh]">
+            <div className="flex gap-8 justify-center items-start">
+              {/* Left: Map */}
+              <div className="flex-shrink-0">
+                {stats.totalRatings > 0 ? (
+                  <MappingGrid
+                    activity={activity}
+                    onRatingSubmit={() => {}} // No submission in results view
+                    showAllRatings={true}
+                  />
+                ) : (
+                  <div className="text-center py-12 text-gray-300" style={{ width: 'min(500px, 90vw)', height: 'min(500px, 90vw)' }}>
+                    <svg
+                      className="w-12 h-12 mx-auto mb-4 text-gray-300"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      />
+                    </svg>
+                    <p>No ratings submitted yet</p>
+                  </div>
+                )}
+              </div>
 
-            {/* Right: Narrow Comments */}
-            <div className="w-96 flex-shrink-0 min-h-0" style={{ marginTop: '2.5rem' }}>
-              <div className="bg-slate-700 rounded-lg p-4 overflow-hidden w-full" style={{ height: 'min(500px, 90vw)' }}>
-                <CommentSection
-                  activity={activity}
-                  onCommentSubmit={() => {}} // No submission in results view
-                  onCommentVote={onCommentVote}
-                  showAllComments={true}
-                  readOnly={true}
-                  currentUserId={currentUserId}
+              {/* Right: Narrow Comments */}
+              <div className="w-96 flex-shrink-0 min-h-0" style={{ marginTop: '2.5rem' }}>
+                <div className="bg-slate-700 rounded-lg p-4 overflow-hidden w-full" style={{ height: 'min(500px, 90vw)' }}>
+                  <CommentSection
+                    activity={activity}
+                    onCommentSubmit={() => {}} // No submission in results view
+                    onCommentVote={onCommentVote}
+                    showAllComments={true}
+                    readOnly={true}
+                    currentUserId={currentUserId}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Activity Status - Desktop only, positioned at bottom */}
+            <div className="text-center mt-8">
+              <div className="flex justify-center items-center gap-2 text-sm">
+                <div 
+                  className={`w-2 h-2 rounded-full ${
+                    activity.status === 'active' ? 'bg-green-500' : 'bg-gray-400'
+                  }`}
                 />
+                <span className="text-gray-300">
+                  Activity {activity.status === 'active' ? 'Active' : 'Completed'}
+                </span>
+                <span className="text-gray-500">•</span>
+                <span className="text-gray-300">
+                  {FormattingService.formatParticipantCount(stats.totalParticipants)}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Activity Status */}
-          <div className="text-center">
+          {/* Activity Status - Mobile only */}
+          <div className="text-center lg:hidden">
             <div className="flex justify-center items-center gap-2 text-sm">
               <div 
                 className={`w-2 h-2 rounded-full ${
@@ -171,7 +188,7 @@ export default function ResultsView({
               </span>
               <span className="text-gray-500">•</span>
               <span className="text-gray-300">
-                Created {FormattingService.formatTimestamp(activity.createdAt)}
+                {FormattingService.formatParticipantCount(stats.totalParticipants)}
               </span>
             </div>
           </div>

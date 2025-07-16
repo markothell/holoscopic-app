@@ -9,7 +9,6 @@ import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import MappingGrid from './MappingGrid';
 import CommentSection from './CommentSection';
 import ResultsView from './ResultsView';
-import ConnectionStatus from './ConnectionStatus';
 
 interface ActivityPageProps {
   activityId: string;
@@ -364,12 +363,6 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Connection Status */}
-      <ConnectionStatus
-        isConnected={isConnected}
-        participantCount={activity.participants.length}
-        isReconnecting={isReconnecting}
-      />
 
       {/* Scroll Container with Swipe Support */}
       <div ref={swipeRef} className="relative touch-pan-y">
@@ -389,7 +382,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             {activity.status === 'completed' && (
               <div className="bg-yellow-900 border border-yellow-700 rounded-lg px-4 py-3 mb-6 sm:mb-8">
                 <p className="text-yellow-200 text-center">
-                  This activity is closed. View the social map.
+                  This activity is closed.<br />Click below to view completed map.
                 </p>
               </div>
             )}
@@ -417,9 +410,9 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             </h1>
           </div>
           
-          <div className="flex flex-col items-center justify-start flex-1 w-full max-w-4xl mx-auto px-4 pt-24 sm:pt-32">
-            <div className="text-center mb-4">
-              <p className="text-base sm:text-lg text-gray-300 mb-2">(1/2) Click or swipe to place yourself on the map</p>
+          <div className="flex flex-col items-center justify-start flex-1 w-full max-w-4xl mx-auto px-4 pt-16 sm:pt-20">
+            <div className="text-left mb-4" style={{ width: 'min(500px, 90vw)' }}>
+              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 1: Click to place yourself on the map</p>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-white mb-4">
                 {activity.mapQuestion}
               </h2>
@@ -460,15 +453,15 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             </h1>
           </div>
           
-          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4 pt-16 sm:pt-20">
-            <div className="text-center mb-6 sm:mb-8">
-              <p className="text-base sm:text-lg text-gray-300 mb-2">(2/2) Answer the question:</p>
+          <div className="flex flex-col items-center justify-start flex-1 w-full max-w-4xl mx-auto px-4 pt-20 sm:pt-24">
+            <div className="text-left mb-6 sm:mb-8">
+              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 2: Answer the question:</p>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-white mb-6 sm:mb-8">
                 {activity.commentQuestion}
               </h2>
             </div>
             
-            <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 lg:p-8 w-full max-w-2xl">
+            <div className="bg-slate-600 rounded-lg shadow-lg p-4 sm:p-6 lg:p-8 w-full max-w-[600px]">
               <CommentSection
                 activity={activity}
                 onCommentSubmit={activity.status === 'completed' ? () => {} : handleCommentSubmit}
