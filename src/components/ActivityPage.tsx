@@ -370,7 +370,9 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
         <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 text-white relative px-4">
           <div className="text-center z-10 max-w-4xl">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 sm:mb-8 text-white">
-              We All Explain
+              <a href="/" className="hover:text-gray-300 transition-colors">
+                We All Explain
+              </a>
             </h1>
             <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 sm:px-8 lg:px-12 py-4 sm:py-6 rounded-full shadow-lg mb-6 sm:mb-8">
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-white">
@@ -406,7 +408,9 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
             <h1 className="text-xl sm:text-2xl font-bold text-white">
-              We All Explain
+              <a href="/" className="hover:text-gray-300 transition-colors">
+                We All Explain
+              </a>
             </h1>
           </div>
           
@@ -448,7 +452,9 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
             <h1 className="text-xl sm:text-2xl font-bold text-white">
-              We All Explain
+              <a href="/" className="hover:text-gray-300 transition-colors">
+                We All Explain
+              </a>
             </h1>
           </div>
           
@@ -491,7 +497,9 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
             <h1 className="text-xl sm:text-2xl font-bold text-white">
-              We All Explain <span className="text-pink-600">{activity?.title}</span>
+              <a href="/" className="hover:text-gray-300 transition-colors">
+                We All Explain
+              </a> <span className="text-pink-600">{activity?.title}</span>
             </h1>
           </div>
           
