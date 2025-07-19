@@ -144,6 +144,13 @@ export class ActivityService {
         // Check for duplicates (excluding current activity)
         const existingActivities = await this.getActivities();
         const existingUrlNames = existingActivities.filter(a => a.id !== id).map(a => a.urlName);
+        
+        // Debug logging to help identify the issue
+        console.log('Current activity ID:', id);
+        console.log('Cleaned URL name:', cleanedUrlName);
+        console.log('Existing activities:', existingActivities.map(a => ({ id: a.id, urlName: a.urlName })));
+        console.log('Filtered URL names (excluding current):', existingUrlNames);
+        
         if (existingUrlNames.includes(cleanedUrlName)) {
           throw new Error('Activity URL name already exists');
         }
