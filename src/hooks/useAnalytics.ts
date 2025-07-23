@@ -78,4 +78,4 @@ export function useAllAnalytics() {
   return { allStats, loading, error, refetch };
 }
 
-export { analytics };
+export { analytics, type AnalyticsStats };

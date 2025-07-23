@@ -218,7 +218,6 @@ const ActivitySchema = new mongoose.Schema({
 
 // Indexes for performance
 ActivitySchema.index({ status: 1, createdAt: -1 });
-ActivitySchema.index({ urlName: 1 });
 ActivitySchema.index({ 'participants.id': 1 });
 ActivitySchema.index({ 'ratings.userId': 1 });
 ActivitySchema.index({ 'comments.userId': 1 });
