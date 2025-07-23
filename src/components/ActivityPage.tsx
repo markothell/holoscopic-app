@@ -504,8 +504,11 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           </div>
           
           <div className="container mx-auto px-4 py-8 pt-16 sm:pt-20">
-            <div className="text-center mb-6">
-              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 3/3: Vote on most interesting comments</p>
+            <div className="text-left mb-6 max-w-4xl mx-auto">
+              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 3/3</p>
+              <h2 className="text-4xl sm:text-6xl font-bold text-white">
+                View map and vote on comments
+              </h2>
             </div>
             <div ref={resultsRef}>
               <ResultsView
