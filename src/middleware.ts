@@ -25,13 +25,17 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
   
-  // Temporarily disabled admin subdomain protection for testing
-  // if (isAdminRoute) {
-  //   // If accessing admin route but not on admin subdomain, return 404
-  //   if (!isAdminSubdomain) {
-  //     return new NextResponse(null, { status: 404 });
-  //   }
-  // }
+  // Admin subdomain protection - return 404 for admin routes not on admin subdomain
+  // Allow /admin access in local development (localhost without subdomain)
+  const isLocalhost = hostname.includes('localhost') && !hostname.includes('admin.');
+  
+  if (isAdminRoute) {
+    // If accessing admin route but not on admin subdomain, return 404
+    // Exception: allow direct /admin access on localhost for development
+    if (!isAdminSubdomain && !isLocalhost) {
+      return new NextResponse(null, { status: 404 });
+    }
+  }
   
   // Allow the request to continue
   return NextResponse.next();
