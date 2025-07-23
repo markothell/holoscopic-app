@@ -24,6 +24,7 @@ export default function AdminPanel({
     title: '',
     urlName: '',
     mapQuestion: '',
+    mapQuestion2: '',
     xAxisLabel: '',
     xAxisMin: '',
     xAxisMax: '',
@@ -44,6 +45,7 @@ export default function AdminPanel({
         title: editingActivity.title,
         urlName: editingActivity.urlName,
         mapQuestion: editingActivity.mapQuestion,
+        mapQuestion2: editingActivity.mapQuestion2 || '',
         xAxisLabel: editingActivity.xAxis.label,
         xAxisMin: editingActivity.xAxis.min,
         xAxisMax: editingActivity.xAxis.max,
@@ -171,10 +173,10 @@ export default function AdminPanel({
             )}
           </div>
 
-          {/* Map Question */}
+          {/* Map Question 1 */}
           <div>
             <label htmlFor="mapQuestion" className="block text-sm font-medium text-gray-700 mb-2">
-              Map Question
+              First Slider Question
             </label>
             <input
               type="text"
@@ -182,11 +184,30 @@ export default function AdminPanel({
               value={formData.mapQuestion}
               onChange={(e) => handleFieldChange('mapQuestion', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-              placeholder="e.g., How much money..."
+              placeholder="e.g., How much money did you have as a kid?"
               maxLength={200}
             />
             {validationErrors.mapQuestion && (
               <p className="text-red-600 text-sm mt-1">{validationErrors.mapQuestion}</p>
+            )}
+          </div>
+
+          {/* Map Question 2 */}
+          <div>
+            <label htmlFor="mapQuestion2" className="block text-sm font-medium text-gray-700 mb-2">
+              Second Slider Question
+            </label>
+            <input
+              type="text"
+              id="mapQuestion2"
+              value={formData.mapQuestion2}
+              onChange={(e) => handleFieldChange('mapQuestion2', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+              placeholder="e.g., How much money do you have now?"
+              maxLength={200}
+            />
+            {validationErrors.mapQuestion2 && (
+              <p className="text-red-600 text-sm mt-1">{validationErrors.mapQuestion2}</p>
             )}
           </div>
 

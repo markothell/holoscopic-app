@@ -86,6 +86,7 @@ export class ActivityService {
         title: formData.title,
         urlName,
         mapQuestion: formData.mapQuestion,
+        mapQuestion2: formData.mapQuestion2,
         xAxis: {
           label: formData.xAxisLabel,
           min: formData.xAxisMin,
@@ -161,6 +162,7 @@ export class ActivityService {
       const activityData: any = {
         title: formData.title,
         mapQuestion: formData.mapQuestion,
+        mapQuestion2: formData.mapQuestion2,
         xAxis: {
           label: formData.xAxisLabel,
           min: formData.xAxisMin,

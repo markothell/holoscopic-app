@@ -10,6 +10,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+
   // Load activities
   useEffect(() => {
     const loadActivities = async () => {

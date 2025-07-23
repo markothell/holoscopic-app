@@ -132,7 +132,9 @@ function loadAPIRoutes() {
   if (isMongoConnected && Activity && !apiRoutesLoaded) {
     try {
       const activityRoutes = require('./routes/activities')(io);
+      const analyticsRoutes = require('./routes/analytics')();
       app.use('/api/activities', activityRoutes);
+      app.use('/api/analytics', analyticsRoutes);
       apiRoutesLoaded = true;
       console.log('✅ API routes loaded successfully');
     } catch (error) {
@@ -145,21 +147,13 @@ function loadAPIRoutes() {
 console.log("MongoDB URI:", process.env.MONGODB_URI ? "Set" : "Not set");
 
 if (process.env.MONGODB_URI) {
-  // Append weallexplain-db database name to the URI
-  let mongoUri = process.env.MONGODB_URI;
+  // Use MONGODB_URI as specified in environment files
+  const mongoUri = process.env.MONGODB_URI;
   
-  // Remove any existing database name from the URI
-  const uriParts = mongoUri.split('/');
-  if (uriParts.length > 3) {
-    // Remove the last part (database name) and any query params
-    const baseUri = uriParts.slice(0, 3).join('/');
-    const queryParams = mongoUri.includes('?') ? '?' + mongoUri.split('?')[1] : '';
-    mongoUri = baseUri + '/weallexplain-db' + queryParams;
-  } else {
-    mongoUri = mongoUri + '/weallexplain-db';
-  }
-  
-  console.log("🗃️  Using database: weallexplain-db");
+  // Extract database name from URI for logging
+  const dbMatch = mongoUri.match(/\/([^/?]+)(\?|$)/);
+  const dbName = dbMatch ? dbMatch[1] : 'default';
+  console.log(`🗃️  Using database: ${dbName}`);
   
   mongoose.connect(mongoUri, {
     maxPoolSize: process.env.NODE_ENV === 'production' ? 20 : 3,

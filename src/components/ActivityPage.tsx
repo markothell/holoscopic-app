@@ -6,7 +6,7 @@ import { ActivityService } from '@/services/activityService';
 import { webSocketService } from '@/services/websocketService';
 import { ValidationService } from '@/utils/validation';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import MappingGrid from './MappingGrid';
+import SliderQuestions from './SliderQuestions';
 import CommentSection from './CommentSection';
 import ResultsView from './ResultsView';
 
@@ -29,6 +29,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   const [userRating, setUserRating] = useState<Rating | null>(null);
   const [userComment, setUserComment] = useState<Comment | null>(null);
   // const [hasSubmitted, setHasSubmitted] = useState(false);
+
   
   // Ref for results section
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -47,6 +48,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     setCurrentScreen(screenIndex);
+
   };
   
   // Swipe gesture setup
@@ -415,19 +417,14 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           </div>
           
           <div className="flex flex-col items-center justify-start flex-1 w-full max-w-4xl mx-auto px-4 pt-16 sm:pt-20">
-            <div className="text-left mb-4" style={{ width: 'min(500px, 90vw)' }}>
-              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 1: Click to place yourself on the map</p>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-white mb-4">
-                {activity.mapQuestion}
-              </h2>
-            </div>
-            
-            <div className="bg-transparent">
-              <MappingGrid
+            <div className="w-full max-w-2xl">
+              <div className="max-w-3xl mx-auto px-4">
+                <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">Step 1/2: click the slides to answer:</p>
+              </div>
+              <SliderQuestions
                 activity={activity}
                 onRatingSubmit={activity.status === 'completed' ? () => {} : handleRatingSubmit}
                 userRating={userRating || undefined}
-                showAllRatings={false}
               />
             </div>
           </div>
@@ -459,9 +456,9 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           </div>
           
           <div className="flex flex-col items-center justify-start flex-1 w-full max-w-4xl mx-auto px-4 pt-20 sm:pt-24">
-            <div className="text-left mb-6 sm:mb-8">
-              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 2: Answer the question:</p>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-white mb-6 sm:mb-8">
+            <div className="text-left mb-6 sm:mb-8 w-full max-w-[600px]">
+              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 2/2: Answer the question:</p>
+              <h2 className="text-4xl sm:text-6xl font-bold text-white mb-6 sm:mb-8">
                 {activity.commentQuestion}
               </h2>
             </div>

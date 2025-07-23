@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { WeAllExplainActivity } from '@/models/Activity';
 import { ActivityService } from '@/services/activityService';
 import { FormattingService } from '@/utils/formatting';
+import { useAllAnalytics, type AnalyticsStats } from '@/hooks/useAnalytics';
 import AdminPanel from '@/components/AdminPanel';
 import { getMainAppUrl } from '@/utils/adminUrls';
 import Link from 'next/link';
@@ -18,7 +19,9 @@ function AdminContent() {
   const [editingActivity, setEditingActivity] = useState<WeAllExplainActivity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const { allStats, loading: analyticsLoading } = useAllAnalytics();
 
   // Load activities and editing activity
   useEffect(() => {
@@ -122,6 +125,7 @@ function AdminContent() {
       const cloneData = {
         title: newTitle,
         mapQuestion: originalActivity.mapQuestion,
+        mapQuestion2: originalActivity.mapQuestion2 || '',
         xAxisLabel: originalActivity.xAxis.label,
         xAxisMin: originalActivity.xAxis.min,
         xAxisMax: originalActivity.xAxis.max,
@@ -235,6 +239,7 @@ function AdminContent() {
                 <ActivityRow
                   key={activity.id}
                   activity={activity}
+                  analytics={allStats[activity.id]}
                   onEdit={() => {
                     setEditingActivity(activity);
                     setShowCreateForm(true);
@@ -255,16 +260,14 @@ function AdminContent() {
 // Activity Row Component
 interface ActivityRowProps {
   activity: WeAllExplainActivity;
+  analytics?: AnalyticsStats;
   onEdit: () => void;
   onDelete: () => void;
   onComplete: () => void;
   onClone: () => void;
 }
 
-function ActivityRow({ activity, onEdit, onDelete, onComplete, onClone }: ActivityRowProps) {
-  const participantCount = activity.participants.length;
-  const ratingCount = activity.ratings.length;
-  const commentCount = activity.comments.length;
+function ActivityRow({ activity, analytics, onEdit, onDelete, onComplete, onClone }: ActivityRowProps) {
   const [showDropdown, setShowDropdown] = useState(false);
 
   return (
@@ -285,10 +288,20 @@ function ActivityRow({ activity, onEdit, onDelete, onComplete, onClone }: Activi
 
           {/* Stats */}
           <div className="flex gap-6 text-sm text-gray-500">
-            <span>{FormattingService.formatParticipantCount(participantCount)}</span>
-            <span>{FormattingService.formatRatingCount(ratingCount)}</span>
-            <span>{FormattingService.formatCommentCount(commentCount)}</span>
-            <span>Created {FormattingService.formatTimestamp(activity.createdAt)}</span>
+            {analytics ? (
+              <>
+                <span>{analytics.participants} participants</span>
+                <span>{analytics.completedMappings} mappings</span>
+                <span>{analytics.comments} comments</span>
+                <span>{analytics.votes} votes</span>
+                <span>Created {FormattingService.formatTimestamp(activity.createdAt)}</span>
+              </>
+            ) : (
+              <>
+                <span>Loading stats...</span>
+                <span>Created {FormattingService.formatTimestamp(activity.createdAt)}</span>
+              </>
+            )}
           </div>
         </div>
 

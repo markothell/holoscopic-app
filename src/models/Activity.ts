@@ -7,6 +7,7 @@ export interface WeAllExplainActivity {
   
   // Map configuration
   mapQuestion: string;
+  mapQuestion2: string;
   xAxis: {
     label: string;
     min: string;
@@ -91,6 +92,7 @@ export interface ActivityFormData {
   title: string;
   urlName?: string; // Optional - will be generated from title if not provided
   mapQuestion: string;
+  mapQuestion2: string;
   xAxisLabel: string;
   xAxisMin: string;
   xAxisMax: string;

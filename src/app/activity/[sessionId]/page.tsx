@@ -9,6 +9,7 @@ export default function ActivityPageRoute() {
   const params = useParams();
   const sessionId = params.sessionId as string;
 
+
   // Track this activity as recently visited
   useEffect(() => {
     if (sessionId) {

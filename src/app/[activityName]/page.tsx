@@ -16,6 +16,7 @@ export default function ActivityByNamePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+
   useEffect(() => {
     const loadActivity = async () => {
       try {

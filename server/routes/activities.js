@@ -103,6 +103,7 @@ router.post('/', async (req, res) => {
       title,
       urlName,
       mapQuestion,
+      mapQuestion2,
       xAxis,
       yAxis,
       commentQuestion
@@ -135,6 +136,7 @@ router.post('/', async (req, res) => {
       title: title.trim(),
       urlName: urlName.trim(),
       mapQuestion: mapQuestion.trim(),
+      mapQuestion2: mapQuestion2 ? mapQuestion2.trim() : '',
       xAxis: {
         label: xAxis.label.trim(),
         min: xAxis.min.trim(),
@@ -186,7 +188,7 @@ router.patch('/:id', async (req, res) => {
     }
     
     // Update allowed fields
-    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'xAxis', 'yAxis', 'commentQuestion', 'status'];
+    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'status'];
     const updates = {};
     
     for (const key of allowedUpdates) {
@@ -484,6 +486,37 @@ router.post('/:id/comment/:commentId/vote', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to vote on comment'
+    });
+  }
+});
+
+// Analytics endpoints
+
+// Get analytics stats for a specific activity
+router.get('/:id/analytics', async (req, res) => {
+  try {
+    const activity = await Activity.findById(req.params.id);
+    
+    if (!activity) {
+      return res.status(404).json({
+        success: false,
+        error: 'Activity not found'
+      });
+    }
+    
+    const stats = {
+      participants: activity.participants.length,
+      completedMappings: activity.ratings.length,
+      comments: activity.comments.length,
+      votes: activity.comments.reduce((total, comment) => total + comment.votes.length, 0)
+    };
+    
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching activity analytics:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch analytics'
     });
   }
 });

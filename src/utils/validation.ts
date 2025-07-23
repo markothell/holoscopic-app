@@ -36,6 +36,11 @@ export class ValidationService {
       errors.mapQuestion = 'Map question must be less than 200 characters';
     }
 
+    // Map question 2 validation (optional for backward compatibility)
+    if (data.mapQuestion2 && data.mapQuestion2.trim().length > 200) {
+      errors.mapQuestion2 = 'Map question 2 must be less than 200 characters';
+    }
+
     // X-axis validation
     if (!data.xAxisLabel || data.xAxisLabel.trim().length === 0) {
       errors.xAxisLabel = 'X-axis label is required';

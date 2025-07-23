@@ -34,6 +34,14 @@ const ActivitySchema = new mongoose.Schema({
     maxlength: 200
   },
   
+  mapQuestion2: {
+    type: String,
+    required: false,
+    trim: true,
+    maxlength: 200,
+    default: ''
+  },
+  
   xAxis: {
     label: {
       type: String,
