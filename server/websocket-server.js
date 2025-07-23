@@ -12,6 +12,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const { v4: uuidv4 } = require('uuid');
+const rateLimit = require('express-rate-limit');
 
 // Connection tracking and cleanup intervals
 const CONNECTIONS_CLEANUP_INTERVAL = process.env.NODE_ENV === 'production' ? 30 * 1000 : 10 * 1000;
@@ -53,6 +54,38 @@ app.use(cors({
 }));
 
 app.use(bodyParser.json());
+
+// Rate limiting for API endpoints (not admin)
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute per IP
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: '1 minute'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for admin endpoints and health checks
+    return req.path.includes('/admin') || req.path === '/health';
+  }
+});
+
+// WebSocket connection limiting
+const wsLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute  
+  max: 30, // 30 connections per minute per IP
+  message: {
+    error: 'Too many WebSocket connections from this IP, please try again later.'
+  },
+  skip: (req) => {
+    // Only apply to socket.io requests
+    return !req.path.includes('/socket.io/');
+  }
+});
+
+app.use('/api', apiLimiter);
+app.use('/socket.io', wsLimiter);
 
 // Create server
 const server = http.createServer(app);

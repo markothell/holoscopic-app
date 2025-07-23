@@ -31,7 +31,6 @@ function AdminContent() {
         setError(null);
         
         const activitiesData = await ActivityService.getActivities();
-        console.log('Activities data IDs:', activitiesData.map(a => ({ id: a.id, urlName: a.urlName })));
         setActivities(activitiesData);
         
         if (editingActivityId) {

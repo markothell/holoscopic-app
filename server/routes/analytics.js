@@ -9,20 +9,33 @@ module.exports = function() {
 // Get analytics stats for all activities
 router.get('/all-stats', async (req, res) => {
   try {
-    const activities = await Activity.find({});
+    const results = await Activity.aggregate([
+      {
+        $project: {
+          participants: { $size: '$participants' },
+          completedMappings: { $size: '$ratings' },
+          comments: { $size: '$comments' },
+          votes: {
+            $sum: {
+              $map: {
+                input: '$comments',
+                as: 'comment',
+                in: { $size: '$$comment.votes' }
+              }
+            }
+          }
+        }
+      }
+    ]);
     
     const allStats = {};
-    
-    activities.forEach(activity => {
-      const stats = {
-        participants: activity.participants.length,
-        completedMappings: activity.ratings.length, 
-        comments: activity.comments.length,
-        votes: activity.comments.reduce((total, comment) => total + comment.votes.length, 0)
+    results.forEach(result => {
+      allStats[result._id.toString()] = {
+        participants: result.participants,
+        completedMappings: result.completedMappings,
+        comments: result.comments,
+        votes: result.votes
       };
-      
-      // Use the same ID format as the activities API for consistency
-      allStats[activity._id.toString()] = stats;
     });
     
     res.json(allStats);
@@ -38,21 +51,37 @@ router.get('/all-stats', async (req, res) => {
 // Get analytics stats for overall platform
 router.get('/stats', async (req, res) => {
   try {
-    const activities = await Activity.find({});
+    const results = await Activity.aggregate([
+      {
+        $group: {
+          _id: null,
+          participants: { $sum: { $size: '$participants' } },
+          completedMappings: { $sum: { $size: '$ratings' } },
+          comments: { $sum: { $size: '$comments' } },
+          votes: {
+            $sum: {
+              $sum: {
+                $map: {
+                  input: '$comments',
+                  as: 'comment',
+                  in: { $size: '$$comment.votes' }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]);
     
-    const totalStats = {
+    const totalStats = results[0] || {
       participants: 0,
       completedMappings: 0,
       comments: 0,
       votes: 0
     };
     
-    activities.forEach(activity => {
-      totalStats.participants += activity.participants.length;
-      totalStats.completedMappings += activity.ratings.length;
-      totalStats.comments += activity.comments.length;
-      totalStats.votes += activity.comments.reduce((total, comment) => total + comment.votes.length, 0);
-    });
+    // Remove the _id field from the response
+    delete totalStats._id;
     
     res.json(totalStats);
   } catch (error) {
