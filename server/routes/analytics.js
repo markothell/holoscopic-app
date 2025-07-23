@@ -21,6 +21,7 @@ router.get('/all-stats', async (req, res) => {
         votes: activity.comments.reduce((total, comment) => total + comment.votes.length, 0)
       };
       
+      // Use the same ID format as the activities API for consistency
       allStats[activity._id.toString()] = stats;
     });
     

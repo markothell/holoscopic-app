@@ -54,8 +54,10 @@ export function useAllAnalytics() {
         setLoading(true);
         setError(null);
         const result = await analytics.getAllActivitiesStats();
+        console.log('Analytics result keys:', Object.keys(result));
         setAllStats(result);
       } catch (err) {
+        console.error('Analytics fetch error:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch all stats');
       } finally {
         setLoading(false);
