@@ -60,6 +60,25 @@ export default function MappingGrid({
     return comment ? visibleCommentIds.includes(comment.id) : false;
   };
 
+  // Get dot size based on vote count (proportional to max votes in activity)
+  const getDotSize = (rating: Rating): { width: string; height: string } => {
+    const comment = getCommentForUser(rating.userId);
+    const commentVotes = comment?.voteCount || 0;
+    const mindiam = 12; // Base size for 0 votes
+    const maxdiam = 30; // Max size
+    
+    // Find highest vote count in current activity
+    const highestCommentVotes = Math.max(1, ...activity.comments.map(c => c.voteCount || 0));
+    
+    // Formula: (comment votes/highest comment votes)*(maxdiam-mindiam)+12px
+    const scaledSize = (commentVotes / highestCommentVotes) * (maxdiam - mindiam) + 12;
+    
+    return {
+      width: `${scaledSize}px`,
+      height: `${scaledSize}px`
+    };
+  };
+
   // Handle rating dot click
   const handleRatingClick = (rating: Rating, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -153,17 +172,20 @@ export default function MappingGrid({
             const comment = getCommentForUser(rating.userId);
             const highlighted = isRatingHighlighted(rating);
             const hasComment = !!comment;
+            const dotSize = getDotSize(rating);
             
             return (
               <div
                 key={rating.id}
                 className={`absolute rounded-full border-2 border-white shadow-md z-10 transition-all duration-200 ${
-                  highlighted ? 'w-4 h-4 shadow-lg' : 'w-3 h-3'
-                } ${hasComment && onDotClick ? 'cursor-pointer hover:scale-110' : ''}`}
+                  hasComment && onDotClick ? 'cursor-pointer hover:scale-110' : ''
+                }`}
                 style={{
                   ...getPositionStyle(rating),
                   backgroundColor: getUserColor(rating.username),
                   boxShadow: highlighted ? '0 0 0 2px rgba(59, 130, 246, 0.8)' : undefined,
+                  width: dotSize.width,
+                  height: dotSize.height,
                 }}
                 title={comment ? comment.text : `${rating.username} - ${FormattingService.formatTimestamp(rating.timestamp)}`}
                 onClick={hasComment ? (e) => handleRatingClick(rating, e) : undefined}

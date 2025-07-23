@@ -281,6 +281,9 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       // Submit via API only - WebSocket will broadcast the result
       await ActivityService.submitComment(activity.id, userId, text);
       
+      // Navigate to results screen after successful submission
+      navigateToScreen(3);
+      
       // setHasSubmitted(true);
     } catch (err) {
       console.error('Error submitting comment:', err);
@@ -419,7 +422,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           <div className="flex flex-col items-center justify-start flex-1 w-full max-w-4xl mx-auto px-4 pt-16 sm:pt-20">
             <div className="w-full max-w-2xl">
               <div className="max-w-3xl mx-auto px-4">
-                <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">Step 1/2: click the slides to answer:</p>
+                <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">Step 1/3: click the slides to answer:</p>
               </div>
               <SliderQuestions
                 activity={activity}
@@ -457,7 +460,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           
           <div className="flex flex-col items-center justify-start flex-1 w-full max-w-4xl mx-auto px-4 pt-20 sm:pt-24">
             <div className="text-left mb-6 sm:mb-8 w-full max-w-[600px]">
-              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 2/2: Answer the question:</p>
+              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 2/3: Answer the question:</p>
               <h2 className="text-4xl sm:text-6xl font-bold text-white mb-6 sm:mb-8">
                 {activity.commentQuestion}
               </h2>
@@ -501,6 +504,9 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           </div>
           
           <div className="container mx-auto px-4 py-8 pt-16 sm:pt-20">
+            <div className="text-center mb-6">
+              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 3/3: Vote on most interesting comments</p>
+            </div>
             <div ref={resultsRef}>
               <ResultsView
                 activity={activity}

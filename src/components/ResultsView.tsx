@@ -99,7 +99,7 @@ export default function ResultsView({
                 <div>
                   {/* Mobile Map Title */}
                   <h3 className="text-xl font-semibold text-white mb-4 text-center mx-auto" style={{ fontSize: 'clamp(1rem, 4vw, 1.25rem)', lineHeight: '1.2', maxWidth: '90vw' }}>
-                    {activity.mapQuestion}
+                    {activity.xAxis.label} X {activity.yAxis.label}
                   </h3>
                   
                   {stats.totalRatings > 0 ? (
@@ -234,7 +234,7 @@ export default function ResultsView({
                 {/* Map Title */}
                 <div className="mb-4" style={{ height: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <h3 className="text-xl font-semibold text-white text-center mx-auto" style={{ width: 'min(500px, 90vw)', fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', lineHeight: '1.2' }}>
-                    {activity.mapQuestion}
+                    {activity.xAxis.label} X {activity.yAxis.label}
                   </h3>
                 </div>
                 
