@@ -11,6 +11,9 @@ export class ActivityService {
     try {
       const response = await fetch(`${API_BASE_URL}/api/activities`);
       if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error('⏱️ Server is busy right now. Please wait a minute and try again.');
+        }
         throw new Error('Failed to fetch activities');
       }
       const result = await response.json();
@@ -26,6 +29,9 @@ export class ActivityService {
     try {
       const response = await fetch(`${API_BASE_URL}/api/activities/${id}`);
       if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error('⏱️ Server is busy right now. Please wait a minute and try again.');
+        }
         throw new Error('Failed to fetch activity');
       }
       const data: ApiResponse<WeAllExplainActivity> = await response.json();
@@ -46,6 +52,9 @@ export class ActivityService {
       if (!response.ok) {
         if (response.status === 404) {
           return null;
+        }
+        if (response.status === 429) {
+          throw new Error('⏱️ Server is busy right now. Please wait a minute and try again.');
         }
         throw new Error('Failed to fetch activity');
       }

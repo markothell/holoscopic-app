@@ -28,6 +28,11 @@ const operationsInProgress = new Set();
 // Express setup
 const app = express();
 
+// Trust Render's proxy for accurate IP addresses in rate limiting
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Parse CLIENT_URL for CORS
 const allowedOrigins = process.env.CLIENT_URL 
   ? process.env.CLIENT_URL.split(',').map(url => url.trim())

@@ -9,6 +9,8 @@ export default function HomePage() {
   const [activities, setActivities] = useState<WeAllExplainActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRateLimited, setIsRateLimited] = useState(false);
+  const [retryCountdown, setRetryCountdown] = useState(0);
 
 
   // Load activities
@@ -17,14 +19,41 @@ export default function HomePage() {
       try {
         setLoading(true);
         setError(null);
+        setIsRateLimited(false);
         
         const activitiesData = await ActivityService.getActivities();
         setActivities(activitiesData);
-      } catch (err) {
-        setError('Failed to load activities');
+      } catch (err: any) {
+        const errorMessage = err.message || 'Failed to load activities';
+        
+        // Check if it's a rate limit error
+        if (errorMessage.includes('Server is busy')) {
+          setIsRateLimited(true);
+          setError(errorMessage);
+          
+          // Start countdown and auto-retry after 60 seconds
+          let countdown = 60;
+          setRetryCountdown(countdown);
+          
+          const countdownInterval = setInterval(() => {
+            countdown -= 1;
+            setRetryCountdown(countdown);
+            
+            if (countdown <= 0) {
+              clearInterval(countdownInterval);
+              // Auto-retry loading activities
+              loadActivities();
+            }
+          }, 1000);
+        } else {
+          setError(errorMessage);
+        }
+        
         console.error('Error loading activities:', err);
       } finally {
-        setLoading(false);
+        if (!isRateLimited) {
+          setLoading(false);
+        }
       }
     };
 
@@ -63,12 +92,33 @@ export default function HomePage() {
         {/* Error State */}
         {error && (
           <div className="max-w-md mx-auto mb-8">
-            <div className="bg-red-900 border border-red-700 rounded-lg p-4">
+            <div className={`border rounded-lg p-4 ${
+              isRateLimited 
+                ? 'bg-yellow-900 border-yellow-700' 
+                : 'bg-red-900 border-red-700'
+            }`}>
               <div className="flex items-center">
-                <svg className="w-5 h-5 text-red-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                <p className="text-red-400 text-sm">{error}</p>
+                {isRateLimited ? (
+                  <svg className="w-5 h-5 text-yellow-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-red-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                )}
+                <div className="flex-1">
+                  <p className={`text-sm ${
+                    isRateLimited ? 'text-yellow-400' : 'text-red-400'
+                  }`}>
+                    {error}
+                  </p>
+                  {isRateLimited && retryCountdown > 0 && (
+                    <p className="text-yellow-300 text-xs mt-1">
+                      Retrying automatically in {retryCountdown} seconds...
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
