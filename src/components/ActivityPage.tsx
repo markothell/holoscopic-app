@@ -440,7 +440,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             </h1>
           </div>
           
-          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4">
+          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4 pb-24">
             <div className="w-full max-w-2xl">
               <div className="max-w-3xl mx-auto px-4">
                 <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">Step 1</p>
@@ -490,13 +490,13 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           {/* Navigation Arrow */}
           <button 
             onClick={() => navigateToScreen(2)}
-            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2"
+            className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2 safe-area-inset-bottom"
           >
             <div className="flex flex-col items-center">
               <img 
                 src="/nextArrowsUp.svg" 
                 alt="Next" 
-                className="w-24 h-24"
+                className="w-16 h-16 sm:w-24 sm:h-24"
               />
             </div>
           </button>
@@ -513,7 +513,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             </h1>
           </div>
           
-          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4">
+          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4 pb-24">
             <div className="w-full max-w-2xl">
               <div className="max-w-3xl mx-auto px-4">
                 <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">Step 2</p>
@@ -563,13 +563,13 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           {/* Navigation Arrow */}
           <button 
             onClick={() => navigateToScreen(3)}
-            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2"
+            className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2 safe-area-inset-bottom"
           >
             <div className="flex flex-col items-center">
               <img 
                 src="/nextArrowsUp.svg" 
                 alt="Next" 
-                className="w-24 h-24"
+                className="w-16 h-16 sm:w-24 sm:h-24"
               />
             </div>
           </button>
@@ -586,7 +586,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             </h1>
           </div>
           
-          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4">
+          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4 pb-24">
             <div className="text-left mb-6 sm:mb-8 w-full max-w-[600px]">
               <p className="text-base sm:text-lg text-gray-300 mb-2">Step 3: Answer the question:</p>
               <h2 className="text-4xl sm:text-6xl font-bold text-white mb-6 sm:mb-8">
@@ -594,7 +594,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
               </h2>
             </div>
             
-            <div className="bg-slate-600 rounded-lg shadow-lg p-4 sm:p-6 lg:p-8 w-full max-w-[600px]">
+            <div className="bg-slate-600 rounded-lg shadow-lg p-4 sm:p-6 lg:p-8 w-full max-w-[600px] touch-auto">
               <CommentSection
                 activity={activity}
                 onCommentSubmit={activity.status === 'completed' ? () => {} : handleCommentSubmit}
@@ -608,37 +608,39 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           {/* Navigation to Results */}
           <button 
             onClick={() => navigateToScreen(4)}
-            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2"
+            className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2 safe-area-inset-bottom"
           >
             <div className="flex flex-col items-center">
               <img 
                 src="/nextArrowsUp.svg" 
                 alt="Next" 
-                className="w-24 h-24"
+                className="w-16 h-16 sm:w-24 sm:h-24"
               />
             </div>
           </button>
         </div>
 
         {/* Screen 5: Results */}
-        <div id="results-screen" className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 relative">
+        <div id="results-screen" className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 relative flex flex-col">
           {/* Top Left Logo */}
-          <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
-            <h1 className="text-xl sm:text-2xl font-bold text-white">
+          <div className="absolute top-4 sm:top-6 left-4 sm:left-8 z-10">
+            <h1 className="text-lg sm:text-xl font-bold text-white">
               <a href="/" className="hover:text-gray-300 transition-colors">
                 We All Explain
-              </a> <span className="text-pink-600">{activity?.title}</span>
+              </a> <span className="text-pink-600 text-sm sm:text-lg">{activity?.title}</span>
             </h1>
           </div>
           
-          <div className="container mx-auto px-4 py-8 pt-16 sm:pt-20">
-            <div className="text-left mb-6 max-w-4xl mx-auto">
-              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 4</p>
-              <h2 className="text-4xl sm:text-6xl font-bold text-white">
-                View map and vote
-              </h2>
+          <div className="flex-1 flex flex-col pt-16 sm:pt-20 pb-4">
+            <div className="flex-shrink-0 px-4 mb-2 lg:mb-4">
+              <div className="text-left max-w-4xl mx-auto">
+                <p className="text-sm sm:text-base text-gray-300 mb-1">Step 4</p>
+                <h2 className="text-xl sm:text-2xl lg:text-4xl xl:text-6xl font-bold text-white">
+                  View map and vote
+                </h2>
+              </div>
             </div>
-            <div ref={resultsRef}>
+            <div className="flex-1 min-h-0 px-4" ref={resultsRef}>
               <ResultsView
                 activity={activity}
                 isVisible={true}

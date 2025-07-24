@@ -68,7 +68,7 @@ export default function ResultsView({
           {/* Desktop: Side-by-side layout, Mobile: Tab Navigation */}
           <div className="lg:hidden">
             {/* Mobile Tab Navigation */}
-            <div className="flex justify-center mb-6">
+            <div className="flex justify-center mb-2">
               <div className="flex bg-white rounded-lg p-1 shadow-sm">
                 <button
                   onClick={() => setActiveTab('map')}
@@ -94,13 +94,17 @@ export default function ResultsView({
             </div>
 
             {/* Mobile Tab Content */}
-            <div className="bg-transparent rounded-lg p-6">
+            <div className="bg-transparent rounded-lg p-2">
               {activeTab === 'map' && (
                 <div>
                   {/* Mobile Map Title */}
-                  <h3 className="text-xl font-semibold text-white mb-4 text-center mx-auto" style={{ fontSize: 'clamp(1rem, 4vw, 1.25rem)', lineHeight: '1.2', maxWidth: '90vw' }}>
-                    {activity.xAxis.label} X {activity.yAxis.label}
-                  </h3>
+                  <div className="flex justify-center mb-2">
+                    <div className="bg-slate-600 px-3 py-2 rounded-lg border border-slate-500">
+                      <h3 className="text-sm font-semibold text-white text-center" style={{ fontSize: 'clamp(0.8rem, 3vw, 0.9rem)', lineHeight: '1.2' }}>
+                        {activity.xAxis.label} vs {activity.yAxis.label}
+                      </h3>
+                    </div>
+                  </div>
                   
                   {stats.totalRatings > 0 ? (
                     <MappingGrid
@@ -135,9 +139,13 @@ export default function ResultsView({
               {activeTab === 'comments' && (
                 <div>
                   {/* Mobile Comments Title */}
-                  <h3 className="text-xl font-semibold text-white mb-4 text-center mx-auto" style={{ fontSize: 'clamp(1rem, 4vw, 1.25rem)', lineHeight: '1.2', maxWidth: '90vw' }}>
-                    {activity.commentQuestion}
-                  </h3>
+                  <div className="flex justify-center mb-2">
+                    <div className="bg-slate-600 px-3 py-2 rounded-lg max-w-xs border border-slate-500">
+                      <h3 className="text-sm font-semibold text-white text-center" style={{ fontSize: 'clamp(0.8rem, 3vw, 0.9rem)', lineHeight: '1.2' }}>
+                        {activity.commentQuestion}
+                      </h3>
+                    </div>
+                  </div>
                   
                   <CommentSection
                     activity={activity}
@@ -232,10 +240,12 @@ export default function ResultsView({
               {/* Left: Map */}
               <div className="flex-shrink-0 flex flex-col">
                 {/* Map Title */}
-                <div className="mb-4" style={{ height: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <h3 className="text-xl font-semibold text-white text-center mx-auto" style={{ width: 'min(500px, 90vw)', fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', lineHeight: '1.2' }}>
-                    {activity.xAxis.label} X {activity.yAxis.label}
-                  </h3>
+                <div className="mb-2 flex justify-center">
+                  <div className="bg-slate-600 px-4 py-2 rounded-lg border border-slate-500">
+                    <h3 className="text-lg font-semibold text-white text-center" style={{ fontSize: 'clamp(0.9rem, 2vw, 1.125rem)', lineHeight: '1.2' }}>
+                      {activity.xAxis.label} vs {activity.yAxis.label}
+                    </h3>
+                  </div>
                 </div>
                 
                 {stats.totalRatings > 0 ? (
@@ -270,10 +280,12 @@ export default function ResultsView({
               {/* Right: Narrow Comments */}
               <div className="w-96 flex-shrink-0 min-h-0 flex flex-col">
                 {/* Comments Title */}
-                <div style={{ height: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '3rem' }}>
-                  <h3 className="text-xl font-semibold text-white text-center w-full" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', lineHeight: '1.2' }}>
-                    {activity.commentQuestion}
-                  </h3>
+                <div className="mb-2 flex justify-center">
+                  <div className="bg-slate-600 px-4 py-2 rounded-lg max-w-sm border border-slate-500">
+                    <h3 className="text-lg font-semibold text-white text-center" style={{ fontSize: 'clamp(0.9rem, 2vw, 1.125rem)', lineHeight: '1.2' }}>
+                      {activity.commentQuestion}
+                    </h3>
+                  </div>
                 </div>
                 
                 <div className="bg-slate-700 rounded-lg p-4 overflow-hidden w-full" style={{ height: 'min(500px, 90vw)' }}>

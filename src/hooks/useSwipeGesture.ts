@@ -29,6 +29,12 @@ export function useSwipeGesture(options: SwipeGestureOptions) {
     if (!element) return;
 
     const handleTouchStart = (e: TouchEvent) => {
+      const target = e.target as Element;
+      // Allow normal touch behavior for form elements and elements with touch-auto class
+      if (target.closest('textarea, input, select, button[type="submit"], .touch-auto')) {
+        return;
+      }
+      
       const touch = e.touches[0];
       setTouchStart({
         x: touch.clientX,
@@ -39,6 +45,13 @@ export function useSwipeGesture(options: SwipeGestureOptions) {
 
     const handleTouchEnd = (e: TouchEvent) => {
       if (!touchStart) return;
+
+      const target = e.target as Element;
+      // Allow normal touch behavior for form elements and elements with touch-auto class
+      if (target.closest('textarea, input, select, button[type="submit"], .touch-auto')) {
+        setTouchStart(null);
+        return;
+      }
 
       const touch = e.changedTouches[0];
       const deltaX = touch.clientX - touchStart.x;
@@ -81,10 +94,14 @@ export function useSwipeGesture(options: SwipeGestureOptions) {
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      // Prevent default scrolling behavior during swipe
-      if (touchStart) {
-        e.preventDefault();
+      const target = e.target as Element;
+      // Allow normal scrolling for form elements and elements with touch-auto class
+      if (!touchStart || target.closest('textarea, input, select, .touch-auto')) {
+        return;
       }
+      
+      // Prevent default scrolling behavior during swipe
+      e.preventDefault();
     };
 
     element.addEventListener('touchstart', handleTouchStart, { passive: true });
