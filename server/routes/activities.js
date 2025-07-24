@@ -251,6 +251,15 @@ router.patch('/:id', async (req, res) => {
     Object.assign(activity, updates);
     console.log('Activity after Object.assign:', activity.toObject());
     
+    // If quadrants were updated, update quadrantName in existing comments
+    if (updates.quadrants) {
+      activity.comments.forEach(comment => {
+        if (comment.quadrant) {
+          comment.quadrantName = activity.quadrants[comment.quadrant];
+        }
+      });
+    }
+    
     const updatedActivity = await activity.save();
     console.log('Activity after save:', updatedActivity.toObject());
     
