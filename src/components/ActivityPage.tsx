@@ -461,7 +461,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             <SliderQuestions
               activity={activity}
               onRatingSubmit={handleRatingSubmit}
-              userRating={userRating}
+              userRating={userRating || undefined}
               showOnlyX={true}
               stepLabel="Step 1"
             />
@@ -497,7 +497,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             <SliderQuestions
               activity={activity}
               onRatingSubmit={handleRatingSubmit}
-              userRating={userRating}
+              userRating={userRating || undefined}
               showOnlyY={true}
               stepLabel="Step 2"
             />
