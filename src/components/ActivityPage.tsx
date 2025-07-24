@@ -400,7 +400,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
                 We All Explain
               </a>
             </h1>
-            <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 sm:px-8 lg:px-12 py-4 sm:py-6 rounded-full shadow-lg mb-6 sm:mb-8">
+            <div className="bg-rose-400 px-6 sm:px-8 lg:px-12 py-4 sm:py-6 rounded-full shadow-lg mb-6 sm:mb-8">
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-white">
                 {activity.title}
               </h2>
@@ -418,7 +418,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             {/* Navigation Arrow */}
             <button 
               onClick={() => activity.status === 'completed' ? navigateToScreen(4) : navigateToScreen(1)}
-              className="text-white hover:text-gray-300 transition-colors"
+              className="text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2"
             >
               <img 
                 src="/nextArrows.svg" 
@@ -440,7 +440,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             </h1>
           </div>
           
-          <div className="flex flex-col items-center justify-start flex-1 w-full max-w-4xl mx-auto px-4 pt-16 sm:pt-20">
+          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4">
             <div className="w-full max-w-2xl">
               <div className="max-w-3xl mx-auto px-4">
                 <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">Step 1</p>
@@ -452,32 +452,34 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
                   </h3>
                   
                   <div className="space-y-2">
-                    {/* Slider */}
-                    <div className="relative">
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.01"
-                        value={userRating?.position.x ?? 0.5}
-                        onChange={(e) => {
-                          const newX = parseFloat(e.target.value);
-                          const currentY = userRating?.position.y ?? 0.5;
-                          handleRatingSubmit({ x: newX, y: currentY });
-                        }}
-                        className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
-                      />
-                      {/* Center tick mark */}
-                      <div 
-                        className="absolute top-0 w-0.5 h-2 bg-slate-300 pointer-events-none"
-                        style={{ left: '50%', transform: 'translateX(-50%)' }}
-                      />
-                    </div>
-                    
-                    {/* Labels */}
-                    <div className="flex justify-between text-lg font-semibold text-slate-300">
-                      <span>{activity.xAxis.min}</span>
-                      <span>{activity.xAxis.max}</span>
+                    {/* Slider with pill background */}
+                    <div className="bg-slate-800 p-6 rounded-2xl border border-slate-400">
+                      <div className="relative">
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          value={userRating?.position.x ?? 0.5}
+                          onChange={(e) => {
+                            const newX = parseFloat(e.target.value);
+                            const currentY = userRating?.position.y ?? 0.5;
+                            handleRatingSubmit({ x: newX, y: currentY });
+                          }}
+                          className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer slider"
+                        />
+                        {/* Center tick mark */}
+                        <div 
+                          className="absolute top-0 w-0.5 h-2 bg-slate-500 pointer-events-none"
+                          style={{ left: '50%', transform: 'translateX(-50%)' }}
+                        />
+                      </div>
+                      
+                      {/* Labels */}
+                      <div className="flex justify-between text-lg font-semibold text-slate-100 mt-4">
+                        <span>{activity.xAxis.min}</span>
+                        <span>{activity.xAxis.max}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -488,11 +490,11 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           {/* Navigation Arrow */}
           <button 
             onClick={() => navigateToScreen(2)}
-            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-colors"
+            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2"
           >
             <div className="flex flex-col items-center">
               <img 
-                src="/nextArrows.svg" 
+                src="/nextArrowsUp.svg" 
                 alt="Next" 
                 className="w-24 h-24"
               />
@@ -511,7 +513,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             </h1>
           </div>
           
-          <div className="flex flex-col items-center justify-start flex-1 w-full max-w-4xl mx-auto px-4 pt-16 sm:pt-20">
+          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4">
             <div className="w-full max-w-2xl">
               <div className="max-w-3xl mx-auto px-4">
                 <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">Step 2</p>
@@ -523,32 +525,34 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
                   </h3>
                   
                   <div className="space-y-2">
-                    {/* Slider */}
-                    <div className="relative">
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.01"
-                        value={userRating ? (1 - userRating.position.y) : 0.5}
-                        onChange={(e) => {
-                          const newY = parseFloat(e.target.value);
-                          const currentX = userRating?.position.x ?? 0.5;
-                          handleRatingSubmit({ x: currentX, y: 1 - newY });
-                        }}
-                        className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
-                      />
-                      {/* Center tick mark */}
-                      <div 
-                        className="absolute top-0 w-0.5 h-2 bg-slate-300 pointer-events-none"
-                        style={{ left: '50%', transform: 'translateX(-50%)' }}
-                      />
-                    </div>
-                    
-                    {/* Labels */}
-                    <div className="flex justify-between text-lg font-semibold text-slate-300">
-                      <span>{activity.yAxis.min}</span>
-                      <span>{activity.yAxis.max}</span>
+                    {/* Slider with pill background */}
+                    <div className="bg-slate-800 p-6 rounded-2xl border border-slate-400">
+                      <div className="relative">
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          value={userRating ? (1 - userRating.position.y) : 0.5}
+                          onChange={(e) => {
+                            const newY = parseFloat(e.target.value);
+                            const currentX = userRating?.position.x ?? 0.5;
+                            handleRatingSubmit({ x: currentX, y: 1 - newY });
+                          }}
+                          className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer slider"
+                        />
+                        {/* Center tick mark */}
+                        <div 
+                          className="absolute top-0 w-0.5 h-2 bg-slate-500 pointer-events-none"
+                          style={{ left: '50%', transform: 'translateX(-50%)' }}
+                        />
+                      </div>
+                      
+                      {/* Labels */}
+                      <div className="flex justify-between text-lg font-semibold text-slate-100 mt-4">
+                        <span>{activity.yAxis.min}</span>
+                        <span>{activity.yAxis.max}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -559,11 +563,11 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           {/* Navigation Arrow */}
           <button 
             onClick={() => navigateToScreen(3)}
-            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-colors"
+            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2"
           >
             <div className="flex flex-col items-center">
               <img 
-                src="/nextArrows.svg" 
+                src="/nextArrowsUp.svg" 
                 alt="Next" 
                 className="w-24 h-24"
               />
@@ -582,7 +586,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             </h1>
           </div>
           
-          <div className="flex flex-col items-center justify-start flex-1 w-full max-w-4xl mx-auto px-4 pt-20 sm:pt-24">
+          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4">
             <div className="text-left mb-6 sm:mb-8 w-full max-w-[600px]">
               <p className="text-base sm:text-lg text-gray-300 mb-2">Step 3: Answer the question:</p>
               <h2 className="text-4xl sm:text-6xl font-bold text-white mb-6 sm:mb-8">
@@ -604,11 +608,11 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           {/* Navigation to Results */}
           <button 
             onClick={() => navigateToScreen(4)}
-            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-colors"
+            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2"
           >
             <div className="flex flex-col items-center">
               <img 
-                src="/nextArrows.svg" 
+                src="/nextArrowsUp.svg" 
                 alt="Next" 
                 className="w-24 h-24"
               />
