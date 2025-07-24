@@ -15,6 +15,7 @@ router.get('/all-stats', async (req, res) => {
           participants: { $size: '$participants' },
           completedMappings: { $size: '$ratings' },
           comments: { $size: '$comments' },
+          emails: { $size: { $ifNull: ['$emails', []] } },
           votes: {
             $sum: {
               $map: {
@@ -34,6 +35,7 @@ router.get('/all-stats', async (req, res) => {
         participants: result.participants,
         completedMappings: result.completedMappings,
         comments: result.comments,
+        emails: result.emails,
         votes: result.votes
       };
     });
@@ -58,6 +60,7 @@ router.get('/stats', async (req, res) => {
           participants: { $sum: { $size: '$participants' } },
           completedMappings: { $sum: { $size: '$ratings' } },
           comments: { $sum: { $size: '$comments' } },
+          emails: { $sum: { $size: { $ifNull: ['$emails', []] } } },
           votes: {
             $sum: {
               $sum: {
@@ -77,6 +80,7 @@ router.get('/stats', async (req, res) => {
       participants: 0,
       completedMappings: 0,
       comments: 0,
+      emails: 0,
       votes: 0
     };
     
@@ -109,6 +113,7 @@ router.get('/stats/:activityId', async (req, res) => {
       participants: activity.participants.length,
       completedMappings: activity.ratings.length,
       comments: activity.comments.length,
+      emails: (activity.emails || []).length,
       votes: activity.comments.reduce((total, comment) => total + comment.votes.length, 0)
     };
     

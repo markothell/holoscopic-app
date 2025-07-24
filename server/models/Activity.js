@@ -131,6 +131,12 @@ const ActivitySchema = new mongoose.Schema({
     default: 'active'
   },
   
+  // Draft mode - hidden from public view when true
+  isDraft: {
+    type: Boolean,
+    default: true
+  },
+  
   // Participant data
   participants: [{
     id: {
@@ -253,6 +259,25 @@ const ActivitySchema = new mongoose.Schema({
     voteCount: {
       type: Number,
       default: 0
+    }
+  }],
+  
+  // Email collection
+  emails: [{
+    email: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true,
+      maxlength: 100
+    },
+    userId: {
+      type: String,
+      required: false
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now
     }
   }]
 }, {

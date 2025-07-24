@@ -32,6 +32,7 @@ export interface WeAllExplainActivity {
   
   // Activity state
   status: 'active' | 'completed';
+  isDraft: boolean;
   createdAt: Date;
   updatedAt: Date;
   

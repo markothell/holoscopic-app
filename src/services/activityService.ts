@@ -6,7 +6,7 @@ import { UrlUtils } from '@/utils/urlUtils';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export class ActivityService {
-  // Get all activities
+  // Get all activities (public - excludes drafts)
   static async getActivities(): Promise<WeAllExplainActivity[]> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/activities`);
@@ -20,6 +20,24 @@ export class ActivityService {
       return result.data.activities;
     } catch (error) {
       console.error('Error fetching activities:', error);
+      throw error;
+    }
+  }
+
+  // Get all activities including drafts (admin only)
+  static async getAdminActivities(): Promise<WeAllExplainActivity[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/activities/admin`);
+      if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error('⏱️ Server is busy right now. Please wait a minute and try again.');
+        }
+        throw new Error('Failed to fetch admin activities');
+      }
+      const result = await response.json();
+      return result.data.activities;
+    } catch (error) {
+      console.error('Error fetching admin activities:', error);
       throw error;
     }
   }
@@ -236,6 +254,35 @@ export class ActivityService {
     }
   }
 
+  // Toggle draft status (admin only)
+  static async toggleDraftStatus(id: string, isDraft: boolean): Promise<WeAllExplainActivity> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/activities/${id}/draft`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          isDraft,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle draft status');
+      }
+
+      const data: ApiResponse<WeAllExplainActivity> = await response.json();
+      if (!data.success || !data.data) {
+        throw new Error(data.error || 'Failed to toggle draft status');
+      }
+
+      return data.data;
+    } catch (error) {
+      console.error('Error toggling draft status:', error);
+      throw error;
+    }
+  }
+
   // Submit rating for user
   static async submitRating(activityId: string, userId: string, position: { x: number; y: number }): Promise<Rating> {
     // Add delay to prevent rapid successive calls
@@ -296,6 +343,35 @@ export class ActivityService {
       return data.data;
     } catch (error) {
       console.error('Error submitting comment:', error);
+      throw error;
+    }
+  }
+
+  // Submit email for activity
+  static async submitEmail(activityId: string, email: string, userId?: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/activities/${activityId}/email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          userId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit email');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to submit email');
+      }
+    } catch (error) {
+      console.error('Error submitting email:', error);
       throw error;
     }
   }

@@ -7,12 +7,18 @@ interface SliderQuestionsProps {
   activity: WeAllExplainActivity;
   onRatingSubmit: (position: { x: number; y: number }) => void;
   userRating?: Rating;
+  showOnlyX?: boolean;
+  showOnlyY?: boolean;
+  stepLabel?: string;
 }
 
 export default function SliderQuestions({ 
   activity, 
   onRatingSubmit, 
-  userRating 
+  userRating,
+  showOnlyX = false,
+  showOnlyY = false,
+  stepLabel
 }: SliderQuestionsProps) {
   // State for slider values (0-1 normalized)
   const [xValue, setXValue] = useState<number>(userRating?.position.x ?? 0.5);
@@ -40,72 +46,87 @@ export default function SliderQuestions({
   };
 
   return (
-    <div className="space-y-12 max-w-3xl mx-auto px-4">
-      
-      {/* First Question (X-axis) */}
-      <div className="space-y-6">
-        <h3 className="text-white text-4xl sm:text-6xl font-bold text-left leading-tight">
-          {activity.mapQuestion}
-        </h3>
-        
-        <div className="space-y-2">
-          {/* Slider */}
-          <div className="relative">
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={xValue}
-              onChange={handleXChange}
-              className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
-            />
-            {/* Center tick mark */}
-            <div 
-              className="absolute top-0 w-0.5 h-2 bg-slate-300 pointer-events-none"
-              style={{ left: '50%', transform: 'translateX(-50%)' }}
-            />
-          </div>
-          
-          {/* Labels */}
-          <div className="flex justify-between text-lg font-semibold text-slate-300">
-            <span>{activity.xAxis.min}</span>
-            <span>{activity.xAxis.max}</span>
-          </div>
+    <div className="w-full max-w-2xl">
+      {stepLabel && (
+        <div className="max-w-3xl mx-auto px-4">
+          <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">{stepLabel}</p>
         </div>
-      </div>
+      )}
+      <div className="space-y-12 max-w-3xl mx-auto px-4">
+        
+        {/* First Question (X-axis) */}
+        {!showOnlyY && (
+          <div className="space-y-6">
+            <h3 className="text-white text-4xl sm:text-6xl font-bold text-left leading-tight">
+              {activity.mapQuestion}
+            </h3>
+            
+            <div className="space-y-2">
+              {/* Slider with pill background */}
+              <div className="bg-slate-800 p-6 rounded-2xl border border-slate-400">
+                <div className="relative">
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={xValue}
+                    onChange={handleXChange}
+                    className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer slider"
+                  />
+                  {/* Center tick mark */}
+                  <div 
+                    className="absolute w-0.5 h-6 bg-slate-300 pointer-events-none"
+                    style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
+                  />
+                </div>
+                
+                {/* Labels */}
+                <div className="flex justify-between text-lg font-semibold text-slate-100 mt-4">
+                  <span>{activity.xAxis.min}</span>
+                  <span>{activity.xAxis.max}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-      {/* Second Question (Y-axis) */}
-      <div className="space-y-6">
-        <h3 className="text-white text-4xl sm:text-6xl font-bold text-left leading-tight">
-          {activity.mapQuestion2 || activity.mapQuestion}
-        </h3>
-        
-        <div className="space-y-2">
-          {/* Slider */}
-          <div className="relative">
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={yValue}
-              onChange={handleYChange}
-              className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
-            />
-            {/* Center tick mark */}
-            <div 
-              className="absolute top-0 w-0.5 h-2 bg-slate-300 pointer-events-none"
-              style={{ left: '50%', transform: 'translateX(-50%)' }}
-            />
+        {/* Second Question (Y-axis) */}
+        {!showOnlyX && (
+          <div className="space-y-6">
+            <h3 className="text-white text-4xl sm:text-6xl font-bold text-left leading-tight">
+              {activity.mapQuestion2 || activity.mapQuestion}
+            </h3>
+            
+            <div className="space-y-2">
+              {/* Slider with pill background */}
+              <div className="bg-slate-800 p-6 rounded-2xl border border-slate-400">
+                <div className="relative">
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={yValue}
+                    onChange={handleYChange}
+                    className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer slider"
+                  />
+                  {/* Center tick mark */}
+                  <div 
+                    className="absolute w-0.5 h-6 bg-slate-300 pointer-events-none"
+                    style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
+                  />
+                </div>
+                
+                {/* Labels */}
+                <div className="flex justify-between text-lg font-semibold text-slate-100 mt-4">
+                  <span>{activity.yAxis.min}</span>
+                  <span>{activity.yAxis.max}</span>
+                </div>
+              </div>
+            </div>
           </div>
-          
-          {/* Labels */}
-          <div className="flex justify-between text-lg font-semibold text-slate-300">
-            <span>{activity.yAxis.min}</span>
-            <span>{activity.yAxis.max}</span>
-          </div>
-        </div>
+        )}
       </div>
 
       <style jsx>{`

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { WeAllExplainActivity, ResultsViewProps } from '@/models/Activity';
+import { ResultsViewProps } from '@/models/Activity';
 import { FormattingService } from '@/utils/formatting';
 import MappingGrid from './MappingGrid';
 import CommentSection from './CommentSection';
@@ -9,7 +9,6 @@ import CommentSection from './CommentSection';
 export default function ResultsView({ 
   activity, 
   isVisible, 
-  onToggle,
   onCommentVote,
   currentUserId
 }: ResultsViewProps) {
@@ -305,41 +304,47 @@ export default function ResultsView({
               </div>
             </div>
             
-            {/* Activity Status - Desktop only, positioned at bottom */}
+            {/* Next Arrow - Desktop only, positioned at bottom */}
             <div className="text-center mt-8">
-              <div className="flex justify-center items-center gap-2 text-sm">
-                <div 
-                  className={`w-2 h-2 rounded-full ${
-                    activity.status === 'active' ? 'bg-green-500' : 'bg-gray-400'
-                  }`}
-                />
-                <span className="text-gray-300">
-                  Activity {activity.status === 'active' ? 'Active' : 'Completed'}
-                </span>
-                <span className="text-gray-500">•</span>
-                <span className="text-gray-300">
-                  {FormattingService.formatParticipantCount(stats.totalParticipants)}
-                </span>
-              </div>
+              <button 
+                onClick={() => {
+                  const as6Element = document.getElementById('as6-email-capture');
+                  if (as6Element) {
+                    as6Element.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+                className="text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2"
+              >
+                <div className="flex flex-col items-center">
+                  <img 
+                    src="/nextArrowsUp.svg" 
+                    alt="Next" 
+                    className="w-16 h-16 sm:w-24 sm:h-24"
+                  />
+                </div>
+              </button>
             </div>
           </div>
 
-          {/* Activity Status - Mobile only */}
+          {/* Next Arrow - Mobile only */}
           <div className="text-center lg:hidden">
-            <div className="flex justify-center items-center gap-2 text-sm">
-              <div 
-                className={`w-2 h-2 rounded-full ${
-                  activity.status === 'active' ? 'bg-green-500' : 'bg-gray-400'
-                }`}
-              />
-              <span className="text-gray-300">
-                Activity {activity.status === 'active' ? 'Active' : 'Completed'}
-              </span>
-              <span className="text-gray-500">•</span>
-              <span className="text-gray-300">
-                {FormattingService.formatParticipantCount(stats.totalParticipants)}
-              </span>
-            </div>
+            <button 
+              onClick={() => {
+                const as6Element = document.getElementById('as6-email-capture');
+                if (as6Element) {
+                  as6Element.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2"
+            >
+              <div className="flex flex-col items-center">
+                <img 
+                  src="/nextArrowsUp.svg" 
+                  alt="Next" 
+                  className="w-16 h-16 sm:w-24 sm:h-24"
+                />
+              </div>
+            </button>
           </div>
         </div>
       )}

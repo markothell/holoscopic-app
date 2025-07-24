@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { WeAllExplainActivity, Comment, CommentSectionProps, CommentSortOrder } from '@/models/Activity';
+import { Comment, CommentSectionProps, CommentSortOrder } from '@/models/Activity';
 import { ValidationService } from '@/utils/validation';
 import { FormattingService } from '@/utils/formatting';
 
@@ -25,6 +25,14 @@ export default function CommentSection({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const commentRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  // Get user's quadrant based on their rating (updated to match new quadrant system)
+  const getUserQuadrant = (userId: string): 'q1' | 'q2' | 'q3' | 'q4' | 'unknown' => {
+    const userRating = activity.ratings.find(r => r.userId === userId);
+    if (!userRating) return 'unknown';
+    
+    return ValidationService.getQuadrant(userRating.position);
+  };
 
   // Notify parent of visible comments when sort order changes
   useEffect(() => {
@@ -64,7 +72,7 @@ export default function CommentSection({
       
       onVisibleCommentsChange(visibleComments.map(c => c.id));
     }
-  }, [sortOrder, activity.comments, onVisibleCommentsChange]);
+  }, [sortOrder, activity.comments, activity.ratings, onVisibleCommentsChange]);
 
   // Scroll to selected comment
   useEffect(() => {
@@ -163,7 +171,7 @@ export default function CommentSection({
     try {
       await onCommentSubmit(commentText.trim());
       // Keep the text in the input after submission for editing
-    } catch (error) {
+    } catch {
       setValidationError('Failed to submit comment. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -219,18 +227,10 @@ export default function CommentSection({
     if (onCommentVote) {
       try {
         await onCommentVote(commentId);
-      } catch (error) {
-        console.error('Vote failed:', error);
+      } catch {
+        console.error('Vote failed');
       }
     }
-  };
-
-  // Get user's quadrant based on their rating (updated to match new quadrant system)
-  const getUserQuadrant = (userId: string): 'q1' | 'q2' | 'q3' | 'q4' | 'unknown' => {
-    const userRating = activity.ratings.find(r => r.userId === userId);
-    if (!userRating) return 'unknown';
-    
-    return ValidationService.getQuadrant(userRating.position);
   };
 
   // Sort comments based on selected order

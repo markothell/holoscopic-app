@@ -6,9 +6,9 @@ import { ActivityService } from '@/services/activityService';
 import { webSocketService } from '@/services/websocketService';
 import { ValidationService } from '@/utils/validation';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import SliderQuestions from './SliderQuestions';
 import CommentSection from './CommentSection';
 import ResultsView from './ResultsView';
+import SliderQuestions from './SliderQuestions';
 
 interface ActivityPageProps {
   activityId: string;
@@ -18,8 +18,8 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   const [activity, setActivity] = useState<WeAllExplainActivity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [, setIsConnected] = useState(false);
+  const [, setIsReconnecting] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -28,6 +28,8 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   const [username, setUsername] = useState<string>('');
   const [userRating, setUserRating] = useState<Rating | null>(null);
   const [userComment, setUserComment] = useState<Comment | null>(null);
+  const [userEmail, setUserEmail] = useState<string>('');
+  const [emailSubmitted, setEmailSubmitted] = useState<boolean>(false);
   // const [hasSubmitted, setHasSubmitted] = useState(false);
 
   
@@ -39,40 +41,27 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   
   // Navigation functions
   const navigateToScreen = (screenIndex: number) => {
-    console.log('navigateToScreen called with:', screenIndex);
-    const screens = ['', 'question1-screen', 'question2-screen', 'comment-screen', 'results-screen'];
+    const screens = ['', 'question1-screen', 'question2-screen', 'comment-screen', 'results-screen', 'as6-email-capture'];
     const targetId = screens[screenIndex];
     
-    console.log('Target screen ID:', targetId);
-    
     if (targetId) {
-      const element = document.getElementById(targetId);
-      console.log('Found element:', element);
-      element?.scrollIntoView({ behavior: 'smooth' });
+      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
     } else {
-      console.log('Scrolling to top');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     setCurrentScreen(screenIndex);
-    console.log('Set currentScreen to:', screenIndex);
   };
   
   // Swipe gesture setup
   const swipeRef = useSwipeGesture({
     onSwipeUp: () => {
-      console.log('Swipe up detected, currentScreen:', currentScreen);
-      if (currentScreen < 4) { // Changed from 3 to 4 to allow going to results
-        const nextScreen = currentScreen + 1;
-        console.log('Navigating to screen:', nextScreen);
-        navigateToScreen(nextScreen);
+      if (currentScreen < 5) {
+        navigateToScreen(currentScreen + 1);
       }
     },
     onSwipeDown: () => {
-      console.log('Swipe down detected, currentScreen:', currentScreen);
       if (currentScreen > 0) {
-        const prevScreen = currentScreen - 1;
-        console.log('Navigating to screen:', prevScreen);
-        navigateToScreen(prevScreen);
+        navigateToScreen(currentScreen - 1);
       }
     },
     minDistance: 50,
@@ -337,6 +326,22 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     }
   };
 
+  // Handle email submission
+  const handleEmailSubmit = async (email: string) => {
+    if (!activity || !email.trim()) return;
+    
+    try {
+      await ActivityService.submitEmail(activity.id, email, userId);
+      setUserEmail(email);
+      setEmailSubmitted(true);
+    } catch (err) {
+      console.error('Error submitting email:', err);
+      // Still set as submitted to avoid blocking user experience
+      setUserEmail(email);
+      setEmailSubmitted(true);
+    }
+  };
+
   // Handle results toggle
   const handleResultsToggle = () => {
     setShowResults(!showResults);
@@ -393,7 +398,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-gray-800 mb-2">Activity Not Found</h2>
-          <p className="text-gray-600">The activity you're looking for doesn't exist.</p>
+          <p className="text-gray-600">The activity you&apos;re looking for doesn&apos;t exist.</p>
         </div>
       </div>
     );
@@ -453,50 +458,13 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           </div>
           
           <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4 pb-24">
-            <div className="w-full max-w-2xl">
-              <div className="max-w-3xl mx-auto px-4">
-                <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">Step 1</p>
-              </div>
-              <div className="space-y-12 max-w-3xl mx-auto px-4">
-                <div className="space-y-6">
-                  <h3 className="text-white text-4xl sm:text-6xl font-bold text-left leading-tight">
-                    {activity.mapQuestion}
-                  </h3>
-                  
-                  <div className="space-y-2">
-                    {/* Slider with pill background */}
-                    <div className="bg-slate-800 p-6 rounded-2xl border border-slate-400">
-                      <div className="relative">
-                        <input
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.01"
-                          value={userRating?.position.x ?? 0.5}
-                          onChange={(e) => {
-                            const newX = parseFloat(e.target.value);
-                            const currentY = userRating?.position.y ?? 0.5;
-                            handleRatingSubmit({ x: newX, y: currentY });
-                          }}
-                          className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer slider"
-                        />
-                        {/* Center tick mark */}
-                        <div 
-                          className="absolute top-0 w-0.5 h-2 bg-slate-500 pointer-events-none"
-                          style={{ left: '50%', transform: 'translateX(-50%)' }}
-                        />
-                      </div>
-                      
-                      {/* Labels */}
-                      <div className="flex justify-between text-lg font-semibold text-slate-100 mt-4">
-                        <span>{activity.xAxis.min}</span>
-                        <span>{activity.xAxis.max}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <SliderQuestions
+              activity={activity}
+              onRatingSubmit={handleRatingSubmit}
+              userRating={userRating}
+              showOnlyX={true}
+              stepLabel="Step 1"
+            />
           </div>
           
           {/* Navigation Arrow */}
@@ -526,50 +494,13 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           </div>
           
           <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4 pb-24">
-            <div className="w-full max-w-2xl">
-              <div className="max-w-3xl mx-auto px-4">
-                <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">Step 2</p>
-              </div>
-              <div className="space-y-12 max-w-3xl mx-auto px-4">
-                <div className="space-y-6">
-                  <h3 className="text-white text-4xl sm:text-6xl font-bold text-left leading-tight">
-                    {activity.mapQuestion2 || activity.mapQuestion}
-                  </h3>
-                  
-                  <div className="space-y-2">
-                    {/* Slider with pill background */}
-                    <div className="bg-slate-800 p-6 rounded-2xl border border-slate-400">
-                      <div className="relative">
-                        <input
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.01"
-                          value={userRating ? (1 - userRating.position.y) : 0.5}
-                          onChange={(e) => {
-                            const newY = parseFloat(e.target.value);
-                            const currentX = userRating?.position.x ?? 0.5;
-                            handleRatingSubmit({ x: currentX, y: 1 - newY });
-                          }}
-                          className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer slider"
-                        />
-                        {/* Center tick mark */}
-                        <div 
-                          className="absolute top-0 w-0.5 h-2 bg-slate-500 pointer-events-none"
-                          style={{ left: '50%', transform: 'translateX(-50%)' }}
-                        />
-                      </div>
-                      
-                      {/* Labels */}
-                      <div className="flex justify-between text-lg font-semibold text-slate-100 mt-4">
-                        <span>{activity.yAxis.min}</span>
-                        <span>{activity.yAxis.max}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <SliderQuestions
+              activity={activity}
+              onRatingSubmit={handleRatingSubmit}
+              userRating={userRating}
+              showOnlyY={true}
+              stepLabel="Step 2"
+            />
           </div>
           
           {/* Navigation Arrow */}
@@ -661,6 +592,58 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
                 currentUserId={userId}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Screen 6: Email Capture (AS6) */}
+        <div id="as6-email-capture" className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 text-white relative px-4">
+          <div className="text-center max-w-md mx-auto">
+            {!emailSubmitted ? (
+              <>
+                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-8">
+                  Receive the next invite:
+                </h2>
+                
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const email = formData.get('email') as string;
+                    handleEmailSubmit(email);
+                  }}
+                  className="space-y-6"
+                >
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Enter your email"
+                    required
+                    className="w-full px-6 py-4 rounded-full bg-slate-300 text-black placeholder-gray-600 text-center text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent border border-slate-400"
+                  />
+                  
+                  <button
+                    type="submit"
+                    className="inline-block px-8 py-4 bg-rose-400 hover:bg-rose-500 text-white font-semibold rounded-full transition-colors duration-200 text-lg"
+                  >
+                    Let's Explain
+                  </button>
+                </form>
+              </>
+            ) : (
+              <>
+                <div className="mb-6">
+                  <svg className="w-16 h-16 text-green-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                  Thank you!
+                </h2>
+                <p className="text-gray-300 text-lg">
+                  We'll let you know when the next activity is ready.
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>

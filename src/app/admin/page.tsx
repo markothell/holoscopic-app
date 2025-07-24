@@ -30,7 +30,7 @@ function AdminContent() {
         setLoading(true);
         setError(null);
         
-        const activitiesData = await ActivityService.getActivities();
+        const activitiesData = await ActivityService.getAdminActivities();
         setActivities(activitiesData);
         
         if (editingActivityId) {
@@ -98,6 +98,26 @@ function AdminContent() {
     } catch (err) {
       console.error('Error completing activity:', err);
       alert('Failed to complete activity. Please try again.');
+    }
+  };
+
+  // Handle toggle draft status
+  const handleToggleDraft = async (activityId: string, currentDraftStatus: boolean) => {
+    const newStatus = !currentDraftStatus;
+    const action = newStatus ? 'set as draft' : 'publish';
+    
+    if (!confirm(`Are you sure you want to ${action} this activity?`)) {
+      return;
+    }
+
+    try {
+      const updatedActivity = await ActivityService.toggleDraftStatus(activityId, newStatus);
+      setActivities(prev => 
+        prev.map(a => a.id === activityId ? updatedActivity : a)
+      );
+    } catch (err) {
+      console.error('Error toggling draft status:', err);
+      alert('Failed to toggle draft status. Please try again.');
     }
   };
 
@@ -251,6 +271,7 @@ function AdminContent() {
                   onDelete={() => handleDeleteActivity(activity.id)}
                   onComplete={() => handleCompleteActivity(activity.id)}
                   onClone={() => handleCloneActivity(activity.id)}
+                  onToggleDraft={() => handleToggleDraft(activity.id, activity.isDraft)}
                 />
               ))}
             </div>
@@ -269,9 +290,10 @@ interface ActivityRowProps {
   onDelete: () => void;
   onComplete: () => void;
   onClone: () => void;
+  onToggleDraft: () => void;
 }
 
-function ActivityRow({ activity, analytics, onEdit, onDelete, onComplete, onClone }: ActivityRowProps) {
+function ActivityRow({ activity, analytics, onEdit, onDelete, onComplete, onClone, onToggleDraft }: ActivityRowProps) {
   const [showDropdown, setShowDropdown] = useState(false);
 
   return (
@@ -284,6 +306,11 @@ function ActivityRow({ activity, analytics, onEdit, onDelete, onComplete, onClon
               className={`w-3 h-3 rounded-full ${activity.status === 'active' ? 'bg-teal-300' : 'bg-gray-700'}`}
               title={activity.status === 'active' ? 'Active' : 'Completed'}
             />
+            {activity.isDraft && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                Draft
+              </span>
+            )}
             <h3 className="text-lg font-semibold text-gray-800">{activity.title}</h3>
           </div>
 
@@ -297,6 +324,7 @@ function ActivityRow({ activity, analytics, onEdit, onDelete, onComplete, onClon
                 <span>{analytics.participants} participants</span>
                 <span>{analytics.completedMappings} mappings</span>
                 <span>{analytics.comments} comments</span>
+                <span>{analytics.emails} emails</span>
                 <span>{analytics.votes} votes</span>
                 <span>Created {FormattingService.formatTimestamp(activity.createdAt)}</span>
               </>
@@ -349,6 +377,15 @@ function ActivityRow({ activity, analytics, onEdit, onDelete, onComplete, onClon
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     Clone
+                  </button>
+                  <button
+                    onClick={() => {
+                      onToggleDraft();
+                      setShowDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    {activity.isDraft ? 'Publish' : 'Set as Draft'}
                   </button>
                   {activity.status === 'active' && (
                     <button

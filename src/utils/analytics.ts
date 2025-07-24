@@ -3,6 +3,7 @@ interface AnalyticsStats {
   completedMappings: number;
   comments: number;
   votes: number;
+  emails: number;
 }
 
 class InternalAnalytics {
@@ -20,7 +21,7 @@ class InternalAnalytics {
       return await response.json();
     } catch (error) {
       console.error('Failed to fetch analytics stats:', error);
-      return { participants: 0, completedMappings: 0, comments: 0, votes: 0 };
+      return { participants: 0, completedMappings: 0, comments: 0, votes: 0, emails: 0 };
     }
   }
 

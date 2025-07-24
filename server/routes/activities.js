@@ -5,8 +5,8 @@ const Activity = require('../models/Activity');
 module.exports = function(io) {
   const router = express.Router();
 
-// Get all activities
-router.get('/', async (req, res) => {
+// Get all activities (admin endpoint - includes drafts)
+router.get('/admin', async (req, res) => {
   try {
     const activities = await Activity.find({})
       .sort({ createdAt: -1 })
@@ -18,6 +18,49 @@ router.get('/', async (req, res) => {
       return {
         ...activityObj,
         id: activity._id.toString(),
+        // Ensure isDraft field exists with default false for existing activities
+        isDraft: activityObj.isDraft !== undefined ? activityObj.isDraft : false,
+        // Ensure quadrants field exists with defaults if missing
+        quadrants: activityObj.quadrants || {
+          q1: 'Q1 (++)',
+          q2: 'Q2 (-+)',
+          q3: 'Q3 (--)',
+          q4: 'Q4 (+-)'
+        }
+      };
+    });
+    
+    res.json({
+      success: true,
+      data: {
+        activities: transformedActivities
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching admin activities:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch activities'
+    });
+  }
+});
+
+// Get all activities (public endpoint - excludes drafts)
+router.get('/', async (req, res) => {
+  try {
+    // Only show non-draft activities to public (treat missing isDraft as false)
+    const activities = await Activity.find({ $or: [{ isDraft: { $ne: true } }, { isDraft: { $exists: false } }] })
+      .sort({ createdAt: -1 })
+      .select('-__v');
+    
+    // Transform _id to id for frontend compatibility and ensure quadrants exist
+    const transformedActivities = activities.map(activity => {
+      const activityObj = activity.toObject();
+      return {
+        ...activityObj,
+        id: activity._id.toString(),
+        // Ensure isDraft field exists with default false for existing activities
+        isDraft: activityObj.isDraft !== undefined ? activityObj.isDraft : false,
         // Ensure quadrants field exists with defaults if missing
         quadrants: activityObj.quadrants || {
           q1: 'Q1 (++)',
@@ -317,6 +360,56 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Toggle draft status
+router.patch('/:id/draft', async (req, res) => {
+  try {
+    const { isDraft } = req.body;
+    
+    if (typeof isDraft !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        error: 'isDraft must be a boolean value'
+      });
+    }
+    
+    const activity = await Activity.findById(req.params.id);
+    
+    if (!activity) {
+      return res.status(404).json({
+        success: false,
+        error: 'Activity not found'
+      });
+    }
+    
+    activity.isDraft = isDraft;
+    const updatedActivity = await activity.save();
+    
+    // Transform _id to id for frontend compatibility
+    const activityObj = updatedActivity.toObject();
+    const transformedActivity = {
+      ...activityObj,
+      id: updatedActivity._id.toString(),
+      quadrants: activityObj.quadrants || {
+        q1: 'Q1 (++)',
+        q2: 'Q2 (-+)',
+        q3: 'Q3 (--)',
+        q4: 'Q4 (+-)'
+      }
+    };
+    
+    res.json({
+      success: true,
+      data: transformedActivity
+    });
+  } catch (error) {
+    console.error('Error toggling draft status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to toggle draft status'
+    });
+  }
+});
+
 // Add participant to activity
 router.post('/:id/participants', async (req, res) => {
   try {
@@ -568,6 +661,72 @@ router.post('/:id/comment/:commentId/vote', async (req, res) => {
   }
 });
 
+// Submit email
+router.post('/:id/email', async (req, res) => {
+  try {
+    const { email, userId } = req.body;
+    
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email is required'
+      });
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email format'
+      });
+    }
+    
+    const activity = await Activity.findById(req.params.id);
+    
+    if (!activity) {
+      return res.status(404).json({
+        success: false,
+        error: 'Activity not found'
+      });
+    }
+    
+    // Check if email already exists for this activity
+    const existingEmail = activity.emails?.find(e => e.email === email.toLowerCase());
+    if (existingEmail) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email already submitted for this activity'
+      });
+    }
+    
+    // Initialize emails array if it doesn't exist
+    if (!activity.emails) {
+      activity.emails = [];
+    }
+    
+    // Add email
+    activity.emails.push({
+      email: email.toLowerCase().trim(),
+      userId: userId || null,
+      timestamp: new Date()
+    });
+    
+    await activity.save();
+    
+    res.json({
+      success: true,
+      message: 'Email submitted successfully'
+    });
+  } catch (error) {
+    console.error('Error submitting email:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to submit email'
+    });
+  }
+});
+
 // Analytics endpoints
 
 // Get analytics stats for a specific activity
@@ -586,6 +745,7 @@ router.get('/:id/analytics', async (req, res) => {
       participants: activity.participants.length,
       completedMappings: activity.ratings.length,
       comments: activity.comments.length,
+      emails: (activity.emails || []).length,
       votes: activity.comments.reduce((total, comment) => total + comment.votes.length, 0)
     };
     

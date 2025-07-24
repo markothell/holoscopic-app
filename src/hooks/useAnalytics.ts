@@ -8,7 +8,8 @@ export function useAnalytics(activityId?: string) {
     participants: 0,
     completedMappings: 0,
     comments: 0,
-    votes: 0
+    votes: 0,
+    emails: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

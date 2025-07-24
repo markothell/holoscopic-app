@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { WeAllExplainActivity } from '@/models/Activity';
 import { ActivityService } from '@/services/activityService';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function HomePage() {
   const [activities, setActivities] = useState<WeAllExplainActivity[]>([]);
@@ -84,6 +85,13 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
+          <Image
+            src="/wae-logo.svg"
+            alt="We All Explain Logo"
+            width={75}
+            height={75}
+            className="mx-auto mb-4"
+          />
           <h1 className="text-4xl font-bold text-white mb-8">
             We All Explain
           </h1>
