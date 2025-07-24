@@ -9,6 +9,7 @@ import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import CommentSection from './CommentSection';
 import ResultsView from './ResultsView';
 import SliderQuestions from './SliderQuestions';
+import Image from 'next/image';
 
 interface ActivityPageProps {
   activityId: string;
@@ -335,10 +336,19 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       setUserEmail(email);
       setEmailSubmitted(true);
     } catch (err) {
-      console.error('Error submitting email:', err);
-      // Still set as submitted to avoid blocking user experience
-      setUserEmail(email);
-      setEmailSubmitted(true);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      
+      // Handle duplicate email gracefully - user already submitted this email
+      if (errorMessage.includes('Email already submitted')) {
+        console.log('Email already submitted for this activity - showing thank you screen');
+        setUserEmail(email);
+        setEmailSubmitted(true);
+      } else {
+        // For other errors, log but still show thank you to avoid blocking UX
+        console.error('Error submitting email:', err);
+        setUserEmail(email);
+        setEmailSubmitted(true);
+      }
     }
   };
 
@@ -632,9 +642,15 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             ) : (
               <>
                 <div className="mb-6">
-                  <svg className="w-16 h-16 text-green-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+                  <a href="/" className="inline-block hover:opacity-80 transition-opacity">
+                    <Image
+                      src="/wae-logo.svg"
+                      alt="We All Explain Logo"
+                      width={64}
+                      height={64}
+                      className="mx-auto mb-4"
+                    />
+                  </a>
                 </div>
                 <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
                   Thank you!

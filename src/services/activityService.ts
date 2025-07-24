@@ -371,7 +371,12 @@ export class ActivityService {
         throw new Error(data.error || 'Failed to submit email');
       }
     } catch (error) {
-      console.error('Error submitting email:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Don't log duplicate email errors as they're handled gracefully
+      if (!errorMessage.includes('Email already submitted')) {
+        console.error('Error submitting email:', error);
+      }
       throw error;
     }
   }
