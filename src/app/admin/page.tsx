@@ -133,6 +133,10 @@ function AdminContent() {
         yAxisMin: originalActivity.yAxis.min,
         yAxisMax: originalActivity.yAxis.max,
         commentQuestion: originalActivity.commentQuestion,
+        q1Label: originalActivity.quadrants.q1,
+        q2Label: originalActivity.quadrants.q2,
+        q3Label: originalActivity.quadrants.q3,
+        q4Label: originalActivity.quadrants.q4,
       };
 
       const clonedActivity = await ActivityService.createActivity(cloneData);
