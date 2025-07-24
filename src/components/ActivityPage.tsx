@@ -39,7 +39,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   
   // Navigation functions
   const navigateToScreen = (screenIndex: number) => {
-    const screens = ['', 'mapping-screen', 'comment-screen', 'results-screen'];
+    const screens = ['', 'question1-screen', 'question2-screen', 'comment-screen', 'results-screen'];
     const targetId = screens[screenIndex];
     
     if (targetId) {
@@ -205,6 +205,27 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       }
     });
 
+    // Comment update events (when user changes position and comment quadrant changes)
+    webSocketService.on('comment_updated', ({ comment }) => {
+      setActivity(prev => {
+        if (!prev) return prev;
+        
+        // Update the comment with new quadrant information
+        const updatedComments = prev.comments.map(c => 
+          c.id === comment.id ? comment : c
+        );
+        
+        return {
+          ...prev,
+          comments: updatedComments
+        };
+      });
+      
+      if (comment.userId === userId) {
+        setUserComment(comment);
+      }
+    });
+
     // Comment vote events
     webSocketService.on('comment_voted', ({ comment }) => {
       setActivity(prev => {
@@ -282,7 +303,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       await ActivityService.submitComment(activity.id, userId, text);
       
       // Navigate to results screen after successful submission
-      navigateToScreen(3);
+      navigateToScreen(4);
       
       // setHasSubmitted(true);
     } catch (err) {
@@ -396,7 +417,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
             
             {/* Navigation Arrow */}
             <button 
-              onClick={() => activity.status === 'completed' ? navigateToScreen(3) : navigateToScreen(1)}
+              onClick={() => activity.status === 'completed' ? navigateToScreen(4) : navigateToScreen(1)}
               className="text-white hover:text-gray-300 transition-colors"
             >
               <img 
@@ -408,8 +429,8 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           </div>
         </div>
 
-        {/* Screen 2: Mapping */}
-        <div id="mapping-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-800 to-slate-900 text-white relative">
+        {/* Screen 2: Question 1 */}
+        <div id="question1-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-800 to-slate-900 text-white relative">
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
             <h1 className="text-xl sm:text-2xl font-bold text-white">
@@ -422,13 +443,45 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           <div className="flex flex-col items-center justify-start flex-1 w-full max-w-4xl mx-auto px-4 pt-16 sm:pt-20">
             <div className="w-full max-w-2xl">
               <div className="max-w-3xl mx-auto px-4">
-                <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">Step 1/3: click the slides to answer:</p>
+                <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">Step 1</p>
               </div>
-              <SliderQuestions
-                activity={activity}
-                onRatingSubmit={activity.status === 'completed' ? () => {} : handleRatingSubmit}
-                userRating={userRating || undefined}
-              />
+              <div className="space-y-12 max-w-3xl mx-auto px-4">
+                <div className="space-y-6">
+                  <h3 className="text-white text-4xl sm:text-6xl font-bold text-left leading-tight">
+                    {activity.mapQuestion}
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    {/* Slider */}
+                    <div className="relative">
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={userRating?.position.x ?? 0.5}
+                        onChange={(e) => {
+                          const newX = parseFloat(e.target.value);
+                          const currentY = userRating?.position.y ?? 0.5;
+                          handleRatingSubmit({ x: newX, y: currentY });
+                        }}
+                        className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
+                      />
+                      {/* Center tick mark */}
+                      <div 
+                        className="absolute top-0 w-0.5 h-2 bg-slate-300 pointer-events-none"
+                        style={{ left: '50%', transform: 'translateX(-50%)' }}
+                      />
+                    </div>
+                    
+                    {/* Labels */}
+                    <div className="flex justify-between text-lg font-semibold text-slate-300">
+                      <span>{activity.xAxis.min}</span>
+                      <span>{activity.xAxis.max}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           
@@ -447,7 +500,78 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           </button>
         </div>
 
-        {/* Screen 3: Comment */}
+        {/* Screen 3: Question 2 */}
+        <div id="question2-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-800 to-slate-900 text-white relative">
+          {/* Top Left Logo */}
+          <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
+            <h1 className="text-xl sm:text-2xl font-bold text-white">
+              <a href="/" className="hover:text-gray-300 transition-colors">
+                We All Explain
+              </a>
+            </h1>
+          </div>
+          
+          <div className="flex flex-col items-center justify-start flex-1 w-full max-w-4xl mx-auto px-4 pt-16 sm:pt-20">
+            <div className="w-full max-w-2xl">
+              <div className="max-w-3xl mx-auto px-4">
+                <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">Step 2</p>
+              </div>
+              <div className="space-y-12 max-w-3xl mx-auto px-4">
+                <div className="space-y-6">
+                  <h3 className="text-white text-4xl sm:text-6xl font-bold text-left leading-tight">
+                    {activity.mapQuestion2 || activity.mapQuestion}
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    {/* Slider */}
+                    <div className="relative">
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={userRating ? (1 - userRating.position.y) : 0.5}
+                        onChange={(e) => {
+                          const newY = parseFloat(e.target.value);
+                          const currentX = userRating?.position.x ?? 0.5;
+                          handleRatingSubmit({ x: currentX, y: 1 - newY });
+                        }}
+                        className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
+                      />
+                      {/* Center tick mark */}
+                      <div 
+                        className="absolute top-0 w-0.5 h-2 bg-slate-300 pointer-events-none"
+                        style={{ left: '50%', transform: 'translateX(-50%)' }}
+                      />
+                    </div>
+                    
+                    {/* Labels */}
+                    <div className="flex justify-between text-lg font-semibold text-slate-300">
+                      <span>{activity.yAxis.min}</span>
+                      <span>{activity.yAxis.max}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Navigation Arrow */}
+          <button 
+            onClick={() => navigateToScreen(3)}
+            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-colors"
+          >
+            <div className="flex flex-col items-center">
+              <img 
+                src="/nextArrows.svg" 
+                alt="Next" 
+                className="w-24 h-24"
+              />
+            </div>
+          </button>
+        </div>
+
+        {/* Screen 4: Comment */}
         <div id="comment-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-800 to-slate-900 text-white relative">
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
@@ -460,7 +584,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           
           <div className="flex flex-col items-center justify-start flex-1 w-full max-w-4xl mx-auto px-4 pt-20 sm:pt-24">
             <div className="text-left mb-6 sm:mb-8 w-full max-w-[600px]">
-              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 2/3: Answer the question:</p>
+              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 3: Answer the question:</p>
               <h2 className="text-4xl sm:text-6xl font-bold text-white mb-6 sm:mb-8">
                 {activity.commentQuestion}
               </h2>
@@ -479,7 +603,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           
           {/* Navigation to Results */}
           <button 
-            onClick={() => navigateToScreen(3)}
+            onClick={() => navigateToScreen(4)}
             className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-colors"
           >
             <div className="flex flex-col items-center">
@@ -492,7 +616,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           </button>
         </div>
 
-        {/* Screen 4: Results */}
+        {/* Screen 5: Results */}
         <div id="results-screen" className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 relative">
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
@@ -505,9 +629,9 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           
           <div className="container mx-auto px-4 py-8 pt-16 sm:pt-20">
             <div className="text-left mb-6 max-w-4xl mx-auto">
-              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 3/3</p>
+              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 4</p>
               <h2 className="text-4xl sm:text-6xl font-bold text-white">
-                View map and vote on comments
+                View map and vote
               </h2>
             </div>
             <div ref={resultsRef}>
@@ -523,6 +647,36 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
         </div>
       </div>
       
+      <style jsx>{`
+        .slider::-webkit-slider-thumb {
+          appearance: none;
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: #3b82f6;
+          border: 2px solid white;
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider::-moz-range-thumb {
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: #3b82f6;
+          border: 2px solid white;
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider:focus {
+          outline: none;
+        }
+
+        .slider:focus::-webkit-slider-thumb {
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+      `}</style>
     </div>
   );
 }

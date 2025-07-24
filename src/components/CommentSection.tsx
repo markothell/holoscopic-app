@@ -42,19 +42,19 @@ export default function CommentSection({
           visibleComments = comments.sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
           break;
         case 'quadrant-i':
-          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'i')
+          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'q1')
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
           break;
         case 'quadrant-ii':
-          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'ii')
+          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'q2')
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
           break;
         case 'quadrant-iii':
-          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'iii')
+          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'q3')
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
           break;
         case 'quadrant-iv':
-          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'iv')
+          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'q4')
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
           break;
         default:
@@ -132,8 +132,43 @@ export default function CommentSection({
     setValidationError(null);
   };
 
-  // Get user color
-  const getUserColor = (username: string) => FormattingService.generateColorFromString(username);
+  // Get user color based on quadrant
+  const getUserColor = (comment: Comment) => {
+    if (comment.quadrant) {
+      return ValidationService.getQuadrantColor(comment.quadrant);
+    }
+    // Calculate quadrant from user's rating if not stored in comment
+    const userQuadrant = getUserQuadrant(comment.userId);
+    if (userQuadrant !== 'unknown') {
+      return ValidationService.getQuadrantColor(userQuadrant);
+    }
+    // Fallback to username-based color for backward compatibility
+    return FormattingService.generateColorFromString(comment.username);
+  };
+
+  // Get display name for comment (quadrant name or username)
+  const getDisplayName = (comment: Comment) => {
+    if (comment.quadrantName) {
+      return comment.quadrantName;
+    }
+    
+    // Calculate quadrant name from user's rating if not stored in comment
+    const userQuadrant = getUserQuadrant(comment.userId);
+    
+    if (userQuadrant !== 'unknown') {
+      // Use activity quadrants if available, otherwise use defaults
+      const quadrantLabels = activity.quadrants || {
+        q1: 'Q1 (++)',
+        q2: 'Q2 (-+)', 
+        q3: 'Q3 (--)',
+        q4: 'Q4 (+-)'
+      };
+      return quadrantLabels[userQuadrant];
+    }
+    
+    // Fallback to username for backward compatibility
+    return comment.username;
+  };
 
   // Handle comment voting
   const handleVote = async (commentId: string) => {
@@ -146,17 +181,12 @@ export default function CommentSection({
     }
   };
 
-  // Get user's quadrant based on their rating
-  const getUserQuadrant = (userId: string): string => {
+  // Get user's quadrant based on their rating (updated to match new quadrant system)
+  const getUserQuadrant = (userId: string): 'q1' | 'q2' | 'q3' | 'q4' | 'unknown' => {
     const userRating = activity.ratings.find(r => r.userId === userId);
     if (!userRating) return 'unknown';
     
-    const { x, y } = userRating.position;
-    if (x >= 0.5 && y >= 0.5) return 'i';
-    if (x < 0.5 && y >= 0.5) return 'ii';
-    if (x < 0.5 && y < 0.5) return 'iii';
-    if (x >= 0.5 && y < 0.5) return 'iv';
-    return 'unknown';
+    return ValidationService.getQuadrant(userRating.position);
   };
 
   // Sort comments based on selected order
@@ -171,16 +201,16 @@ export default function CommentSection({
       case 'votes':
         return comments.sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
       case 'quadrant-i':
-        return comments.filter(c => getUserQuadrant(c.userId) === 'i')
+        return comments.filter(c => getUserQuadrant(c.userId) === 'q1')
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       case 'quadrant-ii':
-        return comments.filter(c => getUserQuadrant(c.userId) === 'ii')
+        return comments.filter(c => getUserQuadrant(c.userId) === 'q2')
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       case 'quadrant-iii':
-        return comments.filter(c => getUserQuadrant(c.userId) === 'iii')
+        return comments.filter(c => getUserQuadrant(c.userId) === 'q3')
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       case 'quadrant-iv':
-        return comments.filter(c => getUserQuadrant(c.userId) === 'iv')
+        return comments.filter(c => getUserQuadrant(c.userId) === 'q4')
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       default:
         return comments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -277,16 +307,16 @@ export default function CommentSection({
                     className={`p-3 rounded-lg border-l-4 transition-all duration-200 ${
                       readOnly ? "bg-slate-600" : "bg-gray-50"
                     } ${selectedCommentId === comment.id ? 'ring-2 ring-blue-500' : ''}`}
-                    style={{ borderLeftColor: getUserColor(comment.username) }}
+                    style={{ borderLeftColor: getUserColor(comment) }}
                     onMouseEnter={() => onCommentHover?.(comment.id)}
                     onMouseLeave={() => onCommentHover?.(null)}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <span 
                         className="font-medium text-sm"
-                        style={{ color: getUserColor(comment.username) }}
+                        style={{ color: getUserColor(comment) }}
                       >
-                        {comment.username}
+                        {getDisplayName(comment)}
                       </span>
                       <div className="flex flex-col items-end space-y-1">
                         {/* Upvote Button */}

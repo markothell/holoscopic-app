@@ -32,6 +32,10 @@ export default function AdminPanel({
     yAxisMin: '',
     yAxisMax: '',
     commentQuestion: '',
+    q1Label: 'Q1 (++)',
+    q2Label: 'Q2 (-+)',
+    q3Label: 'Q3 (--)',
+    q4Label: 'Q4 (+-)',
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -41,7 +45,7 @@ export default function AdminPanel({
   // Populate form when editing
   useEffect(() => {
     if (editingActivity) {
-      setFormData({
+      const formValues = {
         title: editingActivity.title,
         urlName: editingActivity.urlName,
         mapQuestion: editingActivity.mapQuestion,
@@ -53,7 +57,13 @@ export default function AdminPanel({
         yAxisMin: editingActivity.yAxis.min,
         yAxisMax: editingActivity.yAxis.max,
         commentQuestion: editingActivity.commentQuestion,
-      });
+        q1Label: editingActivity.quadrants?.q1 || 'Q1 (++)',
+        q2Label: editingActivity.quadrants?.q2 || 'Q2 (-+)',
+        q3Label: editingActivity.quadrants?.q3 || 'Q3 (--)',
+        q4Label: editingActivity.quadrants?.q4 || 'Q4 (+-)',
+      };
+      
+      setFormData(formValues);
     }
   }, [editingActivity]);
 
@@ -350,6 +360,80 @@ export default function AdminPanel({
             {validationErrors.commentQuestion && (
               <p className="text-red-600 text-sm mt-1">{validationErrors.commentQuestion}</p>
             )}
+          </div>
+
+          {/* Quadrant Labels Configuration */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-800">Quadrant Labels</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              These names will be assigned to participants based on their mapping position and used for comments.
+            </p>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="q1Label" className="block text-sm font-medium text-gray-700 mb-2">
+                  Q1 (++) - Top Right
+                </label>
+                <input
+                  type="text"
+                  id="q1Label"
+                  value={formData.q1Label}
+                  onChange={(e) => handleFieldChange('q1Label', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  placeholder="e.g., Q1 (++)"
+                  maxLength={20}
+                />
+                <div className="w-4 h-4 bg-blue-500 rounded mt-1"></div>
+              </div>
+
+              <div>
+                <label htmlFor="q2Label" className="block text-sm font-medium text-gray-700 mb-2">
+                  Q2 (-+) - Top Left
+                </label>
+                <input
+                  type="text"
+                  id="q2Label"
+                  value={formData.q2Label}
+                  onChange={(e) => handleFieldChange('q2Label', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  placeholder="e.g., Q2 (-+)"
+                  maxLength={20}
+                />
+                <div className="w-4 h-4 bg-green-500 rounded mt-1"></div>
+              </div>
+
+              <div>
+                <label htmlFor="q3Label" className="block text-sm font-medium text-gray-700 mb-2">
+                  Q3 (--) - Bottom Left
+                </label>
+                <input
+                  type="text"
+                  id="q3Label"
+                  value={formData.q3Label}
+                  onChange={(e) => handleFieldChange('q3Label', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  placeholder="e.g., Q3 (--)"
+                  maxLength={20}
+                />
+                <div className="w-4 h-4 bg-red-500 rounded mt-1"></div>
+              </div>
+
+              <div>
+                <label htmlFor="q4Label" className="block text-sm font-medium text-gray-700 mb-2">
+                  Q4 (+-) - Bottom Right
+                </label>
+                <input
+                  type="text"
+                  id="q4Label"
+                  value={formData.q4Label}
+                  onChange={(e) => handleFieldChange('q4Label', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  placeholder="e.g., Q4 (+-)"
+                  maxLength={20}
+                />
+                <div className="w-4 h-4 bg-yellow-500 rounded mt-1"></div>
+              </div>
+            </div>
           </div>
 
           {/* Submit Error */}

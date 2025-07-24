@@ -86,6 +86,23 @@ export class ValidationService {
       errors.commentQuestion = 'Comment question must be less than 200 characters';
     }
 
+    // Quadrant label validation
+    const quadrantLabels = [
+      { key: 'q1Label', label: 'Q1 label' },
+      { key: 'q2Label', label: 'Q2 label' },
+      { key: 'q3Label', label: 'Q3 label' },
+      { key: 'q4Label', label: 'Q4 label' }
+    ];
+
+    quadrantLabels.forEach(({ key, label }) => {
+      const value = data[key as keyof ActivityFormData] as string;
+      if (!value || value.trim().length === 0) {
+        errors[key] = `${label} is required`;
+      } else if (value.trim().length > 20) {
+        errors[key] = `${label} must be less than 20 characters`;
+      }
+    });
+
     return {
       isValid: Object.keys(errors).length === 0,
       errors,
@@ -159,5 +176,38 @@ export class ValidationService {
     const noun = nouns[Math.floor(Math.random() * nouns.length)];
     const number = Math.floor(Math.random() * 100);
     return `${adjective}${noun}${number}`;
+  }
+
+  // Determine which quadrant a position falls into
+  static getQuadrant(position: { x: number; y: number }): 'q1' | 'q2' | 'q3' | 'q4' {
+    const isRightHalf = position.x >= 0.5;
+    const isTopHalf = position.y < 0.5; // Fixed: y < 0.5 is top half in CSS coordinates
+
+    if (isRightHalf && isTopHalf) return 'q1'; // Top-right (++)
+    if (!isRightHalf && isTopHalf) return 'q2'; // Top-left (-+)
+    if (!isRightHalf && !isTopHalf) return 'q3'; // Bottom-left (--)
+    return 'q4'; // Bottom-right (+-)
+  }
+
+  // Get quadrant color
+  static getQuadrantColor(quadrant: 'q1' | 'q2' | 'q3' | 'q4'): string {
+    const colors = {
+      q1: '#3b82f6', // Blue
+      q2: '#10b981', // Green  
+      q3: '#ef4444', // Red
+      q4: '#f59e0b', // Yellow
+    };
+    return colors[quadrant];
+  }
+
+  // Get quadrant color class
+  static getQuadrantColorClass(quadrant: 'q1' | 'q2' | 'q3' | 'q4'): string {
+    const colorClasses = {
+      q1: 'bg-blue-500',
+      q2: 'bg-green-500',
+      q3: 'bg-red-500',
+      q4: 'bg-yellow-500',
+    };
+    return colorClasses[quadrant];
   }
 }

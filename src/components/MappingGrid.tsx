@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { WeAllExplainActivity, Rating, MappingGridProps } from '@/models/Activity';
 import { FormattingService } from '@/utils/formatting';
+import { ValidationService } from '@/utils/validation';
 
 export default function MappingGrid({ 
   activity, 
@@ -38,8 +39,11 @@ export default function MappingGrid({
     transform: 'translate(-50%, -50%)',
   });
 
-  // Get user color
-  const getUserColor = (username: string) => FormattingService.generateColorFromString(username);
+  // Get user color based on position
+  const getUserColor = (rating: Rating) => {
+    const quadrant = ValidationService.getQuadrant(rating.position);
+    return ValidationService.getQuadrantColor(quadrant);
+  };
 
   // Get comment for user
   const getCommentForUser = (userId: string) => {
@@ -182,7 +186,7 @@ export default function MappingGrid({
                 }`}
                 style={{
                   ...getPositionStyle(rating),
-                  backgroundColor: getUserColor(rating.username),
+                  backgroundColor: getUserColor(rating),
                   boxShadow: highlighted ? '0 0 0 2px rgba(59, 130, 246, 0.8)' : undefined,
                   width: dotSize.width,
                   height: dotSize.height,
@@ -199,7 +203,7 @@ export default function MappingGrid({
               className="absolute w-4 h-4 rounded-full border-3 border-white shadow-lg z-20"
               style={{
                 ...getPositionStyle(userRating),
-                backgroundColor: getUserColor(userRating.username),
+                backgroundColor: getUserColor(userRating),
                 boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.5)',
               }}
               title={`Your rating - ${FormattingService.formatTimestamp(userRating.timestamp)}`}

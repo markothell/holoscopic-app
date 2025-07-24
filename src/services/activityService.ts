@@ -107,6 +107,12 @@ export class ActivityService {
           max: formData.yAxisMax,
         },
         commentQuestion: formData.commentQuestion,
+        quadrants: {
+          q1: formData.q1Label,
+          q2: formData.q2Label,
+          q3: formData.q3Label,
+          q4: formData.q4Label,
+        },
         status: 'active',
         participants: [],
         ratings: [],
@@ -155,12 +161,6 @@ export class ActivityService {
         const existingActivities = await this.getActivities();
         const existingUrlNames = existingActivities.filter(a => a.id !== id).map(a => a.urlName);
         
-        // Debug logging to help identify the issue
-        console.log('Current activity ID:', id);
-        console.log('Cleaned URL name:', cleanedUrlName);
-        console.log('Existing activities:', existingActivities.map(a => ({ id: a.id, urlName: a.urlName })));
-        console.log('Filtered URL names (excluding current):', existingUrlNames);
-        
         if (existingUrlNames.includes(cleanedUrlName)) {
           throw new Error('Activity URL name already exists');
         }
@@ -183,6 +183,12 @@ export class ActivityService {
           max: formData.yAxisMax,
         },
         commentQuestion: formData.commentQuestion,
+        quadrants: {
+          q1: formData.q1Label,
+          q2: formData.q2Label,
+          q3: formData.q3Label,
+          q4: formData.q4Label,
+        },
       };
 
       // Only include urlName if it's provided

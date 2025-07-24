@@ -22,6 +22,14 @@ export interface WeAllExplainActivity {
   // Comment configuration
   commentQuestion: string;
   
+  // Quadrant labels
+  quadrants: {
+    q1: string; // Top-right: high X, high Y
+    q2: string; // Top-left: low X, high Y  
+    q3: string; // Bottom-left: low X, low Y
+    q4: string; // Bottom-right: high X, low Y
+  };
+  
   // Activity state
   status: 'active' | 'completed';
   createdAt: Date;
@@ -48,6 +56,8 @@ export interface Comment {
   id: string;
   userId: string;
   username: string;
+  quadrantName?: string;
+  quadrant?: 'q1' | 'q2' | 'q3' | 'q4';
   text: string;
   timestamp: Date;
   votes: CommentVote[];
@@ -81,6 +91,7 @@ export interface WebSocketEvents {
   // Broadcast events
   'rating_added': { rating: Rating };
   'comment_added': { comment: Comment };
+  'comment_updated': { comment: Comment };
   'comment_voted': { comment: Comment };
   'participant_joined': { participant: Participant };
   'participant_left': { participantId: string };
@@ -100,6 +111,10 @@ export interface ActivityFormData {
   yAxisMin: string;
   yAxisMax: string;
   commentQuestion: string;
+  q1Label: string;
+  q2Label: string;
+  q3Label: string;
+  q4Label: string;
 }
 
 // API response types

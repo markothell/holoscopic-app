@@ -12,11 +12,21 @@ router.get('/', async (req, res) => {
       .sort({ createdAt: -1 })
       .select('-__v');
     
-    // Transform _id to id for frontend compatibility
-    const transformedActivities = activities.map(activity => ({
-      ...activity.toObject(),
-      id: activity._id.toString()
-    }));
+    // Transform _id to id for frontend compatibility and ensure quadrants exist
+    const transformedActivities = activities.map(activity => {
+      const activityObj = activity.toObject();
+      return {
+        ...activityObj,
+        id: activity._id.toString(),
+        // Ensure quadrants field exists with defaults if missing
+        quadrants: activityObj.quadrants || {
+          q1: 'Q1 (++)',
+          q2: 'Q2 (-+)',
+          q3: 'Q3 (--)',
+          q4: 'Q4 (+-)'
+        }
+      };
+    });
     
     res.json({
       success: true,
@@ -46,10 +56,18 @@ router.get('/by-url/:urlName', async (req, res) => {
       });
     }
     
-    // Transform _id to id for frontend compatibility
+    // Transform _id to id for frontend compatibility and ensure quadrants exist
+    const activityObj = activity.toObject();
     const transformedActivity = {
-      ...activity.toObject(),
-      id: activity._id.toString()
+      ...activityObj,
+      id: activity._id.toString(),
+      // Ensure quadrants field exists with defaults if missing
+      quadrants: activityObj.quadrants || {
+        q1: 'Q1 (++)',
+        q2: 'Q2 (-+)',
+        q3: 'Q3 (--)',
+        q4: 'Q4 (+-)'
+      }
     };
     
     res.json({
@@ -77,10 +95,18 @@ router.get('/:id', async (req, res) => {
       });
     }
     
-    // Transform _id to id for frontend compatibility
+    // Transform _id to id for frontend compatibility and ensure quadrants exist
+    const activityObj = activity.toObject();
     const transformedActivity = {
-      ...activity.toObject(),
-      id: activity._id.toString()
+      ...activityObj,
+      id: activity._id.toString(),
+      // Ensure quadrants field exists with defaults if missing
+      quadrants: activityObj.quadrants || {
+        q1: 'Q1 (++)',
+        q2: 'Q2 (-+)',
+        q3: 'Q3 (--)',
+        q4: 'Q4 (+-)'
+      }
     };
     
     res.json({
@@ -106,7 +132,8 @@ router.post('/', async (req, res) => {
       mapQuestion2,
       xAxis,
       yAxis,
-      commentQuestion
+      commentQuestion,
+      quadrants
     } = req.body;
     
     // Validate required fields
@@ -148,6 +175,17 @@ router.post('/', async (req, res) => {
         max: yAxis.max.trim()
       },
       commentQuestion: commentQuestion.trim(),
+      quadrants: quadrants ? {
+        q1: quadrants.q1 ? quadrants.q1.trim() : 'Q1 (++)',
+        q2: quadrants.q2 ? quadrants.q2.trim() : 'Q2 (-+)',
+        q3: quadrants.q3 ? quadrants.q3.trim() : 'Q3 (--)',
+        q4: quadrants.q4 ? quadrants.q4.trim() : 'Q4 (+-)'
+      } : {
+        q1: 'Q1 (++)',
+        q2: 'Q2 (-+)',
+        q3: 'Q3 (--)',
+        q4: 'Q4 (+-)'
+      },
       status: 'active',
       participants: [],
       ratings: [],
@@ -156,10 +194,18 @@ router.post('/', async (req, res) => {
     
     const savedActivity = await activity.save();
     
-    // Transform _id to id for frontend compatibility
+    // Transform _id to id for frontend compatibility and ensure quadrants exist
+    const activityObj = savedActivity.toObject();
     const transformedActivity = {
-      ...savedActivity.toObject(),
-      id: savedActivity._id.toString()
+      ...activityObj,
+      id: savedActivity._id.toString(),
+      // Ensure quadrants field exists with defaults if missing
+      quadrants: activityObj.quadrants || {
+        q1: 'Q1 (++)',
+        q2: 'Q2 (-+)',
+        q3: 'Q3 (--)',
+        q4: 'Q4 (+-)'
+      }
     };
     
     res.status(201).json({
@@ -188,7 +234,7 @@ router.patch('/:id', async (req, res) => {
     }
     
     // Update allowed fields
-    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'status'];
+    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'quadrants', 'status'];
     const updates = {};
     
     for (const key of allowedUpdates) {
@@ -197,14 +243,29 @@ router.patch('/:id', async (req, res) => {
       }
     }
     
+    console.log('Update request body:', req.body);
+    console.log('Updates to apply:', updates);
+    console.log('Activity before update:', activity.toObject());
+    
     // Apply updates
     Object.assign(activity, updates);
-    const updatedActivity = await activity.save();
+    console.log('Activity after Object.assign:', activity.toObject());
     
-    // Transform _id to id for frontend compatibility
+    const updatedActivity = await activity.save();
+    console.log('Activity after save:', updatedActivity.toObject());
+    
+    // Transform _id to id for frontend compatibility and ensure quadrants exist
+    const activityObj = updatedActivity.toObject();
     const transformedActivity = {
-      ...updatedActivity.toObject(),
-      id: updatedActivity._id.toString()
+      ...activityObj,
+      id: updatedActivity._id.toString(),
+      // Ensure quadrants field exists with defaults if missing
+      quadrants: activityObj.quadrants || {
+        q1: 'Q1 (++)',
+        q2: 'Q2 (-+)',
+        q3: 'Q3 (--)',
+        q4: 'Q4 (+-)'
+      }
     };
     
     res.json({
@@ -327,16 +388,24 @@ router.post('/:id/rating', async (req, res) => {
       });
     }
     
-    await activity.addRating(userId, participant.username, position);
+    const updatedActivity = await activity.addRating(userId, participant.username, position);
     
     // Return the new rating
-    const newRating = activity.ratings.find(r => r.userId === userId);
+    const newRating = updatedActivity.ratings.find(r => r.userId === userId);
     
     // Broadcast to WebSocket clients
     if (io && newRating) {
       io.to(req.params.id).emit('rating_added', {
         rating: newRating
       });
+      
+      // Also broadcast updated comment if user has one
+      const updatedComment = updatedActivity.comments.find(c => c.userId === userId);
+      if (updatedComment) {
+        io.to(req.params.id).emit('comment_updated', {
+          comment: updatedComment
+        });
+      }
     }
     
     res.json({

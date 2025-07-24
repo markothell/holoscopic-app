@@ -92,6 +92,38 @@ const ActivitySchema = new mongoose.Schema({
     maxlength: 200
   },
   
+  // Quadrant labels
+  quadrants: {
+    q1: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: 20,
+      default: 'Q1 (++)'
+    },
+    q2: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: 20,
+      default: 'Q2 (-+)'
+    },
+    q3: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: 20,
+      default: 'Q3 (--)'
+    },
+    q4: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: 20,
+      default: 'Q4 (+-)'
+    }
+  },
+  
   // Activity state
   status: {
     type: String,
@@ -177,6 +209,17 @@ const ActivitySchema = new mongoose.Schema({
       trim: true,
       maxlength: 20
     },
+    quadrantName: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: 20
+    },
+    quadrant: {
+      type: String,
+      required: false,
+      enum: ['q1', 'q2', 'q3', 'q4']
+    },
     text: {
       type: String,
       required: true,
@@ -251,28 +294,88 @@ ActivitySchema.methods.updateParticipantConnection = function(userId, isConnecte
   return Promise.resolve(this);
 };
 
-ActivitySchema.methods.addRating = function(userId, username, position) {
-  const ratingId = `rating_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+ActivitySchema.methods.addRating = async function(userId, username, position) {
+  const maxRetries = 5;
+  let retries = 0;
   
-  // Remove existing rating from same user
-  this.ratings = this.ratings.filter(r => r.userId !== userId);
-  
-  // Add new rating
-  this.ratings.push({
-    id: ratingId,
-    userId: userId,
-    username: username,
-    position: position,
-    timestamp: new Date()
-  });
-  
-  // Update participant submission status
-  const participant = this.participants.find(p => p.id === userId);
-  if (participant) {
-    participant.hasSubmitted = true;
+  while (retries < maxRetries) {
+    try {
+      // Use atomic operations with MongoDB's findOneAndUpdate
+      const ratingId = `rating_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Calculate quadrant information
+      const { x, y } = position;
+      const isRightHalf = x >= 0.5;
+      const isTopHalf = y < 0.5; // y < 0.5 is top half in CSS coordinates
+      
+      let quadrant, quadrantName;
+      if (isRightHalf && isTopHalf) {
+        quadrant = 'q1';
+        quadrantName = this.quadrants?.q1 || 'Q1 (++)';
+      } else if (!isRightHalf && isTopHalf) {
+        quadrant = 'q2';
+        quadrantName = this.quadrants?.q2 || 'Q2 (-+)';
+      } else if (!isRightHalf && !isTopHalf) {
+        quadrant = 'q3';
+        quadrantName = this.quadrants?.q3 || 'Q3 (--)';
+      } else {
+        quadrant = 'q4';
+        quadrantName = this.quadrants?.q4 || 'Q4 (+-)';
+      }
+      
+      const newRating = {
+        id: ratingId,
+        userId: userId,
+        username: username,
+        position: position,
+        timestamp: new Date()
+      };
+      
+      // Use findOneAndUpdate for atomic operation
+      const updatedDoc = await this.constructor.findOneAndUpdate(
+        { id: this.id },
+        {
+          $pull: { ratings: { userId: userId } }, // Remove existing rating
+          $set: { 
+            'participants.$[elem].hasSubmitted': true,
+            'comments.$[comment].quadrant': quadrant,
+            'comments.$[comment].quadrantName': quadrantName
+          }
+        },
+        {
+          arrayFilters: [
+            { 'elem.id': userId },
+            { 'comment.userId': userId }
+          ],
+          new: true,
+          runValidators: true
+        }
+      );
+      
+      if (!updatedDoc) {
+        throw new Error('Activity not found');
+      }
+      
+      // Add the new rating in a separate update to avoid conflicts
+      const finalDoc = await this.constructor.findOneAndUpdate(
+        { id: this.id },
+        { $push: { ratings: newRating } },
+        { new: true }
+      );
+      
+      return finalDoc;
+      
+    } catch (error) {
+      if ((error.name === 'VersionError' || error.code === 11000) && retries < maxRetries - 1) {
+        retries++;
+        await new Promise(resolve => setTimeout(resolve, 50 + (retries * 100))); // Exponential backoff
+        continue;
+      }
+      throw error;
+    }
   }
   
-  return this.save();
+  throw new Error('Failed to update rating after maximum retries');
 };
 
 ActivitySchema.methods.addComment = function(userId, username, text) {
@@ -281,11 +384,38 @@ ActivitySchema.methods.addComment = function(userId, username, text) {
   // Remove existing comment from same user
   this.comments = this.comments.filter(c => c.userId !== userId);
   
+  // Calculate quadrant based on user's rating
+  let quadrant = null;
+  let quadrantName = null;
+  
+  const userRating = this.ratings.find(r => r.userId === userId);
+  if (userRating) {
+    const { x, y } = userRating.position;
+    const isRightHalf = x >= 0.5;
+    const isTopHalf = y < 0.5; // Fixed: y < 0.5 is top half in CSS coordinates
+    
+    if (isRightHalf && isTopHalf) {
+      quadrant = 'q1';
+      quadrantName = this.quadrants?.q1 || 'Q1 (++)';
+    } else if (!isRightHalf && isTopHalf) {
+      quadrant = 'q2';
+      quadrantName = this.quadrants?.q2 || 'Q2 (-+)';
+    } else if (!isRightHalf && !isTopHalf) {
+      quadrant = 'q3';
+      quadrantName = this.quadrants?.q3 || 'Q3 (--)';
+    } else {
+      quadrant = 'q4';
+      quadrantName = this.quadrants?.q4 || 'Q4 (+-)';
+    }
+  }
+  
   // Add new comment
   this.comments.push({
     id: commentId,
     userId: userId,
     username: username,
+    quadrantName: quadrantName,
+    quadrant: quadrant,
     text: text,
     timestamp: new Date(),
     votes: [],
