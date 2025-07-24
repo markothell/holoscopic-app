@@ -37,41 +37,42 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   // Current screen for mobile navigation
   const [currentScreen, setCurrentScreen] = useState(0);
   
-  // Hide mobile browser UI helper
-  const hideMobileBrowserUI = () => {
-    // Small scroll to trigger browser UI hiding
-    window.scrollTo(0, 1);
-    setTimeout(() => window.scrollTo(0, 0), 50);
-  };
-
   // Navigation functions
   const navigateToScreen = (screenIndex: number) => {
+    console.log('navigateToScreen called with:', screenIndex);
     const screens = ['', 'question1-screen', 'question2-screen', 'comment-screen', 'results-screen'];
     const targetId = screens[screenIndex];
     
+    console.log('Target screen ID:', targetId);
+    
     if (targetId) {
-      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+      const element = document.getElementById(targetId);
+      console.log('Found element:', element);
+      element?.scrollIntoView({ behavior: 'smooth' });
     } else {
+      console.log('Scrolling to top');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     setCurrentScreen(screenIndex);
-
-    // Hide mobile browser UI on first navigation
-    if (screenIndex === 1) {
-      setTimeout(hideMobileBrowserUI, 300);
-    }
+    console.log('Set currentScreen to:', screenIndex);
   };
   
   // Swipe gesture setup
   const swipeRef = useSwipeGesture({
     onSwipeUp: () => {
-      if (currentScreen < 3) {
-        navigateToScreen(currentScreen + 1);
+      console.log('Swipe up detected, currentScreen:', currentScreen);
+      if (currentScreen < 4) { // Changed from 3 to 4 to allow going to results
+        const nextScreen = currentScreen + 1;
+        console.log('Navigating to screen:', nextScreen);
+        navigateToScreen(nextScreen);
       }
     },
     onSwipeDown: () => {
+      console.log('Swipe down detected, currentScreen:', currentScreen);
       if (currentScreen > 0) {
-        navigateToScreen(currentScreen - 1);
+        const prevScreen = currentScreen - 1;
+        console.log('Navigating to screen:', prevScreen);
+        navigateToScreen(prevScreen);
       }
     },
     minDistance: 50,
