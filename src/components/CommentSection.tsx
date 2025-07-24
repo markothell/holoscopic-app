@@ -24,6 +24,7 @@ export default function CommentSection({
   const [sortOrder, setSortOrder] = useState<CommentSortOrder>('newest');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const commentRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   // Notify parent of visible comments when sort order changes
   useEffect(() => {
@@ -97,6 +98,49 @@ export default function CommentSection({
       }, 1000);
     }
   }, [selectedCommentId, onSelectedCommentChange]);
+
+  // Handle mobile keyboard visibility
+  useEffect(() => {
+    const handleResize = () => {
+      const heightDiff = window.screen.height - window.innerHeight;
+      const isKeyboard = heightDiff > 150; // Threshold for keyboard detection
+      setIsKeyboardVisible(isKeyboard);
+    };
+
+    const handleFocus = () => {
+      setIsKeyboardVisible(true);
+      // Scroll textarea into view after keyboard appears
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
+          });
+        }
+      }, 300); // Give keyboard time to appear
+    };
+
+    const handleBlur = () => {
+      setTimeout(() => setIsKeyboardVisible(false), 100);
+    };
+
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.addEventListener('focus', handleFocus);
+      textarea.addEventListener('blur', handleBlur);
+    }
+
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      if (textarea) {
+        textarea.removeEventListener('focus', handleFocus);
+        textarea.removeEventListener('blur', handleBlur);
+      }
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   // Remove auto-resize functionality since we want fixed size
 
@@ -228,7 +272,7 @@ export default function CommentSection({
 
       {/* Comment Input */}
       {!readOnly && (
-        <form onSubmit={handleSubmit} className="space-y-3 flex flex-col items-center px-4">
+        <form onSubmit={handleSubmit} className={`space-y-3 flex flex-col items-center px-4 ${isKeyboardVisible ? 'pb-4' : ''}`}>
           <div className="relative w-full max-w-[500px]">
             <textarea
               ref={textareaRef}
@@ -236,7 +280,10 @@ export default function CommentSection({
               onChange={handleTextChange}
               placeholder="Share your thoughts..."
               className="w-full p-3 border border-slate-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-black bg-slate-300"
-              style={{ height: '150px' }}
+              style={{ 
+                height: isKeyboardVisible ? '120px' : '150px', // Smaller when keyboard is visible
+                fontSize: '16px' // Prevents zoom on iOS
+              }}
               maxLength={280}
               disabled={isSubmitting}
             />

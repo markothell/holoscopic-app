@@ -31,7 +31,8 @@ export function useSwipeGesture(options: SwipeGestureOptions) {
     const handleTouchStart = (e: TouchEvent) => {
       const target = e.target as Element;
       // Allow normal touch behavior for form elements and elements with touch-auto class
-      if (target.closest('textarea, input, select, button[type="submit"], .touch-auto')) {
+      // But be more specific - only block if actually interacting with the form element
+      if (target.matches('textarea, input, select') || target.closest('button[type="submit"]')) {
         return;
       }
       
@@ -47,8 +48,8 @@ export function useSwipeGesture(options: SwipeGestureOptions) {
       if (!touchStart) return;
 
       const target = e.target as Element;
-      // Allow normal touch behavior for form elements and elements with touch-auto class
-      if (target.closest('textarea, input, select, button[type="submit"], .touch-auto')) {
+      // Allow normal touch behavior for form elements - but be more specific
+      if (target.matches('textarea, input, select') || target.closest('button[type="submit"]')) {
         setTouchStart(null);
         return;
       }
@@ -95,8 +96,8 @@ export function useSwipeGesture(options: SwipeGestureOptions) {
 
     const handleTouchMove = (e: TouchEvent) => {
       const target = e.target as Element;
-      // Allow normal scrolling for form elements and elements with touch-auto class
-      if (!touchStart || target.closest('textarea, input, select, .touch-auto')) {
+      // Allow normal scrolling for form elements - but be more specific
+      if (!touchStart || target.matches('textarea, input, select')) {
         return;
       }
       

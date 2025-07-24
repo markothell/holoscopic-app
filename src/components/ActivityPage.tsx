@@ -37,6 +37,13 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   // Current screen for mobile navigation
   const [currentScreen, setCurrentScreen] = useState(0);
   
+  // Hide mobile browser UI helper
+  const hideMobileBrowserUI = () => {
+    // Small scroll to trigger browser UI hiding
+    window.scrollTo(0, 1);
+    setTimeout(() => window.scrollTo(0, 0), 50);
+  };
+
   // Navigation functions
   const navigateToScreen = (screenIndex: number) => {
     const screens = ['', 'question1-screen', 'question2-screen', 'comment-screen', 'results-screen'];
@@ -49,6 +56,10 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     }
     setCurrentScreen(screenIndex);
 
+    // Hide mobile browser UI on first navigation
+    if (screenIndex === 1) {
+      setTimeout(hideMobileBrowserUI, 300);
+    }
   };
   
   // Swipe gesture setup
@@ -388,7 +399,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" style={{ minHeight: '-webkit-fill-available' }}>
 
       {/* Scroll Container with Swipe Support */}
       <div ref={swipeRef} className="relative touch-pan-y">
@@ -594,7 +605,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
               </h2>
             </div>
             
-            <div className="bg-slate-600 rounded-lg shadow-lg p-4 sm:p-6 lg:p-8 w-full max-w-[600px] touch-auto">
+            <div className="bg-slate-600 rounded-lg shadow-lg p-4 sm:p-6 lg:p-8 w-full max-w-[600px]">
               <CommentSection
                 activity={activity}
                 onCommentSubmit={activity.status === 'completed' ? () => {} : handleCommentSubmit}
@@ -681,6 +692,14 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
 
         .slider:focus::-webkit-slider-thumb {
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Mobile keyboard handling */
+        @supports (-webkit-touch-callout: none) {
+          /* iOS Safari */
+          #comment-screen {
+            min-height: -webkit-fill-available;
+          }
         }
       `}</style>
     </div>
