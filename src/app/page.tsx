@@ -92,9 +92,12 @@ export default function HomePage() {
             height={75}
             className="mx-auto mb-4"
           />
-          <h1 className="text-4xl font-bold text-white mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">
             We All Explain
           </h1>
+          <p className="text-lg text-gray-300 mb-8">
+            an experiment in <span className="font-bold text-purple-400">social</span> mapping
+          </p>
         </div>
 
         {/* Error State */}

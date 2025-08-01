@@ -420,12 +420,23 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       {/* Scroll Container with Swipe Support */}
       <div ref={swipeRef} className="relative touch-pan-y">
         {/* Screen 1: Activity Title */}
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 text-white relative px-4">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 text-white relative px-4">
+          {/* Top Left Logo */}
+          <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
+            <a href="/" className="hover:opacity-80 transition-opacity">
+              <Image
+                src="/wae-logo.svg"
+                alt="We All Explain Logo"
+                width={40}
+                height={40}
+                className="sm:w-12 sm:h-12"
+              />
+            </a>
+          </div>
+          
           <div className="text-center z-10 max-w-4xl">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 sm:mb-8 text-white">
-              <a href="/" className="hover:text-gray-300 transition-colors">
-                We All Explain
-              </a>
+              We All Explain
             </h1>
             <div className="bg-rose-400 px-6 sm:px-8 lg:px-12 py-4 sm:py-6 rounded-full shadow-lg mb-6 sm:mb-8">
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-white">
@@ -457,7 +468,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
         </div>
 
         {/* Screen 2: Question 1 */}
-        <div id="question1-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-800 to-slate-900 text-white relative">
+        <div id="question1-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
             <h1 className="text-xl sm:text-2xl font-bold text-white">
@@ -493,7 +504,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
         </div>
 
         {/* Screen 3: Question 2 */}
-        <div id="question2-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-800 to-slate-900 text-white relative">
+        <div id="question2-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
             <h1 className="text-xl sm:text-2xl font-bold text-white">
@@ -529,7 +540,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
         </div>
 
         {/* Screen 4: Comment */}
-        <div id="comment-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-800 to-slate-900 text-white relative">
+        <div id="comment-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
             <h1 className="text-xl sm:text-2xl font-bold text-white">
@@ -574,7 +585,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
         </div>
 
         {/* Screen 5: Results */}
-        <div id="results-screen" className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 relative flex flex-col">
+        <div id="results-screen" className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 relative flex flex-col">
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-6 left-4 sm:left-8 z-10">
             <h1 className="text-lg sm:text-xl font-bold text-white">
@@ -606,7 +617,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
         </div>
 
         {/* Screen 6: Email Capture (AS6) */}
-        <div id="as6-email-capture" className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 text-white relative px-4">
+        <div id="as6-email-capture" className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 text-white relative px-4">
           <div className="text-center max-w-md mx-auto">
             {!emailSubmitted ? (
               <>

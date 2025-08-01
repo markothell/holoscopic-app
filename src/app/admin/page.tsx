@@ -297,48 +297,48 @@ function ActivityRow({ activity, analytics, onEdit, onDelete, onComplete, onClon
   const [showDropdown, setShowDropdown] = useState(false);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div className="flex justify-between items-start">
-        <div className="flex-1">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+        <div className="flex-1 min-w-0">
           {/* Status and Title */}
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
             <div 
-              className={`w-3 h-3 rounded-full ${activity.status === 'active' ? 'bg-teal-300' : 'bg-gray-700'}`}
+              className={`w-3 h-3 rounded-full flex-shrink-0 ${activity.status === 'active' ? 'bg-teal-300' : 'bg-gray-700'}`}
               title={activity.status === 'active' ? 'Active' : 'Completed'}
             />
             {activity.isDraft && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 flex-shrink-0">
                 Draft
               </span>
             )}
-            <h3 className="text-lg font-semibold text-gray-800">{activity.title}</h3>
+            <h3 className="text-lg font-semibold text-gray-800 truncate">{activity.title}</h3>
           </div>
 
           {/* Map Question */}
-          <p className="text-sm text-gray-600 mb-4">{activity.mapQuestion}</p>
+          <p className="text-sm text-gray-600 mb-4 line-clamp-2">{activity.mapQuestion}</p>
 
           {/* Stats */}
-          <div className="flex gap-6 text-sm text-gray-500">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-500">
             {analytics ? (
               <>
-                <span>{analytics.participants} participants</span>
-                <span>{analytics.completedMappings} mappings</span>
-                <span>{analytics.comments} comments</span>
-                <span>{analytics.emails} emails</span>
-                <span>{analytics.votes} votes</span>
-                <span>Created {FormattingService.formatTimestamp(activity.createdAt)}</span>
+                <span className="whitespace-nowrap">{analytics.participants} participants</span>
+                <span className="whitespace-nowrap">{analytics.completedMappings} mappings</span>
+                <span className="whitespace-nowrap">{analytics.comments} comments</span>
+                <span className="whitespace-nowrap">{analytics.emails} emails</span>
+                <span className="whitespace-nowrap">{analytics.votes} votes</span>
+                <span className="whitespace-nowrap">Created {FormattingService.formatTimestamp(activity.createdAt)}</span>
               </>
             ) : (
               <>
-                <span>Loading stats...</span>
-                <span>Created {FormattingService.formatTimestamp(activity.createdAt)}</span>
+                <span className="whitespace-nowrap">Loading stats...</span>
+                <span className="whitespace-nowrap">Created {FormattingService.formatTimestamp(activity.createdAt)}</span>
               </>
             )}
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-shrink-0">
           <Link
             href={getMainAppUrl(`/${activity.urlName}`)}
             className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
