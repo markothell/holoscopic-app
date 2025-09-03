@@ -29,6 +29,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   const [username, setUsername] = useState<string>('');
   const [userRating, setUserRating] = useState<Rating | null>(null);
   const [userComment, setUserComment] = useState<Comment | null>(null);
+  const [userObjectName, setUserObjectName] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('');
   const [emailSubmitted, setEmailSubmitted] = useState<boolean>(false);
   // const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -42,7 +43,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   
   // Navigation functions
   const navigateToScreen = (screenIndex: number) => {
-    const screens = ['', 'question1-screen', 'question2-screen', 'comment-screen', 'results-screen', 'as6-email-capture'];
+    const screens = ['', 'object-name-screen', 'question1-screen', 'question2-screen', 'comment-screen', 'results-screen', 'as6-email-capture'];
     const targetId = screens[screenIndex];
     
     if (targetId) {
@@ -56,7 +57,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   // Swipe gesture setup
   const swipeRef = useSwipeGesture({
     onSwipeUp: () => {
-      if (currentScreen < 5) {
+      if (currentScreen < 6) {
         navigateToScreen(currentScreen + 1);
       }
     },
@@ -73,6 +74,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   useEffect(() => {
     const storedUserId = localStorage.getItem('userId');
     const storedUsername = localStorage.getItem('username');
+    const storedObjectName = localStorage.getItem(`objectName_${activityId}`);
     
     if (storedUserId && storedUsername) {
       setUserId(storedUserId);
@@ -88,7 +90,12 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       setUserId(newUserId);
       setUsername(newUsername);
     }
-  }, []);
+    
+    // Load object name for this specific activity
+    if (storedObjectName) {
+      setUserObjectName(storedObjectName);
+    }
+  }, [activityId]);
 
   // Load activity data
   useEffect(() => {
@@ -286,7 +293,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
 
     try {
       // Submit via API only - WebSocket will broadcast the result
-      await ActivityService.submitRating(activity.id, userId, position);
+      await ActivityService.submitRating(activity.id, userId, position, userObjectName);
       
     } catch (err) {
       console.error('Error submitting rating:', err);
@@ -302,7 +309,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     
     try {
       // Submit via API only - WebSocket will broadcast the result
-      await ActivityService.submitComment(activity.id, userId, text);
+      await ActivityService.submitComment(activity.id, userId, text, userObjectName);
       
       // Navigate to results screen after successful submission
       navigateToScreen(4);
@@ -467,7 +474,62 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           </div>
         </div>
 
-        {/* Screen 2: Question 1 */}
+        {/* Screen 2: Object Name Input */}
+        <div id="object-name-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
+          {/* Top Left Logo */}
+          <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
+            <h1 className="text-xl sm:text-2xl font-bold text-white">
+              <a href="/" className="hover:text-gray-300 transition-colors">
+                We All Explain
+              </a>
+            </h1>
+          </div>
+          
+          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-2xl mx-auto px-4 pb-24">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl sm:text-3xl font-bold mb-4">
+                {activity.objectNameQuestion || "Name something that represents your perspective"}
+              </h2>
+              <p className="text-gray-300 text-lg">
+                Choose a name that will appear with your responses (max 25 characters)
+              </p>
+            </div>
+            
+            <input
+              type="text"
+              value={userObjectName}
+              onChange={(e) => {
+                const newObjectName = e.target.value.slice(0, 25);
+                setUserObjectName(newObjectName);
+                localStorage.setItem(`objectName_${activityId}`, newObjectName);
+              }}
+              className="w-full max-w-md px-6 py-4 text-xl bg-white/10 border-2 border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white/60 transition-colors"
+              placeholder="Enter your object name..."
+              maxLength={25}
+            />
+            
+            <div className="mt-4 text-sm text-gray-400">
+              {userObjectName.length}/25 characters
+            </div>
+          </div>
+          
+          {/* Navigation Arrow */}
+          <button 
+            onClick={() => navigateToScreen(2)}
+            className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2 safe-area-inset-bottom"
+            disabled={!userObjectName.trim()}
+          >
+            <div className="flex flex-col items-center">
+              <img 
+                src="/nextArrowsUp.svg" 
+                alt="Next" 
+                className={`w-16 h-16 sm:w-24 sm:h-24 ${!userObjectName.trim() ? 'opacity-30' : ''}`}
+              />
+            </div>
+          </button>
+        </div>
+
+        {/* Screen 3: Question 1 */}
         <div id="question1-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
@@ -490,7 +552,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           
           {/* Navigation Arrow */}
           <button 
-            onClick={() => navigateToScreen(2)}
+            onClick={() => navigateToScreen(3)}
             className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2 safe-area-inset-bottom"
           >
             <div className="flex flex-col items-center">
@@ -503,7 +565,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           </button>
         </div>
 
-        {/* Screen 3: Question 2 */}
+        {/* Screen 4: Question 2 */}
         <div id="question2-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
@@ -526,7 +588,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           
           {/* Navigation Arrow */}
           <button 
-            onClick={() => navigateToScreen(3)}
+            onClick={() => navigateToScreen(4)}
             className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2 safe-area-inset-bottom"
           >
             <div className="flex flex-col items-center">
@@ -539,7 +601,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           </button>
         </div>
 
-        {/* Screen 4: Comment */}
+        {/* Screen 5: Comment */}
         <div id="comment-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-8 left-4 sm:left-8 z-10">
@@ -571,7 +633,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           
           {/* Navigation to Results */}
           <button 
-            onClick={() => navigateToScreen(4)}
+            onClick={() => navigateToScreen(5)}
             className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2 safe-area-inset-bottom"
           >
             <div className="flex flex-col items-center">
@@ -584,7 +646,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
           </button>
         </div>
 
-        {/* Screen 5: Results */}
+        {/* Screen 6: Results */}
         <div id="results-screen" className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 relative flex flex-col">
           {/* Top Left Logo */}
           <div className="absolute top-4 sm:top-6 left-4 sm:left-8 z-10">

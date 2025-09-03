@@ -25,6 +25,7 @@ export default function AdminPanel({
     urlName: '',
     mapQuestion: '',
     mapQuestion2: '',
+    objectNameQuestion: 'Name something that represents your perspective',
     xAxisLabel: '',
     xAxisMin: '',
     xAxisMax: '',
@@ -32,15 +33,14 @@ export default function AdminPanel({
     yAxisMin: '',
     yAxisMax: '',
     commentQuestion: '',
-    q1Label: 'Q1 (++)',
-    q2Label: 'Q2 (-+)',
-    q3Label: 'Q3 (--)',
-    q4Label: 'Q4 (+-)',
+    starterData: '',
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   // Populate form when editing
   useEffect(() => {
@@ -50,6 +50,7 @@ export default function AdminPanel({
         urlName: editingActivity.urlName,
         mapQuestion: editingActivity.mapQuestion,
         mapQuestion2: editingActivity.mapQuestion2 || '',
+        objectNameQuestion: editingActivity.objectNameQuestion || 'Name something that represents your perspective',
         xAxisLabel: editingActivity.xAxis.label,
         xAxisMin: editingActivity.xAxis.min,
         xAxisMax: editingActivity.xAxis.max,
@@ -57,10 +58,7 @@ export default function AdminPanel({
         yAxisMin: editingActivity.yAxis.min,
         yAxisMax: editingActivity.yAxis.max,
         commentQuestion: editingActivity.commentQuestion,
-        q1Label: editingActivity.quadrants?.q1 || 'Q1 (++)',
-        q2Label: editingActivity.quadrants?.q2 || 'Q2 (-+)',
-        q3Label: editingActivity.quadrants?.q3 || 'Q3 (--)',
-        q4Label: editingActivity.quadrants?.q4 || 'Q4 (+-)',
+        starterData: editingActivity.starterData || '',
       };
       
       setFormData(formValues);
@@ -86,12 +84,20 @@ export default function AdminPanel({
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Form submitted with data:', formData);
     
-    if (isSubmitting) return;
+    if (isSubmitting) {
+      console.log('Already submitting, returning early');
+      return;
+    }
 
     // Validate form
+    console.log('Validating form data...');
     const validation = ValidationService.validateActivityForm(formData);
+    console.log('Validation result:', validation);
+    
     if (!validation.isValid) {
+      console.error('Form validation failed:', validation.errors);
       setValidationErrors(validation.errors);
       return;
     }
@@ -102,14 +108,19 @@ export default function AdminPanel({
     try {
       if (editingActivity) {
         // Update existing activity
+        console.log('Updating existing activity:', editingActivity.id);
         const updatedActivity = await ActivityService.updateActivity(editingActivity.id, formData);
+        console.log('Activity updated successfully:', updatedActivity);
         onActivityUpdated?.(updatedActivity);
       } else {
         // Create new activity
+        console.log('Creating new activity...');
         const newActivity = await ActivityService.createActivity(formData);
+        console.log('Activity created successfully:', newActivity);
         onActivityCreated?.(newActivity);
       }
     } catch (error) {
+      console.error('Error saving activity:', error);
       setSubmitError(error instanceof Error ? error.message : 'Failed to save activity');
     } finally {
       setIsSubmitting(false);
@@ -119,6 +130,40 @@ export default function AdminPanel({
   // Handle cancel
   const handleCancel = () => {
     onCancel?.();
+  };
+
+  // Handle sync starter data
+  const handleSyncStarterData = async () => {
+    if (!editingActivity) {
+      console.error('No editing activity found');
+      return;
+    }
+    
+    setIsSyncing(true);
+    setSyncMessage(null);
+    
+    try {
+      // First save the current form data (including starter data)
+      await ActivityService.updateActivity(editingActivity.id, formData);
+      
+      // Then sync the starter data to database
+      const updatedActivity = await ActivityService.syncStarterData(editingActivity.id);
+      setSyncMessage('Starter data synced successfully!');
+      
+      // Update the parent component with the refreshed activity
+      if (onActivityUpdated) {
+        onActivityUpdated(updatedActivity);
+      }
+      
+      // Clear message after 3 seconds
+      setTimeout(() => setSyncMessage(null), 3000);
+    } catch (error) {
+      console.error('Error syncing starter data:', error);
+      setSyncMessage(`Failed to sync starter data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setTimeout(() => setSyncMessage(null), 5000);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   return (
@@ -343,6 +388,25 @@ export default function AdminPanel({
             </div>
           </div>
 
+          {/* Object Name Question */}
+          <div>
+            <label htmlFor="objectNameQuestion" className="block text-sm font-medium text-gray-700 mb-2">
+              Object Name Question
+            </label>
+            <input
+              type="text"
+              id="objectNameQuestion"
+              value={formData.objectNameQuestion}
+              onChange={(e) => handleFieldChange('objectNameQuestion', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+              placeholder="e.g., Name something that represents your perspective"
+              maxLength={200}
+            />
+            {validationErrors.objectNameQuestion && (
+              <p className="text-red-600 text-sm mt-1">{validationErrors.objectNameQuestion}</p>
+            )}
+          </div>
+
           {/* Comment Question */}
           <div>
             <label htmlFor="commentQuestion" className="block text-sm font-medium text-gray-700 mb-2">
@@ -362,79 +426,67 @@ export default function AdminPanel({
             )}
           </div>
 
-          {/* Quadrant Labels Configuration */}
+          {/* Starter Data Configuration */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-800">Quadrant Labels</h3>
+            <h3 className="text-lg font-semibold text-gray-800">Starter Data (Optional)</h3>
             <p className="text-sm text-gray-600 mb-4">
-              These names will be assigned to participants based on their mapping position and used for comments.
+              Add initial data points to seed the activity. Format: JSON array of objects with x, y, objectName, and comment fields.
             </p>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="q1Label" className="block text-sm font-medium text-gray-700 mb-2">
-                  Q1 (++) - Top Right
-                </label>
-                <input
-                  type="text"
-                  id="q1Label"
-                  value={formData.q1Label}
-                  onChange={(e) => handleFieldChange('q1Label', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  placeholder="e.g., Q1 (++)"
-                  maxLength={20}
-                />
-                <div className="w-4 h-4 bg-blue-500 rounded mt-1"></div>
-              </div>
-
-              <div>
-                <label htmlFor="q2Label" className="block text-sm font-medium text-gray-700 mb-2">
-                  Q2 (-+) - Top Left
-                </label>
-                <input
-                  type="text"
-                  id="q2Label"
-                  value={formData.q2Label}
-                  onChange={(e) => handleFieldChange('q2Label', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  placeholder="e.g., Q2 (-+)"
-                  maxLength={20}
-                />
-                <div className="w-4 h-4 bg-green-500 rounded mt-1"></div>
-              </div>
-
-              <div>
-                <label htmlFor="q3Label" className="block text-sm font-medium text-gray-700 mb-2">
-                  Q3 (--) - Bottom Left
-                </label>
-                <input
-                  type="text"
-                  id="q3Label"
-                  value={formData.q3Label}
-                  onChange={(e) => handleFieldChange('q3Label', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  placeholder="e.g., Q3 (--)"
-                  maxLength={20}
-                />
-                <div className="w-4 h-4 bg-red-500 rounded mt-1"></div>
-              </div>
-
-              <div>
-                <label htmlFor="q4Label" className="block text-sm font-medium text-gray-700 mb-2">
-                  Q4 (+-) - Bottom Right
-                </label>
-                <input
-                  type="text"
-                  id="q4Label"
-                  value={formData.q4Label}
-                  onChange={(e) => handleFieldChange('q4Label', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  placeholder="e.g., Q4 (+-)"
-                  maxLength={20}
-                />
-                <div className="w-4 h-4 bg-yellow-500 rounded mt-1"></div>
-              </div>
+            <div>
+              <label htmlFor="starterData" className="block text-sm font-medium text-gray-700 mb-2">
+                Starter Data JSON
+              </label>
+              <textarea
+                id="starterData"
+                value={formData.starterData}
+                onChange={(e) => handleFieldChange('starterData', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black font-mono text-sm"
+                placeholder='[{"x": 0.7, "y": 0.3, "objectName": "Gratitude", "comment": "Daily journaling helps me stay grounded"}]'
+                rows={6}
+              />
+              {validationErrors.starterData && (
+                <p className="text-red-600 text-sm mt-1">{validationErrors.starterData}</p>
+              )}
+              <p className="text-xs text-gray-500 mt-2">
+                Example: [{"{"}"x": 0.5, "y": 0.5, "objectName": "Example", "comment": "Sample comment"{"}"}]
+              </p>
+              
+              {/* Sync Starter Data Button - only show when editing */}
+              {editingActivity && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={handleSyncStarterData}
+                    disabled={isSyncing}
+                    className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isSyncing ? 'Syncing...' : 'Sync to Database'}
+                  </button>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Updates database records to match the starter data above
+                  </p>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Sync Message */}
+          {syncMessage && (
+            <div className={`p-4 border rounded-md ${
+              syncMessage.includes('successfully') 
+                ? 'bg-green-50 border-green-200' 
+                : 'bg-red-50 border-red-200'
+            }`}>
+              <p className={`text-sm ${
+                syncMessage.includes('successfully') 
+                  ? 'text-green-600' 
+                  : 'text-red-600'
+              }`}>
+                {syncMessage}
+              </p>
+            </div>
+          )}
 
           {/* Submit Error */}
           {submitError && (

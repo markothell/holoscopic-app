@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "We All Explain",
-  description: "A social mapping tool",
+  title: "Whorl",
+  description: "Building open source social systems through collaborative mapping",
 };
 
 export default function RootLayout({

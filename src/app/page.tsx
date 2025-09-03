@@ -1,174 +1,337 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { WeAllExplainActivity } from '@/models/Activity';
-import { ActivityService } from '@/services/activityService';
-import Link from 'next/link';
 import Image from 'next/image';
+import Link from 'next/link';
+import { ActivityService } from '@/services/activityService';
+import { WeAllExplainActivity } from '@/models/Activity';
+import MappingGrid from '@/components/MappingGrid';
+import CommentSection from '@/components/CommentSection';
 
 export default function HomePage() {
-  const [activities, setActivities] = useState<WeAllExplainActivity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isRateLimited, setIsRateLimited] = useState(false);
-  const [retryCountdown, setRetryCountdown] = useState(0);
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState('');
+  const [whatIsManActivity, setWhatIsManActivity] = useState<WeAllExplainActivity | null>(null);
 
-
-  // Load activities
+  // Fetch the "What is a man?" activity data
   useEffect(() => {
-    const loadActivities = async () => {
+    const fetchActivity = async () => {
       try {
-        setLoading(true);
-        setError(null);
-        setIsRateLimited(false);
-        
-        const activitiesData = await ActivityService.getActivities();
-        setActivities(activitiesData);
-      } catch (err: any) {
-        const errorMessage = err.message || 'Failed to load activities';
-        
-        // Check if it's a rate limit error
-        if (errorMessage.includes('Server is busy')) {
-          setIsRateLimited(true);
-          setError(errorMessage);
-          
-          // Start countdown and auto-retry after 60 seconds
-          let countdown = 60;
-          setRetryCountdown(countdown);
-          
-          const countdownInterval = setInterval(() => {
-            countdown -= 1;
-            setRetryCountdown(countdown);
-            
-            if (countdown <= 0) {
-              clearInterval(countdownInterval);
-              // Auto-retry loading activities
-              loadActivities();
-            }
-          }, 1000);
-        } else {
-          setError(errorMessage);
+        const activity = await ActivityService.getActivityByUrlName('what-is-a-man');
+        if (activity) {
+          setWhatIsManActivity(activity);
         }
-        
-        console.error('Error loading activities:', err);
-      } finally {
-        if (!isRateLimited) {
-          setLoading(false);
-        }
+      } catch (error) {
+        console.error('Error fetching What is a man activity:', error);
       }
     };
-
-    loadActivities();
+    
+    fetchActivity();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white">Loading activities...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Color palette inspired by sunset colors - muted/desaturated
-  const colors = [
-    'bg-rose-400', 'bg-fuchsia-400', 'bg-purple-400', 'bg-indigo-400', 
-    'bg-blue-400', 'bg-cyan-400', 'bg-teal-400', 'bg-emerald-400',
-    'bg-lime-400', 'bg-yellow-400', 'bg-amber-400', 'bg-orange-400',
-    'bg-red-400', 'bg-pink-400', 'bg-violet-400'
-  ];
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitMessage('');
+    
+    try {
+      // TODO: Implement email collection endpoint
+      console.log('Email submitted:', email);
+      setSubmitMessage('Thank you for your interest! We\'ll be in touch soon.');
+      setEmail('');
+    } catch (error) {
+      setSubmitMessage('Something went wrong. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-12">
+    <div className="min-h-screen bg-slate-900">
+      {/* Hero Section - Full Screen Centered */}
+      <div className="min-h-screen flex items-center justify-center px-8">
+        <div className="flex flex-col items-center">
+          {/* Logo */}
           <Image
-            src="/wae-logo.svg"
-            alt="We All Explain Logo"
-            width={75}
-            height={75}
-            className="mx-auto mb-4"
+            src="/whorl_white.svg"
+            alt="Whorl Logo"
+            width={70}
+            height={70}
+            className="mb-1"
           />
-          <h1 className="text-4xl font-bold text-white mb-2">
-            We All Explain
-          </h1>
-          <p className="text-lg text-gray-300 mb-8">
-            an experiment in <span className="font-bold text-purple-400">social</span> mapping
-          </p>
-        </div>
+          
+          {/* Content wrapper - left aligned internally */}
+          <div className="max-w-3xl">
+            {/* Title */}
+            <h1 className="text-8xl font-bold text-white mb-3" style={{ fontFamily: 'var(--font-fredoka)', letterSpacing: '-0.03em' }}>
+              whorl
+            </h1>
 
-        {/* Error State */}
-        {error && (
-          <div className="max-w-md mx-auto mb-8">
-            <div className={`border rounded-lg p-4 ${
-              isRateLimited 
-                ? 'bg-yellow-900 border-yellow-700' 
-                : 'bg-red-900 border-red-700'
-            }`}>
-              <div className="flex items-center">
-                {isRateLimited ? (
-                  <svg className="w-5 h-5 text-yellow-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5 text-red-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                )}
-                <div className="flex-1">
-                  <p className={`text-sm ${
-                    isRateLimited ? 'text-yellow-400' : 'text-red-400'
-                  }`}>
-                    {error}
-                  </p>
-                  {isRateLimited && retryCountdown > 0 && (
-                    <p className="text-yellow-300 text-xs mt-1">
-                      Retrying automatically in {retryCountdown} seconds...
-                    </p>
-                  )}
+            {/* Main Content from Whorl.md */}
+            <div className="text-white leading-tight text-left">
+              <p className="text-xl font-light">
+                make{' '}
+                <Link href="#maps-of-culture" className="text-purple-400 hover:text-purple-300 transition-colors">
+                  maps of culture
+                </Link>
+              </p>
+              <p className="text-xl font-light">
+                study{' '}
+                <Link href="#collective-identity" className="text-purple-400 hover:text-purple-300 transition-colors">
+                  collective identity
+                </Link>
+              </p>
+              <p className="text-xl font-light">
+                build{' '}
+                <Link href="#open-source-social-systems" className="text-purple-400 hover:text-purple-300 transition-colors">
+                  open source systems
+                </Link>
+              </p>
+              <p className="text-xl font-light">
+                for a{' '}
+                <Link href="#thriving-humanity" className="text-purple-400 hover:text-purple-300 transition-colors">
+                  thriving humanity
+                </Link>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Sections */}
+      <div className="container mx-auto px-4 py-12 max-w-4xl">
+        <div className="space-y-24">
+          {/* Maps of Culture Section */}
+          <section id="maps-of-culture" className="scroll-mt-20">
+            <h2 className="text-3xl font-bold text-white mb-6">Maps of Culture</h2>
+            <div className="space-y-6 text-gray-300">
+              <p className="text-lg">
+                This looks like a graph but in fact it is a map of ideas. Each color represents a different perspective in the collaborative space.
+              </p>
+              {whatIsManActivity ? (
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <div className="mb-4">
+                    <h3 className="text-xl font-semibold text-white mb-2">{whatIsManActivity.title}</h3>
+                  </div>
+                  <MappingGrid 
+                    activity={whatIsManActivity}
+                    showAllRatings={true}
+                    onRatingSubmit={() => {}}
+                    onDotClick={() => {}}
+                  />
+                </div>
+              ) : (
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <div className="flex items-center justify-center h-64">
+                    <div className="text-gray-400">Loading mapping data...</div>
+                  </div>
+                </div>
+              )}
+              <p className="text-lg">Each data point on the map contains a personal story.</p>
+              {whatIsManActivity ? (
+                <div className="bg-slate-800 rounded-lg p-4 overflow-hidden w-full md:w-1/2 mx-auto" style={{ height: 'min(500px, 90vw)' }}>
+                  <CommentSection 
+                    activity={whatIsManActivity}
+                    onCommentSubmit={() => {}}
+                    onCommentVote={() => {}}
+                    userComment={undefined}
+                    readOnly={true}
+                    showAllComments={true}
+                  />
+                </div>
+              ) : (
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <div className="flex items-center justify-center h-64">
+                    <div className="text-gray-400">Loading comments...</div>
+                  </div>
+                </div>
+              )}
+              <p className="text-lg">
+                It&apos;s not just a survey, it&apos;s a collaborative activity. Participants name their own perspectives,
+                share their positions, and vote on contributions that resonate.
+              </p>
+              <p className="text-lg font-semibold">
+                Map with enlarged points based on community votes
+              </p>
+              <p className="text-lg italic">
+                a snapshot of a group&apos;s relationship with an idea.
+              </p>
+            </div>
+          </section>
+
+          {/* Collective Identity Section */}
+          <section id="collective-identity" className="scroll-mt-20">
+            <h2 className="text-3xl font-bold text-white mb-6">Collective Identity</h2>
+            <div className="space-y-6 text-gray-300">
+              <p className="text-lg">
+                Belief informs perception. Perception informs action. Action reinforces belief...or so says the social media 
+                filter-bubble feedback loop we&apos;ve been practicing.
+              </p>
+              <p className="text-lg">
+                From a state of presence and openness we may have hypotheses but they are followed by observation, tests, 
+                frameworks that provide structure while allowing for evolution. Science is not a powerful tool because it 
+                knows THE TRUTH but because it is a resilient <strong>learning container</strong>.
+              </p>
+              <p className="text-lg">
+                Here&apos;s how we might create a learning container for the collective self.
+              </p>
+              <p className="text-lg">Start with a Map of Culture:</p>
+              <div className="bg-slate-800 rounded-lg p-4">
+                <Image
+                  src="/Screenshot 2025-08-02 at 11.23.55 AM.png"
+                  alt="Map of Culture"
+                  width={800}
+                  height={600}
+                  className="w-full h-auto rounded"
+                />
+              </div>
+              <div className="bg-slate-800 rounded-lg p-6">
+                <p className="text-lg mb-3">
+                  Do an activity together (preferably using your map to define areas of rich potential).
+                </p>
+                <p className="text-gray-400 italic mb-2">
+                  &quot;User XYZ invites XYZcollective to the following activity:&quot;
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-400">
+                  <li>Length: 3 days</li>
+                  <li>Inputs: [defined by activity]</li>
+                  <li>Outputs: daily reflection, Map of [topic]</li>
+                </ul>
+              </div>
+              <p className="text-lg">
+                Maps within maps within maps. Things get interesting when the crowd begins to identify the systems that 
+                yield connection, unification, etc.
+              </p>
+            </div>
+          </section>
+
+          {/* Open Source Social Systems Section */}
+          <section id="open-source-social-systems" className="scroll-mt-20">
+            <h2 className="text-3xl font-bold text-white mb-6">Open Source Social Systems</h2>
+            <div className="space-y-6 text-gray-300">
+              <p className="text-lg">
+                <a href="https://en.wikipedia.org/wiki/Open-source_software" className="text-purple-400 hover:text-purple-300 underline" target="_blank" rel="noopener noreferrer">
+                  Open source software
+                </a>{' '}
+                means everybody can see the source code. It is a resource worth trillions. It is a tech-age elevator to{' '}
+                <a href="https://en.wikipedia.org/wiki/Standing_on_the_shoulders_of_giants" className="text-purple-400 hover:text-purple-300 underline" target="_blank" rel="noopener noreferrer">
+                  the giant&apos;s shoulder
+                </a>.
+              </p>
+              <p className="text-lg">
+                It is not just the source code that is open. Everyone can see the process of creation. The discussions, 
+                the wrong turns, the experiments that have not yet solidified. Anyone can find bugs, submit changes and 
+                improve the shared resource or copy the code and form parallel variations.
+              </p>
+              <p className="text-lg">
+                Wikipedia (also open source) exploded after it switched from a peer-reviewed publishing process to a 
+                draft-and-iterate open one.
+              </p>
+              <p className="text-lg">
+                Polis allows 10s of thousands to deliberate and visualize consensus at the frontiers of democratic process.
+              </p>
+              <p className="text-lg">
+                These are examples of{' '}
+                <a href="https://en.wikipedia.org/wiki/Peer_production" className="text-purple-400 hover:text-purple-300 underline" target="_blank" rel="noopener noreferrer">
+                  peer production
+                </a>.
+              </p>
+              <p className="text-lg">
+                Whorl is asking: can we use these same principles to create systems for social process?
+              </p>
+              <div className="bg-slate-800 rounded-lg p-6">
+                <p className="text-lg mb-3">Example: mastermind groups.</p>
+                <p className="text-gray-400">
+                  Here is a map of prominent mastermind formats: [MAP]
+                </p>
+                <p className="text-lg mt-4">
+                  Imagine each is described briefly as an automated sequence of interactions. Collectives can try, 
+                  produce feedback about them (connected to maps) and then fork structures and repeat. The platform 
+                  then becomes an open source learning mechanism for how humans grow together.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Thriving Humanity Section */}
+          <section id="thriving-humanity" className="scroll-mt-20">
+            <h2 className="text-3xl font-bold text-white mb-6">Thriving Humanity</h2>
+            <div className="space-y-6 text-gray-300">
+              <p className="text-lg">
+                Like many topics within the human cultural sphere, success and prosperity are very personal, contextual, 
+                often polarizing and vary across the population. Instead of defining what it means to have a thriving 
+                human race, find sample Whorls on related topics. If you add your piece we can find out what they mean to US.
+              </p>
+              <div className="bg-slate-800 rounded-lg p-6">
+                <h3 className="text-xl font-semibold text-white mb-4">Sample Topics:</h3>
+                <div className="space-y-3">
+                  <div className="border-l-4 border-purple-500 pl-4">
+                    <h4 className="text-lg font-medium text-white">Prosperity</h4>
+                    <ul className="list-disc list-inside text-gray-400 mt-1">
+                      <li>What is prosperity?</li>
+                      <li>How do we generate prosperity?</li>
+                    </ul>
+                  </div>
+                  <div className="border-l-4 border-purple-500 pl-4">
+                    <h4 className="text-lg font-medium text-white">Sustainability</h4>
+                  </div>
+                  <div className="border-l-4 border-purple-500 pl-4">
+                    <h4 className="text-lg font-medium text-white">Wealth</h4>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Activities */}
-        <div className="max-w-3xl mx-auto">
-          {activities.length === 0 ? (
-            <div className="text-center py-12">
-              <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <h3 className="text-lg font-medium text-gray-400 mb-2">No activities available</h3>
-              <p className="text-gray-500">Check back later for new collaborative mapping activities.</p>
-            </div>
-          ) : (
-            <div className="flex flex-wrap justify-center gap-3">
-              {activities.map((activity, index) => (
-                <Link
-                  key={activity.id}
-                  href={`/${activity.urlName || activity.id}`}
-                  className="block"
-                >
-                  <div className={`${colors[index % colors.length]} rounded-full px-4 py-2 hover:opacity-80 transition-opacity duration-200`}>
-                    <div className="flex items-center space-x-2">
-                      <div 
-                        className={`w-3 h-3 rounded-full ${activity.status === 'active' ? 'bg-teal-300' : 'bg-gray-700'}`}
-                        title={activity.status === 'active' ? 'Active' : 'Completed'}
-                      />
-                      <span className="text-white font-medium whitespace-nowrap">
-                        {activity.title}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+          </section>
         </div>
+
+        {/* Sample Activities Section */}
+        <section className="mt-24">
+          <h2 className="text-3xl font-bold text-white mb-8 text-center">Try a Sample Activity</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Link href="/admin" className="bg-slate-800 rounded-lg p-6 hover:bg-slate-700 transition-colors cursor-pointer block">
+              <h3 className="text-xl font-semibold text-white mb-3">Map Your Values</h3>
+              <p className="text-gray-300 mb-4">
+                Explore how your personal values intersect with collective ideals through collaborative mapping.
+              </p>
+              <span className="text-purple-400 hover:text-purple-300">Start mapping →</span>
+            </Link>
+            <Link href="/admin" className="bg-slate-800 rounded-lg p-6 hover:bg-slate-700 transition-colors cursor-pointer block">
+              <h3 className="text-xl font-semibold text-white mb-3">Community Vision</h3>
+              <p className="text-gray-300 mb-4">
+                Co-create a vision for your community by mapping shared aspirations and priorities.
+              </p>
+              <span className="text-purple-400 hover:text-purple-300">Start mapping →</span>
+            </Link>
+            <Link href="/admin" className="bg-slate-800 rounded-lg p-6 hover:bg-slate-700 transition-colors cursor-pointer block">
+              <h3 className="text-xl font-semibold text-white mb-3">Innovation Ecosystems</h3>
+              <p className="text-gray-300 mb-4">
+                Map the connections between ideas, resources, and collaborators in your innovation space.
+              </p>
+              <span className="text-purple-400 hover:text-purple-300">Start mapping →</span>
+            </Link>
+            <Link href="/admin" className="bg-slate-800 rounded-lg p-6 hover:bg-slate-700 transition-colors cursor-pointer block">
+              <h3 className="text-xl font-semibold text-white mb-3">Cultural Bridges</h3>
+              <p className="text-gray-300 mb-4">
+                Discover unexpected connections between different cultural perspectives and practices.
+              </p>
+              <span className="text-purple-400 hover:text-purple-300">Start mapping →</span>
+            </Link>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="mt-24 pt-12 border-t border-gray-700">
+          <div className="text-center text-gray-400">
+            <p className="mb-4">© 2025 Whorl - Building open source social systems</p>
+            <div className="flex justify-center space-x-6">
+              <Link href="/admin" className="hover:text-purple-400 transition-colors">Create Activity</Link>
+              <a href="#" className="hover:text-purple-400 transition-colors">Contact</a>
+              <a href="#" className="hover:text-purple-400 transition-colors">GitHub</a>
+              <a href="#" className="hover:text-purple-400 transition-colors">Documentation</a>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );

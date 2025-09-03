@@ -8,6 +8,7 @@ export interface WeAllExplainActivity {
   // Map configuration
   mapQuestion: string;
   mapQuestion2: string;
+  objectNameQuestion: string; // Question asking user to name their object
   xAxis: {
     label: string;
     min: string;
@@ -22,13 +23,8 @@ export interface WeAllExplainActivity {
   // Comment configuration
   commentQuestion: string;
   
-  // Quadrant labels
-  quadrants: {
-    q1: string; // Top-right: high X, high Y
-    q2: string; // Top-left: low X, high Y  
-    q3: string; // Bottom-left: low X, low Y
-    q4: string; // Bottom-right: high X, low Y
-  };
+  // Starter data for seeding the activity
+  starterData?: string; // JSON string of initial ratings/comments
   
   // Activity state
   status: 'active' | 'completed';
@@ -46,6 +42,7 @@ export interface Rating {
   id: string;
   userId: string;
   username: string;
+  objectName?: string; // User's named object
   position: {
     x: number; // 0-1 normalized
     y: number; // 0-1 normalized
@@ -57,8 +54,7 @@ export interface Comment {
   id: string;
   userId: string;
   username: string;
-  quadrantName?: string;
-  quadrant?: 'q1' | 'q2' | 'q3' | 'q4';
+  objectName?: string; // User's named object replaces quadrant name
   text: string;
   timestamp: Date;
   votes: CommentVote[];
@@ -75,6 +71,7 @@ export interface CommentVote {
 export interface Participant {
   id: string;
   username: string;
+  objectName?: string; // Store participant's named object
   isConnected: boolean;
   hasSubmitted: boolean;
   joinedAt: Date;
@@ -105,6 +102,7 @@ export interface ActivityFormData {
   urlName?: string; // Optional - will be generated from title if not provided
   mapQuestion: string;
   mapQuestion2: string;
+  objectNameQuestion: string;
   xAxisLabel: string;
   xAxisMin: string;
   xAxisMax: string;
@@ -112,10 +110,7 @@ export interface ActivityFormData {
   yAxisMin: string;
   yAxisMax: string;
   commentQuestion: string;
-  q1Label: string;
-  q2Label: string;
-  q3Label: string;
-  q4Label: string;
+  starterData?: string; // JSON string of initial data
 }
 
 // API response types
@@ -155,7 +150,7 @@ export interface CommentSectionProps {
   onVisibleCommentsChange?: (commentIds: string[]) => void;
 }
 
-export type CommentSortOrder = 'newest' | 'oldest' | 'votes' | 'quadrant-i' | 'quadrant-ii' | 'quadrant-iii' | 'quadrant-iv';
+export type CommentSortOrder = 'newest' | 'oldest' | 'votes';
 
 export interface ResultsViewProps {
   activity: WeAllExplainActivity;

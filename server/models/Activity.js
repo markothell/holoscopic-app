@@ -92,6 +92,22 @@ const ActivitySchema = new mongoose.Schema({
     maxlength: 200
   },
   
+  // Whorl-specific fields
+  objectNameQuestion: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 200,
+    default: 'Name something that represents your perspective'
+  },
+  
+  starterData: {
+    type: String,
+    required: false,
+    trim: true,
+    default: ''
+  },
+  
   // Quadrant labels
   quadrants: {
     q1: {
@@ -149,6 +165,12 @@ const ActivitySchema = new mongoose.Schema({
       trim: true,
       maxlength: 20
     },
+    objectName: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: 25
+    },
     isConnected: {
       type: Boolean,
       default: false
@@ -178,6 +200,12 @@ const ActivitySchema = new mongoose.Schema({
       required: true,
       trim: true,
       maxlength: 20
+    },
+    objectName: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: 25
     },
     position: {
       x: {
@@ -214,6 +242,12 @@ const ActivitySchema = new mongoose.Schema({
       required: true,
       trim: true,
       maxlength: 20
+    },
+    objectName: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: 25
     },
     quadrantName: {
       type: String,
@@ -319,7 +353,7 @@ ActivitySchema.methods.updateParticipantConnection = function(userId, isConnecte
   return Promise.resolve(this);
 };
 
-ActivitySchema.methods.addRating = async function(userId, username, position) {
+ActivitySchema.methods.addRating = async function(userId, username, position, objectName) {
   const maxRetries = 5;
   let retries = 0;
   
@@ -328,30 +362,11 @@ ActivitySchema.methods.addRating = async function(userId, username, position) {
       // Use atomic operations with MongoDB's findOneAndUpdate
       const ratingId = `rating_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // Calculate quadrant information
-      const { x, y } = position;
-      const isRightHalf = x >= 0.5;
-      const isTopHalf = y < 0.5; // y < 0.5 is top half in CSS coordinates
-      
-      let quadrant, quadrantName;
-      if (isRightHalf && isTopHalf) {
-        quadrant = 'q1';
-        quadrantName = this.quadrants?.q1 || 'Q1 (++)';
-      } else if (!isRightHalf && isTopHalf) {
-        quadrant = 'q2';
-        quadrantName = this.quadrants?.q2 || 'Q2 (-+)';
-      } else if (!isRightHalf && !isTopHalf) {
-        quadrant = 'q3';
-        quadrantName = this.quadrants?.q3 || 'Q3 (--)';
-      } else {
-        quadrant = 'q4';
-        quadrantName = this.quadrants?.q4 || 'Q4 (+-)';
-      }
-      
       const newRating = {
         id: ratingId,
         userId: userId,
         username: username,
+        objectName: objectName || '',
         position: position,
         timestamp: new Date()
       };
@@ -363,8 +378,8 @@ ActivitySchema.methods.addRating = async function(userId, username, position) {
           $pull: { ratings: { userId: userId } }, // Remove existing rating
           $set: { 
             'participants.$[elem].hasSubmitted': true,
-            'comments.$[comment].quadrant': quadrant,
-            'comments.$[comment].quadrantName': quadrantName
+            'participants.$[elem].objectName': objectName || '',
+            'comments.$[comment].objectName': objectName || ''
           }
         },
         {
@@ -403,44 +418,18 @@ ActivitySchema.methods.addRating = async function(userId, username, position) {
   throw new Error('Failed to update rating after maximum retries');
 };
 
-ActivitySchema.methods.addComment = function(userId, username, text) {
+ActivitySchema.methods.addComment = function(userId, username, text, objectName) {
   const commentId = `comment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
   // Remove existing comment from same user
   this.comments = this.comments.filter(c => c.userId !== userId);
-  
-  // Calculate quadrant based on user's rating
-  let quadrant = null;
-  let quadrantName = null;
-  
-  const userRating = this.ratings.find(r => r.userId === userId);
-  if (userRating) {
-    const { x, y } = userRating.position;
-    const isRightHalf = x >= 0.5;
-    const isTopHalf = y < 0.5; // Fixed: y < 0.5 is top half in CSS coordinates
-    
-    if (isRightHalf && isTopHalf) {
-      quadrant = 'q1';
-      quadrantName = this.quadrants?.q1 || 'Q1 (++)';
-    } else if (!isRightHalf && isTopHalf) {
-      quadrant = 'q2';
-      quadrantName = this.quadrants?.q2 || 'Q2 (-+)';
-    } else if (!isRightHalf && !isTopHalf) {
-      quadrant = 'q3';
-      quadrantName = this.quadrants?.q3 || 'Q3 (--)';
-    } else {
-      quadrant = 'q4';
-      quadrantName = this.quadrants?.q4 || 'Q4 (+-)';
-    }
-  }
   
   // Add new comment
   this.comments.push({
     id: commentId,
     userId: userId,
     username: username,
-    quadrantName: quadrantName,
-    quadrant: quadrant,
+    objectName: objectName || '',
     text: text,
     timestamp: new Date(),
     votes: [],

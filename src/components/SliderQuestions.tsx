@@ -22,13 +22,13 @@ export default function SliderQuestions({
 }: SliderQuestionsProps) {
   // State for slider values (0-1 normalized)
   const [xValue, setXValue] = useState<number>(userRating?.position.x ?? 0.5);
-  const [yValue, setYValue] = useState<number>(userRating ? (1 - userRating.position.y) : 0.5);
+  const [yValue, setYValue] = useState<number>(userRating?.position.y ?? 0.5);
 
   // Update state when userRating changes
   useEffect(() => {
     if (userRating) {
       setXValue(userRating.position.x);
-      setYValue(1 - userRating.position.y);
+      setYValue(userRating.position.y);
     }
   }, [userRating]);
 
@@ -36,13 +36,13 @@ export default function SliderQuestions({
   const handleXChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newX = parseFloat(event.target.value);
     setXValue(newX);
-    onRatingSubmit({ x: newX, y: 1 - yValue });
+    onRatingSubmit({ x: newX, y: yValue });
   };
 
   const handleYChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newY = parseFloat(event.target.value);
     setYValue(newY);
-    onRatingSubmit({ x: xValue, y: 1 - newY });
+    onRatingSubmit({ x: xValue, y: newY });
   };
 
   return (

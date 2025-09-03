@@ -144,8 +144,10 @@ function AdminContent() {
       // Create form data for the cloned activity (without user data)
       const cloneData = {
         title: newTitle,
+        urlName: '',
         mapQuestion: originalActivity.mapQuestion,
         mapQuestion2: originalActivity.mapQuestion2 || '',
+        objectNameQuestion: originalActivity.objectNameQuestion || 'Name something that represents your perspective',
         xAxisLabel: originalActivity.xAxis.label,
         xAxisMin: originalActivity.xAxis.min,
         xAxisMax: originalActivity.xAxis.max,
@@ -153,16 +155,15 @@ function AdminContent() {
         yAxisMin: originalActivity.yAxis.min,
         yAxisMax: originalActivity.yAxis.max,
         commentQuestion: originalActivity.commentQuestion,
-        q1Label: originalActivity.quadrants.q1,
-        q2Label: originalActivity.quadrants.q2,
-        q3Label: originalActivity.quadrants.q3,
-        q4Label: originalActivity.quadrants.q4,
+        starterData: '', // Don't copy starter data when cloning
       };
 
+      console.log('Cloning activity with data:', cloneData);
       const clonedActivity = await ActivityService.createActivity(cloneData);
+      console.log('Cloned activity created:', clonedActivity);
       setActivities(prev => [clonedActivity, ...prev]);
       
-      alert(`Activity cloned successfully as "${newTitle}"`);
+      alert(`Activity cloned successfully as "${newTitle}"\nStarter data should be empty in the new activity.`);
     } catch (err) {
       console.error('Error cloning activity:', err);
       alert('Failed to clone activity. Please try again.');

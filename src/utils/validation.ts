@@ -86,22 +86,49 @@ export class ValidationService {
       errors.commentQuestion = 'Comment question must be less than 200 characters';
     }
 
-    // Quadrant label validation
-    const quadrantLabels = [
-      { key: 'q1Label', label: 'Q1 label' },
-      { key: 'q2Label', label: 'Q2 label' },
-      { key: 'q3Label', label: 'Q3 label' },
-      { key: 'q4Label', label: 'Q4 label' }
-    ];
+    // Object name question validation
+    if (!data.objectNameQuestion || data.objectNameQuestion.trim().length === 0) {
+      errors.objectNameQuestion = 'Object name question is required';
+    } else if (data.objectNameQuestion.trim().length > 200) {
+      errors.objectNameQuestion = 'Object name question must be less than 200 characters';
+    }
 
-    quadrantLabels.forEach(({ key, label }) => {
-      const value = data[key as keyof ActivityFormData] as string;
-      if (!value || value.trim().length === 0) {
-        errors[key] = `${label} is required`;
-      } else if (value.trim().length > 20) {
-        errors[key] = `${label} must be less than 20 characters`;
+    // Starter data validation (optional)
+    if (data.starterData && data.starterData.trim().length > 0) {
+      try {
+        const parsed = JSON.parse(data.starterData);
+        if (!Array.isArray(parsed)) {
+          errors.starterData = 'Starter data must be a JSON array';
+        } else {
+          // Validate each item in the array
+          for (let i = 0; i < parsed.length; i++) {
+            const item = parsed[i];
+            if (typeof item !== 'object' || item === null) {
+              errors.starterData = `Item ${i + 1} must be an object`;
+              break;
+            }
+            if (typeof item.x !== 'number' || item.x < 0 || item.x > 1) {
+              errors.starterData = `Item ${i + 1}: x must be a number between 0 and 1`;
+              break;
+            }
+            if (typeof item.y !== 'number' || item.y < 0 || item.y > 1) {
+              errors.starterData = `Item ${i + 1}: y must be a number between 0 and 1`;
+              break;
+            }
+            if (!item.objectName || typeof item.objectName !== 'string' || item.objectName.length > 25) {
+              errors.starterData = `Item ${i + 1}: objectName must be a string (max 25 characters)`;
+              break;
+            }
+            if (!item.comment || typeof item.comment !== 'string') {
+              errors.starterData = `Item ${i + 1}: comment must be a string`;
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        errors.starterData = 'Invalid JSON format';
       }
-    });
+    }
 
     return {
       isValid: Object.keys(errors).length === 0,
@@ -181,7 +208,7 @@ export class ValidationService {
   // Determine which quadrant a position falls into
   static getQuadrant(position: { x: number; y: number }): 'q1' | 'q2' | 'q3' | 'q4' {
     const isRightHalf = position.x >= 0.5;
-    const isTopHalf = position.y < 0.5; // Fixed: y < 0.5 is top half in CSS coordinates
+    const isTopHalf = position.y >= 0.5; // High Y values are top half (flipped axis)
 
     if (isRightHalf && isTopHalf) return 'q1'; // Top-right (++)
     if (!isRightHalf && isTopHalf) return 'q2'; // Top-left (-+)

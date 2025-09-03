@@ -26,7 +26,7 @@ export default function MappingGrid({
 
     // Clamp values between 0 and 1
     const clampedX = Math.max(0, Math.min(1, x));
-    const clampedY = Math.max(0, Math.min(1, y));
+    const clampedY = Math.max(0, Math.min(1, 1 - y)); // Flip Y-axis: clicking top gives high Y value
 
     // Submit rating immediately
     onRatingSubmit({ x: clampedX, y: clampedY });
@@ -35,7 +35,7 @@ export default function MappingGrid({
   // Get position style for a rating dot
   const getPositionStyle = (rating: Rating) => ({
     left: `${rating.position.x * 100}%`,
-    top: `${rating.position.y * 100}%`,
+    top: `${(1 - rating.position.y) * 100}%`, // Flip Y-axis: high values go to top
     transform: 'translate(-50%, -50%)',
   });
 

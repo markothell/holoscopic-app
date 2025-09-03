@@ -26,12 +26,16 @@ export default function CommentSection({
   const commentRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
-  // Get user's quadrant based on their rating (updated to match new quadrant system)
-  const getUserQuadrant = (userId: string): 'q1' | 'q2' | 'q3' | 'q4' | 'unknown' => {
+
+  // Get user's object name from their rating or comment
+  const getUserObjectName = (userId: string): string | null => {
     const userRating = activity.ratings.find(r => r.userId === userId);
-    if (!userRating) return 'unknown';
+    if (userRating?.objectName) return userRating.objectName;
     
-    return ValidationService.getQuadrant(userRating.position);
+    const userComment = activity.comments.find(c => c.userId === userId);
+    if (userComment?.objectName) return userComment.objectName;
+    
+    return null;
   };
 
   // Notify parent of visible comments when sort order changes
@@ -49,22 +53,6 @@ export default function CommentSection({
           break;
         case 'votes':
           visibleComments = comments.sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
-          break;
-        case 'quadrant-i':
-          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'q1')
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-          break;
-        case 'quadrant-ii':
-          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'q2')
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-          break;
-        case 'quadrant-iii':
-          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'q3')
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-          break;
-        case 'quadrant-iv':
-          visibleComments = comments.filter(c => getUserQuadrant(c.userId) === 'q4')
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
           break;
         default:
           visibleComments = comments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -184,38 +172,28 @@ export default function CommentSection({
     setValidationError(null);
   };
 
-  // Get user color based on quadrant
+  // Get user color based on their rating position
   const getUserColor = (comment: Comment) => {
-    if (comment.quadrant) {
-      return ValidationService.getQuadrantColor(comment.quadrant);
-    }
-    // Calculate quadrant from user's rating if not stored in comment
-    const userQuadrant = getUserQuadrant(comment.userId);
-    if (userQuadrant !== 'unknown') {
-      return ValidationService.getQuadrantColor(userQuadrant);
+    const userRating = activity.ratings.find(r => r.userId === comment.userId);
+    if (userRating) {
+      const quadrant = ValidationService.getQuadrant(userRating.position);
+      return ValidationService.getQuadrantColor(quadrant);
     }
     // Fallback to username-based color for backward compatibility
     return FormattingService.generateColorFromString(comment.username);
   };
 
-  // Get display name for comment (quadrant name or username)
+  // Get display name for comment (object name or username)
   const getDisplayName = (comment: Comment) => {
-    if (comment.quadrantName) {
-      return comment.quadrantName;
+    // Use objectName if available
+    if (comment.objectName) {
+      return comment.objectName;
     }
     
-    // Calculate quadrant name from user's rating if not stored in comment
-    const userQuadrant = getUserQuadrant(comment.userId);
-    
-    if (userQuadrant !== 'unknown') {
-      // Use activity quadrants if available, otherwise use defaults
-      const quadrantLabels = activity.quadrants || {
-        q1: 'Q1 (++)',
-        q2: 'Q2 (-+)', 
-        q3: 'Q3 (--)',
-        q4: 'Q4 (+-)'
-      };
-      return quadrantLabels[userQuadrant];
+    // Try to get objectName from user's rating
+    const objectName = getUserObjectName(comment.userId);
+    if (objectName) {
+      return objectName;
     }
     
     // Fallback to username for backward compatibility
@@ -244,18 +222,6 @@ export default function CommentSection({
         return comments.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
       case 'votes':
         return comments.sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
-      case 'quadrant-i':
-        return comments.filter(c => getUserQuadrant(c.userId) === 'q1')
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      case 'quadrant-ii':
-        return comments.filter(c => getUserQuadrant(c.userId) === 'q2')
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      case 'quadrant-iii':
-        return comments.filter(c => getUserQuadrant(c.userId) === 'q3')
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      case 'quadrant-iv':
-        return comments.filter(c => getUserQuadrant(c.userId) === 'q4')
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       default:
         return comments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }
@@ -336,10 +302,6 @@ export default function CommentSection({
                 <option value="newest">Newest</option>
                 <option value="oldest">Oldest</option>
                 <option value="votes">Votes</option>
-                <option value="quadrant-i">Quadrant I</option>
-                <option value="quadrant-ii">Quadrant II</option>
-                <option value="quadrant-iii">Quadrant III</option>
-                <option value="quadrant-iv">Quadrant IV</option>
               </select>
             </div>
           </div>
@@ -347,7 +309,8 @@ export default function CommentSection({
           {/* Comments or No Comments Message */}
           {activity.comments.length > 0 ? (
             <div className={`space-y-3 overflow-y-auto ${readOnly ? "flex-1 min-h-0" : "max-h-60"}`}>
-              {getSortedComments().map((comment) => (
+              {getSortedComments().map((comment) => {
+                return (
                   <div
                     key={comment.id}
                     ref={(el) => { commentRefs.current[comment.id] = el; }}
@@ -406,7 +369,8 @@ export default function CommentSection({
                       </span>
                     </div>
                   </div>
-                ))}
+                );
+              })}
             </div>
           ) : (
             <div className={`text-center py-8 ${readOnly ? "text-gray-300 flex-1 flex items-center justify-center" : "text-gray-500"}`}>

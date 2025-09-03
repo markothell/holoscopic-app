@@ -114,6 +114,7 @@ export class ActivityService {
         urlName,
         mapQuestion: formData.mapQuestion,
         mapQuestion2: formData.mapQuestion2,
+        objectNameQuestion: formData.objectNameQuestion,
         xAxis: {
           label: formData.xAxisLabel,
           min: formData.xAxisMin,
@@ -125,12 +126,7 @@ export class ActivityService {
           max: formData.yAxisMax,
         },
         commentQuestion: formData.commentQuestion,
-        quadrants: {
-          q1: formData.q1Label,
-          q2: formData.q2Label,
-          q3: formData.q3Label,
-          q4: formData.q4Label,
-        },
+        starterData: formData.starterData,
         status: 'active',
         participants: [],
         ratings: [],
@@ -190,6 +186,7 @@ export class ActivityService {
         title: formData.title,
         mapQuestion: formData.mapQuestion,
         mapQuestion2: formData.mapQuestion2,
+        objectNameQuestion: formData.objectNameQuestion,
         xAxis: {
           label: formData.xAxisLabel,
           min: formData.xAxisMin,
@@ -201,12 +198,7 @@ export class ActivityService {
           max: formData.yAxisMax,
         },
         commentQuestion: formData.commentQuestion,
-        quadrants: {
-          q1: formData.q1Label,
-          q2: formData.q2Label,
-          q3: formData.q3Label,
-          q4: formData.q4Label,
-        },
+        starterData: formData.starterData,
       };
 
       // Only include urlName if it's provided
@@ -284,7 +276,7 @@ export class ActivityService {
   }
 
   // Submit rating for user
-  static async submitRating(activityId: string, userId: string, position: { x: number; y: number }): Promise<Rating> {
+  static async submitRating(activityId: string, userId: string, position: { x: number; y: number }, objectName?: string): Promise<Rating> {
     // Add delay to prevent rapid successive calls
     await new Promise(resolve => setTimeout(resolve, 100));
     
@@ -297,6 +289,7 @@ export class ActivityService {
         body: JSON.stringify({
           userId,
           position,
+          objectName,
         }),
       });
 
@@ -318,7 +311,7 @@ export class ActivityService {
   }
 
   // Submit comment for user
-  static async submitComment(activityId: string, userId: string, text: string): Promise<Comment> {
+  static async submitComment(activityId: string, userId: string, text: string, objectName?: string): Promise<Comment> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/activities/${activityId}/comment`, {
         method: 'POST',
@@ -328,6 +321,7 @@ export class ActivityService {
         body: JSON.stringify({
           userId,
           text,
+          objectName,
         }),
       });
 
@@ -343,6 +337,33 @@ export class ActivityService {
       return data.data;
     } catch (error) {
       console.error('Error submitting comment:', error);
+      throw error;
+    }
+  }
+
+  // Sync starter data to database
+  static async syncStarterData(activityId: string): Promise<WeAllExplainActivity> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/activities/${activityId}/sync-starter-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to sync starter data: ${response.status} - ${errorText}`);
+      }
+
+      const data: ApiResponse<WeAllExplainActivity> = await response.json();
+      if (!data.success || !data.data) {
+        throw new Error(data.error || 'Failed to sync starter data');
+      }
+
+      return data.data;
+    } catch (error) {
+      console.error('Error syncing starter data:', error);
       throw error;
     }
   }
