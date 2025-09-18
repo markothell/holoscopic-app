@@ -85,8 +85,8 @@ function AdminContent() {
   // Password login screen - Dark theme
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
-        <div className="max-w-md w-full bg-slate-800 rounded-lg shadow-xl p-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-slate-800 rounded-lg shadow-xl p-6 sm:p-8">
           <div className="flex justify-center mb-6">
             <Image
               src="/holoLogo_dark.svg"
@@ -95,7 +95,7 @@ function AdminContent() {
               height={60}
             />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-6 text-center">Admin Access</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white mb-6 text-center">Admin Access</h1>
 
           <form onSubmit={handlePasswordSubmit}>
             <div className="mb-4">
@@ -210,7 +210,7 @@ function AdminContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 sm:p-8">
         <div className="text-center text-gray-300">Loading...</div>
       </div>
     );
@@ -218,21 +218,23 @@ function AdminContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 sm:p-8">
         <div className="max-w-2xl mx-auto text-center">
-          <div className="text-red-400 mb-4">{error}</div>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors mr-4"
-          >
-            Retry
-          </button>
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
-          >
-            Create First Activity
-          </button>
+          <div className="text-red-400 mb-4 text-sm sm:text-base">{error}</div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 sm:px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="px-4 sm:px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+            >
+              Create First Activity
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -241,23 +243,24 @@ function AdminContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="mb-8 flex justify-between items-center">
+        {/* Header */}
+        <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center">
             <Image
               src="/holoLogo_dark.svg"
               alt="Holoscopic Logo"
-              width={40}
-              height={40}
-              className="mr-3"
+              width={32}
+              height={32}
+              className="mr-2 sm:mr-3 sm:w-10 sm:h-10"
             />
-            <h1 className="text-3xl font-bold text-white">Holoscopic Admin</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Holoscopic Admin</h1>
           </div>
           <button
             onClick={() => {
               sessionStorage.removeItem('adminAuth');
               setIsAuthenticated(false);
             }}
-            className="px-4 py-2 text-sm text-gray-400 hover:text-gray-300"
+            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-400 hover:text-gray-300"
           >
             Logout
           </button>
@@ -275,126 +278,216 @@ function AdminContent() {
             }}
           />
         ) : (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-white">Activities</h2>
+          <div className="space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <h2 className="text-lg sm:text-xl font-semibold text-white">Activities</h2>
               <button
                 onClick={() => setShowCreateForm(true)}
-                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
+                className="w-full sm:w-auto px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors text-sm sm:text-base"
               >
                 Create New Activity
               </button>
             </div>
 
             {activities.length === 0 ? (
-              <div className="bg-slate-800 rounded-lg shadow-xl p-8 text-center text-gray-400">
+              <div className="bg-slate-800 rounded-lg shadow-xl p-6 sm:p-8 text-center text-gray-400">
                 No activities yet. Create your first one!
               </div>
             ) : (
-              <div className="bg-slate-800 rounded-lg shadow-xl overflow-hidden">
-                <table className="min-w-full divide-y divide-slate-700">
-                  <thead className="bg-slate-900">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                        Title
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                        URL
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                        Stats
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-slate-800 divide-y divide-slate-700">
-                    {activities.map(activity => {
-                      const stats = getActivityStats(activity.id);
-
-                      return (
-                        <tr key={activity.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-white">
-                              {activity.title}
-                            </div>
-                            <div className="text-sm text-gray-400">
-                              Created {FormattingService.formatTimestamp(activity.createdAt)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+              <>
+                {/* Mobile View - Cards */}
+                <div className="lg:hidden space-y-4">
+                  {activities.map(activity => {
+                    const stats = getActivityStats(activity.id);
+                    return (
+                      <div key={activity.id} className="bg-slate-800 rounded-lg shadow-xl p-4">
+                        {/* Title and Status */}
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <h3 className="text-white font-medium text-base">{activity.title}</h3>
                             <Link
                               href={`/${activity.urlName}`}
                               target="_blank"
-                              className="text-sm text-blue-400 hover:text-blue-300"
+                              className="text-xs text-blue-400 hover:text-blue-300"
                             >
                               /{activity.urlName} ↗
                             </Link>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                            <div>{stats?.participants || 0} participants</div>
-                            <div>{stats?.completedMappings || 0} mappings</div>
-                            <div>{stats?.comments || 0} comments</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-xs text-gray-400 mt-1">
+                              {FormattingService.formatTimestamp(activity.createdAt)}
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1 ml-2">
                             {activity.isDraft && (
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-700 text-gray-300">
+                              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-700 text-gray-300">
                                 Draft
                               </span>
                             )}
                             {activity.status === 'completed' && (
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-300 ml-2">
+                              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-900 text-green-300">
                                 Completed
                               </span>
                             )}
                             {!activity.isDraft && activity.status === 'active' && (
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-900 text-blue-300">
+                              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-900 text-blue-300">
                                 Active
                               </span>
                             )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                          </div>
+                        </div>
+
+                        {/* Stats */}
+                        <div className="text-xs text-gray-400 mb-3 flex gap-3">
+                          <span>{stats?.participants || 0} participants</span>
+                          <span>{stats?.completedMappings || 0} mappings</span>
+                          <span>{stats?.comments || 0} comments</span>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingActivity(activity);
+                              setShowCreateForm(true);
+                              router.push(`/admin?activity=${activity.id}`);
+                            }}
+                            className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleToggleDraft(activity.id, activity.isDraft || false)}
+                            className="px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 text-white rounded"
+                          >
+                            {activity.isDraft ? 'Publish' : 'Draft'}
+                          </button>
+                          {activity.status !== 'completed' && (
                             <button
-                              onClick={() => {
-                                setEditingActivity(activity);
-                                setShowCreateForm(true);
-                                router.push(`/admin?activity=${activity.id}`);
-                              }}
-                              className="text-indigo-400 hover:text-indigo-300"
+                              onClick={() => handleToggleComplete(activity.id)}
+                              className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded"
                             >
-                              Edit
+                              Complete
                             </button>
-                            <button
-                              onClick={() => handleToggleDraft(activity.id, activity.isDraft || false)}
-                              className="text-yellow-400 hover:text-yellow-300"
-                            >
-                              {activity.isDraft ? 'Publish' : 'Draft'}
-                            </button>
-                            {activity.status !== 'completed' && (
-                              <button
-                                onClick={() => handleToggleComplete(activity.id)}
-                                className="text-green-400 hover:text-green-300"
-                              >
-                                Complete
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleDeleteActivity(activity.id)}
-                              className="text-red-400 hover:text-red-300"
-                            >
-                              Delete
-                            </button>
-                          </td>
+                          )}
+                          <button
+                            onClick={() => handleDeleteActivity(activity.id)}
+                            className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Desktop View - Table */}
+                <div className="hidden lg:block bg-slate-800 rounded-lg shadow-xl overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-700">
+                      <thead className="bg-slate-900">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            Title
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            URL
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            Stats
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            Actions
+                          </th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody className="bg-slate-800 divide-y divide-slate-700">
+                        {activities.map(activity => {
+                          const stats = getActivityStats(activity.id);
+
+                          return (
+                            <tr key={activity.id}>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-white">
+                                  {activity.title}
+                                </div>
+                                <div className="text-sm text-gray-400">
+                                  Created {FormattingService.formatTimestamp(activity.createdAt)}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <Link
+                                  href={`/${activity.urlName}`}
+                                  target="_blank"
+                                  className="text-sm text-blue-400 hover:text-blue-300"
+                                >
+                                  /{activity.urlName} ↗
+                                </Link>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                                <div>{stats?.participants || 0} participants</div>
+                                <div>{stats?.completedMappings || 0} mappings</div>
+                                <div>{stats?.comments || 0} comments</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {activity.isDraft && (
+                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-700 text-gray-300">
+                                    Draft
+                                  </span>
+                                )}
+                                {activity.status === 'completed' && (
+                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-300 ml-2">
+                                    Completed
+                                  </span>
+                                )}
+                                {!activity.isDraft && activity.status === 'active' && (
+                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-900 text-blue-300">
+                                    Active
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingActivity(activity);
+                                    setShowCreateForm(true);
+                                    router.push(`/admin?activity=${activity.id}`);
+                                  }}
+                                  className="text-indigo-400 hover:text-indigo-300"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleToggleDraft(activity.id, activity.isDraft || false)}
+                                  className="text-yellow-400 hover:text-yellow-300"
+                                >
+                                  {activity.isDraft ? 'Publish' : 'Draft'}
+                                </button>
+                                {activity.status !== 'completed' && (
+                                  <button
+                                    onClick={() => handleToggleComplete(activity.id)}
+                                    className="text-green-400 hover:text-green-300"
+                                  >
+                                    Complete
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteActivity(activity.id)}
+                                  className="text-red-400 hover:text-red-300"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -407,7 +500,7 @@ function AdminContent() {
 export default function AdminPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 sm:p-8">
         <div className="text-center text-gray-300">Loading admin panel...</div>
       </div>
     }>
