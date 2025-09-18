@@ -7,7 +7,7 @@ interface AnalyticsStats {
 }
 
 class InternalAnalytics {
-  private apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  private apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
 
   async getStats(activityId?: string): Promise<AnalyticsStats> {
     try {

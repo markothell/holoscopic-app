@@ -3,7 +3,7 @@
 import { HoloscopicActivity, ActivityFormData, ApiResponse, ActivityListResponse, Rating, Comment } from '@/models/Activity';
 import { UrlUtils } from '@/utils/urlUtils';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
 
 export class ActivityService {
   // Get all activities (public - excludes drafts)

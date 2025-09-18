@@ -8,6 +8,7 @@ import { FormattingService } from '@/utils/formatting';
 import { useAllAnalytics, type AnalyticsStats } from '@/hooks/useAnalytics';
 import AdminPanel from '@/components/AdminPanel';
 import Link from 'next/link';
+import Image from 'next/image';
 
 function AdminContent() {
   const router = useRouter();
@@ -55,7 +56,7 @@ function AdminContent() {
           }
         }
       } catch (err) {
-        setError('Failed to load activities');
+        setError('Failed to load activities. The backend server may not be running.');
         console.error('Error loading activities:', err);
       } finally {
         setLoading(false);
@@ -81,16 +82,24 @@ function AdminContent() {
     }
   };
 
-  // Password login screen
+  // Password login screen - Dark theme
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">Admin Access</h1>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
+        <div className="max-w-md w-full bg-slate-800 rounded-lg shadow-xl p-8">
+          <div className="flex justify-center mb-6">
+            <Image
+              src="/holoLogo_dark.svg"
+              alt="Holoscopic Logo"
+              width={60}
+              height={60}
+            />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-6 text-center">Admin Access</h1>
 
           <form onSubmit={handlePasswordSubmit}>
             <div className="mb-4">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
                 Password
               </label>
               <input
@@ -98,14 +107,14 @@ function AdminContent() {
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
                 placeholder="Enter admin password"
                 autoFocus
               />
             </div>
 
             {authError && (
-              <div className="mb-4 text-red-600 text-sm">
+              <div className="mb-4 text-red-400 text-sm">
                 {authError}
               </div>
             )}
@@ -121,7 +130,7 @@ function AdminContent() {
           <div className="mt-6 text-center">
             <a
               href="/"
-              className="text-sm text-gray-600 hover:text-gray-800"
+              className="text-sm text-gray-400 hover:text-gray-300"
             >
               ← Back to Home
             </a>
@@ -201,31 +210,54 @@ function AdminContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="text-center">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8">
+        <div className="text-center text-gray-300">Loading...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="text-center text-red-600">{error}</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="text-red-400 mb-4">{error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors mr-4"
+          >
+            Retry
+          </button>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+          >
+            Create First Activity
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         <div className="mb-8 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">Holoscopic Admin</h1>
+          <div className="flex items-center">
+            <Image
+              src="/holoLogo_dark.svg"
+              alt="Holoscopic Logo"
+              width={40}
+              height={40}
+              className="mr-3"
+            />
+            <h1 className="text-3xl font-bold text-white">Holoscopic Admin</h1>
+          </div>
           <button
             onClick={() => {
               sessionStorage.removeItem('adminAuth');
               setIsAuthenticated(false);
             }}
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+            className="px-4 py-2 text-sm text-gray-400 hover:text-gray-300"
           >
             Logout
           </button>
@@ -245,7 +277,7 @@ function AdminContent() {
         ) : (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-800">Activities</h2>
+              <h2 className="text-xl font-semibold text-white">Activities</h2>
               <button
                 onClick={() => setShowCreateForm(true)}
                 className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
@@ -255,42 +287,42 @@ function AdminContent() {
             </div>
 
             {activities.length === 0 ? (
-              <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+              <div className="bg-slate-800 rounded-lg shadow-xl p-8 text-center text-gray-400">
                 No activities yet. Create your first one!
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+              <div className="bg-slate-800 rounded-lg shadow-xl overflow-hidden">
+                <table className="min-w-full divide-y divide-slate-700">
+                  <thead className="bg-slate-900">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                         Title
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                         URL
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                         Stats
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-slate-800 divide-y divide-slate-700">
                     {activities.map(activity => {
                       const stats = getActivityStats(activity.id);
 
                       return (
                         <tr key={activity.id}>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-white">
                               {activity.title}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-gray-400">
                               Created {FormattingService.formatTimestamp(activity.createdAt)}
                             </div>
                           </td>
@@ -298,29 +330,29 @@ function AdminContent() {
                             <Link
                               href={`/${activity.urlName}`}
                               target="_blank"
-                              className="text-sm text-blue-600 hover:text-blue-800"
+                              className="text-sm text-blue-400 hover:text-blue-300"
                             >
                               /{activity.urlName} ↗
                             </Link>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                             <div>{stats?.participants || 0} participants</div>
                             <div>{stats?.completedMappings || 0} mappings</div>
                             <div>{stats?.comments || 0} comments</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {activity.isDraft && (
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-700 text-gray-300">
                                 Draft
                               </span>
                             )}
                             {activity.status === 'completed' && (
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 ml-2">
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-300 ml-2">
                                 Completed
                               </span>
                             )}
                             {!activity.isDraft && activity.status === 'active' && (
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-900 text-blue-300">
                                 Active
                               </span>
                             )}
@@ -332,27 +364,27 @@ function AdminContent() {
                                 setShowCreateForm(true);
                                 router.push(`/admin?activity=${activity.id}`);
                               }}
-                              className="text-indigo-600 hover:text-indigo-900"
+                              className="text-indigo-400 hover:text-indigo-300"
                             >
                               Edit
                             </button>
                             <button
                               onClick={() => handleToggleDraft(activity.id, activity.isDraft || false)}
-                              className="text-yellow-600 hover:text-yellow-900"
+                              className="text-yellow-400 hover:text-yellow-300"
                             >
                               {activity.isDraft ? 'Publish' : 'Draft'}
                             </button>
                             {activity.status !== 'completed' && (
                               <button
                                 onClick={() => handleToggleComplete(activity.id)}
-                                className="text-green-600 hover:text-green-900"
+                                className="text-green-400 hover:text-green-300"
                               >
                                 Complete
                               </button>
                             )}
                             <button
                               onClick={() => handleDeleteActivity(activity.id)}
-                              className="text-red-600 hover:text-red-900"
+                              className="text-red-400 hover:text-red-300"
                             >
                               Delete
                             </button>
@@ -375,8 +407,8 @@ function AdminContent() {
 export default function AdminPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="text-center">Loading admin panel...</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8">
+        <div className="text-center text-gray-300">Loading admin panel...</div>
       </div>
     }>
       <AdminContent />
