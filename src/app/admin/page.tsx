@@ -7,7 +7,6 @@ import { ActivityService } from '@/services/activityService';
 import { FormattingService } from '@/utils/formatting';
 import { useAllAnalytics, type AnalyticsStats } from '@/hooks/useAnalytics';
 import AdminPanel from '@/components/AdminPanel';
-import { getMainAppUrl } from '@/utils/adminUrls';
 import Link from 'next/link';
 
 function AdminContent() {
@@ -197,7 +196,7 @@ function AdminContent() {
   // Get statistics for an activity
   const getActivityStats = (activityId: string): AnalyticsStats | null => {
     if (analyticsLoading || !allStats) return null;
-    return allStats.find(stat => stat.id === activityId) || null;
+    return allStats[activityId] || null;
   };
 
   if (loading) {
@@ -234,8 +233,9 @@ function AdminContent() {
 
         {showCreateForm ? (
           <AdminPanel
-            activity={editingActivity}
-            onSave={handleSaveActivity}
+            editingActivity={editingActivity || undefined}
+            onActivityCreated={handleSaveActivity}
+            onActivityUpdated={handleSaveActivity}
             onCancel={() => {
               setShowCreateForm(false);
               setEditingActivity(null);
@@ -283,7 +283,6 @@ function AdminContent() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {activities.map(activity => {
                       const stats = getActivityStats(activity.id);
-                      const mainAppUrl = getMainAppUrl();
 
                       return (
                         <tr key={activity.id}>
@@ -297,7 +296,7 @@ function AdminContent() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <Link
-                              href={`${mainAppUrl}/${activity.urlName}`}
+                              href={`/${activity.urlName}`}
                               target="_blank"
                               className="text-sm text-blue-600 hover:text-blue-800"
                             >
@@ -305,9 +304,9 @@ function AdminContent() {
                             </Link>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <div>{stats?.participantCount || 0} participants</div>
-                            <div>{stats?.totalRatings || 0} ratings</div>
-                            <div>{stats?.totalComments || 0} comments</div>
+                            <div>{stats?.participants || 0} participants</div>
+                            <div>{stats?.completedMappings || 0} mappings</div>
+                            <div>{stats?.comments || 0} comments</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {activity.isDraft && (
