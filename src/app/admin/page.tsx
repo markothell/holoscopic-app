@@ -23,16 +23,31 @@ function AdminContent() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { allStats, loading: analyticsLoading } = useAllAnalytics();
 
+  // Password protection state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+
+  // Check if already authenticated (from session storage)
+  useEffect(() => {
+    const authStatus = sessionStorage.getItem('adminAuth');
+    if (authStatus === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
   // Load activities and editing activity
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const loadData = async () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         const activitiesData = await ActivityService.getAdminActivities();
         setActivities(activitiesData);
-        
+
         if (editingActivityId) {
           const activity = activitiesData.find(a => a.id === editingActivityId);
           if (activity) {
@@ -49,383 +64,320 @@ function AdminContent() {
     };
 
     loadData();
-  }, [editingActivityId]);
+  }, [editingActivityId, isAuthenticated]);
 
-  // Handle activity creation
-  const handleActivityCreated = (activity: HoloscopicActivity) => {
-    setActivities(prev => [activity, ...prev]);
-    setShowCreateForm(false);
-    setEditingActivity(null);
-    // Stay on admin panel instead of going to activity
-  };
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
 
-  // Handle activity update
-  const handleActivityUpdated = (activity: HoloscopicActivity) => {
-    setActivities(prev => 
-      prev.map(a => a.id === activity.id ? activity : a)
-    );
-    setShowCreateForm(false);
-    setEditingActivity(null);
-    // Stay on admin panel instead of going to activity
-  };
+    // Check password against environment variable
+    // You'll set NEXT_PUBLIC_ADMIN_PASSWORD in Vercel
+    const correctPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'holoscopic2024';
 
-  // Handle delete activity
-  const handleDeleteActivity = async (activityId: string) => {
-    if (!confirm('Are you sure you want to delete this activity? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      await ActivityService.deleteActivity(activityId);
-      setActivities(prev => prev.filter(a => a.id !== activityId));
-    } catch (err) {
-      console.error('Error deleting activity:', err);
-      alert('Failed to delete activity. Please try again.');
+    if (password === correctPassword) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('adminAuth', 'true');
+      setAuthError('');
+    } else {
+      setAuthError('Incorrect password');
     }
   };
 
-  // Handle complete activity
-  const handleCompleteActivity = async (activityId: string) => {
-    if (!confirm('Are you sure you want to complete this activity? Participants will no longer be able to submit responses.')) {
-      return;
-    }
-
-    try {
-      const updatedActivity = await ActivityService.completeActivity(activityId);
-      setActivities(prev => 
-        prev.map(a => a.id === activityId ? updatedActivity : a)
-      );
-    } catch (err) {
-      console.error('Error completing activity:', err);
-      alert('Failed to complete activity. Please try again.');
-    }
-  };
-
-  // Handle toggle draft status
-  const handleToggleDraft = async (activityId: string, currentDraftStatus: boolean) => {
-    const newStatus = !currentDraftStatus;
-    const action = newStatus ? 'set as draft' : 'publish';
-    
-    if (!confirm(`Are you sure you want to ${action} this activity?`)) {
-      return;
-    }
-
-    try {
-      const updatedActivity = await ActivityService.toggleDraftStatus(activityId, newStatus);
-      setActivities(prev => 
-        prev.map(a => a.id === activityId ? updatedActivity : a)
-      );
-    } catch (err) {
-      console.error('Error toggling draft status:', err);
-      alert('Failed to toggle draft status. Please try again.');
-    }
-  };
-
-  // Handle clone activity
-  const handleCloneActivity = async (activityId: string) => {
-    try {
-      const originalActivity = activities.find(a => a.id === activityId);
-      if (!originalActivity) {
-        alert('Activity not found');
-        return;
-      }
-
-      // Generate new title with numbered extension
-      const baseName = originalActivity.title;
-      const existingTitles = activities.map(a => a.title);
-      let newTitle = baseName;
-      let counter = 2;
-      
-      while (existingTitles.includes(newTitle)) {
-        newTitle = `${baseName} ${counter}`;
-        counter++;
-      }
-
-      // Create form data for the cloned activity (without user data)
-      const cloneData = {
-        title: newTitle,
-        urlName: '',
-        mapQuestion: originalActivity.mapQuestion,
-        mapQuestion2: originalActivity.mapQuestion2 || '',
-        objectNameQuestion: originalActivity.objectNameQuestion || 'Name something that represents your perspective',
-        xAxisLabel: originalActivity.xAxis.label,
-        xAxisMin: originalActivity.xAxis.min,
-        xAxisMax: originalActivity.xAxis.max,
-        yAxisLabel: originalActivity.yAxis.label,
-        yAxisMin: originalActivity.yAxis.min,
-        yAxisMax: originalActivity.yAxis.max,
-        commentQuestion: originalActivity.commentQuestion,
-        starterData: '', // Don't copy starter data when cloning
-      };
-
-      console.log('Cloning activity with data:', cloneData);
-      const clonedActivity = await ActivityService.createActivity(cloneData);
-      console.log('Cloned activity created:', clonedActivity);
-      setActivities(prev => [clonedActivity, ...prev]);
-      
-      alert(`Activity cloned successfully as "${newTitle}"\nStarter data should be empty in the new activity.`);
-    } catch (err) {
-      console.error('Error cloning activity:', err);
-      alert('Failed to clone activity. Please try again.');
-    }
-  };
-
-  if (loading) {
+  // Password login screen
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white">Loading admin panel...</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+          <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">Admin Access</h1>
+
+          <form onSubmit={handlePasswordSubmit}>
+            <div className="mb-4">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter admin password"
+                autoFocus
+              />
+            </div>
+
+            {authError && (
+              <div className="mb-4 text-red-600 text-sm">
+                {authError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
+            >
+              Access Admin Panel
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <a
+              href="/"
+              className="text-sm text-gray-600 hover:text-gray-800"
+            >
+              ← Back to Home
+            </a>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Handle activity deletion
+  const handleDeleteActivity = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this activity?')) {
+      return;
+    }
+
+    try {
+      await ActivityService.deleteActivity(id);
+      setActivities(activities.filter(a => a.id !== id));
+    } catch (err) {
+      console.error('Error deleting activity:', err);
+      alert('Failed to delete activity');
+    }
+  };
+
+  // Handle draft toggle
+  const handleToggleDraft = async (id: string, currentlyDraft: boolean) => {
+    try {
+      const updatedActivity = await ActivityService.toggleDraftStatus(id, !currentlyDraft);
+      setActivities(activities.map(a =>
+        a.id === id ? updatedActivity : a
+      ));
+    } catch (err) {
+      console.error('Error toggling draft status:', err);
+      alert('Failed to toggle draft status');
+    }
+  };
+
+  // Handle complete toggle
+  const handleToggleComplete = async (id: string) => {
+    if (!confirm('Are you sure you want to mark this activity as completed? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const updatedActivity = await ActivityService.completeActivity(id);
+      setActivities(activities.map(a =>
+        a.id === id ? updatedActivity : a
+      ));
+    } catch (err) {
+      console.error('Error completing activity:', err);
+      alert('Failed to complete activity');
+    }
+  };
+
+  // Handle create/update activity
+  const handleSaveActivity = async (updatedActivity: HoloscopicActivity) => {
+    if (editingActivity) {
+      // Update existing
+      setActivities(activities.map(a =>
+        a.id === updatedActivity.id ? updatedActivity : a
+      ));
+    } else {
+      // Add new
+      setActivities([...activities, updatedActivity]);
+    }
+
+    setShowCreateForm(false);
+    setEditingActivity(null);
+    router.push('/admin');
+  };
+
+  // Get statistics for an activity
+  const getActivityStats = (activityId: string): AnalyticsStats | null => {
+    if (analyticsLoading || !allStats) return null;
+    return allStats.find(stat => stat.id === activityId) || null;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="text-center">Loading...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="text-center text-red-600">{error}</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-900">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Admin Panel</h1>
-            <p className="text-gray-300 mt-2">Manage your collaborative mapping activities</p>
-          </div>
-          <Link
-            href={getMainAppUrl("/")}
-            className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            title="Back to Home"
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="mb-8 flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-gray-900">Holoscopic Admin</h1>
+          <button
+            onClick={() => {
+              sessionStorage.removeItem('adminAuth');
+              setIsAuthenticated(false);
+            }}
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-          </Link>
+            Logout
+          </button>
         </div>
 
-        {/* Error State */}
-        {error && (
-          <div className="bg-red-900 border border-red-700 rounded-lg p-6 mb-8">
-            <div className="flex items-center">
-              <svg className="w-5 h-5 text-red-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              <p className="text-red-400">{error}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Create/Edit Form */}
         {showCreateForm ? (
-          <div className="mb-8">
-            <AdminPanel
-              editingActivity={editingActivity || undefined}
-              onActivityCreated={handleActivityCreated}
-              onActivityUpdated={handleActivityUpdated}
-              onCancel={() => {
-                setShowCreateForm(false);
-                setEditingActivity(null);
-                router.push('/admin');
-              }}
-            />
-          </div>
+          <AdminPanel
+            activity={editingActivity}
+            onSave={handleSaveActivity}
+            onCancel={() => {
+              setShowCreateForm(false);
+              setEditingActivity(null);
+              router.push('/admin');
+            }}
+          />
         ) : (
-          <div className="mb-8">
-            <div className="flex justify-center">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800">Activities</h2>
               <button
                 onClick={() => setShowCreateForm(true)}
-                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
               >
                 Create New Activity
               </button>
             </div>
-          </div>
-        )}
 
-        {/* Activities List */}
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-semibold text-white mb-6">Your Activities</h2>
-          
-          {activities.length === 0 ? (
-            <div className="text-center py-12">
-              <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <h3 className="text-lg font-medium text-gray-400 mb-2">No activities yet</h3>
-              <p className="text-gray-500 mb-6">Create your first collaborative mapping activity to get started.</p>
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                Create Activity
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {activities.map((activity) => (
-                <ActivityRow
-                  key={activity.id}
-                  activity={activity}
-                  analytics={allStats[activity.id]}
-                  onEdit={() => {
-                    setEditingActivity(activity);
-                    setShowCreateForm(true);
-                  }}
-                  onDelete={() => handleDeleteActivity(activity.id)}
-                  onComplete={() => handleCompleteActivity(activity.id)}
-                  onClone={() => handleCloneActivity(activity.id)}
-                  onToggleDraft={() => handleToggleDraft(activity.id, activity.isDraft)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Activity Row Component
-interface ActivityRowProps {
-  activity: HoloscopicActivity;
-  analytics?: AnalyticsStats;
-  onEdit: () => void;
-  onDelete: () => void;
-  onComplete: () => void;
-  onClone: () => void;
-  onToggleDraft: () => void;
-}
-
-function ActivityRow({ activity, analytics, onEdit, onDelete, onComplete, onClone, onToggleDraft }: ActivityRowProps) {
-  const [showDropdown, setShowDropdown] = useState(false);
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-        <div className="flex-1 min-w-0">
-          {/* Status and Title */}
-          <div className="flex items-center gap-3 mb-2 flex-wrap">
-            <div 
-              className={`w-3 h-3 rounded-full flex-shrink-0 ${activity.status === 'active' ? 'bg-teal-300' : 'bg-gray-700'}`}
-              title={activity.status === 'active' ? 'Active' : 'Completed'}
-            />
-            {activity.isDraft && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 flex-shrink-0">
-                Draft
-              </span>
-            )}
-            <h3 className="text-lg font-semibold text-gray-800 truncate">{activity.title}</h3>
-          </div>
-
-          {/* Map Question */}
-          <p className="text-sm text-gray-600 mb-4 line-clamp-2">{activity.mapQuestion}</p>
-
-          {/* Stats */}
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-500">
-            {analytics ? (
-              <>
-                <span className="whitespace-nowrap">{analytics.participants} participants</span>
-                <span className="whitespace-nowrap">{analytics.completedMappings} mappings</span>
-                <span className="whitespace-nowrap">{analytics.comments} comments</span>
-                <span className="whitespace-nowrap">{analytics.emails} emails</span>
-                <span className="whitespace-nowrap">{analytics.votes} votes</span>
-                <span className="whitespace-nowrap">Created {FormattingService.formatTimestamp(activity.createdAt)}</span>
-              </>
+            {activities.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+                No activities yet. Create your first one!
+              </div>
             ) : (
-              <>
-                <span className="whitespace-nowrap">Loading stats...</span>
-                <span className="whitespace-nowrap">Created {FormattingService.formatTimestamp(activity.createdAt)}</span>
-              </>
-            )}
-          </div>
-        </div>
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Title
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        URL
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Stats
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {activities.map(activity => {
+                      const stats = getActivityStats(activity.id);
+                      const mainAppUrl = getMainAppUrl();
 
-        {/* Actions */}
-        <div className="flex gap-2 items-center flex-shrink-0">
-          <Link
-            href={getMainAppUrl(`/${activity.urlName}`)}
-            className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
-          >
-            View
-          </Link>
-          
-          {/* Dropdown Menu */}
-          <div className="relative">
-            <button
-              onClick={() => setShowDropdown(!showDropdown)}
-              className="p-1 text-gray-500 hover:text-gray-700 focus:outline-none"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-              </svg>
-            </button>
-            
-            {showDropdown && (
-              <div className="absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg border border-gray-200 z-10">
-                <div className="py-1">
-                  <button
-                    onClick={() => {
-                      onEdit();
-                      setShowDropdown(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => {
-                      onClone();
-                      setShowDropdown(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Clone
-                  </button>
-                  <button
-                    onClick={() => {
-                      onToggleDraft();
-                      setShowDropdown(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    {activity.isDraft ? 'Publish' : 'Set as Draft'}
-                  </button>
-                  {activity.status === 'active' && (
-                    <button
-                      onClick={() => {
-                        onComplete();
-                        setShowDropdown(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Complete
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      onDelete();
-                      setShowDropdown(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                  >
-                    Delete
-                  </button>
-                </div>
+                      return (
+                        <tr key={activity.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {activity.title}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              Created {FormattingService.formatTimestamp(activity.createdAt)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Link
+                              href={`${mainAppUrl}/${activity.urlName}`}
+                              target="_blank"
+                              className="text-sm text-blue-600 hover:text-blue-800"
+                            >
+                              /{activity.urlName} ↗
+                            </Link>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <div>{stats?.participantCount || 0} participants</div>
+                            <div>{stats?.totalRatings || 0} ratings</div>
+                            <div>{stats?.totalComments || 0} comments</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {activity.isDraft && (
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                Draft
+                              </span>
+                            )}
+                            {activity.status === 'completed' && (
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 ml-2">
+                                Completed
+                              </span>
+                            )}
+                            {!activity.isDraft && activity.status === 'active' && (
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                Active
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            <button
+                              onClick={() => {
+                                setEditingActivity(activity);
+                                setShowCreateForm(true);
+                                router.push(`/admin?activity=${activity.id}`);
+                              }}
+                              className="text-indigo-600 hover:text-indigo-900"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleToggleDraft(activity.id, activity.isDraft || false)}
+                              className="text-yellow-600 hover:text-yellow-900"
+                            >
+                              {activity.isDraft ? 'Publish' : 'Draft'}
+                            </button>
+                            {activity.status !== 'completed' && (
+                              <button
+                                onClick={() => handleToggleComplete(activity.id)}
+                                className="text-green-600 hover:text-green-900"
+                              >
+                                Complete
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteActivity(activity.id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
+// Main component with Suspense wrapper
 export default function AdminPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white">Loading admin panel...</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="text-center">Loading admin panel...</div>
       </div>
     }>
       <AdminContent />
