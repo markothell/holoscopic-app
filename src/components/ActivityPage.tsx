@@ -1,0 +1,723 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { HoloscopicActivity, Rating, Comment } from '@/models/Activity';
+import { ActivityService } from '@/services/activityService';
+import { webSocketService } from '@/services/websocketService';
+import { ValidationService } from '@/utils/validation';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
+import CommentSection from './CommentSection';
+import ResultsView from './ResultsView';
+import SliderQuestions from './SliderQuestions';
+import Image from 'next/image';
+
+interface ActivityPageProps {
+  activityId: string;
+}
+
+export default function ActivityPage({ activityId }: ActivityPageProps) {
+  const [activity, setActivity] = useState<HoloscopicActivity | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [, setIsConnected] = useState(false);
+  const [, setIsReconnecting] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // User state
+  const [userId, setUserId] = useState<string>('');
+  const [username, setUsername] = useState<string>('');
+  const [userRating, setUserRating] = useState<Rating | null>(null);
+  const [userComment, setUserComment] = useState<Comment | null>(null);
+  const [userObjectName, setUserObjectName] = useState<string>('');
+  // const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  
+  // Ref for results section
+  const resultsRef = useRef<HTMLDivElement>(null);
+  
+  // Current screen for mobile navigation
+  const [currentScreen, setCurrentScreen] = useState(0);
+
+  // Navigation functions
+  const navigateToScreen = (screenIndex: number) => {
+    const screens = ['', 'object-name-screen', 'question1-screen', 'question2-screen', 'comment-screen', 'results-screen'];
+    const targetId = screens[screenIndex];
+
+    if (targetId) {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    setCurrentScreen(screenIndex);
+  };
+  
+  // Swipe gesture setup
+  const swipeRef = useSwipeGesture({
+    onSwipeUp: () => {
+      if (currentScreen < 5) {
+        navigateToScreen(currentScreen + 1);
+      }
+    },
+    onSwipeDown: () => {
+      if (currentScreen > 0) {
+        navigateToScreen(currentScreen - 1);
+      }
+    },
+    minDistance: 50,
+    maxTime: 300
+  });
+
+  // Initialize user session
+  useEffect(() => {
+    const storedUserId = localStorage.getItem('userId');
+    const storedUsername = localStorage.getItem('username');
+    const storedObjectName = localStorage.getItem(`objectName_${activityId}`);
+    
+    if (storedUserId && storedUsername) {
+      setUserId(storedUserId);
+      setUsername(storedUsername);
+    } else {
+      // Generate new user session
+      const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const newUsername = ValidationService.generateRandomUsername();
+      
+      localStorage.setItem('userId', newUserId);
+      localStorage.setItem('username', newUsername);
+      
+      setUserId(newUserId);
+      setUsername(newUsername);
+    }
+    
+    // Load object name for this specific activity
+    if (storedObjectName) {
+      setUserObjectName(storedObjectName);
+    }
+  }, [activityId]);
+
+  // Load activity data
+  useEffect(() => {
+    const loadActivity = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const activityData = await ActivityService.getActivity(activityId);
+        setActivity(activityData);
+        
+        // Check if user has already submitted
+        const existingRating = activityData.ratings.find(r => r.userId === userId);
+        const existingComment = activityData.comments.find(c => c.userId === userId);
+        
+        if (existingRating) {
+          setUserRating(existingRating);
+        }
+        if (existingComment) {
+          setUserComment(existingComment);
+        }
+        
+        // setHasSubmitted(!!existingRating || !!existingComment);
+      } catch (err) {
+        setError('Failed to load activity. Please try again.');
+        console.error('Error loading activity:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (activityId && userId) {
+      loadActivity();
+    }
+  }, [activityId, userId]);
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    const initializeWebSocket = async () => {
+      if (!activityId || !userId || !username) return;
+
+      try {
+        setIsReconnecting(true);
+        await webSocketService.connect(activityId, userId, username);
+        setIsConnected(true);
+        
+        // Join activity as participant
+        await ActivityService.joinActivity(activityId, userId, username);
+      } catch (err) {
+        console.error('WebSocket connection failed:', err);
+        setIsConnected(false);
+      } finally {
+        setIsReconnecting(false);
+      }
+    };
+
+    initializeWebSocket();
+
+    return () => {
+      webSocketService.disconnect();
+    };
+  }, [activityId, userId, username]);
+
+  // Set up WebSocket event listeners
+  useEffect(() => {
+    // Rating events
+    webSocketService.on('rating_added', ({ rating }) => {
+      setActivity(prev => {
+        if (!prev) return null;
+        
+        const updatedRatings = prev.ratings.filter(r => r.userId !== rating.userId);
+        updatedRatings.push(rating);
+        
+        return {
+          ...prev,
+          ratings: updatedRatings
+        };
+      });
+      
+      if (rating.userId === userId) {
+        setUserRating(rating);
+      }
+    });
+
+    // Comment events
+    webSocketService.on('comment_added', ({ comment }) => {
+      setActivity(prev => {
+        if (!prev) return null;
+        
+        // Check if comment already exists (avoid duplicates)
+        const existingCommentIndex = prev.comments.findIndex(c => 
+          c.userId === comment.userId && c.text === comment.text
+        );
+        
+        if (existingCommentIndex >= 0) {
+          // Update existing comment
+          const updatedComments = [...prev.comments];
+          updatedComments[existingCommentIndex] = comment;
+          return {
+            ...prev,
+            comments: updatedComments
+          };
+        } else {
+          // Add new comment (replacing any old comment from same user)
+          const updatedComments = prev.comments.filter(c => c.userId !== comment.userId);
+          updatedComments.push(comment);
+          return {
+            ...prev,
+            comments: updatedComments
+          };
+        }
+      });
+      
+      if (comment.userId === userId) {
+        setUserComment(comment);
+      }
+    });
+
+    // Comment update events (when user changes position and comment quadrant changes)
+    webSocketService.on('comment_updated', ({ comment }) => {
+      setActivity(prev => {
+        if (!prev) return prev;
+        
+        // Update the comment with new quadrant information
+        const updatedComments = prev.comments.map(c => 
+          c.id === comment.id ? comment : c
+        );
+        
+        return {
+          ...prev,
+          comments: updatedComments
+        };
+      });
+      
+      if (comment.userId === userId) {
+        setUserComment(comment);
+      }
+    });
+
+    // Comment vote events
+    webSocketService.on('comment_voted', ({ comment }) => {
+      setActivity(prev => {
+        if (!prev) return prev;
+        
+        // Update the comment with new vote count
+        const updatedComments = prev.comments.map(c => 
+          c.id === comment.id ? comment : c
+        );
+        
+        return {
+          ...prev,
+          comments: updatedComments
+        };
+      });
+    });
+
+    // Participant events
+    webSocketService.on('participant_joined', ({ participant }) => {
+      setActivity(prev => {
+        if (!prev) return null;
+        
+        const updatedParticipants = prev.participants.filter(p => p.id !== participant.id);
+        updatedParticipants.push(participant);
+        
+        return {
+          ...prev,
+          participants: updatedParticipants
+        };
+      });
+    });
+
+    webSocketService.on('participant_left', ({ participantId }) => {
+      setActivity(prev => {
+        if (!prev) return null;
+        
+        return {
+          ...prev,
+          participants: prev.participants.filter(p => p.id !== participantId)
+        };
+      });
+    });
+
+    return () => {
+      webSocketService.off('rating_added');
+      webSocketService.off('comment_added');
+      webSocketService.off('comment_voted');
+      webSocketService.off('participant_joined');
+      webSocketService.off('participant_left');
+    };
+  }, [userId]);
+
+  // Handle rating submission
+  const handleRatingSubmit = async (position: { x: number; y: number }) => {
+    if (!activity || !userId || !username) return;
+
+    try {
+      // Submit via API only - WebSocket will broadcast the result
+      await ActivityService.submitRating(activity.id, userId, position, userObjectName);
+      
+    } catch (err) {
+      console.error('Error submitting rating:', err);
+      // Continue - WebSocket might still work
+    }
+  };
+
+  // Handle comment submission
+  const handleCommentSubmit = async (text: string) => {
+    if (!activity || !userId || !username || isSubmitting) return;
+
+    setIsSubmitting(true);
+    
+    try {
+      // Submit via API only - WebSocket will broadcast the result
+      await ActivityService.submitComment(activity.id, userId, text, userObjectName);
+      
+      // Navigate to results screen after successful submission
+      navigateToScreen(4);
+      
+      // setHasSubmitted(true);
+    } catch (err) {
+      console.error('Error submitting comment:', err);
+      // Handle error - could show toast notification
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle comment voting
+  const handleCommentVote = async (commentId: string) => {
+    if (!activity || !userId) return;
+    
+    try {
+      await ActivityService.voteComment(activity.id, commentId, userId);
+    } catch (err) {
+      console.error('Error voting on comment:', err);
+    }
+  };
+
+
+  // Handle results toggle
+  const handleResultsToggle = () => {
+    setShowResults(!showResults);
+    
+    // Scroll to results section if showing results
+    if (!showResults && resultsRef.current) {
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }, 100);
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white">Loading activity...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-400 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-white mb-2">Error</h2>
+          <p className="text-gray-300 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Activity not found
+  if (!activity) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Activity Not Found</h2>
+          <p className="text-gray-600">The activity you&apos;re looking for doesn&apos;t exist.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50" style={{ minHeight: '-webkit-fill-available' }}>
+      {/* Fixed Logo - No Text */}
+      <div className="fixed top-4 sm:top-8 left-4 sm:left-8 z-50">
+        <a href="http://holoscopic.io" className="hover:opacity-80 transition-opacity">
+          <Image
+            src="/holoLogo_dark.svg"
+            alt="Holoscopic Logo"
+            width={40}
+            height={40}
+            className="sm:w-12 sm:h-12"
+          />
+        </a>
+      </div>
+
+      {/* Scroll Container with Swipe Support */}
+      <div ref={swipeRef} className="relative touch-pan-y">
+        {/* Screen 1: Activity Entry with Visual Summary */}
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 text-white relative px-4">
+
+          <div className="z-10 max-w-4xl w-full">
+            {/* Activity Title - Underlined */}
+            <h1 className="text-4xl sm:text-6xl font-bold mb-6 text-white text-center">
+              {activity.title}
+            </h1>
+
+
+            {/* Description and Link Box */}
+            {(activity.preamble || activity.wikiLink) && (
+              <div className="bg-white/10 rounded-lg p-6 backdrop-blur-sm mt-8 mx-auto w-full max-w-[532px] sm:w-[532px]">
+                {activity.preamble && (
+                  <p className="text-white/90 text-center mb-4">
+                    {activity.preamble}
+                  </p>
+                )}
+                {activity.wikiLink && (
+                  <p className="text-center">
+                    <a href={activity.wikiLink} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">
+                      Source and discussion on wiki →
+                    </a>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Visual Summary Section */}
+            <div className="flex flex-col sm:flex-row gap-8 justify-center items-start mt-8">
+              {/* 4 Questions Box */}
+              <div className="bg-white/10 rounded-lg p-6 backdrop-blur-sm w-full max-w-[532px] sm:w-[250px]">
+                <h2 className="text-xl font-semibold mb-4 text-center">4 Questions</h2>
+                <button
+                  onClick={() => activity.status === 'completed' ? navigateToScreen(5) : navigateToScreen(1)}
+                  className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
+                >
+                  Answer Questions
+                </button>
+              </div>
+
+              {/* Simplified Grid Preview */}
+              <div className="bg-white/10 rounded-lg p-6 backdrop-blur-sm w-full max-w-[532px] sm:w-[250px]">
+                <h2 className="text-xl font-semibold mb-4 text-center">1 Map</h2>
+                <div className="relative w-[200px] h-[200px] mx-auto">
+                  {/* Professional Axes using arrowAx.svg */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <img
+                      src="/arrowAx.svg"
+                      alt="Axis arrows"
+                      className="w-full h-full opacity-90"
+                      style={{ filter: 'brightness(1.1)' }}
+                    />
+                  </div>
+
+                  {/* X-axis label */}
+                  <div className="absolute transform -translate-y-1/2" style={{ top: '50%', left: '55%' }}>
+                    <span className="text-white/90 text-xs font-semibold bg-slate-800 bg-opacity-95 px-2 py-1 rounded shadow-sm">
+                      {activity.xAxis.label}
+                    </span>
+                  </div>
+
+                  {/* Y-axis label */}
+                  <div
+                    className="absolute transform -translate-x-1/2 -translate-y-1/2 -rotate-90"
+                    style={{ left: '50%', top: '25%', transformOrigin: 'center' }}
+                  >
+                    <span className="text-white/90 text-xs font-semibold bg-slate-800 bg-opacity-95 px-2 py-1 rounded whitespace-nowrap shadow-sm">
+                      {activity.yAxis.label}
+                    </span>
+                  </div>
+
+                </div>
+                <button
+                  onClick={() => navigateToScreen(5)}
+                  className="mt-4 w-full px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors"
+                >
+                  View Map
+                </button>
+              </div>
+            </div>
+
+            {/* Completed Activity Notice */}
+            {activity.status === 'completed' && (
+              <div className="bg-yellow-900 border border-yellow-700 rounded-lg px-4 py-3 mt-8 max-w-2xl mx-auto">
+                <p className="text-yellow-200 text-center">
+                  This activity is closed. View the completed map.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Screen 2: Object Name Input */}
+        <div id="object-name-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
+          
+          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-2xl mx-auto px-4 pb-24">
+            <div className="w-full max-w-3xl mx-auto">
+              <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">Step 1</p>
+              <h2 className="text-white text-4xl sm:text-6xl font-bold text-left leading-tight mb-4">
+                {activity.objectNameQuestion || "Name something that represents your perspective"}
+              </h2>
+              <p className="text-gray-300 text-lg mb-6 text-left">
+                Choose a name that will appear with your responses (max 25 characters)
+              </p>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  value={userObjectName}
+                  onChange={(e) => {
+                    const newObjectName = e.target.value.slice(0, 25);
+                    setUserObjectName(newObjectName);
+                    localStorage.setItem(`objectName_${activityId}`, newObjectName);
+                  }}
+                  className="w-full px-6 py-4 text-xl bg-white/10 border-2 border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white/60 transition-colors pr-16"
+                  placeholder="Enter your object name..."
+                  maxLength={25}
+                />
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-400">
+                  {userObjectName.length}/25
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Navigation Arrow */}
+          <button 
+            onClick={() => navigateToScreen(2)}
+            className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2 safe-area-inset-bottom"
+            disabled={!userObjectName.trim()}
+          >
+            <div className="flex flex-col items-center">
+              <img 
+                src="/nextArrowsUp.svg" 
+                alt="Next" 
+                className={`w-16 h-16 sm:w-24 sm:h-24 ${!userObjectName.trim() ? 'opacity-30' : ''}`}
+              />
+            </div>
+          </button>
+        </div>
+
+        {/* Screen 3: Question 1 */}
+        <div id="question1-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
+          
+          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4 pb-24">
+            <SliderQuestions
+              activity={activity}
+              onRatingSubmit={handleRatingSubmit}
+              userRating={userRating || undefined}
+              showOnlyX={true}
+              stepLabel="Step 2"
+            />
+          </div>
+          
+          {/* Navigation Arrow */}
+          <button 
+            onClick={() => navigateToScreen(3)}
+            className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2 safe-area-inset-bottom"
+          >
+            <div className="flex flex-col items-center">
+              <img 
+                src="/nextArrowsUp.svg" 
+                alt="Next" 
+                className="w-16 h-16 sm:w-24 sm:h-24"
+              />
+            </div>
+          </button>
+        </div>
+
+        {/* Screen 4: Question 2 */}
+        <div id="question2-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
+          
+          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4 pb-24">
+            <SliderQuestions
+              activity={activity}
+              onRatingSubmit={handleRatingSubmit}
+              userRating={userRating || undefined}
+              showOnlyY={true}
+              stepLabel="Step 3"
+            />
+          </div>
+          
+          {/* Navigation Arrow */}
+          <button 
+            onClick={() => navigateToScreen(4)}
+            className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-gray-300 transition-all duration-200 hover:-translate-y-2 safe-area-inset-bottom"
+          >
+            <div className="flex flex-col items-center">
+              <img 
+                src="/nextArrowsUp.svg" 
+                alt="Next" 
+                className="w-16 h-16 sm:w-24 sm:h-24"
+              />
+            </div>
+          </button>
+        </div>
+
+        {/* Screen 5: Comment */}
+        <div id="comment-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
+          
+          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4 pb-24">
+            <div className="text-left mb-6 sm:mb-8 w-full max-w-[600px]">
+              <p className="text-base sm:text-lg text-gray-300 mb-2">Step 4: Answer the question:</p>
+              <h2 className="text-4xl sm:text-6xl font-bold text-white mb-6 sm:mb-8">
+                {activity.commentQuestion}
+              </h2>
+            </div>
+            
+            <div className="bg-slate-600 rounded-lg shadow-lg p-4 sm:p-6 lg:p-8 w-full max-w-[600px]">
+              <CommentSection
+                activity={activity}
+                onCommentSubmit={activity.status === 'completed' ? () => {} : handleCommentSubmit}
+                userComment={userComment || undefined}
+                showAllComments={false}
+                readOnly={activity.status === 'completed'}
+              />
+            </div>
+
+            {/* View Map Button */}
+            <div className="mt-6 text-center">
+              <button
+                onClick={() => navigateToScreen(5)}
+                className="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors"
+              >
+                View Map
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Screen 6: Results (Map) */}
+        <div id="results-screen" className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 relative flex flex-col">
+          
+          <div className="flex-1 flex flex-col pt-16 sm:pt-20 pb-4">
+            <div className="flex-shrink-0 px-4 mb-2 lg:mb-4 mt-12">
+              <div className="text-left max-w-4xl mx-auto">
+                <p className="text-sm sm:text-base text-gray-300 mb-1">Step 5</p>
+                <h2 className="text-xl sm:text-2xl lg:text-4xl xl:text-6xl font-bold text-white">
+                  View map and vote
+                </h2>
+              </div>
+            </div>
+            <div className="flex-1 min-h-0 px-4" ref={resultsRef}>
+              <ResultsView
+                activity={activity}
+                isVisible={true}
+                onToggle={handleResultsToggle}
+                onCommentVote={activity.status === 'completed' ? undefined : handleCommentVote}
+                currentUserId={userId}
+              />
+            </div>
+
+            {/* Answer Questions Button at Bottom */}
+            {activity.status !== 'completed' && (
+              <div className="flex justify-center pb-4">
+                <button
+                  onClick={() => navigateToScreen(1)}
+                  className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
+                >
+                  Answer Questions
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      <style jsx>{`
+        .slider::-webkit-slider-thumb {
+          appearance: none;
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: #3b82f6;
+          border: 2px solid white;
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider::-moz-range-thumb {
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: #3b82f6;
+          border: 2px solid white;
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .slider:focus {
+          outline: none;
+        }
+
+        .slider:focus::-webkit-slider-thumb {
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Mobile keyboard handling */
+        @supports (-webkit-touch-callout: none) {
+          /* iOS Safari */
+          #comment-screen {
+            min-height: -webkit-fill-available;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}

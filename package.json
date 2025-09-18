@@ -1,0 +1,36 @@
+{
+  "name": "holoscopic-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "load-test": "node load-test.js",
+    "load-test-production": "API_BASE_URL=https://we-all-explain-socket-server.onrender.com node load-test.js"
+  },
+  "dependencies": {
+    "@auth/mongodb-adapter": "^3.10.0",
+    "axios": "^1.10.0",
+    "mongodb": "^6.19.0",
+    "mongoose": "^8.16.2",
+    "next": "15.3.5",
+    "next-auth": "^4.24.11",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "socket.io-client": "^4.8.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.5",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
