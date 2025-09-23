@@ -167,8 +167,7 @@ function AdminContent() {
       // Clear user data
       participants: [],
       ratings: [],
-      comments: [],
-      emails: []
+      comments: []
     };
 
     // Remove timestamps so they get regenerated
