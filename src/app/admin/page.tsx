@@ -155,6 +155,31 @@ function AdminContent() {
     }
   };
 
+  // Handle activity duplication
+  const handleDuplicateActivity = (activity: HoloscopicActivity) => {
+    // Create a duplicate with a new URL name
+    const duplicatedActivity: Partial<HoloscopicActivity> = {
+      ...activity,
+      id: '', // Clear ID so a new one will be generated
+      urlName: `${activity.urlName}-copy-${Date.now()}`, // Unique URL name
+      title: `${activity.title} (Copy)`,
+      isDraft: true, // Start as draft
+      // Clear user data
+      participants: [],
+      ratings: [],
+      comments: [],
+      emails: []
+    };
+
+    // Remove timestamps so they get regenerated
+    delete duplicatedActivity.createdAt;
+    delete duplicatedActivity.updatedAt;
+
+    // Set this as the editing activity and show the form
+    setEditingActivity(duplicatedActivity as HoloscopicActivity);
+    setShowCreateForm(true);
+  };
+
   // Handle draft toggle
   const handleToggleDraft = async (id: string, currentlyDraft: boolean) => {
     try {
@@ -245,7 +270,7 @@ function AdminContent() {
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center">
+          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
             <Image
               src="/holoLogo_dark.svg"
               alt="Holoscopic Logo"
@@ -254,7 +279,7 @@ function AdminContent() {
               className="mr-2 sm:mr-3 sm:w-10 sm:h-10"
             />
             <h1 className="text-2xl sm:text-3xl font-bold text-white">Holoscopic Admin</h1>
-          </div>
+          </Link>
           <button
             onClick={() => {
               sessionStorage.removeItem('adminAuth');
@@ -369,6 +394,12 @@ function AdminContent() {
                             </button>
                           )}
                           <button
+                            onClick={() => handleDuplicateActivity(activity)}
+                            className="px-3 py-1 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded"
+                          >
+                            Duplicate
+                          </button>
+                          <button
                             onClick={() => handleDeleteActivity(activity.id)}
                             className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
                           >
@@ -473,6 +504,12 @@ function AdminContent() {
                                     Complete
                                   </button>
                                 )}
+                                <button
+                                  onClick={() => handleDuplicateActivity(activity)}
+                                  className="text-purple-400 hover:text-purple-300"
+                                >
+                                  Duplicate
+                                </button>
                                 <button
                                   onClick={() => handleDeleteActivity(activity.id)}
                                   className="text-red-400 hover:text-red-300"
