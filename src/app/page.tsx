@@ -21,18 +21,18 @@ export default function HomePage() {
 
         {/* Main Content - In dark blue box */}
         <div className="bg-[#2a3b55] rounded-2xl py-4 md:py-8 lg:py-10 px-8 lg:px-12 mb-6 md:mb-8 lg:mb-10 max-[700px]:w-full">
-          <h2 className="text-white font-light text-xl max-[450px]:text-lg min-[451px]:max-[700px]:text-2xl min-[701px]:text-[50px] leading-tight min-[701px]:leading-[1.1] mb-3 min-[701px]:mb-6">
+          <h2 className="text-white font-light text-xl max-[450px]:text-xl min-[451px]:max-[700px]:text-2xl min-[701px]:text-[50px] leading-tight min-[701px]:leading-[1.1] mb-3 min-[701px]:mb-6">
             Group conversations<br/>
             that produce knowledge
           </h2>
-          <p className="text-white/90 text-sm max-[450px]:text-xs min-[451px]:max-[700px]:text-lg min-[701px]:text-2xl font-normal">
+          <p className="text-white/90 text-sm max-[450px]:text-base min-[451px]:max-[700px]:text-lg min-[701px]:text-2xl font-normal">
             about how to have group conversations<br/>
             that advance our collective culture
           </p>
         </div>
 
         {/* Navigation Links - Outside the box */}
-        <div className="flex flex-col max-[700px]:flex-col min-[701px]:flex-row gap-3 max-[700px]:gap-3 min-[701px]:gap-8 justify-center items-center w-full">
+        <div className="flex flex-col max-[450px]:flex-col min-[451px]:flex-row gap-3 max-[450px]:gap-3 min-[451px]:gap-8 justify-center items-center w-full">
           <Link
             href="/admin"
             className="text-white hover:text-gray-200 text-lg max-[700px]:text-base min-[701px]:text-xl font-light underline underline-offset-4 text-center"
