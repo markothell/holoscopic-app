@@ -8,7 +8,7 @@ import { HoloscopicActivity } from '@/models/Activity';
 import { FormattingService } from '@/utils/formatting';
 import { useAllAnalytics } from '@/hooks/useAnalytics';
 
-export default function CommunityPage() {
+export default function MapsPage() {
   const [activities, setActivities] = useState<HoloscopicActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +62,7 @@ export default function CommunityPage() {
               height={40}
               className="mr-3"
             />
-            <h1 className="text-3xl font-bold text-white">Holoscopic Maps</h1>
+            <h1 className="text-3xl font-bold text-white">Maps</h1>
           </Link>
         </div>
 
@@ -119,8 +119,13 @@ export default function CommunityPage() {
                       </div>
                     )}
                   </div>
-                  {activity.status === 'completed' && (
+                  {activity.status === 'active' && (
                     <span className="inline-block mt-3 px-2 py-1 text-xs font-semibold rounded-full bg-green-900 text-green-300">
+                      Open
+                    </span>
+                  )}
+                  {activity.status === 'completed' && (
+                    <span className="inline-block mt-3 px-2 py-1 text-xs font-semibold rounded-full bg-red-900 text-red-300">
                       Completed
                     </span>
                   )}

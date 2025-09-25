@@ -211,14 +211,22 @@ function AdminContent() {
 
   // Handle create/update activity
   const handleSaveActivity = async (updatedActivity: HoloscopicActivity) => {
-    if (editingActivity) {
-      // Update existing
-      setActivities(activities.map(a =>
-        a.id === updatedActivity.id ? updatedActivity : a
-      ));
-    } else {
-      // Add new
-      setActivities([...activities, updatedActivity]);
+    // Reload activities from server to ensure we have the latest data
+    try {
+      const activitiesData = await ActivityService.getActivities();
+      setActivities(activitiesData);
+    } catch (err) {
+      console.error('Error reloading activities:', err);
+      // Fallback to local update if reload fails
+      if (editingActivity && editingActivity.id) {
+        // Update existing
+        setActivities(activities.map(a =>
+          a.id === updatedActivity.id ? updatedActivity : a
+        ));
+      } else {
+        // Add new
+        setActivities([...activities, updatedActivity]);
+      }
     }
 
     setShowCreateForm(false);
@@ -277,7 +285,7 @@ function AdminContent() {
               height={32}
               className="mr-2 sm:mr-3 sm:w-10 sm:h-10"
             />
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Holoscopic Admin</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Admin</h1>
           </Link>
           <button
             onClick={() => {
@@ -347,13 +355,13 @@ function AdminContent() {
                               </span>
                             )}
                             {activity.status === 'completed' && (
-                              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-900 text-green-300">
+                              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-900 text-red-300">
                                 Completed
                               </span>
                             )}
                             {!activity.isDraft && activity.status === 'active' && (
-                              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-900 text-blue-300">
-                                Active
+                              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-900 text-green-300">
+                                Open
                               </span>
                             )}
                           </div>
@@ -468,13 +476,13 @@ function AdminContent() {
                                   </span>
                                 )}
                                 {activity.status === 'completed' && (
-                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-300 ml-2">
+                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-900 text-red-300 ml-2">
                                     Completed
                                   </span>
                                 )}
                                 {!activity.isDraft && activity.status === 'active' && (
-                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-900 text-blue-300">
-                                    Active
+                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-300">
+                                    Open
                                   </span>
                                 )}
                               </td>

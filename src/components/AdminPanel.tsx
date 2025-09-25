@@ -110,14 +110,14 @@ export default function AdminPanel({
     setSubmitError(null);
 
     try {
-      if (editingActivity) {
-        // Update existing activity
+      if (editingActivity && editingActivity.id) {
+        // Update existing activity (only if it has a valid ID)
         console.log('Updating existing activity:', editingActivity.id);
         const updatedActivity = await ActivityService.updateActivity(editingActivity.id, formData);
         console.log('Activity updated successfully:', updatedActivity);
         onActivityUpdated?.(updatedActivity);
       } else {
-        // Create new activity
+        // Create new activity (for new activities or duplicates without ID)
         console.log('Creating new activity...');
         const newActivity = await ActivityService.createActivity(formData);
         console.log('Activity created successfully:', newActivity);
@@ -138,18 +138,20 @@ export default function AdminPanel({
 
   // Handle sync starter data
   const handleSyncStarterData = async () => {
-    if (!editingActivity) {
-      console.error('No editing activity found');
+    if (!editingActivity || !editingActivity.id) {
+      console.error('No editing activity with valid ID found');
+      setSyncMessage('Please save the activity first before syncing starter data');
+      setTimeout(() => setSyncMessage(null), 3000);
       return;
     }
-    
+
     setIsSyncing(true);
     setSyncMessage(null);
-    
+
     try {
       // First save the current form data (including starter data)
       await ActivityService.updateActivity(editingActivity.id, formData);
-      
+
       // Then sync the starter data to database
       const updatedActivity = await ActivityService.syncStarterData(editingActivity.id);
       setSyncMessage('Starter data synced successfully!');
