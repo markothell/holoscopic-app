@@ -37,6 +37,7 @@ export default function AdminPanel({
     wikiLink: '',
     starterData: '',
     votesPerUser: null,
+    maxEntries: 1,
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -65,6 +66,7 @@ export default function AdminPanel({
         wikiLink: editingActivity.wikiLink || '',
         starterData: editingActivity.starterData || '',
         votesPerUser: editingActivity.votesPerUser ?? null,
+        maxEntries: editingActivity.maxEntries ?? 1,
       };
       
       setFormData(formValues);
@@ -532,6 +534,47 @@ export default function AdminPanel({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Multi-Entry Configuration */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-gray-700">Entry Slots per User</h3>
+            <p className="text-sm text-gray-600">Allow users to submit multiple entries in this activity</p>
+            <div className="flex gap-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="maxEntries"
+                  value="1"
+                  checked={Number(formData.maxEntries) === 1}
+                  onChange={(e) => setFormData(prev => ({ ...prev, maxEntries: Number(e.target.value) }))}
+                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">1 entry</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="maxEntries"
+                  value="2"
+                  checked={Number(formData.maxEntries) === 2}
+                  onChange={(e) => setFormData(prev => ({ ...prev, maxEntries: Number(e.target.value) }))}
+                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">2 entries</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="maxEntries"
+                  value="4"
+                  checked={Number(formData.maxEntries) === 4}
+                  onChange={(e) => setFormData(prev => ({ ...prev, maxEntries: Number(e.target.value) }))}
+                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">4 entries</span>
+              </label>
+            </div>
           </div>
 
           {/* Starter Data Configuration */}

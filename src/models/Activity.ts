@@ -33,6 +33,9 @@ export interface HoloscopicActivity {
   // Vote configuration
   votesPerUser?: number | null; // null/undefined = unlimited votes
 
+  // Multi-entry configuration
+  maxEntries?: number; // 1, 2, or 4 entry slots per user
+
   // Activity state
   status: 'active' | 'completed';
   isDraft: boolean;
@@ -59,6 +62,7 @@ export interface Rating {
   userId: string;
   username: string;
   objectName?: string; // User's named object
+  slotNumber?: number; // Entry slot (1-4)
   position: {
     x: number; // 0-1 normalized
     y: number; // 0-1 normalized
@@ -71,6 +75,7 @@ export interface Comment {
   userId: string;
   username: string;
   objectName?: string; // User's named object replaces quadrant name
+  slotNumber?: number; // Entry slot (1-4)
   text: string;
   timestamp: Date;
   votes: CommentVote[];
@@ -130,6 +135,7 @@ export interface ActivityFormData {
   wikiLink?: string; // Optional link to wiki page
   starterData?: string; // JSON string of initial data
   votesPerUser?: number | null; // Vote limit configuration
+  maxEntries?: number; // Multi-entry configuration (1, 2, or 4)
 }
 
 // API response types
@@ -151,7 +157,7 @@ export interface MappingGridProps {
   userRating?: Rating;
   showAllRatings?: boolean;
   hoveredCommentId?: string | null;
-  onDotClick?: (userId: string) => void;
+  onDotClick?: (commentId: string) => void;
   visibleCommentIds?: string[];
 }
 

@@ -133,6 +133,14 @@ const ActivitySchema = new mongoose.Schema({
     min: 0
   },
 
+  // Multi-entry configuration
+  maxEntries: {
+    type: Number,
+    required: false,
+    enum: [1, 2, 4],
+    default: 1
+  },
+
   // Quadrant labels
   quadrants: {
     q1: {
@@ -179,7 +187,7 @@ const ActivitySchema = new mongoose.Schema({
   },
 
   
-  // Participant data
+  // Participant data (one record per user, slots tracked in ratings/comments)
   participants: [{
     id: {
       type: String,
@@ -233,6 +241,13 @@ const ActivitySchema = new mongoose.Schema({
       trim: true,
       maxlength: 25
     },
+    slotNumber: {
+      type: Number,
+      required: false,
+      default: 1,
+      min: 1,
+      max: 4
+    },
     position: {
       x: {
         type: Number,
@@ -274,6 +289,13 @@ const ActivitySchema = new mongoose.Schema({
       required: false,
       trim: true,
       maxlength: 25
+    },
+    slotNumber: {
+      type: Number,
+      required: false,
+      default: 1,
+      min: 1,
+      max: 4
     },
     quadrantName: {
       type: String,
@@ -391,25 +413,26 @@ ActivitySchema.methods.updateParticipantConnection = function(userId, isConnecte
   return Promise.resolve(this);
 };
 
-ActivitySchema.methods.addRating = async function(userId, username, position, objectName) {
+ActivitySchema.methods.addRating = async function(userId, username, position, objectName, slotNumber = 1) {
   const maxRetries = 5;
   let retries = 0;
-  
+
   while (retries < maxRetries) {
     try {
       // Use atomic operations with MongoDB's findOneAndUpdate
       const ratingId = `rating_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+
       const newRating = {
         id: ratingId,
         userId: userId,
         username: username,
         objectName: objectName || '',
+        slotNumber: slotNumber,
         position: position,
         timestamp: new Date()
       };
-      
-      // First, remove all votes cast BY other users ON this user's comment
+
+      // First, remove all votes cast BY other users ON this user's comment for this slot
       // This returns those votes to voters when the user updates their mapping
       await this.constructor.findOneAndUpdate(
         { id: this.id },
@@ -420,16 +443,16 @@ ActivitySchema.methods.addRating = async function(userId, username, position, ob
         },
         {
           arrayFilters: [
-            { 'userComment.userId': userId }
+            { 'userComment.userId': userId, 'userComment.slotNumber': slotNumber }
           ]
         }
       );
 
-      // Update vote counts for this user's comments
+      // Update vote counts for this user's comments for this slot
       const activity = await this.constructor.findOne({ id: this.id });
       if (activity) {
         activity.comments.forEach(comment => {
-          if (comment.userId === userId) {
+          if (comment.userId === userId && comment.slotNumber === slotNumber) {
             comment.voteCount = comment.votes.length;
           }
         });
@@ -440,36 +463,35 @@ ActivitySchema.methods.addRating = async function(userId, username, position, ob
       const updatedDoc = await this.constructor.findOneAndUpdate(
         { id: this.id },
         {
-          $pull: { ratings: { userId: userId } }, // Remove existing rating
+          $pull: { ratings: { userId: userId, slotNumber: slotNumber } }, // Remove existing rating for this slot
           $set: {
             'participants.$[elem].hasSubmitted': true,
-            'participants.$[elem].objectName': objectName || '',
             'comments.$[comment].objectName': objectName || ''
           }
         },
         {
           arrayFilters: [
             { 'elem.id': userId },
-            { 'comment.userId': userId }
+            { 'comment.userId': userId, 'comment.slotNumber': slotNumber }
           ],
           new: true,
           runValidators: true
         }
       );
-      
+
       if (!updatedDoc) {
         throw new Error('Activity not found');
       }
-      
+
       // Add the new rating in a separate update to avoid conflicts
       const finalDoc = await this.constructor.findOneAndUpdate(
         { id: this.id },
         { $push: { ratings: newRating } },
         { new: true }
       );
-      
+
       return finalDoc;
-      
+
     } catch (error) {
       if ((error.name === 'VersionError' || error.code === 11000) && retries < maxRetries - 1) {
         retries++;
@@ -479,34 +501,35 @@ ActivitySchema.methods.addRating = async function(userId, username, position, ob
       throw error;
     }
   }
-  
+
   throw new Error('Failed to update rating after maximum retries');
 };
 
-ActivitySchema.methods.addComment = function(userId, username, text, objectName) {
+ActivitySchema.methods.addComment = function(userId, username, text, objectName, slotNumber = 1) {
   const commentId = `comment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
-  // Remove existing comment from same user
-  this.comments = this.comments.filter(c => c.userId !== userId);
-  
+
+  // Remove existing comment from same user and slot
+  this.comments = this.comments.filter(c => !(c.userId === userId && c.slotNumber === slotNumber));
+
   // Add new comment
   this.comments.push({
     id: commentId,
     userId: userId,
     username: username,
     objectName: objectName || '',
+    slotNumber: slotNumber,
     text: text,
     timestamp: new Date(),
     votes: [],
     voteCount: 0
   });
-  
-  // Update participant submission status
+
+  // Update participant submission status (participant is per user, not per slot)
   const participant = this.participants.find(p => p.id === userId);
   if (participant) {
     participant.hasSubmitted = true;
   }
-  
+
   return this.save();
 };
 

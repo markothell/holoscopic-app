@@ -30,6 +30,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   const [userRating, setUserRating] = useState<Rating | null>(null);
   const [userComment, setUserComment] = useState<Comment | null>(null);
   const [userObjectName, setUserObjectName] = useState<string>('');
+  const [currentSlot, setCurrentSlot] = useState<number>(1);
   // const [hasSubmitted, setHasSubmitted] = useState(false);
 
   
@@ -72,8 +73,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   useEffect(() => {
     const storedUserId = localStorage.getItem('userId');
     const storedUsername = localStorage.getItem('username');
-    const storedObjectName = localStorage.getItem(`objectName_${activityId}`);
-    
+
     if (storedUserId && storedUsername) {
       setUserId(storedUserId);
       setUsername(storedUsername);
@@ -81,19 +81,41 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       // Generate new user session
       const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const newUsername = ValidationService.generateRandomUsername();
-      
+
       localStorage.setItem('userId', newUserId);
       localStorage.setItem('username', newUsername);
-      
+
       setUserId(newUserId);
       setUsername(newUsername);
     }
-    
-    // Load object name for this specific activity
+  }, [activityId]);
+
+  // Load object name for current slot
+  useEffect(() => {
+    const storedObjectName = localStorage.getItem(`objectName_${activityId}_slot${currentSlot}`);
     if (storedObjectName) {
       setUserObjectName(storedObjectName);
+    } else {
+      setUserObjectName('');
     }
-  }, [activityId]);
+  }, [activityId, currentSlot]);
+
+  // Update userRating and userComment when slot changes
+  useEffect(() => {
+    if (!activity || !userId) return;
+
+    // Find rating for current user and slot
+    const slotRating = activity.ratings.find(r =>
+      r.userId === userId && (r.slotNumber || 1) === currentSlot
+    );
+    setUserRating(slotRating || null);
+
+    // Find comment for current user and slot
+    const slotComment = activity.comments.find(c =>
+      c.userId === userId && (c.slotNumber || 1) === currentSlot
+    );
+    setUserComment(slotComment || null);
+  }, [activity, userId, currentSlot]);
 
   // Load activity data
   useEffect(() => {
@@ -163,17 +185,21 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     webSocketService.on('rating_added', ({ rating }) => {
       setActivity(prev => {
         if (!prev) return null;
-        
-        const updatedRatings = prev.ratings.filter(r => r.userId !== rating.userId);
+
+        // Remove old rating for same user and slot
+        const updatedRatings = prev.ratings.filter(r =>
+          !(r.userId === rating.userId && (r.slotNumber || 1) === (rating.slotNumber || 1))
+        );
         updatedRatings.push(rating);
-        
+
         return {
           ...prev,
           ratings: updatedRatings
         };
       });
-      
-      if (rating.userId === userId) {
+
+      // Only update userRating if it's for the current slot
+      if (rating.userId === userId && (rating.slotNumber || 1) === currentSlot) {
         setUserRating(rating);
       }
     });
@@ -182,32 +208,21 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     webSocketService.on('comment_added', ({ comment }) => {
       setActivity(prev => {
         if (!prev) return null;
-        
-        // Check if comment already exists (avoid duplicates)
-        const existingCommentIndex = prev.comments.findIndex(c => 
-          c.userId === comment.userId && c.text === comment.text
+
+        // Remove old comment for same user and slot
+        const updatedComments = prev.comments.filter(c =>
+          !(c.userId === comment.userId && (c.slotNumber || 1) === (comment.slotNumber || 1))
         );
-        
-        if (existingCommentIndex >= 0) {
-          // Update existing comment
-          const updatedComments = [...prev.comments];
-          updatedComments[existingCommentIndex] = comment;
-          return {
-            ...prev,
-            comments: updatedComments
-          };
-        } else {
-          // Add new comment (replacing any old comment from same user)
-          const updatedComments = prev.comments.filter(c => c.userId !== comment.userId);
-          updatedComments.push(comment);
-          return {
-            ...prev,
-            comments: updatedComments
-          };
-        }
+        updatedComments.push(comment);
+
+        return {
+          ...prev,
+          comments: updatedComments
+        };
       });
-      
-      if (comment.userId === userId) {
+
+      // Only update userComment if it's for the current slot
+      if (comment.userId === userId && (comment.slotNumber || 1) === currentSlot) {
         setUserComment(comment);
       }
     });
@@ -216,19 +231,20 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     webSocketService.on('comment_updated', ({ comment }) => {
       setActivity(prev => {
         if (!prev) return prev;
-        
+
         // Update the comment with new quadrant information
-        const updatedComments = prev.comments.map(c => 
+        const updatedComments = prev.comments.map(c =>
           c.id === comment.id ? comment : c
         );
-        
+
         return {
           ...prev,
           comments: updatedComments
         };
       });
-      
-      if (comment.userId === userId) {
+
+      // Only update userComment if it's for the current slot
+      if (comment.userId === userId && (comment.slotNumber || 1) === currentSlot) {
         setUserComment(comment);
       }
     });
@@ -283,7 +299,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       webSocketService.off('participant_joined');
       webSocketService.off('participant_left');
     };
-  }, [userId]);
+  }, [userId, currentSlot]);
 
   // Handle rating submission
   const handleRatingSubmit = async (position: { x: number; y: number }) => {
@@ -291,8 +307,8 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
 
     try {
       // Submit via API only - WebSocket will broadcast the result
-      await ActivityService.submitRating(activity.id, userId, position, userObjectName);
-      
+      await ActivityService.submitRating(activity.id, userId, position, userObjectName, currentSlot);
+
     } catch (err) {
       console.error('Error submitting rating:', err);
       // Continue - WebSocket might still work
@@ -304,14 +320,14 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     if (!activity || !userId || !username || isSubmitting) return;
 
     setIsSubmitting(true);
-    
+
     try {
       // Submit via API only - WebSocket will broadcast the result
-      await ActivityService.submitComment(activity.id, userId, text, userObjectName);
-      
+      await ActivityService.submitComment(activity.id, userId, text, userObjectName, currentSlot);
+
       // Navigate to results screen after successful submission
       navigateToScreen(4);
-      
+
       // setHasSubmitted(true);
     } catch (err) {
       console.error('Error submitting comment:', err);
@@ -507,7 +523,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
 
         {/* Screen 2: Object Name Input */}
         <div id="object-name-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
-          
+
           <div className="flex flex-col items-center justify-center flex-1 w-full max-w-2xl mx-auto px-4 pb-24">
             <div className="w-full max-w-3xl mx-auto">
               <p className="text-base sm:text-lg text-gray-300 mb-2 text-left">Step 1</p>
@@ -518,6 +534,28 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
                 Choose a name that will appear with your responses (max 25 characters)
               </p>
 
+              {/* Slot Selector - Only show if maxEntries > 1 */}
+              {activity.maxEntries && activity.maxEntries > 1 && (
+                <div className="mb-6">
+                  <p className="text-sm text-gray-400 mb-2">Select Entry Slot:</p>
+                  <div className="flex gap-2">
+                    {Array.from({ length: activity.maxEntries }, (_, i) => i + 1).map((slot) => (
+                      <button
+                        key={slot}
+                        onClick={() => setCurrentSlot(slot)}
+                        className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                          currentSlot === slot
+                            ? 'bg-white text-slate-900'
+                            : 'bg-white/10 text-white hover:bg-white/20'
+                        }`}
+                      >
+                        Entry {slot}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="relative">
                 <input
                   type="text"
@@ -525,7 +563,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
                   onChange={(e) => {
                     const newObjectName = e.target.value.slice(0, 25);
                     setUserObjectName(newObjectName);
-                    localStorage.setItem(`objectName_${activityId}`, newObjectName);
+                    localStorage.setItem(`objectName_${activityId}_slot${currentSlot}`, newObjectName);
                   }}
                   className="w-full px-6 py-4 text-xl bg-white/10 border-2 border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white/60 transition-colors pr-16"
                   placeholder="Enter your object name..."

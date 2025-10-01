@@ -30,6 +30,8 @@ export default function CommentSection({
   useEffect(() => {
     if (userComment?.text) {
       setCommentText(userComment.text);
+    } else {
+      setCommentText('');
     }
   }, [userComment]);
 
@@ -178,9 +180,11 @@ export default function CommentSection({
     setValidationError(null);
   };
 
-  // Get user color based on their rating position
+  // Get user color based on their rating position (matching by userId and slotNumber)
   const getUserColor = (comment: Comment) => {
-    const userRating = activity.ratings.find(r => r.userId === comment.userId);
+    const userRating = activity.ratings.find(r =>
+      r.userId === comment.userId && (r.slotNumber || 1) === (comment.slotNumber || 1)
+    );
     if (userRating) {
       const quadrant = ValidationService.getQuadrant(userRating.position);
       return ValidationService.getQuadrantColor(quadrant);

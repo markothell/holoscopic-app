@@ -130,6 +130,7 @@ export class ActivityService {
         wikiLink: formData.wikiLink,
         starterData: formData.starterData,
         votesPerUser: formData.votesPerUser,
+        maxEntries: formData.maxEntries,
         status: 'active',
         participants: [],
         ratings: [],
@@ -205,6 +206,7 @@ export class ActivityService {
         wikiLink: formData.wikiLink,
         starterData: formData.starterData,
         votesPerUser: formData.votesPerUser,
+        maxEntries: formData.maxEntries,
       };
 
       // Only include urlName if it's provided
@@ -282,10 +284,10 @@ export class ActivityService {
   }
 
   // Submit rating for user
-  static async submitRating(activityId: string, userId: string, position: { x: number; y: number }, objectName?: string): Promise<Rating> {
+  static async submitRating(activityId: string, userId: string, position: { x: number; y: number }, objectName?: string, slotNumber: number = 1): Promise<Rating> {
     // Add delay to prevent rapid successive calls
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/activities/${activityId}/rating`, {
         method: 'POST',
@@ -296,6 +298,7 @@ export class ActivityService {
           userId,
           position,
           objectName,
+          slotNumber,
         }),
       });
 
@@ -317,7 +320,7 @@ export class ActivityService {
   }
 
   // Submit comment for user
-  static async submitComment(activityId: string, userId: string, text: string, objectName?: string): Promise<Comment> {
+  static async submitComment(activityId: string, userId: string, text: string, objectName?: string, slotNumber: number = 1): Promise<Comment> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/activities/${activityId}/comment`, {
         method: 'POST',
@@ -328,6 +331,7 @@ export class ActivityService {
           userId,
           text,
           objectName,
+          slotNumber,
         }),
       });
 

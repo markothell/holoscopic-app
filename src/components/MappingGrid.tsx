@@ -45,28 +45,30 @@ export default function MappingGrid({
     return ValidationService.getQuadrantColor(quadrant);
   };
 
-  // Get comment for user
-  const getCommentForUser = (userId: string) => {
-    return activity.comments.find(c => c.userId === userId);
+  // Get comment for user and slot
+  const getCommentForUser = (userId: string, slotNumber?: number) => {
+    return activity.comments.find(c =>
+      c.userId === userId && (c.slotNumber || 1) === (slotNumber || 1)
+    );
   };
 
   // Check if rating should be highlighted
   const isRatingHighlighted = (rating: Rating): boolean => {
     if (!hoveredCommentId) return false;
-    const comment = getCommentForUser(rating.userId);
+    const comment = getCommentForUser(rating.userId, rating.slotNumber);
     return comment?.id === hoveredCommentId;
   };
 
   // Check if rating should be visible (based on comment filters)
   const isRatingVisible = (rating: Rating): boolean => {
     if (visibleCommentIds.length === 0) return true;
-    const comment = getCommentForUser(rating.userId);
+    const comment = getCommentForUser(rating.userId, rating.slotNumber);
     return comment ? visibleCommentIds.includes(comment.id) : false;
   };
 
   // Get dot size based on vote count (proportional to max votes in activity)
   const getDotSize = (rating: Rating): { width: string; height: string } => {
-    const comment = getCommentForUser(rating.userId);
+    const comment = getCommentForUser(rating.userId, rating.slotNumber);
     const commentVotes = comment?.voteCount || 0;
     const mindiam = 12; // Base size for 0 votes
     const maxdiam = 30; // Max size
@@ -87,7 +89,10 @@ export default function MappingGrid({
   const handleRatingClick = (rating: Rating, event: React.MouseEvent) => {
     event.stopPropagation();
     if (onDotClick) {
-      onDotClick(rating.userId);
+      const comment = getCommentForUser(rating.userId, rating.slotNumber);
+      if (comment) {
+        onDotClick(comment.id);
+      }
     }
   };
 
@@ -173,11 +178,11 @@ export default function MappingGrid({
 
           {/* Existing Ratings */}
           {showAllRatings && activity.ratings.filter(isRatingVisible).map((rating) => {
-            const comment = getCommentForUser(rating.userId);
+            const comment = getCommentForUser(rating.userId, rating.slotNumber);
             const highlighted = isRatingHighlighted(rating);
             const hasComment = !!comment;
             const dotSize = getDotSize(rating);
-            
+
             return (
               <div
                 key={rating.id}

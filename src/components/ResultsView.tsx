@@ -24,23 +24,21 @@ export default function ResultsView({
   }, []);
 
   // Handle map dot click
-  const handleMapDotClick = useCallback((userId: string) => {
-    // Find the comment for this user
-    const comment = activity.comments.find(c => c.userId === userId);
-    if (comment && visibleCommentIds.includes(comment.id)) {
-      setSelectedCommentId(comment.id);
+  const handleMapDotClick = useCallback((commentId: string) => {
+    // Use the commentId directly (now passed from MappingGrid)
+    if (visibleCommentIds.includes(commentId)) {
+      setSelectedCommentId(commentId);
       // Scroll to comment will be handled by CommentSection
     }
-  }, [activity.comments, visibleCommentIds]);
+  }, [visibleCommentIds]);
 
   // Handle mobile map dot tap
-  const handleMobileMapDotTap = useCallback((userId: string) => {
-    // Find the comment for this user
-    const comment = activity.comments.find(c => c.userId === userId);
-    if (comment && visibleCommentIds.includes(comment.id)) {
-      setMobilePopupComment(comment.id);
+  const handleMobileMapDotTap = useCallback((commentId: string) => {
+    // Use the commentId directly (now passed from MappingGrid)
+    if (visibleCommentIds.includes(commentId)) {
+      setMobilePopupComment(commentId);
     }
-  }, [activity.comments, visibleCommentIds]);
+  }, [visibleCommentIds]);
 
   // Handle visible comments change from CommentSection
   const handleVisibleCommentsChange = useCallback((commentIds: string[]) => {
