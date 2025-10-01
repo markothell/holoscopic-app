@@ -343,6 +343,62 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
+// Clear a slot (delete rating and comment for specific user + slot)
+// IMPORTANT: Must be before generic DELETE /:id route
+router.delete('/:id/slot', async (req, res) => {
+  try {
+    const { userId, slotNumber } = req.query;
+
+    if (!userId || !slotNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'User ID and slot number are required'
+      });
+    }
+
+    const slotNum = Number(slotNumber);
+
+    const activity = await Activity.findOne({ id: req.params.id });
+
+    if (!activity) {
+      return res.status(404).json({
+        success: false,
+        error: 'Activity not found'
+      });
+    }
+
+    // Remove rating for this user and slot
+    activity.ratings = activity.ratings.filter(r =>
+      !(r.userId === userId && (r.slotNumber || 1) === slotNum)
+    );
+
+    // Remove comment for this user and slot
+    activity.comments = activity.comments.filter(c =>
+      !(c.userId === userId && (c.slotNumber || 1) === slotNum)
+    );
+
+    await activity.save();
+
+    // Broadcast update via WebSocket
+    if (io) {
+      io.to(req.params.id).emit('activity_updated', {
+        activity: activity.toObject()
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Slot cleared successfully'
+    });
+  } catch (error) {
+    console.error('Error clearing slot:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear slot'
+    });
+  }
+});
+
 // Delete activity
 router.delete('/:id', async (req, res) => {
   try {

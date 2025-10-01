@@ -117,6 +117,23 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     setUserComment(slotComment || null);
   }, [activity, userId, currentSlot]);
 
+  // Helper function to get slot data
+  const getSlotData = (slotNum: number) => {
+    if (!activity || !userId) return { hasData: false, objectName: '' };
+
+    const rating = activity.ratings.find(r =>
+      r.userId === userId && (r.slotNumber || 1) === slotNum
+    );
+    const comment = activity.comments.find(c =>
+      c.userId === userId && (c.slotNumber || 1) === slotNum
+    );
+
+    return {
+      hasData: !!(rating || comment),
+      objectName: rating?.objectName || comment?.objectName || ''
+    };
+  };
+
   // Load activity data
   useEffect(() => {
     const loadActivity = async () => {
@@ -322,7 +339,13 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     setIsSubmitting(true);
 
     try {
-      // Submit via API only - WebSocket will broadcast the result
+      // If no rating exists for this slot yet, create one at current slider position (center by default)
+      if (!userRating) {
+        const defaultPosition = { x: 0.5, y: 0.5 };
+        await ActivityService.submitRating(activity.id, userId, defaultPosition, userObjectName, currentSlot);
+      }
+
+      // Submit comment via API only - WebSocket will broadcast the result
       await ActivityService.submitComment(activity.id, userId, text, userObjectName, currentSlot);
 
       // Navigate to results screen after successful submission
@@ -340,11 +363,38 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   // Handle comment voting
   const handleCommentVote = async (commentId: string) => {
     if (!activity || !userId) return;
-    
+
     try {
       await ActivityService.voteComment(activity.id, commentId, userId);
     } catch (err) {
       console.error('Error voting on comment:', err);
+    }
+  };
+
+  // Handle clearing a slot
+  const handleClearSlot = async (slotNumber: number) => {
+    if (!activity || !userId) return;
+
+    try {
+      // Clear localStorage for this slot
+      localStorage.removeItem(`objectName_${activityId}_slot${slotNumber}`);
+
+      // Call API to delete rating and comment for this slot
+      await ActivityService.clearSlot(activity.id, userId, slotNumber);
+
+      // Clear local state if we're clearing the current slot
+      if (slotNumber === currentSlot) {
+        setUserObjectName('');
+        setUserRating(null);
+        setUserComment(null);
+      }
+
+      // Reload activity to get updated data
+      const updatedActivity = await ActivityService.getActivity(activity.id);
+      setActivity(updatedActivity);
+    } catch (err) {
+      console.error('Error clearing slot:', err);
+      alert('Failed to clear entry. Please try again.');
     }
   };
 
@@ -538,20 +588,34 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
               {activity.maxEntries && activity.maxEntries > 1 && (
                 <div className="mb-6">
                   <p className="text-sm text-gray-400 mb-2">Select Entry Slot:</p>
-                  <div className="flex gap-2">
-                    {Array.from({ length: activity.maxEntries }, (_, i) => i + 1).map((slot) => (
-                      <button
-                        key={slot}
-                        onClick={() => setCurrentSlot(slot)}
-                        className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                          currentSlot === slot
-                            ? 'bg-white text-slate-900'
-                            : 'bg-white/10 text-white hover:bg-white/20'
-                        }`}
-                      >
-                        Entry {slot}
-                      </button>
-                    ))}
+                  <div className="flex gap-2 flex-wrap">
+                    {Array.from({ length: activity.maxEntries }, (_, i) => i + 1).map((slot) => {
+                      const slotData = getSlotData(slot);
+                      const truncatedName = slotData.objectName.length > 12
+                        ? slotData.objectName.substring(0, 12) + '...'
+                        : slotData.objectName;
+
+                      return (
+                        <button
+                          key={slot}
+                          onClick={() => setCurrentSlot(slot)}
+                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                            currentSlot === slot
+                              ? 'bg-white text-slate-900'
+                              : slotData.hasData
+                                ? 'bg-white/10 text-white hover:bg-white/20 ring-2 ring-white/40'
+                                : 'bg-white/10 text-white hover:bg-white/20'
+                          }`}
+                        >
+                          <div className="flex flex-col items-center">
+                            <span className="text-xs opacity-70">Entry {slot}</span>
+                            {slotData.objectName && (
+                              <span className="text-sm font-semibold">{truncatedName}</span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -573,6 +637,20 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
                   {userObjectName.length}/25
                 </div>
               </div>
+
+              {/* Clear Entry Button - Show if current slot has data */}
+              {getSlotData(currentSlot).hasData && (
+                <button
+                  onClick={async () => {
+                    if (window.confirm(`Clear all data for Entry ${currentSlot}?`)) {
+                      await handleClearSlot(currentSlot);
+                    }
+                  }}
+                  className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded-lg transition-colors text-sm font-medium border border-red-500/40"
+                >
+                  Clear Entry {currentSlot}
+                </button>
+              )}
             </div>
           </div>
           

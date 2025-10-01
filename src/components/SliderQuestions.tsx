@@ -29,6 +29,10 @@ export default function SliderQuestions({
     if (userRating) {
       setXValue(userRating.position.x);
       setYValue(userRating.position.y);
+    } else {
+      // Reset to center when userRating is null (e.g., after clearing slot)
+      setXValue(0.5);
+      setYValue(0.5);
     }
   }, [userRating]);
 

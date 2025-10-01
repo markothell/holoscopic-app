@@ -496,4 +496,26 @@ export class ActivityService {
       throw error;
     }
   }
+
+  // Clear a specific slot (delete rating and comment for userId + slotNumber)
+  static async clearSlot(activityId: string, userId: string, slotNumber: number): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/activities/${activityId}/slot?userId=${userId}&slotNumber=${slotNumber}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to clear slot: ${errorText}`);
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to clear slot');
+      }
+    } catch (error) {
+      console.error('Error clearing slot:', error);
+      throw error;
+    }
+  }
 }
