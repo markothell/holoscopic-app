@@ -36,6 +36,7 @@ export default function AdminPanel({
     preamble: '',
     wikiLink: '',
     starterData: '',
+    votesPerUser: null,
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -63,6 +64,7 @@ export default function AdminPanel({
         preamble: editingActivity.preamble || '',
         wikiLink: editingActivity.wikiLink || '',
         starterData: editingActivity.starterData || '',
+        votesPerUser: editingActivity.votesPerUser ?? null,
       };
       
       setFormData(formValues);
@@ -469,6 +471,66 @@ export default function AdminPanel({
             <p className="text-gray-500 text-xs mt-1">Link to the wiki page for more information about this activity</p>
             {validationErrors.wikiLink && (
               <p className="text-red-600 text-sm mt-1">{validationErrors.wikiLink}</p>
+            )}
+          </div>
+
+          {/* Vote Limit Configuration */}
+          <div className="space-y-3">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.votesPerUser !== null && formData.votesPerUser !== undefined}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setFormData(prev => ({ ...prev, votesPerUser: 1 }));
+                  } else {
+                    setFormData(prev => ({ ...prev, votesPerUser: null }));
+                  }
+                }}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="ml-2 text-sm font-medium text-gray-700">Limit votes per user</span>
+            </label>
+
+            {formData.votesPerUser !== null && formData.votesPerUser !== undefined && (
+              <div className="ml-6 space-y-2">
+                <p className="text-sm text-gray-600">Each user can vote on:</p>
+                <div className="flex gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="votesPerUser"
+                      value="1"
+                      checked={Number(formData.votesPerUser) === 1}
+                      onChange={(e) => setFormData(prev => ({ ...prev, votesPerUser: Number(e.target.value) }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">1 comment</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="votesPerUser"
+                      value="2"
+                      checked={Number(formData.votesPerUser) === 2}
+                      onChange={(e) => setFormData(prev => ({ ...prev, votesPerUser: Number(e.target.value) }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">2 comments</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="votesPerUser"
+                      value="4"
+                      checked={Number(formData.votesPerUser) === 4}
+                      onChange={(e) => setFormData(prev => ({ ...prev, votesPerUser: Number(e.target.value) }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">4 comments</span>
+                  </label>
+                </div>
+              </div>
             )}
           </div>
 

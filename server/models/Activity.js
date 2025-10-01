@@ -124,7 +124,15 @@ const ActivitySchema = new mongoose.Schema({
     maxlength: 200,
     default: ''
   },
-  
+
+  // Vote configuration
+  votesPerUser: {
+    type: Number,
+    required: false,
+    default: null, // null = unlimited votes
+    min: 0
+  },
+
   // Quadrant labels
   quadrants: {
     q1: {
@@ -401,12 +409,39 @@ ActivitySchema.methods.addRating = async function(userId, username, position, ob
         timestamp: new Date()
       };
       
+      // First, remove all votes cast BY other users ON this user's comment
+      // This returns those votes to voters when the user updates their mapping
+      await this.constructor.findOneAndUpdate(
+        { id: this.id },
+        {
+          $pull: {
+            'comments.$[userComment].votes': { userId: { $ne: userId } }
+          }
+        },
+        {
+          arrayFilters: [
+            { 'userComment.userId': userId }
+          ]
+        }
+      );
+
+      // Update vote counts for this user's comments
+      const activity = await this.constructor.findOne({ id: this.id });
+      if (activity) {
+        activity.comments.forEach(comment => {
+          if (comment.userId === userId) {
+            comment.voteCount = comment.votes.length;
+          }
+        });
+        await activity.save();
+      }
+
       // Use findOneAndUpdate for atomic operation
       const updatedDoc = await this.constructor.findOneAndUpdate(
         { id: this.id },
         {
           $pull: { ratings: { userId: userId } }, // Remove existing rating
-          $set: { 
+          $set: {
             'participants.$[elem].hasSubmitted': true,
             'participants.$[elem].objectName': objectName || '',
             'comments.$[comment].objectName': objectName || ''
@@ -480,7 +515,7 @@ ActivitySchema.methods.voteComment = function(commentId, userId, username) {
   if (!comment) {
     throw new Error('Comment not found');
   }
-  
+
   // Check if user already voted
   const existingVote = comment.votes.find(v => v.userId === userId);
   if (existingVote) {
@@ -488,6 +523,14 @@ ActivitySchema.methods.voteComment = function(commentId, userId, username) {
     comment.votes = comment.votes.filter(v => v.userId !== userId);
     comment.voteCount = Math.max(0, comment.voteCount - 1);
   } else {
+    // Check vote limit if configured
+    if (this.votesPerUser !== null && this.votesPerUser !== undefined) {
+      const userVoteCount = this.getUserVoteCount(userId);
+      if (userVoteCount >= this.votesPerUser) {
+        throw new Error(`Vote limit reached. You can only cast ${this.votesPerUser} vote(s).`);
+      }
+    }
+
     // Add new vote
     const voteId = `vote_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     comment.votes.push({
@@ -498,8 +541,28 @@ ActivitySchema.methods.voteComment = function(commentId, userId, username) {
     });
     comment.voteCount = comment.votes.length;
   }
-  
+
   return this.save();
+};
+
+// Helper method to count total votes cast by a user
+ActivitySchema.methods.getUserVoteCount = function(userId) {
+  let voteCount = 0;
+  this.comments.forEach(comment => {
+    if (comment.votes.some(v => v.userId === userId)) {
+      voteCount++;
+    }
+  });
+  return voteCount;
+};
+
+// Helper method to get remaining votes for a user
+ActivitySchema.methods.getRemainingVotes = function(userId) {
+  if (this.votesPerUser === null || this.votesPerUser === undefined) {
+    return null; // Unlimited votes
+  }
+  const used = this.getUserVoteCount(userId);
+  return Math.max(0, this.votesPerUser - used);
 };
 
 ActivitySchema.methods.removeParticipant = function(userId) {

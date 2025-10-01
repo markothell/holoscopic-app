@@ -11,13 +11,14 @@ router.get('/admin', async (req, res) => {
     const activities = await Activity.find({})
       .sort({ createdAt: -1 })
       .select('-__v');
-    
-    // Transform _id to id for frontend compatibility
+
+    // Use the custom id field, not MongoDB's _id
     const transformedActivities = activities.map(activity => {
       const activityObj = activity.toObject();
       return {
         ...activityObj,
-        id: activity._id.toString(),
+        // Keep the custom id field if it exists, otherwise fallback to _id
+        id: activityObj.id || activity._id.toString(),
         // Ensure isDraft field exists with default false for existing activities
         isDraft: activityObj.isDraft !== undefined ? activityObj.isDraft : false
       };
@@ -46,17 +47,18 @@ router.get('/', async (req, res) => {
       .sort({ createdAt: -1 })
       .select('-__v');
     
-    // Transform _id to id for frontend compatibility
+    // Use the custom id field, not MongoDB's _id
     const transformedActivities = activities.map(activity => {
       const activityObj = activity.toObject();
       return {
         ...activityObj,
-        id: activity._id.toString(),
+        // Keep the custom id field if it exists, otherwise fallback to _id
+        id: activityObj.id || activity._id.toString(),
         // Ensure isDraft field exists with default false for existing activities
         isDraft: activityObj.isDraft !== undefined ? activityObj.isDraft : false
       };
     });
-    
+
     res.json({
       success: true,
       data: {
@@ -85,13 +87,13 @@ router.get('/by-url/:urlName', async (req, res) => {
       });
     }
     
-    // Transform _id to id for frontend compatibility
+    // Use the custom id field, not MongoDB's _id
     const activityObj = activity.toObject();
     const transformedActivity = {
       ...activityObj,
-      id: activity._id.toString()
+      id: activityObj.id || activity._id.toString() // Fallback to _id if custom id doesn't exist
     };
-    
+
     res.json({
       success: true,
       data: transformedActivity
@@ -108,7 +110,7 @@ router.get('/by-url/:urlName', async (req, res) => {
 // Get single activity
 router.get('/:id', async (req, res) => {
   try {
-    const activity = await Activity.findById(req.params.id).select('-__v');
+    const activity = await Activity.findOne({ id: req.params.id }).select('-__v');
 
     if (!activity) {
       return res.status(404).json({
@@ -117,11 +119,11 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Transform _id to id for frontend compatibility
+    // Use the custom id field, not MongoDB's _id
     const activityObj = activity.toObject();
     const transformedActivity = {
       ...activityObj,
-      id: activity._id.toString()
+      id: activityObj.id || activity._id.toString() // Fallback to _id if custom id doesn't exist
     };
 
     console.log('Fetched activity by ID - preamble:', transformedActivity.preamble);
@@ -154,7 +156,8 @@ router.post('/', async (req, res) => {
       objectNameQuestion,
       preamble,
       wikiLink,
-      starterData
+      starterData,
+      votesPerUser
     } = req.body;
 
     console.log('Create activity - preamble:', preamble);
@@ -203,6 +206,7 @@ router.post('/', async (req, res) => {
       preamble: preamble ? preamble.trim() : '',
       wikiLink: wikiLink ? wikiLink.trim() : '',
       starterData: starterData ? starterData.trim() : '',
+      votesPerUser: votesPerUser !== null && votesPerUser !== undefined ? Number(votesPerUser) : null,
       status: 'active',
       participants: [],
       ratings: [],
@@ -244,14 +248,14 @@ router.post('/', async (req, res) => {
         console.warn('Failed to process starter data:', e);
       }
     }
-    
-    // Transform _id to id for frontend compatibility
+
+    // Use the custom id field
     const activityObj = savedActivity.toObject();
     const transformedActivity = {
       ...activityObj,
-      id: savedActivity._id.toString()
+      id: activityObj.id || savedActivity._id.toString()
     };
-    
+
     res.status(201).json({
       success: true,
       data: transformedActivity
@@ -268,7 +272,7 @@ router.post('/', async (req, res) => {
 // Update activity
 router.patch('/:id', async (req, res) => {
   try {
-    const activity = await Activity.findById(req.params.id);
+    const activity = await Activity.findOne({ id: req.params.id });
     
     if (!activity) {
       return res.status(404).json({
@@ -278,9 +282,9 @@ router.patch('/:id', async (req, res) => {
     }
     
     // Update allowed fields
-    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'objectNameQuestion', 'preamble', 'wikiLink', 'starterData', 'status'];
+    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'objectNameQuestion', 'preamble', 'wikiLink', 'starterData', 'votesPerUser', 'status'];
     const updates = {};
-    
+
     for (const key of allowedUpdates) {
       if (req.body[key] !== undefined) {
         updates[key] = req.body[key];
@@ -308,14 +312,14 @@ router.patch('/:id', async (req, res) => {
     
     const updatedActivity = await activity.save();
     console.log('Activity after save:', updatedActivity.toObject());
-    
-    // Transform _id to id for frontend compatibility
+
+    // Use the custom id field
     const activityObj = updatedActivity.toObject();
     const transformedActivity = {
       ...activityObj,
-      id: updatedActivity._id.toString()
+      id: activityObj.id || updatedActivity._id.toString()
     };
-    
+
     res.json({
       success: true,
       data: transformedActivity
@@ -332,7 +336,7 @@ router.patch('/:id', async (req, res) => {
 // Delete activity
 router.delete('/:id', async (req, res) => {
   try {
-    const activity = await Activity.findById(req.params.id);
+    const activity = await Activity.findOne({ id: req.params.id });
     
     if (!activity) {
       return res.status(404).json({
@@ -341,7 +345,7 @@ router.delete('/:id', async (req, res) => {
       });
     }
     
-    await Activity.findByIdAndDelete(req.params.id);
+    await Activity.deleteOne({ id: req.params.id });
     
     res.json({
       success: true,
@@ -368,7 +372,7 @@ router.patch('/:id/draft', async (req, res) => {
       });
     }
     
-    const activity = await Activity.findById(req.params.id);
+    const activity = await Activity.findOne({ id: req.params.id });
     
     if (!activity) {
       return res.status(404).json({
@@ -379,14 +383,14 @@ router.patch('/:id/draft', async (req, res) => {
     
     activity.isDraft = isDraft;
     const updatedActivity = await activity.save();
-    
-    // Transform _id to id for frontend compatibility
+
+    // Use the custom id field
     const activityObj = updatedActivity.toObject();
     const transformedActivity = {
       ...activityObj,
-      id: updatedActivity._id.toString()
+      id: activityObj.id || updatedActivity._id.toString()
     };
-    
+
     res.json({
       success: true,
       data: transformedActivity
@@ -412,7 +416,7 @@ router.post('/:id/participants', async (req, res) => {
       });
     }
     
-    const activity = await Activity.findById(req.params.id);
+    const activity = await Activity.findOne({ id: req.params.id });
     
     if (!activity) {
       return res.status(404).json({
@@ -455,7 +459,7 @@ router.post('/:id/rating', async (req, res) => {
       });
     }
     
-    const activity = await Activity.findById(req.params.id);
+    const activity = await Activity.findOne({ id: req.params.id });
     
     if (!activity) {
       return res.status(404).json({
@@ -539,7 +543,7 @@ router.post('/:id/comment', async (req, res) => {
       });
     }
     
-    const activity = await Activity.findById(req.params.id);
+    const activity = await Activity.findOne({ id: req.params.id });
     
     if (!activity) {
       return res.status(404).json({
@@ -601,7 +605,7 @@ router.post('/:id/comment/:commentId/vote', async (req, res) => {
       });
     }
     
-    const activity = await Activity.findById(req.params.id);
+    const activity = await Activity.findOne({ id: req.params.id });
     
     if (!activity) {
       return res.status(404).json({
@@ -644,9 +648,18 @@ router.post('/:id/comment/:commentId/vote', async (req, res) => {
     });
   } catch (error) {
     console.error('Error voting on comment:', error);
+
+    // Check if it's a vote limit error
+    if (error.message && error.message.includes('Vote limit reached')) {
+      return res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+
     res.status(500).json({
       success: false,
-      error: 'Failed to vote on comment'
+      error: error.message || 'Failed to vote on comment'
     });
   }
 });
@@ -672,7 +685,7 @@ router.post('/:id/email', async (req, res) => {
       });
     }
     
-    const activity = await Activity.findById(req.params.id);
+    const activity = await Activity.findOne({ id: req.params.id });
     
     if (!activity) {
       return res.status(404).json({
@@ -722,7 +735,7 @@ router.post('/:id/email', async (req, res) => {
 // Get analytics stats for a specific activity
 router.get('/:id/analytics', async (req, res) => {
   try {
-    const activity = await Activity.findById(req.params.id);
+    const activity = await Activity.findOne({ id: req.params.id });
     
     if (!activity) {
       return res.status(404).json({
@@ -752,7 +765,7 @@ router.get('/:id/analytics', async (req, res) => {
 // Sync starter data to database
 router.post('/:id/sync-starter-data', async (req, res) => {
   try {
-    const activity = await Activity.findById(req.params.id);
+    const activity = await Activity.findOne({ id: req.params.id });
     
     if (!activity) {
       return res.status(404).json({

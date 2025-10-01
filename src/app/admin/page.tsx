@@ -14,6 +14,8 @@ function AdminContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editingActivityId = searchParams.get('activity');
+  const shouldShowCreate = searchParams.get('create') === 'true';
+  const returnUrl = searchParams.get('returnUrl');
 
   const [activities, setActivities] = useState<HoloscopicActivity[]>([]);
   const [editingActivity, setEditingActivity] = useState<HoloscopicActivity | null>(null);
@@ -54,6 +56,9 @@ function AdminContent() {
             setEditingActivity(activity);
             setShowCreateForm(true);
           }
+        } else if (shouldShowCreate) {
+          // Open create form if ?create=true
+          setShowCreateForm(true);
         }
       } catch (err) {
         setError('Failed to load activities. The backend server may not be running.');
@@ -64,7 +69,7 @@ function AdminContent() {
     };
 
     loadData();
-  }, [editingActivityId, isAuthenticated]);
+  }, [editingActivityId, shouldShowCreate, isAuthenticated]);
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +90,7 @@ function AdminContent() {
   // Password login screen - Dark theme
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-slate-800 rounded-lg shadow-xl p-6 sm:p-8">
           <div className="flex justify-center mb-6">
             <Image
@@ -213,7 +218,7 @@ function AdminContent() {
   const handleSaveActivity = async (updatedActivity: HoloscopicActivity) => {
     // Reload activities from server to ensure we have the latest data
     try {
-      const activitiesData = await ActivityService.getActivities();
+      const activitiesData = await ActivityService.getAdminActivities();
       setActivities(activitiesData);
     } catch (err) {
       console.error('Error reloading activities:', err);
@@ -231,7 +236,17 @@ function AdminContent() {
 
     setShowCreateForm(false);
     setEditingActivity(null);
-    router.push('/admin');
+
+    // If there's a return URL, close this window and navigate back
+    if (returnUrl) {
+      alert('Activity saved! You can now close this tab and return to the sequence editor.');
+      // Optional: try to close the window if it was opened by window.open
+      if (window.opener) {
+        window.close();
+      }
+    } else {
+      router.push('/admin');
+    }
   };
 
   // Get statistics for an activity
@@ -242,7 +257,7 @@ function AdminContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 sm:p-8">
+      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] p-4 sm:p-8">
         <div className="text-center text-gray-300">Loading...</div>
       </div>
     );
@@ -250,7 +265,7 @@ function AdminContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 sm:p-8">
+      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] p-4 sm:p-8">
         <div className="max-w-2xl mx-auto text-center">
           <div className="text-red-400 mb-4 text-sm sm:text-base">{error}</div>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -273,29 +288,47 @@ function AdminContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+    <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55]">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         {/* Header */}
-        <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-            <Image
-              src="/holoLogo_dark.svg"
-              alt="Holoscopic Logo"
-              width={32}
-              height={32}
-              className="mr-2 sm:mr-3 sm:w-10 sm:h-10"
-            />
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Admin</h1>
-          </Link>
-          <button
-            onClick={() => {
-              sessionStorage.removeItem('adminAuth');
-              setIsAuthenticated(false);
-            }}
-            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-400 hover:text-gray-300"
-          >
-            Logout
-          </button>
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+            <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+              <Image
+                src="/holoLogo_dark.svg"
+                alt="Holoscopic Logo"
+                width={32}
+                height={32}
+                className="mr-2 sm:mr-3 sm:w-10 sm:h-10"
+              />
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">Admin</h1>
+            </Link>
+            <button
+              onClick={() => {
+                sessionStorage.removeItem('adminAuth');
+                setIsAuthenticated(false);
+              }}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-400 hover:text-gray-300"
+            >
+              Logout
+            </button>
+          </div>
+
+          {/* Toggle between Activities and Sequences */}
+          <div className="flex gap-2 border-b border-slate-700">
+            <Link
+              href="/admin"
+              className="px-4 py-2 text-sm font-medium text-white border-b-2 border-blue-500"
+            >
+              Activities
+            </Link>
+            <Link
+              href="/admin/sequences"
+              className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent hover:border-slate-600"
+            >
+              Sequences
+            </Link>
+          </div>
         </div>
 
         {showCreateForm ? (
@@ -306,7 +339,16 @@ function AdminContent() {
             onCancel={() => {
               setShowCreateForm(false);
               setEditingActivity(null);
-              router.push('/admin');
+              if (returnUrl) {
+                // If there's a return URL, just close or show message
+                if (window.opener) {
+                  window.close();
+                } else {
+                  router.push('/admin');
+                }
+              } else {
+                router.push('/admin');
+              }
             }}
           />
         ) : (

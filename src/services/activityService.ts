@@ -129,6 +129,7 @@ export class ActivityService {
         preamble: formData.preamble,
         wikiLink: formData.wikiLink,
         starterData: formData.starterData,
+        votesPerUser: formData.votesPerUser,
         status: 'active',
         participants: [],
         ratings: [],
@@ -203,6 +204,7 @@ export class ActivityService {
         preamble: formData.preamble,
         wikiLink: formData.wikiLink,
         starterData: formData.starterData,
+        votesPerUser: formData.votesPerUser,
       };
 
       // Only include urlName if it's provided

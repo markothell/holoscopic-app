@@ -285,13 +285,32 @@ export default function CommentSection({
       {/* All Comments (when showing results) */}
       {showAllComments && (
         <div className={readOnly ? "h-full flex flex-col" : "space-y-3"}>
-          {/* Sort Dropdown */}
+          {/* Sort Dropdown and Vote Counter */}
           <div className="flex justify-between items-center mb-4 flex-shrink-0">
+            {/* Vote Counter - Left side - Show if vote limit is configured */}
+            {activity.votesPerUser !== null && activity.votesPerUser !== undefined && currentUserId && (() => {
+              const votedCommentIds = activity.comments.filter(c =>
+                c.votes.some(v => v.userId === currentUserId)
+              ).length;
+              const remainingVotes = Math.max(0, activity.votesPerUser - votedCommentIds);
+              return (
+                <div className={`px-3 py-1 rounded text-sm font-medium ${
+                  remainingVotes > 0 ? 'bg-blue-500 text-white' : 'bg-gray-600 text-gray-200'
+                }`}>
+                  {remainingVotes > 0
+                    ? `${remainingVotes} vote${remainingVotes !== 1 ? 's' : ''} left`
+                    : 'No votes left'}
+                </div>
+              );
+            })()}
+
             {!readOnly && (
               <h4 className="font-semibold text-gray-800">
                 {FormattingService.formatCommentCount(activity.comments.length)}
               </h4>
             )}
+
+            {/* Sort Dropdown - Right side */}
             <div className="flex items-center space-x-2">
               <label className={`text-sm font-medium ${readOnly ? "text-gray-300" : "text-gray-700"}`}>
                 Order:
@@ -300,8 +319,8 @@ export default function CommentSection({
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as CommentSortOrder)}
                 className={`px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  readOnly 
-                    ? "bg-slate-700 border-slate-600 text-gray-200" 
+                  readOnly
+                    ? "bg-slate-700 border-slate-600 text-gray-200"
                     : "bg-white border-gray-300 text-gray-900"
                 }`}
               >

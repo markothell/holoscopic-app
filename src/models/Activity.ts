@@ -29,7 +29,10 @@ export interface HoloscopicActivity {
 
   // Starter data for seeding the activity
   starterData?: string; // JSON string of initial ratings/comments
-  
+
+  // Vote configuration
+  votesPerUser?: number | null; // null/undefined = unlimited votes
+
   // Activity state
   status: 'active' | 'completed';
   isDraft: boolean;
@@ -126,6 +129,7 @@ export interface ActivityFormData {
   preamble?: string; // Optional paragraph description
   wikiLink?: string; // Optional link to wiki page
   starterData?: string; // JSON string of initial data
+  votesPerUser?: number | null; // Vote limit configuration
 }
 
 // API response types
