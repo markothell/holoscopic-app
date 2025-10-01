@@ -7,26 +7,14 @@ import Image from 'next/image';
 import { Sequence } from '@/models/Sequence';
 import { SequenceService } from '@/services/sequenceService';
 import { FormattingService } from '@/utils/formatting';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { userId, isLoading: authLoading } = useAuth();
   const [sequences, setSequences] = useState<Sequence[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  // Get user ID from local storage
-  useEffect(() => {
-    const storedUserId = localStorage.getItem('userId');
-    if (!storedUserId) {
-      // Generate a new user ID if none exists
-      const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('userId', newUserId);
-      setUserId(newUserId);
-    } else {
-      setUserId(storedUserId);
-    }
-  }, []);
 
   // Load user's sequences
   useEffect(() => {

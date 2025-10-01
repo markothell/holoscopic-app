@@ -5,14 +5,16 @@ import { HoloscopicActivity, Rating, MappingGridProps } from '@/models/Activity'
 import { FormattingService } from '@/utils/formatting';
 import { ValidationService } from '@/utils/validation';
 
-export default function MappingGrid({ 
-  activity, 
-  onRatingSubmit, 
-  userRating, 
+export default function MappingGrid({
+  activity,
+  onRatingSubmit,
+  userRating,
   showAllRatings = false,
   hoveredCommentId,
   onDotClick,
-  visibleCommentIds = []
+  visibleCommentIds = [],
+  hoveredSlotNumber,
+  currentUserId
 }: MappingGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -54,9 +56,18 @@ export default function MappingGrid({
 
   // Check if rating should be highlighted
   const isRatingHighlighted = (rating: Rating): boolean => {
-    if (!hoveredCommentId) return false;
-    const comment = getCommentForUser(rating.userId, rating.slotNumber);
-    return comment?.id === hoveredCommentId;
+    // Highlight if comment is hovered
+    if (hoveredCommentId) {
+      const comment = getCommentForUser(rating.userId, rating.slotNumber);
+      if (comment?.id === hoveredCommentId) return true;
+    }
+
+    // Highlight if slot button is hovered and this rating belongs to current user and hovered slot
+    if (hoveredSlotNumber && currentUserId) {
+      return rating.userId === currentUserId && (rating.slotNumber || 1) === hoveredSlotNumber;
+    }
+
+    return false;
   };
 
   // Check if rating should be visible (based on comment filters)
@@ -192,7 +203,7 @@ export default function MappingGrid({
                 style={{
                   ...getPositionStyle(rating),
                   backgroundColor: getUserColor(rating),
-                  boxShadow: highlighted ? '0 0 0 2px rgba(59, 130, 246, 0.8)' : undefined,
+                  boxShadow: highlighted ? '0 0 0 4px rgba(255, 215, 0, 0.9)' : undefined,
                   width: dotSize.width,
                   height: dotSize.height,
                 }}

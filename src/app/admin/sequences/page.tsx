@@ -2,17 +2,20 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Sequence } from '@/models/Sequence';
 import { SequenceService } from '@/services/sequenceService';
 import { FormattingService } from '@/utils/formatting';
+import { useAuth } from '@/contexts/AuthContext';
 import SequencePanel from '@/components/SequencePanel';
 
 function SequenceAdminContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editingSequenceId = searchParams.get('sequence');
+  const { userRole, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [sequences, setSequences] = useState<Sequence[]>([]);
   const [editingSequence, setEditingSequence] = useState<Sequence | null>(null);
@@ -20,22 +23,12 @@ function SequenceAdminContent() {
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  // Password protection state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState('');
-  const [authError, setAuthError] = useState('');
-
-  // Check if already authenticated
-  useEffect(() => {
-    const authStatus = sessionStorage.getItem('adminAuth');
-    if (authStatus === 'true') {
-      setIsAuthenticated(true);
-    }
-  }, []);
+  // Check if user has admin role
+  const hasAdminAccess = isAuthenticated && userRole === 'admin';
 
   // Load sequences and editing sequence
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!hasAdminAccess) return;
 
     const loadData = async () => {
       try {
@@ -61,58 +54,32 @@ function SequenceAdminContent() {
     };
 
     loadData();
-  }, [editingSequenceId, isAuthenticated]);
+  }, [editingSequenceId, hasAdminAccess]);
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const correctPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'holoscopic2024';
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] flex items-center justify-center p-4">
+        <div className="text-white text-lg">Loading...</div>
+      </div>
+    );
+  }
 
-    if (password === correctPassword) {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('adminAuth', 'true');
-      setAuthError('');
-    } else {
-      setAuthError('Incorrect password');
-    }
-  };
-
-  // Password login screen
-  if (!isAuthenticated) {
+  // Access denied screen
+  if (!hasAdminAccess) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-slate-800 rounded-lg shadow-xl p-6 sm:p-8">
           <div className="flex justify-center mb-6">
             <Image src="/holoLogo_dark.svg" alt="Holoscopic Logo" width={60} height={60} />
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white mb-6 text-center">Admin Access</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white mb-6 text-center">Admin Access Required</h1>
 
-          <form onSubmit={handlePasswordSubmit}>
-            <div className="mb-4">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
-                placeholder="Enter admin password"
-                autoFocus
-              />
-            </div>
+          <p className="text-gray-300 text-center mb-6">
+            You need administrator privileges to access this page.
+          </p>
 
-            {authError && <div className="mb-4 text-red-400 text-sm">{authError}</div>}
-
-            <button
-              type="submit"
-              className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
-            >
-              Access Admin Panel
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
+          <div className="text-center">
             <Link href="/admin" className="text-sm text-gray-400 hover:text-gray-300">
               ← Back to Admin
             </Link>
@@ -250,8 +217,7 @@ function SequenceAdminContent() {
             </Link>
             <button
               onClick={() => {
-                sessionStorage.removeItem('adminAuth');
-                setIsAuthenticated(false);
+                signOut({ callbackUrl: '/' });
               }}
               className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-400 hover:text-gray-300"
             >

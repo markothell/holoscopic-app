@@ -172,9 +172,11 @@ function loadAPIRoutes() {
       const activityRoutes = require('./routes/activities')(io);
       const analyticsRoutes = require('./routes/analytics')();
       const sequenceRoutes = require('./routes/sequences');
+      const authRoutes = require('./routes/auth');
       app.use('/api/activities', activityRoutes);
       app.use('/api/analytics', analyticsRoutes);
       app.use('/api/sequences', sequenceRoutes);
+      app.use('/api/auth', authRoutes);
       apiRoutesLoaded = true;
       console.log('✅ API routes loaded successfully');
     } catch (error) {

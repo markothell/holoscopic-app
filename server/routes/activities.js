@@ -284,7 +284,7 @@ router.patch('/:id', async (req, res) => {
     }
     
     // Update allowed fields
-    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'objectNameQuestion', 'preamble', 'wikiLink', 'starterData', 'votesPerUser', 'maxEntries', 'status'];
+    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'objectNameQuestion', 'preamble', 'wikiLink', 'starterData', 'votesPerUser', 'maxEntries', 'status', 'isPublic'];
     const updates = {};
 
     for (const key of allowedUpdates) {

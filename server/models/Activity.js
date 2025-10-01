@@ -173,6 +173,12 @@ const ActivitySchema = new mongoose.Schema({
     }
   },
   
+  // Public/Private setting
+  isPublic: {
+    type: Boolean,
+    default: false // Private by default, requires authentication
+  },
+
   // Activity state
   status: {
     type: String,

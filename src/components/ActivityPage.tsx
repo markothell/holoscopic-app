@@ -6,6 +6,7 @@ import { ActivityService } from '@/services/activityService';
 import { webSocketService } from '@/services/websocketService';
 import { ValidationService } from '@/utils/validation';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
+import { useAuth } from '@/contexts/AuthContext';
 import CommentSection from './CommentSection';
 import ResultsView from './ResultsView';
 import SliderQuestions from './SliderQuestions';
@@ -16,6 +17,7 @@ interface ActivityPageProps {
 }
 
 export default function ActivityPage({ activityId }: ActivityPageProps) {
+  const { userId, isLoading: authLoading, isAuthenticated } = useAuth();
   const [activity, setActivity] = useState<HoloscopicActivity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,17 +25,17 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   const [, setIsReconnecting] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // User state
-  const [userId, setUserId] = useState<string>('');
   const [username, setUsername] = useState<string>('');
   const [userRating, setUserRating] = useState<Rating | null>(null);
   const [userComment, setUserComment] = useState<Comment | null>(null);
   const [userObjectName, setUserObjectName] = useState<string>('');
   const [currentSlot, setCurrentSlot] = useState<number>(1);
+  const [hoveredSlot, setHoveredSlot] = useState<number | null>(null);
   // const [hasSubmitted, setHasSubmitted] = useState(false);
 
-  
+
   // Ref for results section
   const resultsRef = useRef<HTMLDivElement>(null);
   
@@ -69,36 +71,49 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     maxTime: 300
   });
 
-  // Initialize user session
+  // Initialize username
   useEffect(() => {
-    const storedUserId = localStorage.getItem('userId');
     const storedUsername = localStorage.getItem('username');
 
-    if (storedUserId && storedUsername) {
-      setUserId(storedUserId);
+    if (storedUsername) {
       setUsername(storedUsername);
     } else {
-      // Generate new user session
-      const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Generate new username
       const newUsername = ValidationService.generateRandomUsername();
-
-      localStorage.setItem('userId', newUserId);
       localStorage.setItem('username', newUsername);
-
-      setUserId(newUserId);
       setUsername(newUsername);
     }
-  }, [activityId]);
+  }, []);
 
-  // Load object name for current slot
+  // Load object name for current slot (from database or localStorage)
   useEffect(() => {
-    const storedObjectName = localStorage.getItem(`objectName_${activityId}_slot${currentSlot}`);
-    if (storedObjectName) {
-      setUserObjectName(storedObjectName);
+    if (!activity || !userId) return;
+
+    // First check if there's data in the database for this slot
+    const rating = activity.ratings.find(r =>
+      r.userId === userId && (r.slotNumber || 1) === currentSlot
+    );
+    const comment = activity.comments.find(c =>
+      c.userId === userId && (c.slotNumber || 1) === currentSlot
+    );
+
+    const dbObjectName = rating?.objectName || comment?.objectName;
+
+    if (dbObjectName) {
+      // Use object name from database
+      setUserObjectName(dbObjectName);
+      // Also update localStorage to keep in sync
+      localStorage.setItem(`objectName_${activityId}_slot${currentSlot}`, dbObjectName);
     } else {
-      setUserObjectName('');
+      // Fall back to localStorage
+      const storedObjectName = localStorage.getItem(`objectName_${activityId}_slot${currentSlot}`);
+      if (storedObjectName) {
+        setUserObjectName(storedObjectName);
+      } else {
+        setUserObjectName('');
+      }
     }
-  }, [activityId, currentSlot]);
+  }, [activityId, currentSlot, activity, userId]);
 
   // Update userRating and userComment when slot changes
   useEffect(() => {
@@ -143,19 +158,8 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
         
         const activityData = await ActivityService.getActivity(activityId);
         setActivity(activityData);
-        
-        // Check if user has already submitted
-        const existingRating = activityData.ratings.find(r => r.userId === userId);
-        const existingComment = activityData.comments.find(c => c.userId === userId);
-        
-        if (existingRating) {
-          setUserRating(existingRating);
-        }
-        if (existingComment) {
-          setUserComment(existingComment);
-        }
-        
-        // setHasSubmitted(!!existingRating || !!existingComment);
+
+        // Note: userRating and userComment are set by the slot-aware useEffect below
       } catch (err) {
         setError('Failed to load activity. Please try again.');
         console.error('Error loading activity:', err);
@@ -402,11 +406,11 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   // Handle results toggle
   const handleResultsToggle = () => {
     setShowResults(!showResults);
-    
+
     // Scroll to results section if showing results
     if (!showResults && resultsRef.current) {
       setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ 
+        resultsRef.current?.scrollIntoView({
           behavior: 'smooth',
           block: 'start'
         });
@@ -414,8 +418,8 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     }
   };
 
-  // Loading state
-  if (loading) {
+  // Loading state (check auth + activity together)
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -456,6 +460,41 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
         <div className="text-center">
           <h2 className="text-xl font-semibold text-gray-800 mb-2">Activity Not Found</h2>
           <p className="text-gray-600">The activity you&apos;re looking for doesn&apos;t exist.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Auth check - private activities require authentication (not just anonymous ID)
+  if (!activity.isPublic && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-slate-800 rounded-lg shadow-xl p-8 text-center">
+          <Image
+            src="/holoLogo_dark.svg"
+            alt="Holoscopic Logo"
+            width={60}
+            height={60}
+            className="mx-auto mb-6"
+          />
+          <h1 className="text-2xl font-bold text-white mb-4">Sign in Required</h1>
+          <p className="text-gray-300 mb-6">
+            This is a private activity. Please sign in or create an account to participate.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <a
+              href="/login"
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+            >
+              Sign In
+            </a>
+            <a
+              href="/signup"
+              className="px-6 py-3 bg-slate-700 text-white rounded-lg font-medium hover:bg-slate-600 transition"
+            >
+              Create Account
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -769,6 +808,43 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
                 <h2 className="text-xl sm:text-2xl lg:text-4xl xl:text-6xl font-bold text-white">
                   View map and vote
                 </h2>
+
+                {/* Slot Navigation Buttons - Only show if maxEntries > 1 */}
+                {activity.maxEntries && activity.maxEntries > 1 && (
+                  <div className="mt-4 flex gap-3 items-center">
+                    <span className="text-sm text-gray-400">Your entries:</span>
+                    {Array.from({ length: activity.maxEntries }, (_, i) => i + 1).map((slot) => {
+                      const slotData = getSlotData(slot);
+                      const slotRating = activity.ratings.find(r =>
+                        r.userId === userId && (r.slotNumber || 1) === slot
+                      );
+
+                      return (
+                        <button
+                          key={slot}
+                          onClick={() => {
+                            setCurrentSlot(slot);
+                            navigateToScreen(1);
+                          }}
+                          onMouseEnter={() => setHoveredSlot(slot)}
+                          onMouseLeave={() => setHoveredSlot(null)}
+                          className={`w-10 h-10 rounded-full border-2 transition-all ${
+                            slotData.hasData
+                              ? 'bg-white border-white hover:bg-white/90'
+                              : 'bg-transparent border-white/40 hover:border-white/60'
+                          }`}
+                          aria-label={`Edit entry ${slot}`}
+                        >
+                          <span className={`text-sm font-semibold ${
+                            slotData.hasData ? 'text-slate-900' : 'text-white/70'
+                          }`}>
+                            {slot}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex-1 min-h-0 px-4" ref={resultsRef}>
@@ -777,21 +853,10 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
                 isVisible={true}
                 onToggle={handleResultsToggle}
                 onCommentVote={activity.status === 'completed' ? undefined : handleCommentVote}
-                currentUserId={userId}
+                currentUserId={userId || ''}
+                hoveredSlotNumber={hoveredSlot}
               />
             </div>
-
-            {/* Answer Questions Button at Bottom */}
-            {activity.status !== 'completed' && (
-              <div className="flex justify-center pb-4">
-                <button
-                  onClick={() => navigateToScreen(1)}
-                  className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
-                >
-                  Answer Questions
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>

@@ -131,6 +131,7 @@ export class ActivityService {
         starterData: formData.starterData,
         votesPerUser: formData.votesPerUser,
         maxEntries: formData.maxEntries,
+        isPublic: formData.isPublic,
         status: 'active',
         participants: [],
         ratings: [],
@@ -207,6 +208,7 @@ export class ActivityService {
         starterData: formData.starterData,
         votesPerUser: formData.votesPerUser,
         maxEntries: formData.maxEntries,
+        isPublic: formData.isPublic,
       };
 
       // Only include urlName if it's provided

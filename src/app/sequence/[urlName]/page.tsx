@@ -7,30 +7,19 @@ import Image from 'next/image';
 import { Sequence } from '@/models/Sequence';
 import { SequenceService } from '@/services/sequenceService';
 import { FormattingService } from '@/utils/formatting';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SequenceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const urlName = params.urlName as string;
+  const { userId, isLoading: authLoading } = useAuth();
 
   const [sequence, setSequence] = useState<Sequence | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
-
-  // Get user ID from local storage
-  useEffect(() => {
-    const storedUserId = localStorage.getItem('userId');
-    if (!storedUserId) {
-      const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('userId', newUserId);
-      setUserId(newUserId);
-    } else {
-      setUserId(storedUserId);
-    }
-  }, []);
 
   // Load sequence details
   useEffect(() => {

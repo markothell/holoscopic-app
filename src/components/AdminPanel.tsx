@@ -67,6 +67,7 @@ export default function AdminPanel({
         starterData: editingActivity.starterData || '',
         votesPerUser: editingActivity.votesPerUser ?? null,
         maxEntries: editingActivity.maxEntries ?? 1,
+        isPublic: editingActivity.isPublic ?? false,
       };
       
       setFormData(formValues);
@@ -474,6 +475,24 @@ export default function AdminPanel({
             {validationErrors.wikiLink && (
               <p className="text-red-600 text-sm mt-1">{validationErrors.wikiLink}</p>
             )}
+          </div>
+
+          {/* Public/Private Access */}
+          <div className="space-y-3">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.isPublic || false}
+                onChange={(e) => {
+                  setFormData(prev => ({ ...prev, isPublic: e.target.checked }));
+                }}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="ml-2 text-sm font-medium text-gray-700">Make activity public (no login required)</span>
+            </label>
+            <p className="text-gray-500 text-xs ml-6">
+              Public activities can be accessed by anyone without creating an account. Private activities require authentication.
+            </p>
           </div>
 
           {/* Vote Limit Configuration */}

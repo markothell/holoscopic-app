@@ -6,11 +6,12 @@ import { FormattingService } from '@/utils/formatting';
 import MappingGrid from './MappingGrid';
 import CommentSection from './CommentSection';
 
-export default function ResultsView({ 
-  activity, 
-  isVisible, 
+export default function ResultsView({
+  activity,
+  isVisible,
   onCommentVote,
-  currentUserId
+  currentUserId,
+  hoveredSlotNumber
 }: ResultsViewProps) {
   const [activeTab, setActiveTab] = useState<'map' | 'comments'>('map');
   const [hoveredCommentId, setHoveredCommentId] = useState<string | null>(null);
@@ -111,6 +112,8 @@ export default function ResultsView({
                       hoveredCommentId={hoveredCommentId}
                       onDotClick={handleMobileMapDotTap}
                       visibleCommentIds={visibleCommentIds}
+                      hoveredSlotNumber={hoveredSlotNumber}
+                      currentUserId={currentUserId}
                     />
                   ) : (
                     <div className="text-center py-12 text-gray-300">
@@ -253,6 +256,8 @@ export default function ResultsView({
                     hoveredCommentId={hoveredCommentId}
                     onDotClick={handleMapDotClick}
                     visibleCommentIds={visibleCommentIds}
+                    hoveredSlotNumber={hoveredSlotNumber}
+                    currentUserId={currentUserId}
                   />
                 ) : (
                   <div className="text-center py-12 text-gray-300" style={{ width: 'min(500px, 90vw)', height: 'min(500px, 90vw)' }}>

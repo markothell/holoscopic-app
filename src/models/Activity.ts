@@ -36,6 +36,9 @@ export interface HoloscopicActivity {
   // Multi-entry configuration
   maxEntries?: number; // 1, 2, or 4 entry slots per user
 
+  // Public/Private access
+  isPublic?: boolean; // If true, no authentication required
+
   // Activity state
   status: 'active' | 'completed';
   isDraft: boolean;
@@ -159,6 +162,8 @@ export interface MappingGridProps {
   hoveredCommentId?: string | null;
   onDotClick?: (commentId: string) => void;
   visibleCommentIds?: string[];
+  hoveredSlotNumber?: number | null;
+  currentUserId?: string;
 }
 
 export interface CommentSectionProps {
@@ -183,4 +188,5 @@ export interface ResultsViewProps {
   onToggle: () => void;
   onCommentVote?: (commentId: string) => void;
   currentUserId?: string;
+  hoveredSlotNumber?: number | null;
 }
