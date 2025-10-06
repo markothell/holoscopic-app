@@ -179,6 +179,12 @@ const ActivitySchema = new mongoose.Schema({
     default: false // Private by default, requires authentication
   },
 
+  // Profile links setting
+  showProfileLinks: {
+    type: Boolean,
+    default: true // Show profile icons by default
+  },
+
   // Activity state
   status: {
     type: String,

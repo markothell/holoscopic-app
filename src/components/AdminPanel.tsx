@@ -38,6 +38,7 @@ export default function AdminPanel({
     starterData: '',
     votesPerUser: null,
     maxEntries: 1,
+    showProfileLinks: true,
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -68,6 +69,7 @@ export default function AdminPanel({
         votesPerUser: editingActivity.votesPerUser ?? null,
         maxEntries: editingActivity.maxEntries ?? 1,
         isPublic: editingActivity.isPublic ?? false,
+        showProfileLinks: editingActivity.showProfileLinks ?? true,
       };
       
       setFormData(formValues);
@@ -492,6 +494,24 @@ export default function AdminPanel({
             </label>
             <p className="text-gray-500 text-xs ml-6">
               Public activities can be accessed by anyone without creating an account. Private activities require authentication.
+            </p>
+          </div>
+
+          {/* Profile Links Toggle */}
+          <div className="space-y-3">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.showProfileLinks ?? true}
+                onChange={(e) => {
+                  setFormData(prev => ({ ...prev, showProfileLinks: e.target.checked }));
+                }}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="ml-2 text-sm font-medium text-gray-700">Show profile links in results</span>
+            </label>
+            <p className="text-gray-500 text-xs ml-6">
+              When enabled, authenticated users will see clickable profile icons next to comments in the results view.
             </p>
           </div>
 

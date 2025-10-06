@@ -32,6 +32,12 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
 
+  displayName: {
+    type: String,
+    trim: true,
+    maxlength: 50
+  },
+
   bio: {
     type: String,
     maxlength: 500
@@ -129,6 +135,24 @@ userSchema.statics.findByEmail = function(email) {
 // Static method to find user by custom ID
 userSchema.statics.findByCustomId = function(id) {
   return this.findOne({ id });
+};
+
+// Get user's joined sequences
+userSchema.methods.getJoinedSequences = async function() {
+  const Sequence = mongoose.model('Sequence');
+  return await Sequence.find({ 'members.userId': this.id });
+};
+
+// Get user's participated activities
+userSchema.methods.getParticipatedActivities = async function() {
+  const Activity = mongoose.model('Activity');
+  return await Activity.find({
+    $or: [
+      { 'participants.userId': this.id },
+      { 'ratings.userId': this.id },
+      { 'comments.userId': this.id }
+    ]
+  }).select('id title urlName xAxisLabel yAxisLabel updatedAt');
 };
 
 const User = mongoose.model('User', userSchema);

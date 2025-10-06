@@ -39,6 +39,9 @@ export interface HoloscopicActivity {
   // Public/Private access
   isPublic?: boolean; // If true, no authentication required
 
+  // Profile links
+  showProfileLinks?: boolean; // If true, show profile icons in results
+
   // Activity state
   status: 'active' | 'completed';
   isDraft: boolean;
@@ -139,6 +142,8 @@ export interface ActivityFormData {
   starterData?: string; // JSON string of initial data
   votesPerUser?: number | null; // Vote limit configuration
   maxEntries?: number; // Multi-entry configuration (1, 2, or 4)
+  isPublic?: boolean; // Public/Private access
+  showProfileLinks?: boolean; // Show profile icons in results
 }
 
 // API response types

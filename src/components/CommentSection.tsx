@@ -351,20 +351,37 @@ export default function CommentSection({
                     onMouseLeave={() => onCommentHover?.(null)}
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <span 
+                      <span
                         className="font-medium text-sm"
                         style={{ color: getUserColor(comment) }}
                       >
                         {getDisplayName(comment)}
                       </span>
-                      <div className="flex flex-col items-end space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        {/* Profile Icon */}
+                        {activity.showProfileLinks !== false && comment.userId && !comment.userId.startsWith('anon_') && (
+                          <a
+                            href={`/profile/${comment.userId}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`flex items-center justify-center transition-opacity hover:opacity-80 ${
+                              readOnly ? "opacity-90" : "opacity-100"
+                            }`}
+                            title="View profile"
+                          >
+                            <img
+                              src="/profile_icon.svg"
+                              alt="Profile"
+                              className="w-6 h-6"
+                            />
+                          </a>
+                        )}
                         {/* Upvote Button */}
                         {showAllComments && onCommentVote && (
                           <button
                             onClick={() => handleVote(comment.id)}
                             className={`flex items-center space-x-1 px-2 py-1 rounded text-xs transition-colors ${
                               hasUserVoted(comment)
-                                ? readOnly 
+                                ? readOnly
                                   ? "bg-blue-900 text-blue-300 hover:bg-blue-800"
                                   : "bg-blue-100 text-blue-700 hover:bg-blue-200"
                                 : readOnly

@@ -158,7 +158,8 @@ router.post('/', async (req, res) => {
       wikiLink,
       starterData,
       votesPerUser,
-      maxEntries
+      maxEntries,
+      showProfileLinks
     } = req.body;
 
     console.log('Create activity - preamble:', preamble);
@@ -209,6 +210,7 @@ router.post('/', async (req, res) => {
       starterData: starterData ? starterData.trim() : '',
       votesPerUser: votesPerUser !== null && votesPerUser !== undefined ? Number(votesPerUser) : null,
       maxEntries: maxEntries && [1, 2, 4].includes(Number(maxEntries)) ? Number(maxEntries) : 1,
+      showProfileLinks: showProfileLinks !== undefined ? showProfileLinks : true,
       status: 'active',
       participants: [],
       ratings: [],
@@ -284,7 +286,7 @@ router.patch('/:id', async (req, res) => {
     }
     
     // Update allowed fields
-    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'objectNameQuestion', 'preamble', 'wikiLink', 'starterData', 'votesPerUser', 'maxEntries', 'status', 'isPublic'];
+    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'objectNameQuestion', 'preamble', 'wikiLink', 'starterData', 'votesPerUser', 'maxEntries', 'status', 'isPublic', 'showProfileLinks'];
     const updates = {};
 
     for (const key of allowedUpdates) {
