@@ -206,7 +206,12 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     webSocketService.on('rating_added', ({ rating }) => {
       console.log('📊 [CLIENT] Received rating_added event:', rating);
       setActivity(prev => {
-        if (!prev) return null;
+        if (!prev) {
+          console.log('⚠️ [CLIENT] No prev activity, cannot update');
+          return null;
+        }
+
+        console.log(`📊 [CLIENT] Updating ratings - prev count: ${prev.ratings.length}`);
 
         // Remove old rating for same user and slot
         const updatedRatings = prev.ratings.filter(r =>
@@ -214,14 +219,20 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
         );
         updatedRatings.push(rating);
 
-        return {
+        console.log(`📊 [CLIENT] Updated ratings - new count: ${updatedRatings.length}`);
+
+        const newActivity = {
           ...prev,
           ratings: updatedRatings
         };
+
+        console.log('📊 [CLIENT] Returning new activity state');
+        return newActivity;
       });
 
       // Only update userRating if it's for the current slot
       if (rating.userId === userId && (rating.slotNumber || 1) === currentSlot) {
+        console.log('📊 [CLIENT] Updating userRating for current slot');
         setUserRating(rating);
       }
     });
