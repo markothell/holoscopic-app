@@ -204,6 +204,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   useEffect(() => {
     // Rating events
     webSocketService.on('rating_added', ({ rating }) => {
+      console.log('📊 [CLIENT] Received rating_added event:', rating);
       setActivity(prev => {
         if (!prev) return null;
 
@@ -227,6 +228,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
 
     // Comment events
     webSocketService.on('comment_added', ({ comment }) => {
+      console.log('💬 [CLIENT] Received comment_added event:', comment);
       setActivity(prev => {
         if (!prev) return null;
 

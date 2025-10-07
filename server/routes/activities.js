@@ -510,6 +510,9 @@ router.post('/:id/participants', async (req, res) => {
 
 // Submit rating
 router.post('/:id/rating', async (req, res) => {
+  const startTime = Date.now();
+  console.log(`📊 [RATING] Request received - Activity: ${req.params.id}, User: ${req.body.userId}, Slot: ${req.body.slotNumber}`);
+
   try {
     const { userId, position, objectName, slotNumber = 1 } = req.body;
 
@@ -568,13 +571,17 @@ router.post('/:id/rating', async (req, res) => {
       });
     }
 
+    console.log(`📊 [RATING] Saving to DB...`);
+    const dbStart = Date.now();
     const updatedActivity = await activity.addRating(userId, participant.username, position, objectName, slotNumber);
+    console.log(`📊 [RATING] DB save took ${Date.now() - dbStart}ms`);
 
     // Return the new rating
     const newRating = updatedActivity.ratings.find(r => r.userId === userId && r.slotNumber === slotNumber);
 
     // Broadcast to WebSocket clients
     if (io && newRating) {
+      console.log(`📊 [RATING] Broadcasting to room ${req.params.id}`);
       io.to(req.params.id).emit('rating_added', {
         rating: newRating
       });
@@ -586,7 +593,12 @@ router.post('/:id/rating', async (req, res) => {
           comment: updatedComment
         });
       }
+    } else {
+      console.log(`⚠️ [RATING] WebSocket broadcast skipped - io: ${!!io}, newRating: ${!!newRating}`);
     }
+
+    const totalTime = Date.now() - startTime;
+    console.log(`✅ [RATING] Complete in ${totalTime}ms`);
 
     res.json({
       success: true,
@@ -603,6 +615,9 @@ router.post('/:id/rating', async (req, res) => {
 
 // Submit comment
 router.post('/:id/comment', async (req, res) => {
+  const startTime = Date.now();
+  console.log(`💬 [COMMENT] Request received - Activity: ${req.params.id}, User: ${req.body.userId}, Slot: ${req.body.slotNumber}`);
+
   try {
     const { userId, text, objectName, slotNumber = 1 } = req.body;
 
@@ -668,17 +683,26 @@ router.post('/:id/comment', async (req, res) => {
       });
     }
 
+    console.log(`💬 [COMMENT] Saving to DB...`);
+    const dbStart = Date.now();
     await activity.addComment(userId, participant.username, text.trim(), objectName || participant.objectName, slotNumber);
+    console.log(`💬 [COMMENT] DB save took ${Date.now() - dbStart}ms`);
 
     // Return the new comment
     const newComment = activity.comments.find(c => c.userId === userId && c.slotNumber === slotNumber);
 
     // Broadcast to WebSocket clients
     if (io && newComment) {
+      console.log(`💬 [COMMENT] Broadcasting to room ${req.params.id}`);
       io.to(req.params.id).emit('comment_added', {
         comment: newComment
       });
+    } else {
+      console.log(`⚠️ [COMMENT] WebSocket broadcast skipped - io: ${!!io}, newComment: ${!!newComment}`);
     }
+
+    const totalTime = Date.now() - startTime;
+    console.log(`✅ [COMMENT] Complete in ${totalTime}ms`);
 
     res.json({
       success: true,
