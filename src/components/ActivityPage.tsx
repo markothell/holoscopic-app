@@ -227,8 +227,11 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
         };
 
         console.log('📊 [CLIENT] Returning new activity state');
+        console.log('📊 [CLIENT] New ratings array:', newActivity.ratings);
         return newActivity;
       });
+
+      console.log('📊 [CLIENT] State setter called');
 
       // Only update userRating if it's for the current slot
       if (rating.userId === userId && (rating.slotNumber || 1) === currentSlot) {
@@ -334,6 +337,13 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       webSocketService.off('participant_left');
     };
   }, [userId, currentSlot]);
+
+  // Debug: Log whenever activity state changes
+  useEffect(() => {
+    if (activity) {
+      console.log('🔄 [DEBUG] Activity state changed - ratings count:', activity.ratings.length);
+    }
+  }, [activity]);
 
   // Handle rating submission
   const handleRatingSubmit = async (position: { x: number; y: number }) => {

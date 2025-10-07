@@ -36,17 +36,24 @@ export default function SliderQuestions({
     }
   }, [userRating]);
 
-  // Handle slider changes and submit immediately
+  // Handle slider changes - only update local state during drag
   const handleXChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newX = parseFloat(event.target.value);
     setXValue(newX);
-    onRatingSubmit({ x: newX, y: yValue });
   };
 
   const handleYChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newY = parseFloat(event.target.value);
     setYValue(newY);
-    onRatingSubmit({ x: xValue, y: newY });
+  };
+
+  // Submit when slider is released
+  const handleXRelease = () => {
+    onRatingSubmit({ x: xValue, y: yValue });
+  };
+
+  const handleYRelease = () => {
+    onRatingSubmit({ x: xValue, y: yValue });
   };
 
   return (
@@ -76,6 +83,8 @@ export default function SliderQuestions({
                     step="0.01"
                     value={xValue}
                     onChange={handleXChange}
+                    onMouseUp={handleXRelease}
+                    onTouchEnd={handleXRelease}
                     className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer slider"
                   />
                   {/* Center tick mark */}
