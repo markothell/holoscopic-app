@@ -9,7 +9,7 @@ export class WebSocketService {
   private socket: Socket | null = null;
   private activityId: string | null = null;
   private userId: string | null = null;
-  private listeners: Map<string, (data: any) => void> = new Map();
+  private listeners: Map<string, Array<(data: any) => void>> = new Map();
 
   // Initialize connection
   connect(activityId: string, userId: string, username: string): Promise<void> {
@@ -143,7 +143,11 @@ export class WebSocketService {
 
   // Subscribe to events
   on<K extends keyof WebSocketEvents>(event: K, callback: (data: WebSocketEvents[K]) => void): void {
-    this.listeners.set(event, callback);
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, []);
+    }
+    this.listeners.get(event)!.push(callback);
+    console.log(`[WS] Registered listener for ${event} (total: ${this.listeners.get(event)!.length})`);
   }
 
   // Unsubscribe from events
@@ -153,9 +157,12 @@ export class WebSocketService {
 
   // Notify listeners
   private notifyListeners(event: string, data: any): void {
-    const listener = this.listeners.get(event);
-    if (listener) {
-      listener(data);
+    const callbacks = this.listeners.get(event);
+    if (callbacks && callbacks.length > 0) {
+      console.log(`[WS] Notifying ${callbacks.length} listener(s) for ${event}`);
+      callbacks.forEach(callback => callback(data));
+    } else {
+      console.log(`[WS] No listeners registered for ${event}`);
     }
   }
 
