@@ -2,13 +2,13 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signOut } from 'next-auth/react';
 import { HoloscopicActivity } from '@/models/Activity';
 import { ActivityService } from '@/services/activityService';
 import { FormattingService } from '@/utils/formatting';
 import { useAllAnalytics, type AnalyticsStats } from '@/hooks/useAnalytics';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminPanel from '@/components/AdminPanel';
+import UserMenu from '@/components/UserMenu';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -263,14 +263,7 @@ function AdminContent() {
               />
               <h1 className="text-2xl sm:text-3xl font-bold text-white">Admin</h1>
             </Link>
-            <button
-              onClick={() => {
-                signOut({ callbackUrl: '/' });
-              }}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-400 hover:text-gray-300"
-            >
-              Logout
-            </button>
+            <UserMenu />
           </div>
 
           {/* Toggle between Activities and Sequences */}

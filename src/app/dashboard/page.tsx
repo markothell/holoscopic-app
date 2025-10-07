@@ -8,6 +8,7 @@ import { Sequence } from '@/models/Sequence';
 import { SequenceService } from '@/services/sequenceService';
 import { FormattingService } from '@/utils/formatting';
 import { useAuth } from '@/contexts/AuthContext';
+import UserMenu from '@/components/UserMenu';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -99,6 +100,7 @@ export default function DashboardPage() {
             />
             <h1 className="text-2xl sm:text-3xl font-bold text-white">My Sequences</h1>
           </Link>
+          <UserMenu />
         </div>
 
         {/* Sequences List */}

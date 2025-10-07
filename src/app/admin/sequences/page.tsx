@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Sequence } from '@/models/Sequence';
@@ -10,6 +9,7 @@ import { SequenceService } from '@/services/sequenceService';
 import { FormattingService } from '@/utils/formatting';
 import { useAuth } from '@/contexts/AuthContext';
 import SequencePanel from '@/components/SequencePanel';
+import UserMenu from '@/components/UserMenu';
 
 function SequenceAdminContent() {
   const router = useRouter();
@@ -215,14 +215,7 @@ function SequenceAdminContent() {
               <Image src="/holoLogo_dark.svg" alt="Holoscopic Logo" width={32} height={32} className="mr-2 sm:mr-3 sm:w-10 sm:h-10" />
               <h1 className="text-2xl sm:text-3xl font-bold text-white">Admin</h1>
             </Link>
-            <button
-              onClick={() => {
-                signOut({ callbackUrl: '/' });
-              }}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-400 hover:text-gray-300"
-            >
-              Logout
-            </button>
+            <UserMenu />
           </div>
 
           {/* Toggle between Activities and Sequences */}
