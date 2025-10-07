@@ -202,8 +202,10 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
 
   // Set up WebSocket event listeners
   useEffect(() => {
+    console.log('[ACTIVITY] Setting up WebSocket listeners');
+
     // Rating events
-    webSocketService.on('rating_added', ({ rating }) => {
+    const unsubRatingAdded = webSocketService.on('rating_added', ({ rating }) => {
       console.log('📊 [CLIENT] Received rating_added event:', rating);
       setActivity(prev => {
         if (!prev) {
@@ -241,7 +243,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     });
 
     // Comment events
-    webSocketService.on('comment_added', ({ comment }) => {
+    const unsubCommentAdded = webSocketService.on('comment_added', ({ comment }) => {
       console.log('💬 [CLIENT] Received comment_added event:', comment);
       setActivity(prev => {
         if (!prev) return null;
@@ -265,7 +267,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     });
 
     // Comment update events (when user changes position and comment quadrant changes)
-    webSocketService.on('comment_updated', ({ comment }) => {
+    const unsubCommentUpdated = webSocketService.on('comment_updated', ({ comment }) => {
       setActivity(prev => {
         if (!prev) return prev;
 
@@ -287,15 +289,15 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     });
 
     // Comment vote events
-    webSocketService.on('comment_voted', ({ comment }) => {
+    const unsubCommentVoted = webSocketService.on('comment_voted', ({ comment }) => {
       setActivity(prev => {
         if (!prev) return prev;
-        
+
         // Update the comment with new vote count
-        const updatedComments = prev.comments.map(c => 
+        const updatedComments = prev.comments.map(c =>
           c.id === comment.id ? comment : c
         );
-        
+
         return {
           ...prev,
           comments: updatedComments
@@ -304,13 +306,13 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     });
 
     // Participant events
-    webSocketService.on('participant_joined', ({ participant }) => {
+    const unsubParticipantJoined = webSocketService.on('participant_joined', ({ participant }) => {
       setActivity(prev => {
         if (!prev) return null;
-        
+
         const updatedParticipants = prev.participants.filter(p => p.id !== participant.id);
         updatedParticipants.push(participant);
-        
+
         return {
           ...prev,
           participants: updatedParticipants
@@ -318,10 +320,10 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       });
     });
 
-    webSocketService.on('participant_left', ({ participantId }) => {
+    const unsubParticipantLeft = webSocketService.on('participant_left', ({ participantId }) => {
       setActivity(prev => {
         if (!prev) return null;
-        
+
         return {
           ...prev,
           participants: prev.participants.filter(p => p.id !== participantId)
@@ -330,11 +332,13 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     });
 
     return () => {
-      webSocketService.off('rating_added');
-      webSocketService.off('comment_added');
-      webSocketService.off('comment_voted');
-      webSocketService.off('participant_joined');
-      webSocketService.off('participant_left');
+      console.log('[ACTIVITY] Cleaning up WebSocket listeners');
+      unsubRatingAdded();
+      unsubCommentAdded();
+      unsubCommentUpdated();
+      unsubCommentVoted();
+      unsubParticipantJoined();
+      unsubParticipantLeft();
     };
   }, [userId, currentSlot]);
 

@@ -141,18 +141,31 @@ export class WebSocketService {
     });
   }
 
-  // Subscribe to events
-  on<K extends keyof WebSocketEvents>(event: K, callback: (data: WebSocketEvents[K]) => void): void {
+  // Subscribe to events - returns unsubscribe function
+  on<K extends keyof WebSocketEvents>(event: K, callback: (data: WebSocketEvents[K]) => void): () => void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
     }
     this.listeners.get(event)!.push(callback);
     console.log(`[WS] Registered listener for ${event} (total: ${this.listeners.get(event)!.length})`);
+
+    // Return unsubscribe function
+    return () => {
+      const callbacks = this.listeners.get(event);
+      if (callbacks) {
+        const index = callbacks.indexOf(callback);
+        if (index > -1) {
+          callbacks.splice(index, 1);
+          console.log(`[WS] Unregistered listener for ${event} (remaining: ${callbacks.length})`);
+        }
+      }
+    };
   }
 
-  // Unsubscribe from events
+  // Unsubscribe from ALL listeners for an event (legacy method)
   off(event: keyof WebSocketEvents): void {
     this.listeners.delete(event);
+    console.log(`[WS] Cleared all listeners for ${event}`);
   }
 
   // Notify listeners
