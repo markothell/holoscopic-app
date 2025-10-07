@@ -62,7 +62,6 @@ export class WebSocketService {
   // Join activity room
   private joinActivity(activityId: string, userId: string, username: string): void {
     if (this.socket) {
-      console.log(`[WS] Joining activity room: ${activityId}`);
       this.socket.emit('join_activity', {
         activityId,
         userId,
@@ -109,17 +108,13 @@ export class WebSocketService {
   private setupEventListeners(): void {
     if (!this.socket) return;
 
-    console.log('[WS] Setting up event listeners');
-
     // Rating events
     this.socket.on('rating_added', (data: { rating: Rating }) => {
-      console.log('[WS] Received rating_added event from server:', data);
       this.notifyListeners('rating_added', data);
     });
 
     // Comment events
     this.socket.on('comment_added', (data: { comment: Comment }) => {
-      console.log('[WS] Received comment_added event from server:', data);
       this.notifyListeners('comment_added', data);
     });
     
@@ -148,7 +143,6 @@ export class WebSocketService {
       this.listeners.set(event, []);
     }
     this.listeners.get(event)!.push(callback);
-    console.log(`[WS] Registered listener for ${event} (total: ${this.listeners.get(event)!.length})`);
 
     // Return unsubscribe function
     return () => {
@@ -157,7 +151,6 @@ export class WebSocketService {
         const index = callbacks.indexOf(callback);
         if (index > -1) {
           callbacks.splice(index, 1);
-          console.log(`[WS] Unregistered listener for ${event} (remaining: ${callbacks.length})`);
         }
       }
     };
@@ -166,17 +159,13 @@ export class WebSocketService {
   // Unsubscribe from ALL listeners for an event (legacy method)
   off(event: keyof WebSocketEvents): void {
     this.listeners.delete(event);
-    console.log(`[WS] Cleared all listeners for ${event}`);
   }
 
   // Notify listeners
   private notifyListeners(event: string, data: any): void {
     const callbacks = this.listeners.get(event);
     if (callbacks && callbacks.length > 0) {
-      console.log(`[WS] Notifying ${callbacks.length} listener(s) for ${event}`);
       callbacks.forEach(callback => callback(data));
-    } else {
-      console.log(`[WS] No listeners registered for ${event}`);
     }
   }
 

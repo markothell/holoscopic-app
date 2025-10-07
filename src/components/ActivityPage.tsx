@@ -202,18 +202,10 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
 
   // Set up WebSocket event listeners
   useEffect(() => {
-    console.log('[ACTIVITY] Setting up WebSocket listeners');
-
     // Rating events
     const unsubRatingAdded = webSocketService.on('rating_added', ({ rating }) => {
-      console.log('📊 [CLIENT] Received rating_added event:', rating);
       setActivity(prev => {
-        if (!prev) {
-          console.log('⚠️ [CLIENT] No prev activity, cannot update');
-          return null;
-        }
-
-        console.log(`📊 [CLIENT] Updating ratings - prev count: ${prev.ratings.length}`);
+        if (!prev) return null;
 
         // Remove old rating for same user and slot
         const updatedRatings = prev.ratings.filter(r =>
@@ -221,30 +213,20 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
         );
         updatedRatings.push(rating);
 
-        console.log(`📊 [CLIENT] Updated ratings - new count: ${updatedRatings.length}`);
-
-        const newActivity = {
+        return {
           ...prev,
           ratings: updatedRatings
         };
-
-        console.log('📊 [CLIENT] Returning new activity state');
-        console.log('📊 [CLIENT] New ratings array:', newActivity.ratings);
-        return newActivity;
       });
-
-      console.log('📊 [CLIENT] State setter called');
 
       // Only update userRating if it's for the current slot
       if (rating.userId === userId && (rating.slotNumber || 1) === currentSlot) {
-        console.log('📊 [CLIENT] Updating userRating for current slot');
         setUserRating(rating);
       }
     });
 
     // Comment events
     const unsubCommentAdded = webSocketService.on('comment_added', ({ comment }) => {
-      console.log('💬 [CLIENT] Received comment_added event:', comment);
       setActivity(prev => {
         if (!prev) return null;
 
@@ -332,7 +314,6 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
     });
 
     return () => {
-      console.log('[ACTIVITY] Cleaning up WebSocket listeners');
       unsubRatingAdded();
       unsubCommentAdded();
       unsubCommentUpdated();
@@ -341,13 +322,6 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       unsubParticipantLeft();
     };
   }, [userId, currentSlot]);
-
-  // Debug: Log whenever activity state changes
-  useEffect(() => {
-    if (activity) {
-      console.log('🔄 [DEBUG] Activity state changed - ratings count:', activity.ratings.length);
-    }
-  }, [activity]);
 
   // Handle rating submission
   const handleRatingSubmit = async (position: { x: number; y: number }) => {

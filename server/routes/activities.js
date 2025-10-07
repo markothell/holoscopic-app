@@ -510,9 +510,6 @@ router.post('/:id/participants', async (req, res) => {
 
 // Submit rating
 router.post('/:id/rating', async (req, res) => {
-  const startTime = Date.now();
-  console.log(`📊 [RATING] Request received - Activity: ${req.params.id}, User: ${req.body.userId}, Slot: ${req.body.slotNumber}`);
-
   try {
     const { userId, position, objectName, slotNumber = 1 } = req.body;
 
@@ -571,17 +568,13 @@ router.post('/:id/rating', async (req, res) => {
       });
     }
 
-    console.log(`📊 [RATING] Saving to DB...`);
-    const dbStart = Date.now();
     const updatedActivity = await activity.addRating(userId, participant.username, position, objectName, slotNumber);
-    console.log(`📊 [RATING] DB save took ${Date.now() - dbStart}ms`);
 
     // Return the new rating
     const newRating = updatedActivity.ratings.find(r => r.userId === userId && r.slotNumber === slotNumber);
 
     // Broadcast to WebSocket clients
     if (io && newRating) {
-      console.log(`📊 [RATING] Broadcasting to room ${req.params.id}`);
       io.to(req.params.id).emit('rating_added', {
         rating: newRating
       });
@@ -593,12 +586,7 @@ router.post('/:id/rating', async (req, res) => {
           comment: updatedComment
         });
       }
-    } else {
-      console.log(`⚠️ [RATING] WebSocket broadcast skipped - io: ${!!io}, newRating: ${!!newRating}`);
     }
-
-    const totalTime = Date.now() - startTime;
-    console.log(`✅ [RATING] Complete in ${totalTime}ms`);
 
     res.json({
       success: true,
