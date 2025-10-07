@@ -55,7 +55,8 @@ export class WebSocketService {
       this.socket.disconnect();
       this.socket = null;
     }
-    this.listeners.clear();
+    // Don't clear listeners here - let components manage their own listener lifecycle
+    // via unsubscribe functions returned from .on()
   }
 
   // Join activity room
