@@ -32,7 +32,7 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
 
       // Create account
       const signupRes = await fetch(`${apiUrl}/api/auth/signup`, {
