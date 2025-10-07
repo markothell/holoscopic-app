@@ -122,6 +122,8 @@ export default function SliderQuestions({
                     step="0.01"
                     value={yValue}
                     onChange={handleYChange}
+                    onMouseUp={handleYRelease}
+                    onTouchEnd={handleYRelease}
                     className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer slider"
                   />
                   {/* Center tick mark */}
