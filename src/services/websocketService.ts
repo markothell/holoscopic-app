@@ -61,6 +61,7 @@ export class WebSocketService {
   // Join activity room
   private joinActivity(activityId: string, userId: string, username: string): void {
     if (this.socket) {
+      console.log(`[WS] Joining activity room: ${activityId}`);
       this.socket.emit('join_activity', {
         activityId,
         userId,
@@ -107,13 +108,17 @@ export class WebSocketService {
   private setupEventListeners(): void {
     if (!this.socket) return;
 
+    console.log('[WS] Setting up event listeners');
+
     // Rating events
     this.socket.on('rating_added', (data: { rating: Rating }) => {
+      console.log('[WS] Received rating_added event from server:', data);
       this.notifyListeners('rating_added', data);
     });
 
     // Comment events
     this.socket.on('comment_added', (data: { comment: Comment }) => {
+      console.log('[WS] Received comment_added event from server:', data);
       this.notifyListeners('comment_added', data);
     });
     
