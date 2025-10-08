@@ -20,6 +20,8 @@ export default function SequenceDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
+  const [participantName, setParticipantName] = useState('');
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
 
   // Load sequence details
   useEffect(() => {
@@ -146,61 +148,159 @@ export default function SequenceDetailPage() {
           <Link href="/dashboard" className="inline-flex items-center text-blue-400 hover:text-blue-300 mb-4">
             ← Back to Dashboard
           </Link>
-          <div className="flex justify-between items-start">
+          <div className="flex items-center gap-3 mb-4">
+            <Link href="/">
+              <Image src="/holoLogo_dark.svg" alt="Holoscopic Logo" width={40} height={40} className="hover:opacity-80 transition-opacity" />
+            </Link>
             <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">{sequence.title}</h1>
-              {sequence.description && (
-                <p className="text-gray-400 mb-4">{sequence.description}</p>
-              )}
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">{sequence.title}</h1>
             </div>
           </div>
+          {sequence.description && (
+            <p className="text-gray-400 mb-4">{sequence.description}</p>
+          )}
 
-          {/* Enrollment Status */}
+          {/* Welcome Page or Enrollment Status */}
           {!isEnrolled && sequence.status !== 'completed' && (
             <div className="bg-slate-800 rounded-lg shadow-xl p-4 sm:p-6 mb-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h2 className="text-lg font-semibold text-white mb-1">Not Enrolled</h2>
-                  <p className="text-sm text-gray-400">Join this sequence to participate in the activities</p>
+              {sequence.welcomePage?.enabled ? (
+                <>
+                  {/* Welcome Page Content */}
+                  {sequence.welcomePage.welcomeText && (
+                    <div className="mb-6">
+                      <div className="text-gray-300 whitespace-pre-wrap">{sequence.welcomePage.welcomeText}</div>
+                    </div>
+                  )}
+
+                  {/* Reference Link */}
+                  {sequence.welcomePage.referenceLink && (
+                    <div className="mb-6">
+                      <a
+                        href={sequence.welcomePage.referenceLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 text-sm"
+                      >
+                        Reference Material →
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Name Input if Requested */}
+                  {sequence.welcomePage.requestName && (
+                    <div className="mb-6 max-w-md mx-auto">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Your Name (for this activity sequence) *
+                      </label>
+                      <input
+                        type="text"
+                        value={participantName}
+                        onChange={(e) => setParticipantName(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter your name..."
+                        maxLength={100}
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {/* Enroll Button */}
+                  <div className="max-w-md mx-auto">
+                    <button
+                      onClick={handleEnroll}
+                      disabled={enrolling || (sequence.welcomePage.requestName && !participantName.trim())}
+                      className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white font-medium rounded-lg transition-colors"
+                    >
+                      {enrolling ? 'Enrolling...' : 'Enroll in This Sequence'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <h2 className="text-lg font-semibold text-white mb-1">Not Enrolled</h2>
+                    <p className="text-sm text-gray-400">Join this sequence to participate in the activities</p>
+                  </div>
+                  <button
+                    onClick={handleEnroll}
+                    disabled={enrolling}
+                    className="px-6 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white font-medium rounded-lg transition-colors"
+                  >
+                    {enrolling ? 'Enrolling...' : 'Enroll Now'}
+                  </button>
                 </div>
-                <button
-                  onClick={handleEnroll}
-                  disabled={enrolling}
-                  className="px-6 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white font-medium rounded-lg transition-colors"
-                >
-                  {enrolling ? 'Enrolling...' : 'Enroll Now'}
-                </button>
-              </div>
+              )}
             </div>
           )}
 
-          {/* Overall Progress */}
+          {/* Details Section (expandable) */}
           {isEnrolled && (
-            <div className="bg-slate-800 rounded-lg shadow-xl p-4 sm:p-6 mb-6">
-            <h2 className="text-lg font-semibold text-white mb-3">Your Progress</h2>
-            <div className="mb-3">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm text-gray-400">Completed Activities</span>
-                <span className="text-sm text-gray-400">
-                  {stats.participated} / {stats.total}
+            <div className="bg-slate-800 rounded-lg shadow-xl mb-6">
+              <button
+                onClick={() => setDetailsExpanded(!detailsExpanded)}
+                className="w-full p-4 sm:p-6 flex justify-between items-center hover:bg-slate-750 transition-colors"
+              >
+                <h2 className="text-lg font-semibold text-white">Details</h2>
+                <span className="text-gray-400 text-xl">
+                  {detailsExpanded ? '−' : '+'}
                 </span>
-              </div>
-              <div className="w-full bg-slate-700 rounded-full h-3">
-                <div
-                  className="bg-blue-500 h-3 rounded-full transition-all"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
+              </button>
+
+              {detailsExpanded && (
+                <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-slate-700">
+                  {/* Progress */}
+                  <div className="mt-4 mb-6">
+                    <h3 className="text-sm font-semibold text-gray-300 mb-2">Your Progress</h3>
+                    <div className="mb-3">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm text-gray-400">Completed Activities</span>
+                        <span className="text-sm text-gray-400">
+                          {stats.participated} / {stats.total}
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-700 rounded-full h-3">
+                        <div
+                          className="bg-blue-500 h-3 rounded-full transition-all"
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-4 text-sm text-gray-400">
+                      <div>
+                        <span className="font-semibold text-white">{stats.opened}</span> activities open
+                      </div>
+                      <div>
+                        <span className="font-semibold text-white">{sequence.members.length}</span> members enrolled
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Welcome Text */}
+                  {sequence.welcomePage?.enabled && sequence.welcomePage.welcomeText && (
+                    <div className="mb-4">
+                      <h3 className="text-sm font-semibold text-gray-300 mb-2">About This Sequence</h3>
+                      <div className="text-sm text-gray-400 whitespace-pre-wrap">
+                        {sequence.welcomePage.welcomeText}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reference Link */}
+                  {sequence.welcomePage?.enabled && sequence.welcomePage.referenceLink && (
+                    <div className="mt-4">
+                      <a
+                        href={sequence.welcomePage.referenceLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 text-sm inline-flex items-center gap-1"
+                      >
+                        Reference Material →
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="flex gap-4 text-sm text-gray-400">
-              <div>
-                <span className="font-semibold text-white">{stats.opened}</span> activities open
-              </div>
-              <div>
-                <span className="font-semibold text-white">{sequence.members.length}</span> members enrolled
-              </div>
-            </div>
-          </div>
           )}
         </div>
 

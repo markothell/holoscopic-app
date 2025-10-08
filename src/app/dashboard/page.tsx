@@ -90,16 +90,18 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8 flex justify-between items-center">
-          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-            <Image
-              src="/holoLogo_dark.svg"
-              alt="Holoscopic Logo"
-              width={32}
-              height={32}
-              className="mr-2 sm:mr-3 sm:w-10 sm:h-10"
-            />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link href="/">
+              <Image
+                src="/holoLogo_dark.svg"
+                alt="Holoscopic Logo"
+                width={32}
+                height={32}
+                className="sm:w-10 sm:h-10 hover:opacity-80 transition-opacity"
+              />
+            </Link>
             <h1 className="text-2xl sm:text-3xl font-bold text-white">My Sequences</h1>
-          </Link>
+          </div>
           <UserMenu />
         </div>
 
@@ -123,8 +125,7 @@ export default function DashboardPage() {
               return (
                 <div
                   key={sequence.id}
-                  className="bg-slate-800 rounded-lg shadow-xl p-4 sm:p-6 hover:bg-slate-750 transition-colors cursor-pointer"
-                  onClick={() => router.push(`/sequence/${sequence.urlName}`)}
+                  className="bg-slate-800 rounded-lg shadow-xl p-4 sm:p-6"
                 >
                   {/* Header */}
                   <div className="flex justify-between items-start mb-3">
@@ -154,7 +155,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Stats */}
-                  <div className="flex gap-4 text-xs text-gray-400">
+                  <div className="flex gap-4 text-xs text-gray-400 mb-3">
                     <div>
                       <span className="font-semibold text-white">{stats.opened}</span> open
                     </div>
@@ -167,8 +168,16 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Footer */}
-                  <div className="mt-3 text-xs text-gray-500">
-                    Started {FormattingService.formatTimestamp(sequence.startedAt || sequence.createdAt)}
+                  <div className="flex justify-between items-center mt-3">
+                    <div className="text-xs text-gray-500">
+                      Started {FormattingService.formatTimestamp(sequence.startedAt || sequence.createdAt)}
+                    </div>
+                    <button
+                      onClick={() => router.push(`/sequence/${sequence.urlName}`)}
+                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-colors"
+                    >
+                      View
+                    </button>
                   </div>
                 </div>
               );

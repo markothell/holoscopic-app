@@ -24,11 +24,19 @@ export interface SequenceMember {
   joinedAt: Date;
 }
 
+export interface WelcomePage {
+  enabled: boolean;
+  requestName: boolean;
+  welcomeText: string;
+  referenceLink: string;
+}
+
 export interface Sequence {
   id: string;
   title: string;
   urlName: string;
   description: string;
+  welcomePage?: WelcomePage;
   activities: SequenceActivity[];
   members: SequenceMember[];
   status: 'draft' | 'active' | 'completed';
@@ -51,6 +59,7 @@ export interface CreateSequenceData {
   title: string;
   urlName: string;
   description?: string;
+  welcomePage?: WelcomePage;
   activities?: Array<{
     activityId: string;
     order: number;
@@ -62,6 +71,7 @@ export interface UpdateSequenceData {
   title?: string;
   urlName?: string;
   description?: string;
+  welcomePage?: WelcomePage;
   activities?: Array<{
     activityId: string;
     order: number;

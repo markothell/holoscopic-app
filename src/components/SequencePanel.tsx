@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sequence, CreateSequenceData, UpdateSequenceData, SequenceActivity } from '@/models/Sequence';
+import { Sequence, CreateSequenceData, UpdateSequenceData, SequenceActivity, WelcomePage } from '@/models/Sequence';
 import { HoloscopicActivity } from '@/models/Activity';
 import { SequenceService } from '@/services/sequenceService';
 import { ActivityService } from '@/services/activityService';
@@ -30,6 +30,15 @@ export default function SequencePanel({
   const [activityMode, setActivityMode] = useState<'existing' | 'clone' | 'create'>('existing');
   const [selectedCloneActivityId, setSelectedCloneActivityId] = useState<string>('');
 
+  // Welcome page state
+  const [showWelcomePageForm, setShowWelcomePageForm] = useState(false);
+  const [welcomePage, setWelcomePage] = useState<WelcomePage>({
+    enabled: false,
+    requestName: false,
+    welcomeText: '',
+    referenceLink: ''
+  });
+
   // Load available activities
   useEffect(() => {
     const loadActivities = async () => {
@@ -54,6 +63,17 @@ export default function SequencePanel({
         order: a.order,
         duration: a.duration
       })));
+      // Initialize welcomePage with defaults if not present
+      if (editingSequence.welcomePage) {
+        setWelcomePage(editingSequence.welcomePage);
+      } else {
+        setWelcomePage({
+          enabled: false,
+          requestName: false,
+          welcomeText: '',
+          referenceLink: ''
+        });
+      }
     }
   }, [editingSequence]);
 
@@ -67,6 +87,7 @@ export default function SequencePanel({
         title,
         urlName,
         description,
+        welcomePage,
         activities
       };
 
@@ -262,21 +283,116 @@ export default function SequencePanel({
           </div>
         </div>
 
+        {/* Welcome Page Form */}
+        {showWelcomePageForm && (
+          <div className="bg-slate-700 rounded-lg p-4 mb-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Welcome Page Settings</h3>
+
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="welcomeEnabled"
+                  checked={welcomePage.enabled}
+                  onChange={(e) => setWelcomePage({ ...welcomePage, enabled: e.target.checked })}
+                  className="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="welcomeEnabled" className="ml-2 text-sm text-gray-300">
+                  Enable welcome page for this sequence
+                </label>
+              </div>
+
+              {welcomePage.enabled && (
+                <>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="requestName"
+                      checked={welcomePage.requestName}
+                      onChange={(e) => setWelcomePage({ ...welcomePage, requestName: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500"
+                    />
+                    <label htmlFor="requestName" className="ml-2 text-sm text-gray-300">
+                      Request participant name for this sequence
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Welcome Text
+                    </label>
+                    <textarea
+                      value={welcomePage.welcomeText}
+                      onChange={(e) => setWelcomePage({ ...welcomePage, welcomeText: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-600 border border-slate-500 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter welcome text for participants..."
+                      rows={4}
+                      maxLength={2000}
+                    />
+                    <p className="mt-1 text-xs text-gray-400">
+                      {welcomePage.welcomeText.length}/2000 characters
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Reference Link (optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={welcomePage.referenceLink}
+                      onChange={(e) => setWelcomePage({ ...welcomePage, referenceLink: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-600 border border-slate-500 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="https://holoscopic.io/wiki/..."
+                      maxLength={500}
+                    />
+                    <p className="mt-1 text-xs text-gray-400">
+                      Link to wiki page or other reference material
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setShowWelcomePageForm(false)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Activities */}
         <div>
           <div className="flex justify-between items-center mb-3">
             <label className="block text-sm font-medium text-gray-300">
               Activities
             </label>
-            <div className="relative">
+            <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setShowActivityModal(!showActivityModal)}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+                onClick={() => setShowWelcomePageForm(!showWelcomePageForm)}
+                className={`px-3 py-1 text-white text-sm rounded transition-colors ${
+                  welcomePage.enabled
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-gray-600 hover:bg-gray-700'
+                }`}
               >
-                + Add Activity
+                {welcomePage.enabled ? '✓ Set Welcome Page' : 'Set Welcome Page'}
               </button>
-              {showActivityModal && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowActivityModal(!showActivityModal)}
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+                >
+                  + Add Activity
+                </button>
+                {showActivityModal && (
                 <div className="absolute right-0 top-full mt-2 bg-slate-700 rounded-lg shadow-xl p-2 z-10 w-48">
                   <button
                     type="button"
@@ -301,6 +417,7 @@ export default function SequencePanel({
                   </button>
                 </div>
               )}
+              </div>
             </div>
           </div>
 

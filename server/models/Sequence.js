@@ -34,6 +34,38 @@ const SequenceSchema = new mongoose.Schema({
     default: ''
   },
 
+  // Welcome page settings
+  welcomePage: {
+    type: {
+      enabled: {
+        type: Boolean,
+        default: false
+      },
+      requestName: {
+        type: Boolean,
+        default: false
+      },
+      welcomeText: {
+        type: String,
+        trim: true,
+        maxlength: 2000,
+        default: ''
+      },
+      referenceLink: {
+        type: String,
+        trim: true,
+        maxlength: 500,
+        default: ''
+      }
+    },
+    default: () => ({
+      enabled: false,
+      requestName: false,
+      welcomeText: '',
+      referenceLink: ''
+    })
+  },
+
   // Activities in the sequence with their scheduling
   activities: [{
     activityId: {

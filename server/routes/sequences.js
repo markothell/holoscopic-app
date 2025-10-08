@@ -151,7 +151,7 @@ router.get('/url/:urlName', async (req, res) => {
 // Create new sequence
 router.post('/', async (req, res) => {
   try {
-    const { title, urlName, description, activities } = req.body;
+    const { title, urlName, description, welcomePage, activities } = req.body;
 
     // Validate required fields
     if (!title || !urlName) {
@@ -168,6 +168,12 @@ router.post('/', async (req, res) => {
       title,
       urlName,
       description: description || '',
+      welcomePage: welcomePage || {
+        enabled: false,
+        requestName: false,
+        welcomeText: '',
+        referenceLink: ''
+      },
       activities: activities || [],
       members: [],
       status: 'draft'
@@ -203,6 +209,7 @@ router.put('/:id', async (req, res) => {
       }
       sequence.urlName = updates.urlName;
     }
+    if (updates.welcomePage !== undefined) sequence.welcomePage = updates.welcomePage;
     if (updates.activities) sequence.activities = updates.activities;
     if (updates.status) sequence.status = updates.status;
 
