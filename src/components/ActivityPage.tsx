@@ -710,7 +710,7 @@ export default function ActivityPage({ activityId, sequenceId }: ActivityPagePro
                 <div className="mt-4 flex gap-3">
                   <button
                     onClick={async () => {
-                      if (!userRating) return;
+                      if (!userRating || !userId) return;
                       try {
                         await ActivityService.submitRating(
                           activity.id,
