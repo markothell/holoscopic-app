@@ -61,6 +61,7 @@ export default function ProfilePage() {
             id: targetUserId,
             displayName: 'Sample Data',
             sequenceId: sequenceId,
+            sequenceUrlName: '',
             sequenceTitle: 'Sample Sequence',
             joinedAt: new Date().toISOString(),
             participatedActivities: []
