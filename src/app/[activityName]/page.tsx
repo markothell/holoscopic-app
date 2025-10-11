@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { HoloscopicActivity } from '@/models/Activity';
 import { ActivityService } from '@/services/activityService';
 import ActivityPage from '@/components/ActivityPage';
@@ -10,7 +10,9 @@ import Link from 'next/link';
 
 export default function ActivityByNamePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const activityName = params.activityName as string;
+  const sequenceId = searchParams.get('sequence');
   
   const [activity, setActivity] = useState<HoloscopicActivity | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,5 +83,5 @@ export default function ActivityByNamePage() {
     );
   }
 
-  return <ActivityPage activityId={activity.id} />;
+  return <ActivityPage activityId={activity.id} sequenceId={sequenceId || undefined} />;
 }

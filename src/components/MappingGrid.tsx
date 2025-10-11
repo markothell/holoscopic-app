@@ -207,7 +207,7 @@ export default function MappingGrid({
                   width: dotSize.width,
                   height: dotSize.height,
                 }}
-                title={comment ? comment.text : `${rating.username} - ${FormattingService.formatTimestamp(rating.timestamp)}`}
+                title={rating.objectName ? (comment ? `${rating.objectName}\n${comment.text}` : rating.objectName) : (comment ? comment.text : '')}
                 onClick={hasComment ? (e) => handleRatingClick(rating, e) : undefined}
               />
             );

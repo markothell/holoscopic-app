@@ -5,18 +5,19 @@ import { Comment, CommentSectionProps, CommentSortOrder } from '@/models/Activit
 import { ValidationService } from '@/utils/validation';
 import { FormattingService } from '@/utils/formatting';
 
-export default function CommentSection({ 
-  activity, 
-  onCommentSubmit, 
+export default function CommentSection({
+  activity,
+  onCommentSubmit,
   onCommentVote,
-  userComment, 
+  userComment,
   showAllComments = false,
   readOnly = false,
   currentUserId,
   onCommentHover,
   selectedCommentId,
   onSelectedCommentChange,
-  onVisibleCommentsChange
+  onVisibleCommentsChange,
+  sequenceId
 }: CommentSectionProps) {
   const [commentText, setCommentText] = useState(userComment?.text || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -358,10 +359,10 @@ export default function CommentSection({
                         {getDisplayName(comment)}
                       </span>
                       <div className="flex items-center gap-1.5">
-                        {/* Profile Icon */}
-                        {activity.showProfileLinks !== false && comment.userId && !comment.userId.startsWith('anon_') && (
+                        {/* Profile Icon - Only show if sequenceId present (indicates sequence context) */}
+                        {activity.showProfileLinks !== false && comment.userId && !comment.userId.startsWith('anon_') && !comment.userId.startsWith('starter_') && sequenceId && (
                           <a
-                            href={`/profile/${comment.userId}`}
+                            href={`/profile/${comment.userId}?sequence=${sequenceId}`}
                             onClick={(e) => e.stopPropagation()}
                             className={`flex items-center justify-center transition-opacity hover:opacity-80 ${
                               readOnly ? "opacity-90" : "opacity-100"

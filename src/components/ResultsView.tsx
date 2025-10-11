@@ -11,7 +11,8 @@ export default function ResultsView({
   isVisible,
   onCommentVote,
   currentUserId,
-  hoveredSlotNumber
+  hoveredSlotNumber,
+  sequenceId
 }: ResultsViewProps) {
   const [activeTab, setActiveTab] = useState<'map' | 'comments'>('map');
   const [hoveredCommentId, setHoveredCommentId] = useState<string | null>(null);
@@ -58,11 +59,11 @@ export default function ResultsView({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="h-full">
 
       {/* Results Content */}
       {isVisible && (
-        <div className="space-y-6 bg-transparent p-6 rounded-lg">
+        <div className="h-full bg-transparent lg:p-0">
           {/* Desktop: Side-by-side layout, Mobile: Tab Navigation */}
           <div className="lg:hidden">
             {/* Mobile Tab Navigation */}
@@ -158,6 +159,7 @@ export default function ResultsView({
                     selectedCommentId={selectedCommentId}
                     onSelectedCommentChange={setSelectedCommentId}
                     onVisibleCommentsChange={handleVisibleCommentsChange}
+                    sequenceId={sequenceId}
                   />
                 </div>
               )}
@@ -235,19 +237,19 @@ export default function ResultsView({
           )}
 
           {/* Desktop Side-by-side Layout */}
-          <div className="hidden lg:flex lg:flex-col lg:items-center lg:justify-between lg:min-h-[60vh]">
-            <div className="flex gap-8 justify-center items-start">
-              {/* Left: Map */}
-              <div className="flex-shrink-0 flex flex-col">
+          <div className="hidden lg:flex lg:gap-0 lg:h-full">
+            {/* Left: Map - takes remaining space */}
+            <div className="flex-1 flex items-center justify-center">
+              <div className="flex flex-col items-center">
                 {/* Map Title */}
-                <div className="mb-2 flex justify-center">
-                  <div className="bg-slate-600 px-4 py-2 rounded-lg border border-slate-500">
-                    <h3 className="text-lg font-semibold text-white text-center" style={{ fontSize: 'clamp(0.9rem, 2vw, 1.125rem)', lineHeight: '1.2' }}>
+                <div className="mb-4">
+                  <div className="bg-slate-600 px-6 py-3 rounded-lg border border-slate-500">
+                    <h3 className="text-xl font-semibold text-white text-center">
                       {activity.xAxis.label} vs {activity.yAxis.label}
                     </h3>
                   </div>
                 </div>
-                
+
                 {stats.totalRatings > 0 ? (
                   <MappingGrid
                     activity={activity}
@@ -278,32 +280,32 @@ export default function ResultsView({
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Right: Narrow Comments */}
-              <div className="w-96 flex-shrink-0 min-h-0 flex flex-col">
-                {/* Comments Title */}
-                <div className="mb-2 flex justify-center">
-                  <div className="bg-slate-600 px-4 py-2 rounded-lg max-w-sm border border-slate-500">
-                    <h3 className="text-lg font-semibold text-white text-center" style={{ fontSize: 'clamp(0.9rem, 2vw, 1.125rem)', lineHeight: '1.2' }}>
-                      {activity.commentQuestion}
-                    </h3>
-                  </div>
-                </div>
-                
-                <div className="bg-slate-700 rounded-lg p-4 overflow-hidden w-full" style={{ height: 'min(500px, 90vw)' }}>
-                  <CommentSection
-                    activity={activity}
-                    onCommentSubmit={() => {}} // No submission in results view
-                    onCommentVote={onCommentVote}
-                    showAllComments={true}
-                    readOnly={true}
-                    currentUserId={currentUserId}
-                    onCommentHover={handleCommentHover}
-                    selectedCommentId={selectedCommentId}
-                    onSelectedCommentChange={setSelectedCommentId}
-                    onVisibleCommentsChange={handleVisibleCommentsChange}
-                  />
-                </div>
+            {/* Right: Full-height Comments Panel */}
+            <div className="w-[400px] flex-shrink-0 bg-slate-700 flex flex-col h-full">
+              {/* Comments Title - Inside panel at top */}
+              <div className="flex-shrink-0 px-6 py-4 border-b border-slate-600">
+                <h3 className="text-xl font-semibold text-white text-center">
+                  {activity.commentQuestion}
+                </h3>
+              </div>
+
+              {/* Comments Content - Scrollable */}
+              <div className="flex-1 overflow-hidden p-4">
+                <CommentSection
+                  activity={activity}
+                  onCommentSubmit={() => {}} // No submission in results view
+                  onCommentVote={onCommentVote}
+                  showAllComments={true}
+                  readOnly={true}
+                  currentUserId={currentUserId}
+                  onCommentHover={handleCommentHover}
+                  selectedCommentId={selectedCommentId}
+                  onSelectedCommentChange={setSelectedCommentId}
+                  onVisibleCommentsChange={handleVisibleCommentsChange}
+                  sequenceId={sequenceId}
+                />
               </div>
             </div>
           </div>

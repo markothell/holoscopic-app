@@ -127,14 +127,14 @@ export class SequenceService {
   }
 
   // Add member to sequence
-  static async addMember(sequenceId: string, userId: string): Promise<Sequence> {
+  static async addMember(sequenceId: string, userId: string, displayName?: string): Promise<Sequence> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/sequences/${sequenceId}/members`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, displayName }),
       });
 
       if (!response.ok) {

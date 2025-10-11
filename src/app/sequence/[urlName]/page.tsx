@@ -22,6 +22,8 @@ export default function SequenceDetailPage() {
   const [enrolling, setEnrolling] = useState(false);
   const [participantName, setParticipantName] = useState('');
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [updatingName, setUpdatingName] = useState(false);
 
   // Load sequence details
   useEffect(() => {
@@ -34,9 +36,14 @@ export default function SequenceDetailPage() {
         const data = await SequenceService.getSequenceByUrlName(urlName, userId);
         setSequence(data);
 
-        // Check if user is enrolled
-        const enrolled = data.members.some(m => m.userId === userId);
-        setIsEnrolled(enrolled);
+        // Check if user is enrolled and get their name
+        const member = data.members.find(m => m.userId === userId);
+        if (member) {
+          setIsEnrolled(true);
+          setParticipantName(member.displayName || '');
+        } else {
+          setIsEnrolled(false);
+        }
       } catch (err) {
         setError('Failed to load sequence. The backend server may not be running.');
         console.error('Error loading sequence:', err);
@@ -54,7 +61,7 @@ export default function SequenceDetailPage() {
 
     try {
       setEnrolling(true);
-      await SequenceService.addMember(sequence.id, userId);
+      await SequenceService.addMember(sequence.id, userId, participantName.trim() || undefined);
       setIsEnrolled(true);
 
       // Reload sequence to get updated member count
@@ -248,6 +255,66 @@ export default function SequenceDetailPage() {
 
               {detailsExpanded && (
                 <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-slate-700">
+                  {/* Display Name Section */}
+                  <div className="mt-4 mb-6">
+                    <h3 className="text-sm font-semibold text-gray-300 mb-2">Your Display Name</h3>
+                    {!editingName ? (
+                      <div className="flex items-center gap-3">
+                        <span className="text-white">{participantName || 'Not set'}</span>
+                        <button
+                          onClick={() => setEditingName(true)}
+                          className="text-sm text-blue-400 hover:text-blue-300"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={participantName}
+                          onChange={(e) => setParticipantName(e.target.value)}
+                          className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Enter your name..."
+                          maxLength={100}
+                        />
+                        <button
+                          onClick={async () => {
+                            if (!sequence || !userId) return;
+                            try {
+                              setUpdatingName(true);
+                              await SequenceService.addMember(sequence.id, userId, participantName.trim() || undefined);
+                              setEditingName(false);
+                              // Reload sequence
+                              const updated = await SequenceService.getSequenceByUrlName(urlName, userId);
+                              setSequence(updated);
+                            } catch (err) {
+                              console.error('Error updating name:', err);
+                              alert('Failed to update name');
+                            } finally {
+                              setUpdatingName(false);
+                            }
+                          }}
+                          disabled={updatingName}
+                          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white rounded-lg transition-colors"
+                        >
+                          {updatingName ? 'Saving...' : 'Save'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingName(false);
+                            // Reset to current member name
+                            const member = sequence?.members.find(m => m.userId === userId);
+                            setParticipantName(member?.displayName || '');
+                          }}
+                          className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Progress */}
                   <div className="mt-4 mb-6">
                     <h3 className="text-sm font-semibold text-gray-300 mb-2">Your Progress</h3>
@@ -372,7 +439,7 @@ export default function SequenceDetailPage() {
                     {/* Action Button */}
                     {activity && seqActivity.openedAt && status.text !== 'Closed' && isEnrolled && (
                       <Link
-                        href={`/${activity.urlName}`}
+                        href={`/${activity.urlName}?sequence=${sequence.id}`}
                         className="inline-block px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-colors"
                       >
                         {seqActivity.hasParticipated ? 'View Results' : 'Participate Now'}

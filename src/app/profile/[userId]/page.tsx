@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 
 interface Activity {
@@ -21,59 +22,64 @@ interface Activity {
   }[];
 }
 
-interface Sequence {
-  id: string;
-  title: string;
-  urlName: string;
-  description?: string;
-}
-
 interface UserProfile {
   id: string;
-  displayName?: string;
-  name?: string;
-  email: string;
-  bio?: string;
-  createdAt: string;
-  joinedSequences: Sequence[];
+  displayName: string;
+  sequenceId: string;
+  sequenceUrlName: string;
+  sequenceTitle: string;
+  joinedAt: string;
   participatedActivities: Activity[];
 }
 
 export default function ProfilePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession();
-  const userId = params.userId as string;
+  const { userId: viewerId } = useAuth();
+  const targetUserId = params.userId as string;
+  const sequenceId = searchParams.get('sequence');
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [canView, setCanView] = useState(false);
 
   useEffect(() => {
     async function fetchProfile() {
       try {
-        // Check if this is a starter/sample data user
-        if (userId.startsWith('starter_')) {
-          setProfile({
-            id: userId,
-            displayName: 'Sample Data',
-            name: 'Sample Data',
-            email: '',
-            bio: 'This is example data provided to illustrate the activity.',
-            createdAt: new Date().toISOString(),
-            joinedSequences: [],
-            participatedActivities: []
-          });
-          setCanView(true);
+        // Require sequence context
+        if (!sequenceId) {
+          setError('Sequence context is required. Please access this profile from within a sequence.');
           setLoading(false);
           return;
         }
 
-        const response = await fetch(`/api/users/${userId}`);
+        // Check if this is a starter/sample data user
+        if (targetUserId.startsWith('starter_')) {
+          setProfile({
+            id: targetUserId,
+            displayName: 'Sample Data',
+            sequenceId: sequenceId,
+            sequenceTitle: 'Sample Sequence',
+            joinedAt: new Date().toISOString(),
+            participatedActivities: []
+          });
+          setLoading(false);
+          return;
+        }
+
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
+        const response = await fetch(`${API_URL}/api/sequences/${sequenceId}/profile/${targetUserId}?viewerId=${viewerId || ''}`);
 
         if (response.status === 403) {
-          setError('You do not have permission to view this profile. Only sequence participants can view profiles.');
+          setError('You do not have permission to view this profile. Only sequence members can view profiles.');
+          setLoading(false);
+          return;
+        }
+
+        if (response.status === 404) {
+          setError('Profile not found in this sequence.');
           setLoading(false);
           return;
         }
@@ -84,7 +90,6 @@ export default function ProfilePage() {
 
         const data = await response.json();
         setProfile(data);
-        setCanView(true);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load profile');
       } finally {
@@ -92,10 +97,10 @@ export default function ProfilePage() {
       }
     }
 
-    if (userId) {
+    if (targetUserId) {
       fetchProfile();
     }
-  }, [userId]);
+  }, [targetUserId, sequenceId, viewerId]);
 
   if (loading) {
     return (
@@ -125,12 +130,22 @@ export default function ProfilePage() {
     return null;
   }
 
-  const isOwnProfile = session?.user?.id === userId;
-  const displayName = profile.displayName || profile.name || 'Anonymous User';
+  const isOwnProfile = viewerId === targetUserId;
+  const displayName = profile.displayName || 'Anonymous';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] py-8 px-4">
       <div className="max-w-4xl mx-auto">
+        {/* Back to Sequence */}
+        <div className="mb-4">
+          <Link
+            href={`/sequence/${profile.sequenceUrlName}`}
+            className="text-white/80 hover:text-white text-sm flex items-center gap-2"
+          >
+            ← Back to {profile.sequenceTitle}
+          </Link>
+        </div>
+
         {/* Header */}
         <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
           <div className="flex items-start justify-between mb-4">
@@ -141,47 +156,13 @@ export default function ProfilePage() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">{displayName}</h1>
-                <p className="text-gray-500 text-sm">Member since {new Date(profile.createdAt).toLocaleDateString()}</p>
+                <p className="text-gray-500 text-sm">
+                  {profile.sequenceTitle} • Joined {new Date(profile.joinedAt).toLocaleDateString()}
+                </p>
               </div>
             </div>
-            {isOwnProfile && (
-              <Link
-                href="/profile/edit"
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                Edit Profile
-              </Link>
-            )}
           </div>
-
-          {profile.bio && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <h2 className="text-sm font-semibold text-gray-700 mb-2">Bio</h2>
-              <p className="text-gray-600">{profile.bio}</p>
-            </div>
-          )}
         </div>
-
-        {/* Joined Sequences */}
-        {profile.joinedSequences && profile.joinedSequences.length > 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Joined Sequences</h2>
-            <div className="space-y-3">
-              {profile.joinedSequences.map((sequence) => (
-                <Link
-                  key={sequence.id}
-                  href={`/sequence/${sequence.urlName}`}
-                  className="block p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
-                >
-                  <h3 className="font-semibold text-gray-900">{sequence.title}</h3>
-                  {sequence.description && (
-                    <p className="text-sm text-gray-600 mt-1">{sequence.description}</p>
-                  )}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Participated Activities */}
         {profile.participatedActivities && profile.participatedActivities.length > 0 && (
@@ -231,22 +212,13 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Empty States */}
-        {(!profile.joinedSequences || profile.joinedSequences.length === 0) &&
-         (!profile.participatedActivities || profile.participatedActivities.length === 0) && (
+        {/* Empty State */}
+        {(!profile.participatedActivities || profile.participatedActivities.length === 0) && (
           <div className="bg-white rounded-lg shadow-lg p-8 text-center text-gray-500">
             {isOwnProfile ? (
-              <>
-                <p className="mb-4">You haven't joined any sequences or participated in any activities yet.</p>
-                <Link
-                  href="/dashboard"
-                  className="text-indigo-600 hover:text-indigo-800 font-medium"
-                >
-                  Browse Sequences
-                </Link>
-              </>
+              <p>You haven't participated in any activities in this sequence yet.</p>
             ) : (
-              <p>This user hasn't participated in any activities yet.</p>
+              <p>{displayName} hasn't participated in any activities in this sequence yet.</p>
             )}
           </div>
         )}

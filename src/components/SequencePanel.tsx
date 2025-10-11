@@ -510,8 +510,8 @@ export default function SequencePanel({
                           <label className="block text-xs text-gray-400 mb-1">Duration (days)</label>
                           <input
                             type="number"
-                            value={activity.duration}
-                            onChange={(e) => handleActivityChange(index, 'duration', parseInt(e.target.value))}
+                            value={activity.duration || ''}
+                            onChange={(e) => handleActivityChange(index, 'duration', parseInt(e.target.value) || 1)}
                             className="w-full px-3 py-2 bg-slate-600 border border-slate-500 text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             min="1"
                             required

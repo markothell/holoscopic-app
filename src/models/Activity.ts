@@ -183,6 +183,7 @@ export interface CommentSectionProps {
   selectedCommentId?: string | null;
   onSelectedCommentChange?: (commentId: string | null) => void;
   onVisibleCommentsChange?: (commentIds: string[]) => void;
+  sequenceId?: string;
 }
 
 export type CommentSortOrder = 'newest' | 'oldest' | 'votes';
@@ -194,4 +195,5 @@ export interface ResultsViewProps {
   onCommentVote?: (commentId: string) => void;
   currentUserId?: string;
   hoveredSlotNumber?: number | null;
+  sequenceId?: string;
 }

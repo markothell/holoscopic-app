@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { HoloscopicActivity, Rating, Comment } from '@/models/Activity';
 import { ActivityService } from '@/services/activityService';
 import { webSocketService } from '@/services/websocketService';
@@ -10,13 +10,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import CommentSection from './CommentSection';
 import ResultsView from './ResultsView';
 import SliderQuestions from './SliderQuestions';
+import MappingGrid from './MappingGrid';
 import Image from 'next/image';
 
 interface ActivityPageProps {
   activityId: string;
+  sequenceId?: string;
 }
 
-export default function ActivityPage({ activityId }: ActivityPageProps) {
+export default function ActivityPage({ activityId, sequenceId }: ActivityPageProps) {
   const { userId, isLoading: authLoading, isAuthenticated } = useAuth();
   const [activity, setActivity] = useState<HoloscopicActivity | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,6 +36,11 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
   const [currentSlot, setCurrentSlot] = useState<number>(1);
   const [hoveredSlot, setHoveredSlot] = useState<number | null>(null);
   // const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  // Results view interaction state
+  const [hoveredCommentId, setHoveredCommentId] = useState<string | null>(null);
+  const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
+  const [visibleCommentIds, setVisibleCommentIds] = useState<string[]>([]);
 
 
   // Ref for results section
@@ -353,8 +360,8 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       // Submit comment via API only - WebSocket will broadcast the result
       await ActivityService.submitComment(activity.id, userId, text, userObjectName, currentSlot);
 
-      // Navigate to results screen after successful submission
-      navigateToScreen(4);
+      // Navigate to results screen after successful submission (with small delay for WebSocket update)
+      setTimeout(() => navigateToScreen(5), 100);
 
       // setHasSubmitted(true);
     } catch (err) {
@@ -418,6 +425,24 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
       }, 100);
     }
   };
+
+  // Results view interaction handlers
+  const handleCommentHover = useCallback((commentId: string | null) => {
+    setHoveredCommentId(commentId);
+  }, []);
+
+  const handleMapDotClick = useCallback((commentId: string) => {
+    setVisibleCommentIds(current => {
+      if (current.includes(commentId)) {
+        setSelectedCommentId(commentId);
+      }
+      return current;
+    });
+  }, []);
+
+  const handleVisibleCommentsChange = useCallback((commentIds: string[]) => {
+    setVisibleCommentIds(commentIds);
+  }, []);
 
   // Loading state (check auth + activity together)
   if (authLoading || loading) {
@@ -548,9 +573,11 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
 
             {/* Visual Summary Section */}
             <div className="flex flex-col sm:flex-row gap-8 justify-center items-start mt-8">
-              {/* 4 Questions Box */}
+              {/* Entries Box */}
               <div className="bg-white/10 rounded-lg p-6 backdrop-blur-sm w-full max-w-[532px] sm:w-[250px]">
-                <h2 className="text-xl font-semibold mb-4 text-center">4 Questions</h2>
+                <h2 className="text-xl font-semibold mb-4 text-center">
+                  {activity.maxEntries || 1} {activity.maxEntries === 1 ? 'Entry' : 'Entries'}
+                </h2>
                 <button
                   onClick={() => activity.status === 'completed' ? navigateToScreen(5) : navigateToScreen(1)}
                   className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
@@ -561,7 +588,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
 
               {/* Simplified Grid Preview */}
               <div className="bg-white/10 rounded-lg p-6 backdrop-blur-sm w-full max-w-[532px] sm:w-[250px]">
-                <h2 className="text-xl font-semibold mb-4 text-center">1 Map</h2>
+                <h2 className="text-xl font-semibold mb-4 text-center">Map Axes</h2>
                 <div className="relative w-[200px] h-[200px] mx-auto">
                   {/* Professional Axes using arrowAx.svg */}
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -678,18 +705,49 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
                 </div>
               </div>
 
-              {/* Clear Entry Button - Show if current slot has data */}
+              {/* Update and Clear buttons - Show if current slot has data */}
               {getSlotData(currentSlot).hasData && (
-                <button
-                  onClick={async () => {
-                    if (window.confirm(`Clear all data for Entry ${currentSlot}?`)) {
-                      await handleClearSlot(currentSlot);
-                    }
-                  }}
-                  className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded-lg transition-colors text-sm font-medium border border-red-500/40"
-                >
-                  Clear Entry {currentSlot}
-                </button>
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={async () => {
+                      if (!userRating) return;
+                      try {
+                        await ActivityService.submitRating(
+                          activity.id,
+                          userId,
+                          { x: userRating.position.x, y: userRating.position.y },
+                          userObjectName,
+                          currentSlot
+                        );
+                        // Show success feedback
+                        const btn = event?.currentTarget as HTMLButtonElement;
+                        if (btn) {
+                          const originalText = btn.textContent;
+                          btn.textContent = '✓ Updated!';
+                          setTimeout(() => {
+                            btn.textContent = originalText;
+                          }, 2000);
+                        }
+                      } catch (err) {
+                        console.error('Error updating object name:', err);
+                        alert('Failed to update object name');
+                      }
+                    }}
+                    className="flex-1 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-200 rounded-lg transition-colors text-sm font-medium border border-blue-500/40"
+                  >
+                    Update Name
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (window.confirm(`Clear all data for Entry ${currentSlot}?`)) {
+                        await handleClearSlot(currentSlot);
+                      }
+                    }}
+                    className="flex-1 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded-lg transition-colors text-sm font-medium border border-red-500/40"
+                  >
+                    Clear Entry {currentSlot}
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -784,6 +842,7 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
                 userComment={userComment || undefined}
                 showAllComments={false}
                 readOnly={activity.status === 'completed'}
+                sequenceId={sequenceId}
               />
             </div>
 
@@ -800,25 +859,26 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
         </div>
 
         {/* Screen 6: Results (Map) */}
-        <div id="results-screen" className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 relative flex flex-col">
-          
-          <div className="flex-1 flex flex-col pt-16 sm:pt-20 pb-4">
-            <div className="flex-shrink-0 px-4 mb-2 lg:mb-4 mt-12">
-              <div className="text-left max-w-4xl mx-auto">
-                <p className="text-sm sm:text-base text-gray-300 mb-1">Step 5</p>
-                <h2 className="text-xl sm:text-2xl lg:text-4xl xl:text-6xl font-bold text-white">
+        <div id="results-screen" className="min-h-screen lg:h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+
+          {/* Mobile Header */}
+          <div className="sm:hidden flex-1 flex flex-col pt-4 pb-4">
+            <div className="flex-shrink-0 px-4 mb-4 flex items-center justify-between">
+              {/* Title - aligned with logo */}
+              <div className="ml-16">
+                <p className="text-sm text-gray-300 mb-1">Step 5</p>
+                <h2 className="text-2xl font-bold text-white">
                   View map and vote
                 </h2>
+              </div>
 
-                {/* Slot Navigation Buttons - Only show if maxEntries > 1 */}
-                {activity.maxEntries && activity.maxEntries > 1 && (
-                  <div className="mt-4 flex gap-3 items-center">
-                    <span className="text-sm text-gray-400">Your entries:</span>
+              {/* Slot Navigation Buttons - Only show if maxEntries > 1 */}
+              {activity.maxEntries && activity.maxEntries > 1 && (
+                <div className="flex flex-col items-end">
+                  <span className="text-sm text-gray-400 mb-2">Your entries:</span>
+                  <div className="flex gap-3">
                     {Array.from({ length: activity.maxEntries }, (_, i) => i + 1).map((slot) => {
                       const slotData = getSlotData(slot);
-                      const slotRating = activity.ratings.find(r =>
-                        r.userId === userId && (r.slotNumber || 1) === slot
-                      );
 
                       return (
                         <button
@@ -845,8 +905,8 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
                       );
                     })}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
             <div className="flex-1 min-h-0 px-4" ref={resultsRef}>
               <ResultsView
@@ -856,7 +916,131 @@ export default function ActivityPage({ activityId }: ActivityPageProps) {
                 onCommentVote={activity.status === 'completed' ? undefined : handleCommentVote}
                 currentUserId={userId || ''}
                 hoveredSlotNumber={hoveredSlot}
+                sequenceId={sequenceId}
               />
+            </div>
+          </div>
+
+          {/* Desktop Full-height Layout - Split into columns */}
+          <div className="hidden sm:flex sm:h-full lg:h-full" ref={resultsRef}>
+            {/* Left Column: Title + Entries + Map */}
+            <div className="flex-1 flex flex-col px-8 py-6">
+              {/* Title and Slot Navigation - Vertical layout in all cases */}
+              <div className="flex-shrink-0 mb-6 ml-24 xl:ml-32">
+                {/* Title */}
+                <div className="mb-3">
+                  <p className="text-sm text-gray-300 mb-1">Step 5</p>
+                  <h2 className="text-3xl font-bold text-white">View map and vote</h2>
+                </div>
+
+                {/* Slot Navigation */}
+                {activity.maxEntries && activity.maxEntries > 1 && (
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm text-gray-400 mb-2">Your entries:</span>
+                    <div className="flex gap-3">
+                      {Array.from({ length: activity.maxEntries }, (_, i) => i + 1).map((slot) => {
+                        const slotData = getSlotData(slot);
+
+                        return (
+                          <button
+                            key={slot}
+                            onClick={() => {
+                              setCurrentSlot(slot);
+                              navigateToScreen(1);
+                            }}
+                            onMouseEnter={() => setHoveredSlot(slot)}
+                            onMouseLeave={() => setHoveredSlot(null)}
+                            className={`w-10 h-10 rounded-full border-2 transition-all ${
+                              slotData.hasData
+                                ? 'bg-white border-white hover:bg-white/90'
+                                : 'bg-transparent border-white/40 hover:border-white/60'
+                            }`}
+                            aria-label={`Edit entry ${slot}`}
+                          >
+                            <span className={`text-sm font-semibold ${
+                              slotData.hasData ? 'text-slate-900' : 'text-white/70'
+                            }`}>
+                              {slot}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Map - centered in remaining space on lg+, full content with tabs below lg */}
+              <div className="flex-1 flex items-center justify-center lg:block">
+                {/* Desktop lg+: Just the map */}
+                <div className="hidden lg:flex flex-col items-center">
+                  {/* Map Title */}
+                  <div className="mb-4">
+                    <div className="bg-slate-600 px-6 py-3 rounded-lg border border-slate-500">
+                      <h3 className="text-xl font-semibold text-white text-center">
+                        {activity.xAxis.label} vs {activity.yAxis.label}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {activity.ratings.length > 0 ? (
+                    <MappingGrid
+                      activity={activity}
+                      onRatingSubmit={() => {}}
+                      showAllRatings={true}
+                      hoveredCommentId={hoveredCommentId}
+                      onDotClick={handleMapDotClick}
+                      visibleCommentIds={visibleCommentIds}
+                      hoveredSlotNumber={hoveredSlot}
+                      currentUserId={userId || ''}
+                    />
+                  ) : (
+                    <div className="text-center py-12 text-gray-300">
+                      <p>No ratings submitted yet</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Tablet sm-md: Use ResultsView with tabs */}
+                <div className="lg:hidden w-full h-full">
+                  <ResultsView
+                    activity={activity}
+                    isVisible={true}
+                    onToggle={handleResultsToggle}
+                    onCommentVote={activity.status === 'completed' ? undefined : handleCommentVote}
+                    currentUserId={userId || ''}
+                    hoveredSlotNumber={hoveredSlot}
+                    sequenceId={sequenceId}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Comments Panel - Only show on lg+ screens (1024px+) */}
+            <div className="hidden lg:flex w-[400px] flex-shrink-0 bg-slate-700 flex-col">
+              {/* Comments Title */}
+              <div className="flex-shrink-0 px-6 py-4 border-b border-slate-600">
+                <h3 className="text-xl font-semibold text-white text-center">
+                  {activity.commentQuestion}
+                </h3>
+              </div>
+
+              {/* Comments Content */}
+              <div className="flex-1 overflow-hidden p-4">
+                <CommentSection
+                  activity={activity}
+                  onCommentSubmit={() => {}}
+                  onCommentVote={activity.status === 'completed' ? undefined : handleCommentVote}
+                  showAllComments={true}
+                  readOnly={true}
+                  currentUserId={userId || ''}
+                  onCommentHover={handleCommentHover}
+                  selectedCommentId={selectedCommentId}
+                  onSelectedCommentChange={setSelectedCommentId}
+                  onVisibleCommentsChange={handleVisibleCommentsChange}
+                  sequenceId={sequenceId}
+                />
+              </div>
             </div>
           </div>
         </div>

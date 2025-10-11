@@ -102,6 +102,11 @@ const SequenceSchema = new mongoose.Schema({
       type: String,
       required: true
     },
+    displayName: {
+      type: String,
+      trim: true,
+      maxlength: 50
+    },
     joinedAt: {
       type: Date,
       default: Date.now
@@ -136,7 +141,7 @@ SequenceSchema.index({ 'members.userId': 1 });
 SequenceSchema.index({ urlName: 1 });
 
 // Helper methods
-SequenceSchema.methods.addMember = async function(userId) {
+SequenceSchema.methods.addMember = async function(userId, displayName) {
   try {
     // Check if member already exists
     const existingMember = this.members.find(m => m.userId === userId);
@@ -144,8 +149,12 @@ SequenceSchema.methods.addMember = async function(userId) {
     if (!existingMember) {
       this.members.push({
         userId: userId,
+        displayName: displayName || '',
         joinedAt: new Date()
       });
+    } else if (displayName) {
+      // Update displayName if provided
+      existingMember.displayName = displayName;
     }
 
     return await this.save();
