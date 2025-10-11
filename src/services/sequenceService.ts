@@ -127,18 +127,19 @@ export class SequenceService {
   }
 
   // Add member to sequence
-  static async addMember(sequenceId: string, userId: string, displayName?: string): Promise<Sequence> {
+  static async addMember(sequenceId: string, userId: string, displayName?: string, email?: string): Promise<Sequence> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/sequences/${sequenceId}/members`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId, displayName }),
+        body: JSON.stringify({ userId, displayName, email }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to add member');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add member');
       }
 
       return await response.json();

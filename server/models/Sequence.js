@@ -102,6 +102,12 @@ const SequenceSchema = new mongoose.Schema({
       type: String,
       required: true
     },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      maxlength: 100
+    },
     displayName: {
       type: String,
       trim: true,
@@ -112,6 +118,20 @@ const SequenceSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+
+  // Email-based invitations
+  invitedEmails: [{
+    type: String,
+    trim: true,
+    lowercase: true,
+    maxlength: 100
+  }],
+
+  // Require invitation to enroll (if true, only invited emails can join)
+  requireInvitation: {
+    type: Boolean,
+    default: false
+  },
 
   // Sequence status
   status: {
@@ -141,20 +161,32 @@ SequenceSchema.index({ 'members.userId': 1 });
 SequenceSchema.index({ urlName: 1 });
 
 // Helper methods
-SequenceSchema.methods.addMember = async function(userId, displayName) {
+SequenceSchema.methods.addMember = async function(userId, displayName, email) {
   try {
     // Check if member already exists
     const existingMember = this.members.find(m => m.userId === userId);
 
     if (!existingMember) {
+      // If invitation is required, validate email
+      if (this.requireInvitation && email) {
+        const normalizedEmail = email.toLowerCase().trim();
+        const isInvited = this.invitedEmails.includes(normalizedEmail);
+
+        if (!isInvited) {
+          throw new Error('Email not invited to this sequence');
+        }
+      }
+
       this.members.push({
         userId: userId,
+        email: email || '',
         displayName: displayName || '',
         joinedAt: new Date()
       });
-    } else if (displayName) {
-      // Update displayName if provided
-      existingMember.displayName = displayName;
+    } else {
+      // Update existing member info if provided
+      if (displayName) existingMember.displayName = displayName;
+      if (email) existingMember.email = email;
     }
 
     return await this.save();
@@ -162,6 +194,37 @@ SequenceSchema.methods.addMember = async function(userId, displayName) {
     console.error('Error in addMember:', error);
     throw error;
   }
+};
+
+SequenceSchema.methods.addInvitedEmails = async function(emails) {
+  try {
+    // Normalize and deduplicate emails
+    const normalizedEmails = emails.map(e => e.toLowerCase().trim());
+    const uniqueEmails = [...new Set([...this.invitedEmails, ...normalizedEmails])];
+
+    this.invitedEmails = uniqueEmails;
+    return await this.save();
+  } catch (error) {
+    console.error('Error in addInvitedEmails:', error);
+    throw error;
+  }
+};
+
+SequenceSchema.methods.removeInvitedEmail = async function(email) {
+  try {
+    const normalizedEmail = email.toLowerCase().trim();
+    this.invitedEmails = this.invitedEmails.filter(e => e !== normalizedEmail);
+    return await this.save();
+  } catch (error) {
+    console.error('Error in removeInvitedEmail:', error);
+    throw error;
+  }
+};
+
+SequenceSchema.methods.isEmailInvited = function(email) {
+  if (!this.requireInvitation) return true;
+  const normalizedEmail = email.toLowerCase().trim();
+  return this.invitedEmails.includes(normalizedEmail);
 };
 
 SequenceSchema.methods.removeMember = async function(userId) {

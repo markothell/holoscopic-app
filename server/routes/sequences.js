@@ -14,7 +14,25 @@ router.get('/admin', async (req, res) => {
   }
 });
 
-// Get sequences for a user
+// Get public sequences (excludes invitation-only sequences)
+router.get('/public', async (req, res) => {
+  try {
+    const sequences = await Sequence.find({
+      status: { $in: ['active', 'completed'] },
+      $or: [
+        { requireInvitation: false },
+        { requireInvitation: { $exists: false } }
+      ]
+    }).sort({ createdAt: -1 });
+
+    res.json(sequences);
+  } catch (error) {
+    console.error('Error fetching public sequences:', error);
+    res.status(500).json({ error: 'Failed to fetch public sequences' });
+  }
+});
+
+// Get sequences for a user (only shows sequences they're enrolled in)
 router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -211,6 +229,8 @@ router.put('/:id', async (req, res) => {
     }
     if (updates.welcomePage !== undefined) sequence.welcomePage = updates.welcomePage;
     if (updates.activities) sequence.activities = updates.activities;
+    if (updates.invitedEmails !== undefined) sequence.invitedEmails = updates.invitedEmails;
+    if (updates.requireInvitation !== undefined) sequence.requireInvitation = updates.requireInvitation;
     if (updates.status) sequence.status = updates.status;
 
     await sequence.save();
@@ -242,7 +262,7 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/members', async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId, displayName } = req.body;
+    const { userId, displayName, email } = req.body;
 
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
@@ -253,10 +273,20 @@ router.post('/:id/members', async (req, res) => {
       return res.status(404).json({ error: 'Sequence not found' });
     }
 
-    await sequence.addMember(userId, displayName);
+    // Check invitation requirement
+    if (sequence.requireInvitation && email) {
+      if (!sequence.isEmailInvited(email)) {
+        return res.status(403).json({ error: 'Email not invited to this sequence' });
+      }
+    }
+
+    await sequence.addMember(userId, displayName, email);
     res.json(sequence);
   } catch (error) {
     console.error('Error adding member:', error);
+    if (error.message === 'Email not invited to this sequence') {
+      return res.status(403).json({ error: error.message });
+    }
     res.status(500).json({ error: 'Failed to add member' });
   }
 });
@@ -513,6 +543,73 @@ router.get('/:sequenceId/profile/:userId', async (req, res) => {
     console.error('❌ Error fetching sequence profile:', error);
     console.error('Stack trace:', error.stack);
     res.status(500).json({ error: 'Failed to fetch profile', details: error.message });
+  }
+});
+
+// Check if email is invited to a sequence
+router.post('/:id/check-invitation', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const sequence = await Sequence.findOne({ id });
+    if (!sequence) {
+      return res.status(404).json({ error: 'Sequence not found' });
+    }
+
+    const isInvited = sequence.isEmailInvited(email);
+    res.json({
+      isInvited,
+      requireInvitation: sequence.requireInvitation || false
+    });
+  } catch (error) {
+    console.error('Error checking invitation:', error);
+    res.status(500).json({ error: 'Failed to check invitation' });
+  }
+});
+
+// Add emails to invitation list (admin endpoint)
+router.post('/:id/invite', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { emails } = req.body;
+
+    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+      return res.status(400).json({ error: 'Emails array is required' });
+    }
+
+    const sequence = await Sequence.findOne({ id });
+    if (!sequence) {
+      return res.status(404).json({ error: 'Sequence not found' });
+    }
+
+    await sequence.addInvitedEmails(emails);
+    res.json(sequence);
+  } catch (error) {
+    console.error('Error adding invited emails:', error);
+    res.status(500).json({ error: 'Failed to add invited emails' });
+  }
+});
+
+// Remove email from invitation list (admin endpoint)
+router.delete('/:id/invite/:email', async (req, res) => {
+  try {
+    const { id, email } = req.params;
+
+    const sequence = await Sequence.findOne({ id });
+    if (!sequence) {
+      return res.status(404).json({ error: 'Sequence not found' });
+    }
+
+    await sequence.removeInvitedEmail(email);
+    res.json(sequence);
+  } catch (error) {
+    console.error('Error removing invited email:', error);
+    res.status(500).json({ error: 'Failed to remove invited email' });
   }
 });
 

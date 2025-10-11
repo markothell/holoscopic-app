@@ -21,6 +21,8 @@ export interface SequenceActivity {
 
 export interface SequenceMember {
   userId: string;
+  email?: string;
+  displayName?: string;
   joinedAt: Date;
 }
 
@@ -39,6 +41,8 @@ export interface Sequence {
   welcomePage?: WelcomePage;
   activities: SequenceActivity[];
   members: SequenceMember[];
+  invitedEmails?: string[];
+  requireInvitation?: boolean;
   status: 'draft' | 'active' | 'completed';
   startedAt: Date | null;
   completedAt: Date | null;
@@ -65,6 +69,8 @@ export interface CreateSequenceData {
     order: number;
     duration: number;
   }>;
+  requireInvitation?: boolean;
+  invitedEmails?: string[];
 }
 
 export interface UpdateSequenceData {
@@ -77,5 +83,7 @@ export interface UpdateSequenceData {
     order: number;
     duration: number;
   }>;
+  invitedEmails?: string[];
+  requireInvitation?: boolean;
   status?: 'draft' | 'active' | 'completed';
 }

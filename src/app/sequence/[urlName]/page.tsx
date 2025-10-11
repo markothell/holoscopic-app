@@ -24,6 +24,7 @@ export default function SequenceDetailPage() {
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [updatingName, setUpdatingName] = useState(false);
+  const [participantEmail, setParticipantEmail] = useState('');
 
   // Load sequence details
   useEffect(() => {
@@ -59,17 +60,39 @@ export default function SequenceDetailPage() {
   const handleEnroll = async () => {
     if (!sequence || !userId) return;
 
+    // Validate email if invitation is required
+    if (sequence.requireInvitation) {
+      if (!participantEmail.trim()) {
+        alert('Email is required for this sequence');
+        return;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(participantEmail.trim())) {
+        alert('Please enter a valid email address');
+        return;
+      }
+    }
+
     try {
       setEnrolling(true);
-      await SequenceService.addMember(sequence.id, userId, participantName.trim() || undefined);
+      await SequenceService.addMember(
+        sequence.id,
+        userId,
+        participantName.trim() || undefined,
+        participantEmail.trim() || undefined
+      );
       setIsEnrolled(true);
 
       // Reload sequence to get updated member count
       const updated = await SequenceService.getSequenceByUrlName(urlName, userId);
       setSequence(updated);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error enrolling:', err);
-      alert('Failed to enroll in sequence');
+      if (err.message && err.message.includes('not invited')) {
+        alert('Your email is not on the invitation list for this sequence. Please contact the sequence organizer.');
+      } else {
+        alert('Failed to enroll in sequence');
+      }
     } finally {
       setEnrolling(false);
     }
@@ -193,11 +216,32 @@ export default function SequenceDetailPage() {
                     </div>
                   )}
 
+                  {/* Email Input if Invitation Required */}
+                  {sequence.requireInvitation && (
+                    <div className="mb-6 max-w-md mx-auto">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Email Address (required for this sequence) *
+                      </label>
+                      <input
+                        type="email"
+                        value={participantEmail}
+                        onChange={(e) => setParticipantEmail(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="your.email@example.com"
+                        maxLength={100}
+                        required
+                      />
+                      <p className="mt-1 text-xs text-gray-400">
+                        Only invited emails can enroll in this sequence
+                      </p>
+                    </div>
+                  )}
+
                   {/* Name Input if Requested */}
                   {sequence.welcomePage.requestName && (
                     <div className="mb-6 max-w-md mx-auto">
                       <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Your Name (for this activity sequence) *
+                        Your Name (for this activity sequence) {sequence.welcomePage.requestName && '*'}
                       </label>
                       <input
                         type="text"
@@ -206,7 +250,7 @@ export default function SequenceDetailPage() {
                         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Enter your name..."
                         maxLength={100}
-                        required
+                        required={sequence.welcomePage.requestName}
                       />
                     </div>
                   )}

@@ -39,6 +39,11 @@ export default function SequencePanel({
     referenceLink: ''
   });
 
+  // Invitation management state
+  const [requireInvitation, setRequireInvitation] = useState(false);
+  const [invitedEmails, setInvitedEmails] = useState<string[]>([]);
+  const [newEmailInput, setNewEmailInput] = useState('');
+
   // Load available activities
   useEffect(() => {
     const loadActivities = async () => {
@@ -74,6 +79,9 @@ export default function SequencePanel({
           referenceLink: ''
         });
       }
+      // Initialize invitation settings
+      setRequireInvitation(editingSequence.requireInvitation || false);
+      setInvitedEmails(editingSequence.invitedEmails || []);
     }
   }, [editingSequence]);
 
@@ -88,7 +96,9 @@ export default function SequencePanel({
         urlName,
         description,
         welcomePage,
-        activities
+        activities,
+        requireInvitation,
+        invitedEmails
       };
 
       if (editingSequence) {
@@ -222,6 +232,30 @@ export default function SequencePanel({
     setActivities(updated);
   };
 
+  const handleAddEmails = () => {
+    if (!newEmailInput.trim()) return;
+
+    // Split by newlines, commas, or semicolons
+    const emailsToAdd = newEmailInput
+      .split(/[\n,;]+/)
+      .map(e => e.trim().toLowerCase())
+      .filter(e => e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)); // Basic email validation
+
+    if (emailsToAdd.length === 0) {
+      alert('No valid emails found. Please enter valid email addresses.');
+      return;
+    }
+
+    // Deduplicate and add to list
+    const uniqueEmails = [...new Set([...invitedEmails, ...emailsToAdd])];
+    setInvitedEmails(uniqueEmails);
+    setNewEmailInput('');
+  };
+
+  const handleRemoveEmail = (email: string) => {
+    setInvitedEmails(invitedEmails.filter(e => e !== email));
+  };
+
   return (
     <div className="bg-slate-800 rounded-lg shadow-xl p-4 sm:p-6 lg:p-8">
       <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">
@@ -280,6 +314,80 @@ export default function SequencePanel({
               placeholder="Brief description of this sequence..."
               rows={3}
             />
+          </div>
+        </div>
+
+        {/* Email Invitations */}
+        <div className="bg-slate-700 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-white mb-4">Email Invitations</h3>
+
+          <div className="space-y-4">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="requireInvitation"
+                checked={requireInvitation}
+                onChange={(e) => setRequireInvitation(e.target.checked)}
+                className="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="requireInvitation" className="ml-2 text-sm text-gray-300">
+                Require invitation to enroll (sequence won't appear in public listings)
+              </label>
+            </div>
+
+            {requireInvitation && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Add Invited Emails
+                  </label>
+                  <textarea
+                    value={newEmailInput}
+                    onChange={(e) => setNewEmailInput(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-600 border border-slate-500 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                    placeholder="Enter emails (one per line, or comma/semicolon separated)&#10;example@domain.com&#10;another@domain.com"
+                    rows={4}
+                  />
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={handleAddEmails}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+                    >
+                      Add Emails
+                    </button>
+                  </div>
+                </div>
+
+                {invitedEmails.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Invited Emails ({invitedEmails.length})
+                    </label>
+                    <div className="bg-slate-600 rounded-lg p-3 max-h-48 overflow-y-auto">
+                      <div className="space-y-1">
+                        {invitedEmails.map((email, index) => (
+                          <div key={index} className="flex items-center justify-between py-1 px-2 bg-slate-700 rounded text-sm">
+                            <span className="text-gray-300 font-mono">{email}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveEmail(email)}
+                              className="text-red-400 hover:text-red-300 ml-2"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-xs text-gray-400 bg-slate-600 rounded p-3">
+                  <strong>Note:</strong> When invitation is required, only users with emails on this list will be able to enroll in the sequence. The sequence will not appear in public listings.
+                </div>
+              </>
+            )}
           </div>
         </div>
 
