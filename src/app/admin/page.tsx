@@ -27,6 +27,7 @@ function AdminContent() {
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { allStats, loading: analyticsLoading } = useAllAnalytics();
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // Check if user has admin role
   const hasAdminAccess = isAuthenticated && userRole === 'admin';
@@ -215,6 +216,59 @@ function AdminContent() {
     return allStats[activityId] || null;
   };
 
+  // Handle full JSON download
+  const handleDownloadFullJSON = (activity: HoloscopicActivity) => {
+    // Create a copy and sort comments by vote count (highest first)
+    const sortedActivity = {
+      ...activity,
+      comments: [...(activity.comments || [])].sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0))
+    };
+
+    const dataStr = JSON.stringify(sortedActivity, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${activity.urlName}-full-data.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setOpenMenuId(null);
+  };
+
+  // Handle starter data JSON download (formatted for new activity)
+  const handleDownloadStarterData = (activity: HoloscopicActivity) => {
+    // Sort comments by vote count
+    const sortedComments = [...(activity.comments || [])].sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
+
+    // Find corresponding rating for each comment to get position
+    const starterEntries = sortedComments.map(comment => {
+      const rating = activity.ratings?.find(r =>
+        r.userId === comment.userId && r.slotNumber === comment.slotNumber
+      );
+
+      return {
+        objectName: comment.objectName || 'Unnamed',
+        position: rating ? { x: rating.position.x, y: rating.position.y } : { x: 0.5, y: 0.5 },
+        comment: comment.text,
+        votes: comment.voteCount || 0
+      };
+    });
+
+    const dataStr = JSON.stringify(starterEntries, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${activity.urlName}-starter-data.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setOpenMenuId(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] p-4 sm:p-8">
@@ -400,6 +454,30 @@ function AdminContent() {
                           >
                             Duplicate
                           </button>
+                          <div className="relative">
+                            <button
+                              onClick={() => setOpenMenuId(openMenuId === activity.id ? null : activity.id)}
+                              className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded"
+                            >
+                              Download JSON ▾
+                            </button>
+                            {openMenuId === activity.id && (
+                              <div className="absolute z-10 mt-1 w-48 bg-slate-700 rounded-md shadow-lg">
+                                <button
+                                  onClick={() => handleDownloadFullJSON(activity)}
+                                  className="block w-full text-left px-4 py-2 text-xs text-white hover:bg-slate-600 rounded-t-md"
+                                >
+                                  Full Activity Data
+                                </button>
+                                <button
+                                  onClick={() => handleDownloadStarterData(activity)}
+                                  className="block w-full text-left px-4 py-2 text-xs text-white hover:bg-slate-600 rounded-b-md"
+                                >
+                                  Starter Data (sorted by votes)
+                                </button>
+                              </div>
+                            )}
+                          </div>
                           <button
                             onClick={() => handleDeleteActivity(activity.id)}
                             className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
@@ -511,6 +589,30 @@ function AdminContent() {
                                 >
                                   Duplicate
                                 </button>
+                                <div className="relative inline-block">
+                                  <button
+                                    onClick={() => setOpenMenuId(openMenuId === `desktop-${activity.id}` ? null : `desktop-${activity.id}`)}
+                                    className="text-blue-400 hover:text-blue-300"
+                                  >
+                                    JSON ▾
+                                  </button>
+                                  {openMenuId === `desktop-${activity.id}` && (
+                                    <div className="absolute z-10 mt-1 w-56 bg-slate-700 rounded-md shadow-lg right-0">
+                                      <button
+                                        onClick={() => handleDownloadFullJSON(activity)}
+                                        className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-slate-600 rounded-t-md"
+                                      >
+                                        Full Activity Data
+                                      </button>
+                                      <button
+                                        onClick={() => handleDownloadStarterData(activity)}
+                                        className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-slate-600 rounded-b-md"
+                                      >
+                                        Starter Data (sorted by votes)
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                                 <button
                                   onClick={() => handleDeleteActivity(activity.id)}
                                   className="text-red-400 hover:text-red-300"

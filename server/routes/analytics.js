@@ -12,6 +12,7 @@ router.get('/all-stats', async (req, res) => {
     const results = await Activity.aggregate([
       {
         $project: {
+          id: 1, // Include the custom id field
           participants: { $size: '$participants' },
           completedMappings: { $size: '$ratings' },
           comments: { $size: '$comments' },
@@ -28,10 +29,11 @@ router.get('/all-stats', async (req, res) => {
         }
       }
     ]);
-    
+
     const allStats = {};
     results.forEach(result => {
-      allStats[result._id.toString()] = {
+      // Use the custom id field instead of _id
+      allStats[result.id] = {
         participants: result.participants,
         completedMappings: result.completedMappings,
         comments: result.comments,
@@ -39,7 +41,7 @@ router.get('/all-stats', async (req, res) => {
         votes: result.votes
       };
     });
-    
+
     res.json(allStats);
   } catch (error) {
     console.error('Error fetching all analytics:', error);

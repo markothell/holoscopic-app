@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -97,6 +98,15 @@ export default function SignupPage() {
       <div className="max-w-md w-full">
         {/* Logo/Header */}
         <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Image
+              src="/holoLogo_dark.svg"
+              alt="Holoscopic Logo"
+              width={80}
+              height={80}
+              className="invert"
+            />
+          </div>
           <h1 className="text-4xl font-bold text-white mb-2">Holoscopic</h1>
           <p className="text-white/80">Create your account</p>
         </div>

@@ -55,12 +55,6 @@ export default function HomePage() {
           >
             Log In
           </Link>
-          <Link
-            href="/signup"
-            className="text-white hover:text-gray-200 text-lg max-[700px]:text-base min-[701px]:text-xl font-light underline underline-offset-4 text-center"
-          >
-            Create Account
-          </Link>
           <a
             href="http://wiki.holoscopic.io/index.php?title=Special:Contact"
             className="text-white hover:text-gray-200 text-lg max-[700px]:text-base min-[701px]:text-xl font-light underline underline-offset-4 text-center"
