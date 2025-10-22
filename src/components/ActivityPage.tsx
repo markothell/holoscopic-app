@@ -552,6 +552,12 @@ export default function ActivityPage({ activityId, sequenceId }: ActivityPagePro
               {activity.title}
             </h1>
 
+            {/* Author Attribution */}
+            {activity.author && (
+              <p className="text-center text-sm text-gray-300 mb-4">
+                Proposed by: {activity.author.name}
+              </p>
+            )}
 
             {/* Description and Link Box */}
             {(activity.preamble || activity.wikiLink) && (

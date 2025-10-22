@@ -19,6 +19,20 @@ export class SequenceService {
     }
   }
 
+  // Get public sequences (no invitation required)
+  static async getPublicSequences(): Promise<Sequence[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/sequences/public`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch public sequences');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching public sequences:', error);
+      throw error;
+    }
+  }
+
   // Get sequences for a user
   static async getUserSequences(userId: string): Promise<Sequence[]> {
     try {
@@ -127,14 +141,14 @@ export class SequenceService {
   }
 
   // Add member to sequence
-  static async addMember(sequenceId: string, userId: string, displayName?: string, email?: string): Promise<Sequence> {
+  static async addMember(sequenceId: string, userId: string, email?: string): Promise<Sequence> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/sequences/${sequenceId}/members`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId, displayName, email }),
+        body: JSON.stringify({ userId, email }),
       });
 
       if (!response.ok) {

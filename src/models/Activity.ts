@@ -4,7 +4,13 @@ export interface HoloscopicActivity {
   id: string;
   title: string;
   urlName: string; // URL-friendly name for routing (e.g., "gratitude")
-  
+
+  // Author (optional - for participant-created activities)
+  author?: {
+    userId: string;
+    name: string;
+  };
+
   // Map configuration
   mapQuestion: string;
   mapQuestion2: string;
@@ -19,7 +25,7 @@ export interface HoloscopicActivity {
     min: string;
     max: string;
   };
-  
+
   // Comment configuration
   commentQuestion: string;
 

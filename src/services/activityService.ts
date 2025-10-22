@@ -522,4 +522,22 @@ export class ActivityService {
       throw error;
     }
   }
+
+  // Get activities a user has participated in
+  static async getUserActivities(userId: string): Promise<HoloscopicActivity[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/activities/user/${userId}`);
+      if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error('⏱️ Server is busy right now. Please wait a minute and try again.');
+        }
+        throw new Error('Failed to fetch user activities');
+      }
+      const result = await response.json();
+      return result.data.activities;
+    } catch (error) {
+      console.error('Error fetching user activities:', error);
+      throw error;
+    }
+  }
 }

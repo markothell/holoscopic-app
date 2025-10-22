@@ -24,7 +24,7 @@ interface Activity {
 
 interface UserProfile {
   id: string;
-  displayName: string;
+  name: string;
   sequenceId: string;
   sequenceUrlName: string;
   sequenceTitle: string;
@@ -59,7 +59,7 @@ export default function ProfilePage() {
         if (targetUserId.startsWith('starter_')) {
           setProfile({
             id: targetUserId,
-            displayName: 'Sample Data',
+            name: 'Sample Data',
             sequenceId: sequenceId,
             sequenceUrlName: '',
             sequenceTitle: 'Sample Sequence',
@@ -132,7 +132,7 @@ export default function ProfilePage() {
   }
 
   const isOwnProfile = viewerId === targetUserId;
-  const displayName = profile.displayName || 'Anonymous';
+  const displayName = profile.name || 'Anonymous';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] py-8 px-4">

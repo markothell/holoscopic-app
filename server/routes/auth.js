@@ -159,6 +159,46 @@ router.post('/migrate', async (req, res) => {
   }
 });
 
+// POST /api/auth/users/batch - Get multiple user names by IDs
+router.post('/users/batch', async (req, res) => {
+  try {
+    const { userIds } = req.body;
+
+    if (!Array.isArray(userIds)) {
+      return res.status(400).json({
+        success: false,
+        error: 'userIds must be an array'
+      });
+    }
+
+    const users = await User.find({ id: { $in: userIds } })
+      .select('id name email')
+      .lean();
+
+    // Create a map of userId -> name
+    const userMap = {};
+    users.forEach(user => {
+      userMap[user.id] = {
+        id: user.id,
+        name: user.name || user.email,
+        email: user.email
+      };
+    });
+
+    res.json({
+      success: true,
+      users: userMap
+    });
+
+  } catch (error) {
+    console.error('Batch users error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch users'
+    });
+  }
+});
+
 // GET /api/auth/user/:id - Get user profile
 router.get('/user/:id', async (req, res) => {
   try {

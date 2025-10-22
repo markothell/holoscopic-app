@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Sequence = require('../models/Sequence');
 const Activity = require('../models/Activity');
+const User = require('../models/User');
 
 // Get all sequences (admin)
 router.get('/admin', async (req, res) => {
@@ -18,14 +19,42 @@ router.get('/admin', async (req, res) => {
 router.get('/public', async (req, res) => {
   try {
     const sequences = await Sequence.find({
-      status: { $in: ['active', 'completed'] },
+      status: { $in: ['active'] }, // Only active sequences in public listing
       $or: [
         { requireInvitation: false },
         { requireInvitation: { $exists: false } }
       ]
     }).sort({ createdAt: -1 });
 
-    res.json(sequences);
+    // Populate activity details for each sequence
+    const sequencesWithActivities = await Promise.all(
+      sequences.map(async (sequence) => {
+        const activitiesWithDetails = await Promise.all(
+          sequence.activities.map(async (seqActivity) => {
+            const activity = await Activity.findOne({ id: seqActivity.activityId });
+            return {
+              ...seqActivity.toObject(),
+              activity: activity ? {
+                id: activity.id,
+                title: activity.title,
+                urlName: activity.urlName,
+                status: activity.status,
+                isDraft: activity.isDraft,
+                participants: activity.participants.length,
+                completedMappings: activity.ratings.length
+              } : null
+            };
+          })
+        );
+
+        return {
+          ...sequence.toObject(),
+          activities: activitiesWithDetails
+        };
+      })
+    );
+
+    res.json(sequencesWithActivities);
   } catch (error) {
     console.error('Error fetching public sequences:', error);
     res.status(500).json({ error: 'Failed to fetch public sequences' });
@@ -262,7 +291,7 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/members', async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId, displayName, email } = req.body;
+    const { userId, email } = req.body;
 
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
@@ -280,7 +309,7 @@ router.post('/:id/members', async (req, res) => {
       }
     }
 
-    await sequence.addMember(userId, displayName, email);
+    await sequence.addMember(userId, email);
     res.json(sequence);
   } catch (error) {
     console.error('Error adding member:', error);
@@ -313,7 +342,7 @@ router.delete('/:id/members/:userId', async (req, res) => {
 router.post('/:id/activities', async (req, res) => {
   try {
     const { id } = req.params;
-    const { activityId, order, duration } = req.body;
+    const { activityId, order, autoClose, duration } = req.body;
 
     if (!activityId || order === undefined) {
       return res.status(400).json({ error: 'Activity ID and order are required' });
@@ -330,7 +359,7 @@ router.post('/:id/activities', async (req, res) => {
       return res.status(404).json({ error: 'Sequence not found' });
     }
 
-    await sequence.addActivity(activityId, order, duration || 7);
+    await sequence.addActivity(activityId, order, autoClose || false, duration || null);
     res.json(sequence);
   } catch (error) {
     console.error('Error adding activity:', error);
@@ -440,7 +469,11 @@ router.get('/:sequenceId/profile/:userId', async (req, res) => {
       return res.status(404).json({ error: 'User not found in this sequence' });
     }
 
-    console.log(`✅ Target user found: ${targetMember.displayName || 'Anonymous'}`);
+    // Fetch user's name from User model
+    const user = await User.findByCustomId(userId);
+    const name = user ? (user.name || 'Anonymous') : 'Anonymous';
+
+    console.log(`✅ Target user found: ${name}`);
 
     // Check if viewer is a member of this sequence (only if viewerId provided and different from target)
     if (viewerId && viewerId !== userId) {
@@ -454,9 +487,6 @@ router.get('/:sequenceId/profile/:userId', async (req, res) => {
       console.log(`⚠️ No viewerId provided - allowing view (own profile)`);
     }
 
-    // Get the sequence-specific display name
-    const displayName = targetMember.displayName || 'Anonymous';
-
     // Get only activities that belong to this sequence
     const Activity = require('../models/Activity');
 
@@ -466,7 +496,7 @@ router.get('/:sequenceId/profile/:userId', async (req, res) => {
       console.log(`⚠️ Sequence has no activities`);
       return res.json({
         id: userId,
-        displayName: displayName,
+        name: name,
         sequenceId: sequence.id,
         sequenceUrlName: sequence.urlName,
         sequenceTitle: sequence.title,
@@ -529,7 +559,7 @@ router.get('/:sequenceId/profile/:userId', async (req, res) => {
     // Return sequence-scoped profile
     const profileData = {
       id: userId,
-      displayName: displayName,
+      name: name,
       sequenceId: sequence.id,
       sequenceUrlName: sequence.urlName,
       sequenceTitle: sequence.title,
@@ -537,7 +567,7 @@ router.get('/:sequenceId/profile/:userId', async (req, res) => {
       participatedActivities: activitiesWithEntries
     };
 
-    console.log(`✅ Successfully built profile for ${displayName} with ${activitiesWithEntries.length} activities`);
+    console.log(`✅ Successfully built profile for ${name} with ${activitiesWithEntries.length} activities`);
     res.json(profileData);
   } catch (error) {
     console.error('❌ Error fetching sequence profile:', error);

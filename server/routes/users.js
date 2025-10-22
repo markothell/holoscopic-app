@@ -70,7 +70,6 @@ router.get('/:userId', async (req, res) => {
     // Return profile data
     const profileData = {
       id: user.id,
-      displayName: user.displayName,
       name: user.name,
       email: user.email,
       bio: user.bio,
@@ -95,7 +94,7 @@ router.get('/:userId', async (req, res) => {
 router.put('/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { displayName, bio } = req.body;
+    const { bio } = req.body;
 
     // Find and update user
     const user = await User.findByCustomId(userId);
@@ -104,14 +103,13 @@ router.put('/:userId', async (req, res) => {
     }
 
     // Update fields
-    if (displayName !== undefined) user.displayName = displayName;
     if (bio !== undefined) user.bio = bio;
 
     await user.save();
 
     res.json({
       id: user.id,
-      displayName: user.displayName,
+      name: user.name,
       bio: user.bio
     });
   } catch (error) {

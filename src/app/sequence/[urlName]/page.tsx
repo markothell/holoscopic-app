@@ -13,17 +13,14 @@ export default function SequenceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const urlName = params.urlName as string;
-  const { userId, isLoading: authLoading } = useAuth();
+  const { userId, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [sequence, setSequence] = useState<Sequence | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
-  const [participantName, setParticipantName] = useState('');
   const [detailsExpanded, setDetailsExpanded] = useState(false);
-  const [editingName, setEditingName] = useState(false);
-  const [updatingName, setUpdatingName] = useState(false);
   const [participantEmail, setParticipantEmail] = useState('');
 
   // Load sequence details
@@ -37,14 +34,9 @@ export default function SequenceDetailPage() {
         const data = await SequenceService.getSequenceByUrlName(urlName, userId);
         setSequence(data);
 
-        // Check if user is enrolled and get their name
+        // Check if user is enrolled
         const member = data.members.find(m => m.userId === userId);
-        if (member) {
-          setIsEnrolled(true);
-          setParticipantName(member.displayName || '');
-        } else {
-          setIsEnrolled(false);
-        }
+        setIsEnrolled(!!member);
       } catch (err) {
         setError('Failed to load sequence. The backend server may not be running.');
         console.error('Error loading sequence:', err);
@@ -59,6 +51,12 @@ export default function SequenceDetailPage() {
   // Handle enrollment
   const handleEnroll = async () => {
     if (!sequence || !userId) return;
+
+    // Check if user is authenticated - redirect to signup if not
+    if (!isAuthenticated) {
+      router.push(`/signup?callbackUrl=${encodeURIComponent(`/sequence/${urlName}`)}`);
+      return;
+    }
 
     // Validate email if invitation is required
     if (sequence.requireInvitation) {
@@ -78,7 +76,6 @@ export default function SequenceDetailPage() {
       await SequenceService.addMember(
         sequence.id,
         userId,
-        participantName.trim() || undefined,
         participantEmail.trim() || undefined
       );
       setIsEnrolled(true);
@@ -116,7 +113,7 @@ export default function SequenceDetailPage() {
   // Calculate days remaining for an activity
   const getDaysRemaining = (activity: any) => {
     if (!activity.openedAt) return null;
-    if (!activity.closedAt) return null;
+    if (!activity.autoClose || !activity.closedAt) return null; // No limit if autoClose is false
 
     const now = new Date();
     const closedAt = new Date(activity.closedAt);
@@ -237,29 +234,11 @@ export default function SequenceDetailPage() {
                     </div>
                   )}
 
-                  {/* Name Input if Requested */}
-                  {sequence.welcomePage.requestName && (
-                    <div className="mb-6 max-w-md mx-auto">
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Your Name (for this activity sequence) {sequence.welcomePage.requestName && '*'}
-                      </label>
-                      <input
-                        type="text"
-                        value={participantName}
-                        onChange={(e) => setParticipantName(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter your name..."
-                        maxLength={100}
-                        required={sequence.welcomePage.requestName}
-                      />
-                    </div>
-                  )}
-
                   {/* Enroll Button */}
                   <div className="max-w-md mx-auto">
                     <button
                       onClick={handleEnroll}
-                      disabled={enrolling || (sequence.welcomePage.requestName && !participantName.trim())}
+                      disabled={enrolling}
                       className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white font-medium rounded-lg transition-colors"
                     >
                       {enrolling ? 'Enrolling...' : 'Enroll in This Sequence'}
@@ -299,66 +278,6 @@ export default function SequenceDetailPage() {
 
               {detailsExpanded && (
                 <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-slate-700">
-                  {/* Display Name Section */}
-                  <div className="mt-4 mb-6">
-                    <h3 className="text-sm font-semibold text-gray-300 mb-2">Your Display Name</h3>
-                    {!editingName ? (
-                      <div className="flex items-center gap-3">
-                        <span className="text-white">{participantName || 'Not set'}</span>
-                        <button
-                          onClick={() => setEditingName(true)}
-                          className="text-sm text-blue-400 hover:text-blue-300"
-                        >
-                          Edit
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={participantName}
-                          onChange={(e) => setParticipantName(e.target.value)}
-                          className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Enter your name..."
-                          maxLength={100}
-                        />
-                        <button
-                          onClick={async () => {
-                            if (!sequence || !userId) return;
-                            try {
-                              setUpdatingName(true);
-                              await SequenceService.addMember(sequence.id, userId, participantName.trim() || undefined);
-                              setEditingName(false);
-                              // Reload sequence
-                              const updated = await SequenceService.getSequenceByUrlName(urlName, userId);
-                              setSequence(updated);
-                            } catch (err) {
-                              console.error('Error updating name:', err);
-                              alert('Failed to update name');
-                            } finally {
-                              setUpdatingName(false);
-                            }
-                          }}
-                          disabled={updatingName}
-                          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white rounded-lg transition-colors"
-                        >
-                          {updatingName ? 'Saving...' : 'Save'}
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingName(false);
-                            // Reset to current member name
-                            const member = sequence?.members.find(m => m.userId === userId);
-                            setParticipantName(member?.displayName || '');
-                          }}
-                          className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
                   {/* Progress */}
                   <div className="mt-4 mb-6">
                     <h3 className="text-sm font-semibold text-gray-300 mb-2">Your Progress</h3>
@@ -445,6 +364,11 @@ export default function SequenceDetailPage() {
                           <h3 className="text-lg font-semibold text-white mb-1">
                             {activity?.title || 'Activity Not Found'}
                           </h3>
+                          {activity?.author && (
+                            <p className="text-xs text-gray-400 mb-1">
+                              Author: {activity.author.name}
+                            </p>
+                          )}
                           {seqActivity.openedAt && (
                             <p className="text-xs text-gray-400">
                               Opened {FormattingService.formatTimestamp(seqActivity.openedAt)}
@@ -476,7 +400,9 @@ export default function SequenceDetailPage() {
                         <div>
                           <span className="font-semibold text-white">{activity.completedMappings || 0}</span> mappings
                         </div>
-                        <div>Duration: <span className="font-semibold text-white">{seqActivity.duration}</span> days</div>
+                        {seqActivity.autoClose && seqActivity.duration && (
+                          <div>Duration: <span className="font-semibold text-white">{seqActivity.duration}</span> days</div>
+                        )}
                       </div>
                     )}
 

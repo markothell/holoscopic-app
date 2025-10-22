@@ -79,14 +79,14 @@ router.get('/', async (req, res) => {
 router.get('/by-url/:urlName', async (req, res) => {
   try {
     const activity = await Activity.findOne({ urlName: req.params.urlName }).select('-__v');
-    
+
     if (!activity) {
       return res.status(404).json({
         success: false,
         error: 'Activity not found'
       });
     }
-    
+
     // Use the custom id field, not MongoDB's _id
     const activityObj = activity.toObject();
     const transformedActivity = {
@@ -103,6 +103,45 @@ router.get('/by-url/:urlName', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch activity'
+    });
+  }
+});
+
+// Get activities for a specific user (activities they've participated in)
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Find all activities where user is a participant
+    const activities = await Activity.find({
+      'participants.id': userId,
+      $or: [{ isDraft: { $ne: true } }, { isDraft: { $exists: false } }]
+    })
+      .sort({ createdAt: -1 })
+      .select('-__v');
+
+    // Transform activities to use custom id field
+    const transformedActivities = activities.map(activity => {
+      const activityObj = activity.toObject();
+      return {
+        ...activityObj,
+        id: activityObj.id || activity._id.toString(),
+        isDraft: activityObj.isDraft !== undefined ? activityObj.isDraft : false
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        activities: transformedActivities,
+        total: transformedActivities.length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user activities:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user activities'
     });
   }
 });
@@ -286,7 +325,7 @@ router.patch('/:id', async (req, res) => {
     }
     
     // Update allowed fields
-    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'objectNameQuestion', 'preamble', 'wikiLink', 'starterData', 'votesPerUser', 'maxEntries', 'status', 'isPublic', 'showProfileLinks'];
+    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'objectNameQuestion', 'preamble', 'wikiLink', 'starterData', 'votesPerUser', 'maxEntries', 'status', 'isPublic', 'showProfileLinks', 'author'];
     const updates = {};
 
     for (const key of allowedUpdates) {

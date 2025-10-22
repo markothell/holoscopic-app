@@ -101,16 +101,6 @@ export default function UserMenu() {
             </button>
           )}
 
-          <button
-            onClick={() => {
-              router.push('/profile');
-              setIsOpen(false);
-            }}
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Profile Settings
-          </button>
-
           <div className="border-t border-gray-200 mt-1 pt-1">
             <button
               onClick={handleSignOut}

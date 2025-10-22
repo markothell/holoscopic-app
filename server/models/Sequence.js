@@ -77,11 +77,16 @@ const SequenceSchema = new mongoose.Schema({
       type: Number,
       required: true
     },
-    // Duration in days the activity will be open
+    // Auto-close enabled (if false, activity stays open indefinitely)
+    autoClose: {
+      type: Boolean,
+      default: false
+    },
+    // Duration in days the activity will be open (only used if autoClose is true)
     duration: {
       type: Number,
-      required: true,
-      default: 7,
+      required: false,
+      default: null,
       min: 1
     },
     // When this activity opens (null = not started)
@@ -89,7 +94,7 @@ const SequenceSchema = new mongoose.Schema({
       type: Date,
       default: null
     },
-    // When this activity closes (null = still open)
+    // When this activity closes (null = still open/no limit)
     closedAt: {
       type: Date,
       default: null
@@ -107,11 +112,6 @@ const SequenceSchema = new mongoose.Schema({
       trim: true,
       lowercase: true,
       maxlength: 100
-    },
-    displayName: {
-      type: String,
-      trim: true,
-      maxlength: 50
     },
     joinedAt: {
       type: Date,
@@ -161,7 +161,7 @@ SequenceSchema.index({ 'members.userId': 1 });
 SequenceSchema.index({ urlName: 1 });
 
 // Helper methods
-SequenceSchema.methods.addMember = async function(userId, displayName, email) {
+SequenceSchema.methods.addMember = async function(userId, email) {
   try {
     // Check if member already exists
     const existingMember = this.members.find(m => m.userId === userId);
@@ -180,12 +180,10 @@ SequenceSchema.methods.addMember = async function(userId, displayName, email) {
       this.members.push({
         userId: userId,
         email: email || '',
-        displayName: displayName || '',
         joinedAt: new Date()
       });
     } else {
-      // Update existing member info if provided
-      if (displayName) existingMember.displayName = displayName;
+      // Update existing member email if provided
       if (email) existingMember.email = email;
     }
 
@@ -232,7 +230,7 @@ SequenceSchema.methods.removeMember = async function(userId) {
   return await this.save();
 };
 
-SequenceSchema.methods.addActivity = async function(activityId, order, duration = 7) {
+SequenceSchema.methods.addActivity = async function(activityId, order, autoClose = false, duration = null) {
   try {
     // Check if activity already exists
     const existingActivity = this.activities.find(a => a.activityId === activityId);
@@ -241,7 +239,8 @@ SequenceSchema.methods.addActivity = async function(activityId, order, duration 
       this.activities.push({
         activityId: activityId,
         order: order,
-        duration: duration,
+        autoClose: autoClose,
+        duration: autoClose ? (duration || 7) : null,
         openedAt: null,
         closedAt: null
       });
@@ -272,10 +271,14 @@ SequenceSchema.methods.startSequence = async function() {
       const firstActivity = this.activities[0];
       firstActivity.openedAt = new Date();
 
-      // Set close date based on duration
-      const closeDate = new Date();
-      closeDate.setDate(closeDate.getDate() + firstActivity.duration);
-      firstActivity.closedAt = closeDate;
+      // Set close date only if autoClose is enabled
+      if (firstActivity.autoClose && firstActivity.duration) {
+        const closeDate = new Date();
+        closeDate.setDate(closeDate.getDate() + firstActivity.duration);
+        firstActivity.closedAt = closeDate;
+      } else {
+        firstActivity.closedAt = null; // No automatic closing
+      }
     }
 
     return await this.save();
@@ -293,10 +296,14 @@ SequenceSchema.methods.openNextActivity = async function() {
     if (nextActivity) {
       nextActivity.openedAt = new Date();
 
-      // Set close date based on duration
-      const closeDate = new Date();
-      closeDate.setDate(closeDate.getDate() + nextActivity.duration);
-      nextActivity.closedAt = closeDate;
+      // Set close date only if autoClose is enabled
+      if (nextActivity.autoClose && nextActivity.duration) {
+        const closeDate = new Date();
+        closeDate.setDate(closeDate.getDate() + nextActivity.duration);
+        nextActivity.closedAt = closeDate;
+      } else {
+        nextActivity.closedAt = null; // No automatic closing
+      }
     }
 
     return await this.save();

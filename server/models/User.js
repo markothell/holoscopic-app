@@ -32,12 +32,6 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
 
-  displayName: {
-    type: String,
-    trim: true,
-    maxlength: 50
-  },
-
   bio: {
     type: String,
     maxlength: 500

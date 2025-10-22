@@ -50,6 +50,12 @@ export default function HomePage() {
         {/* Navigation Links - Outside the box */}
         <div className="flex flex-col max-[450px]:flex-col min-[451px]:flex-row gap-3 max-[450px]:gap-3 min-[451px]:gap-8 justify-center items-center w-full">
           <Link
+            href="/activities"
+            className="text-white hover:text-gray-200 text-lg max-[700px]:text-base min-[701px]:text-xl font-light underline underline-offset-4 text-center"
+          >
+            Activities
+          </Link>
+          <Link
             href="/login"
             className="text-white hover:text-gray-200 text-lg max-[700px]:text-base min-[701px]:text-xl font-light underline underline-offset-4 text-center"
           >

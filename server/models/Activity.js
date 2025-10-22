@@ -25,7 +25,21 @@ const ActivitySchema = new mongoose.Schema({
     unique: true,
     match: /^[a-z0-9-]+$/
   },
-  
+
+  // Author (optional - for participant-created activities)
+  author: {
+    userId: {
+      type: String,
+      required: false
+    },
+    name: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: 100
+    }
+  },
+
   // Map configuration
   mapQuestion: {
     type: String,

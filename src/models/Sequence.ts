@@ -3,7 +3,8 @@
 export interface SequenceActivity {
   activityId: string;
   order: number;
-  duration: number; // days
+  autoClose: boolean; // whether to automatically close after duration
+  duration: number | null; // days (null if autoClose is false)
   openedAt: Date | null;
   closedAt: Date | null;
   // Populated from Activity
@@ -22,7 +23,6 @@ export interface SequenceActivity {
 export interface SequenceMember {
   userId: string;
   email?: string;
-  displayName?: string;
   joinedAt: Date;
 }
 
@@ -67,7 +67,8 @@ export interface CreateSequenceData {
   activities?: Array<{
     activityId: string;
     order: number;
-    duration: number;
+    autoClose: boolean;
+    duration: number | null;
   }>;
   requireInvitation?: boolean;
   invitedEmails?: string[];
@@ -81,7 +82,8 @@ export interface UpdateSequenceData {
   activities?: Array<{
     activityId: string;
     order: number;
-    duration: number;
+    autoClose: boolean;
+    duration: number | null;
   }>;
   invitedEmails?: string[];
   requireInvitation?: boolean;

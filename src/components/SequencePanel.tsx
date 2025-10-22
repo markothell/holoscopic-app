@@ -22,7 +22,7 @@ export default function SequencePanel({
   const [title, setTitle] = useState('');
   const [urlName, setUrlName] = useState('');
   const [description, setDescription] = useState('');
-  const [activities, setActivities] = useState<Array<{activityId: string; order: number; duration: number}>>([]);
+  const [activities, setActivities] = useState<Array<{activityId: string; order: number; autoClose: boolean; duration: number | null}>>([]);
   const [availableActivities, setAvailableActivities] = useState<HoloscopicActivity[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +44,9 @@ export default function SequencePanel({
   const [invitedEmails, setInvitedEmails] = useState<string[]>([]);
   const [newEmailInput, setNewEmailInput] = useState('');
 
+  // User names for author dropdown
+  const [memberNames, setMemberNames] = useState<Record<string, string>>({});
+
   // Load available activities
   useEffect(() => {
     const loadActivities = async () => {
@@ -57,6 +60,39 @@ export default function SequencePanel({
     loadActivities();
   }, []);
 
+  // Fetch member names when editing sequence
+  useEffect(() => {
+    const fetchMemberNames = async () => {
+      if (!editingSequence || editingSequence.members.length === 0) return;
+
+      try {
+        const userIds = editingSequence.members.map(m => m.userId);
+        const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
+        const response = await fetch(`${apiUrl}/api/auth/users/batch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userIds })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.users) {
+            // Map userId -> display name
+            const names: Record<string, string> = {};
+            Object.keys(data.users).forEach(userId => {
+              names[userId] = data.users[userId].name;
+            });
+            setMemberNames(names);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching member names:', err);
+      }
+    };
+
+    fetchMemberNames();
+  }, [editingSequence]);
+
   // Initialize form with editing data
   useEffect(() => {
     if (editingSequence) {
@@ -66,7 +102,8 @@ export default function SequencePanel({
       setActivities(editingSequence.activities.map(a => ({
         activityId: a.activityId,
         order: a.order,
-        duration: a.duration
+        autoClose: a.autoClose ?? false,
+        duration: a.duration ?? null
       })));
       // Initialize welcomePage with defaults if not present
       if (editingSequence.welcomePage) {
@@ -125,7 +162,8 @@ export default function SequencePanel({
       setActivities([...activities, {
         activityId: '',
         order: newOrder,
-        duration: 7
+        autoClose: false,
+        duration: null
       }]);
     } else if (mode === 'create') {
       // Open admin panel with create form in new tab and return URL
@@ -191,7 +229,8 @@ export default function SequencePanel({
       const newActivity = {
         activityId: created.id,
         order: newOrder,
-        duration: 7
+        autoClose: false,
+        duration: null
       };
       setActivities([...activities, newActivity]);
 
@@ -208,7 +247,7 @@ export default function SequencePanel({
     setActivities(activities.filter((_, i) => i !== index));
   };
 
-  const handleActivityChange = (index: number, field: 'activityId' | 'order' | 'duration', value: string | number) => {
+  const handleActivityChange = (index: number, field: 'activityId' | 'order' | 'autoClose' | 'duration', value: string | number | boolean) => {
     const updated = [...activities];
     updated[index] = { ...updated[index], [field]: value };
     setActivities(updated);
@@ -317,9 +356,9 @@ export default function SequencePanel({
           </div>
         </div>
 
-        {/* Email Invitations */}
+        {/* Public/Private */}
         <div className="bg-slate-700 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-white mb-4">Email Invitations</h3>
+          <h3 className="text-lg font-semibold text-white mb-4">Public/Private</h3>
 
           <div className="space-y-4">
             <div className="flex items-center">
@@ -331,7 +370,7 @@ export default function SequencePanel({
                 className="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500"
               />
               <label htmlFor="requireInvitation" className="ml-2 text-sm text-gray-300">
-                Require invitation to enroll (sequence won't appear in public listings)
+                Private (require invitation to enroll)
               </label>
             </div>
 
@@ -613,18 +652,92 @@ export default function SequencePanel({
                         </select>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      {/* Author Selection (from sequence members) */}
+                      {activity.activityId && editingSequence && editingSequence.members.length > 0 && (
                         <div>
-                          <label className="block text-xs text-gray-400 mb-1">Duration (days)</label>
-                          <input
-                            type="number"
-                            value={activity.duration || ''}
-                            onChange={(e) => handleActivityChange(index, 'duration', parseInt(e.target.value) || 1)}
+                          <label className="block text-xs text-gray-400 mb-1">Author (optional)</label>
+                          <select
+                            value={
+                              availableActivities.find(a => a.id === activity.activityId)?.author?.userId || ''
+                            }
+                            onChange={async (e) => {
+                              const selectedUserId = e.target.value;
+                              if (!selectedUserId) {
+                                // Clear author
+                                try {
+                                  await ActivityService.updateActivity(activity.activityId, { author: null } as any);
+                                  const updatedActivities = await ActivityService.getAdminActivities();
+                                  setAvailableActivities(updatedActivities);
+                                } catch (err) {
+                                  console.error('Error clearing author:', err);
+                                  alert('Failed to clear author');
+                                }
+                              } else {
+                                // Set author
+                                const authorName = memberNames[selectedUserId] || selectedUserId;
+                                try {
+                                  await ActivityService.updateActivity(activity.activityId, {
+                                    author: {
+                                      userId: selectedUserId,
+                                      name: authorName
+                                    }
+                                  } as any);
+                                  const updatedActivities = await ActivityService.getAdminActivities();
+                                  setAvailableActivities(updatedActivities);
+                                } catch (err) {
+                                  console.error('Error setting author:', err);
+                                  alert('Failed to set author');
+                                }
+                              }
+                            }}
                             className="w-full px-3 py-2 bg-slate-600 border border-slate-500 text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            min="1"
-                            required
-                          />
+                          >
+                            <option value="">No author</option>
+                            {editingSequence.members.map((member) => (
+                              <option key={member.userId} value={member.userId}>
+                                {memberNames[member.userId] || 'Loading...'}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Set who proposed this activity
+                          </p>
                         </div>
+                      )}
+
+                      <div className="space-y-3">
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id={`autoClose-${index}`}
+                            checked={activity.autoClose}
+                            onChange={(e) => {
+                              handleActivityChange(index, 'autoClose', e.target.checked);
+                              // Set default duration when enabling autoClose
+                              if (e.target.checked && !activity.duration) {
+                                handleActivityChange(index, 'duration', 7);
+                              }
+                            }}
+                            className="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500"
+                          />
+                          <label htmlFor={`autoClose-${index}`} className="ml-2 text-xs text-gray-300">
+                            Automatically close after duration
+                          </label>
+                        </div>
+
+                        {activity.autoClose && (
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">Duration (days)</label>
+                            <input
+                              type="number"
+                              value={activity.duration || 7}
+                              onChange={(e) => handleActivityChange(index, 'duration', parseInt(e.target.value) || 1)}
+                              className="w-full px-3 py-2 bg-slate-600 border border-slate-500 text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              min="1"
+                              required={activity.autoClose}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
 
