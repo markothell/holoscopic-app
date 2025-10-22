@@ -9,7 +9,7 @@ const axios = require('axios');
 const io = require('socket.io-client');
 
 // Configuration
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 
 // Test parameters - conservative for 0.5 CPU, 512MB RAM server

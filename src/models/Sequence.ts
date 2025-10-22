@@ -16,6 +16,10 @@ export interface SequenceActivity {
     isDraft?: boolean;
     participants?: number;
     completedMappings?: number;
+    author?: {
+      userId: string;
+      name: string;
+    };
   };
   hasParticipated?: boolean;
 }
