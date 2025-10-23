@@ -46,10 +46,10 @@ export default function ActivitiesPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
         // Fetch activities
-        const activityResponse = await fetch(`${API_URL}/api/activities`);
+        const activityResponse = await fetch(`${API_URL}/activities`);
         if (!activityResponse.ok) {
           throw new Error('Failed to fetch activities');
         }
@@ -99,29 +99,28 @@ export default function ActivitiesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55]">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-6">
-            <Link href="/" className="inline-flex items-center gap-3 group">
-              <Image
-                src="/holoLogo_dark.svg"
-                alt="Holoscopic Logo"
-                width={50}
-                height={50}
-                className="invert"
-              />
-              <span className="text-white text-3xl font-medium group-hover:text-gray-200">
-                Holoscopic
-              </span>
-            </Link>
+        <div className="mb-6 sm:mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link href="/">
+                <Image
+                  src="/holoLogo_dark.svg"
+                  alt="Holoscopic Logo"
+                  width={32}
+                  height={32}
+                  className="sm:w-10 sm:h-10 hover:opacity-80 transition-opacity"
+                />
+              </Link>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">
+                {activeTab === 'activities' ? 'Activities' : 'Sequences'}
+              </h1>
+            </div>
             <UserMenu />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">
-            {activeTab === 'activities' ? 'Activities' : 'Sequences'}
-          </h1>
-          <p className="text-white/80 text-lg">
+          <p className="text-gray-400 mb-4">
             {activeTab === 'activities'
               ? 'Open mapping activities you can participate in right now'
               : 'Public sequences you can enroll in'}

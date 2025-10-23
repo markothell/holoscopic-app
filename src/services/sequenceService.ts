@@ -2,13 +2,13 @@
 
 import { Sequence, CreateSequenceData, UpdateSequenceData } from '@/models/Sequence';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 export class SequenceService {
   // Get all sequences (admin)
   static async getAdminSequences(): Promise<Sequence[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sequences/admin`);
+      const response = await fetch(`${API_BASE_URL}/sequences/admin`);
       if (!response.ok) {
         throw new Error('Failed to fetch sequences');
       }
@@ -22,7 +22,7 @@ export class SequenceService {
   // Get public sequences (no invitation required)
   static async getPublicSequences(): Promise<Sequence[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sequences/public`);
+      const response = await fetch(`${API_BASE_URL}/sequences/public`);
       if (!response.ok) {
         throw new Error('Failed to fetch public sequences');
       }
@@ -36,7 +36,7 @@ export class SequenceService {
   // Get sequences for a user
   static async getUserSequences(userId: string): Promise<Sequence[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sequences/user/${userId}`);
+      const response = await fetch(`${API_BASE_URL}/sequences/user/${userId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch user sequences');
       }
@@ -50,7 +50,7 @@ export class SequenceService {
   // Get single sequence by ID
   static async getSequence(id: string): Promise<Sequence> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sequences/${id}`);
+      const response = await fetch(`${API_BASE_URL}/sequences/${id}`);
       if (!response.ok) {
         throw new Error('Failed to fetch sequence');
       }
@@ -65,8 +65,8 @@ export class SequenceService {
   static async getSequenceByUrlName(urlName: string, userId?: string): Promise<Sequence> {
     try {
       const url = userId
-        ? `${API_BASE_URL}/api/sequences/url/${urlName}?userId=${userId}`
-        : `${API_BASE_URL}/api/sequences/url/${urlName}`;
+        ? `${API_BASE_URL}/sequences/url/${urlName}?userId=${userId}`
+        : `${API_BASE_URL}/sequences/url/${urlName}`;
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch sequence');
@@ -81,7 +81,7 @@ export class SequenceService {
   // Create new sequence
   static async createSequence(data: CreateSequenceData): Promise<Sequence> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sequences`, {
+      const response = await fetch(`${API_BASE_URL}/sequences`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +104,7 @@ export class SequenceService {
   // Update sequence
   static async updateSequence(id: string, data: UpdateSequenceData): Promise<Sequence> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sequences/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/sequences/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +127,7 @@ export class SequenceService {
   // Delete sequence
   static async deleteSequence(id: string): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sequences/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/sequences/${id}`, {
         method: 'DELETE',
       });
 
@@ -143,7 +143,7 @@ export class SequenceService {
   // Add member to sequence
   static async addMember(sequenceId: string, userId: string, email?: string): Promise<Sequence> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sequences/${sequenceId}/members`, {
+      const response = await fetch(`${API_BASE_URL}/sequences/${sequenceId}/members`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -166,7 +166,7 @@ export class SequenceService {
   // Remove member from sequence
   static async removeMember(sequenceId: string, userId: string): Promise<Sequence> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sequences/${sequenceId}/members/${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/sequences/${sequenceId}/members/${userId}`, {
         method: 'DELETE',
       });
 
@@ -184,7 +184,7 @@ export class SequenceService {
   // Add activity to sequence
   static async addActivity(sequenceId: string, activityId: string, order: number, duration: number = 7): Promise<Sequence> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sequences/${sequenceId}/activities`, {
+      const response = await fetch(`${API_BASE_URL}/sequences/${sequenceId}/activities`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -206,7 +206,7 @@ export class SequenceService {
   // Remove activity from sequence
   static async removeActivity(sequenceId: string, activityId: string): Promise<Sequence> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sequences/${sequenceId}/activities/${activityId}`, {
+      const response = await fetch(`${API_BASE_URL}/sequences/${sequenceId}/activities/${activityId}`, {
         method: 'DELETE',
       });
 
@@ -224,7 +224,7 @@ export class SequenceService {
   // Start sequence (opens first activity)
   static async startSequence(sequenceId: string): Promise<Sequence> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sequences/${sequenceId}/start`, {
+      const response = await fetch(`${API_BASE_URL}/sequences/${sequenceId}/start`, {
         method: 'POST',
       });
 
@@ -242,7 +242,7 @@ export class SequenceService {
   // Open next activity in sequence
   static async openNextActivity(sequenceId: string): Promise<Sequence> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sequences/${sequenceId}/next`, {
+      const response = await fetch(`${API_BASE_URL}/sequences/${sequenceId}/next`, {
         method: 'POST',
       });
 
@@ -260,7 +260,7 @@ export class SequenceService {
   // Complete sequence
   static async completeSequence(sequenceId: string): Promise<Sequence> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sequences/${sequenceId}/complete`, {
+      const response = await fetch(`${API_BASE_URL}/sequences/${sequenceId}/complete`, {
         method: 'POST',
       });
 

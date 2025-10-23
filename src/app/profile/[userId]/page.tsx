@@ -5,6 +5,8 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import Image from 'next/image';
+import UserMenu from '@/components/UserMenu';
 
 interface Activity {
   id: string;
@@ -70,8 +72,8 @@ export default function ProfilePage() {
           return;
         }
 
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
-        const response = await fetch(`${API_URL}/api/sequences/${sequenceId}/profile/${targetUserId}?viewerId=${viewerId || ''}`);
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+        const response = await fetch(`${API_URL}/sequences/${sequenceId}/profile/${targetUserId}?viewerId=${viewerId || ''}`);
 
         if (response.status === 403) {
           setError('You do not have permission to view this profile. Only sequence members can view profiles.');
@@ -135,19 +137,34 @@ export default function ProfilePage() {
   const displayName = profile.name || 'Anonymous';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Back to Sequence */}
-        <div className="mb-4">
+    <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55]">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        {/* Header */}
+        <div className="mb-6 sm:mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link href="/">
+                <Image
+                  src="/holoLogo_dark.svg"
+                  alt="Holoscopic Logo"
+                  width={32}
+                  height={32}
+                  className="sm:w-10 sm:h-10 hover:opacity-80 transition-opacity"
+                />
+              </Link>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">{displayName}'s Profile</h1>
+            </div>
+            <UserMenu />
+          </div>
           <Link
             href={`/sequence/${profile.sequenceUrlName}`}
-            className="text-white/80 hover:text-white text-sm flex items-center gap-2"
+            className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-2"
           >
             ← Back to {profile.sequenceTitle}
           </Link>
         </div>
 
-        {/* Header */}
+        {/* Profile Content */}
         <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-4">

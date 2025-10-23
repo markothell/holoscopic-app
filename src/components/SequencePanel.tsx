@@ -67,8 +67,8 @@ export default function SequencePanel({
 
       try {
         const userIds = editingSequence.members.map(m => m.userId);
-        const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
-        const response = await fetch(`${apiUrl}/api/auth/users/batch`, {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+        const response = await fetch(`${apiUrl}/auth/users/batch`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userIds })

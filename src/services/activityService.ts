@@ -3,13 +3,13 @@
 import { HoloscopicActivity, ActivityFormData, ApiResponse, ActivityListResponse, Rating, Comment } from '@/models/Activity';
 import { UrlUtils } from '@/utils/urlUtils';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 export class ActivityService {
   // Get all activities (public - excludes drafts)
   static async getActivities(): Promise<HoloscopicActivity[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities`);
+      const response = await fetch(`${API_BASE_URL}/activities`);
       if (!response.ok) {
         if (response.status === 429) {
           throw new Error('⏱️ Server is busy right now. Please wait a minute and try again.');
@@ -27,7 +27,7 @@ export class ActivityService {
   // Get all activities including drafts (admin only)
   static async getAdminActivities(): Promise<HoloscopicActivity[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities/admin`);
+      const response = await fetch(`${API_BASE_URL}/activities/admin`);
       if (!response.ok) {
         if (response.status === 429) {
           throw new Error('⏱️ Server is busy right now. Please wait a minute and try again.');
@@ -45,7 +45,7 @@ export class ActivityService {
   // Get single activity by ID
   static async getActivity(id: string): Promise<HoloscopicActivity> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities/${id}`);
+      const response = await fetch(`${API_BASE_URL}/activities/${id}`);
       if (!response.ok) {
         if (response.status === 429) {
           throw new Error('⏱️ Server is busy right now. Please wait a minute and try again.');
@@ -66,7 +66,7 @@ export class ActivityService {
   // Get single activity by URL name
   static async getActivityByUrlName(urlName: string): Promise<HoloscopicActivity | null> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities/by-url/${urlName}`);
+      const response = await fetch(`${API_BASE_URL}/activities/by-url/${urlName}`);
       if (!response.ok) {
         if (response.status === 404) {
           return null;
@@ -139,7 +139,7 @@ export class ActivityService {
         comments: [],
       };
 
-      const response = await fetch(`${API_BASE_URL}/api/activities`, {
+      const response = await fetch(`${API_BASE_URL}/activities`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -218,7 +218,7 @@ export class ActivityService {
         activityData.urlName = urlName;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/activities/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/activities/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -245,7 +245,7 @@ export class ActivityService {
   // Delete activity
   static async deleteActivity(id: string): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/activities/${id}`, {
         method: 'DELETE',
       });
 
@@ -261,7 +261,7 @@ export class ActivityService {
   // Toggle draft status (admin only)
   static async toggleDraftStatus(id: string, isDraft: boolean): Promise<HoloscopicActivity> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities/${id}/draft`, {
+      const response = await fetch(`${API_BASE_URL}/activities/${id}/draft`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -293,7 +293,7 @@ export class ActivityService {
     await new Promise(resolve => setTimeout(resolve, 100));
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities/${activityId}/rating`, {
+      const response = await fetch(`${API_BASE_URL}/activities/${activityId}/rating`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -326,7 +326,7 @@ export class ActivityService {
   // Submit comment for user
   static async submitComment(activityId: string, userId: string, text: string, objectName?: string, slotNumber: number = 1): Promise<Comment> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities/${activityId}/comment`, {
+      const response = await fetch(`${API_BASE_URL}/activities/${activityId}/comment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -358,7 +358,7 @@ export class ActivityService {
   // Sync starter data to database
   static async syncStarterData(activityId: string): Promise<HoloscopicActivity> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities/${activityId}/sync-starter-data`, {
+      const response = await fetch(`${API_BASE_URL}/activities/${activityId}/sync-starter-data`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -385,7 +385,7 @@ export class ActivityService {
   // Submit email for activity
   static async submitEmail(activityId: string, email: string, userId?: string): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities/${activityId}/email`, {
+      const response = await fetch(`${API_BASE_URL}/activities/${activityId}/email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -422,7 +422,7 @@ export class ActivityService {
     await new Promise(resolve => setTimeout(resolve, 100));
     
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities/${activityId}/participants`, {
+      const response = await fetch(`${API_BASE_URL}/activities/${activityId}/participants`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -446,7 +446,7 @@ export class ActivityService {
   // Vote on comment
   static async voteComment(activityId: string, commentId: string, userId: string): Promise<Comment> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities/${activityId}/comment/${commentId}/vote`, {
+      const response = await fetch(`${API_BASE_URL}/activities/${activityId}/comment/${commentId}/vote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -475,7 +475,7 @@ export class ActivityService {
   // Complete activity (admin only)
   static async completeActivity(id: string): Promise<HoloscopicActivity> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/activities/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -504,7 +504,7 @@ export class ActivityService {
   // Clear a specific slot (delete rating and comment for userId + slotNumber)
   static async clearSlot(activityId: string, userId: string, slotNumber: number): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities/${activityId}/slot?userId=${userId}&slotNumber=${slotNumber}`, {
+      const response = await fetch(`${API_BASE_URL}/activities/${activityId}/slot?userId=${userId}&slotNumber=${slotNumber}`, {
         method: 'DELETE',
       });
 
@@ -526,7 +526,7 @@ export class ActivityService {
   // Get activities a user has participated in
   static async getUserActivities(userId: string): Promise<HoloscopicActivity[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/activities/user/${userId}`);
+      const response = await fetch(`${API_BASE_URL}/activities/user/${userId}`);
       if (!response.ok) {
         if (response.status === 429) {
           throw new Error('⏱️ Server is busy right now. Please wait a minute and try again.');

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 export async function GET(
   request: NextRequest,
@@ -14,7 +14,7 @@ export async function GET(
     const viewerUserId = session?.user?.id;
 
     // Fetch user profile from backend
-    const response = await fetch(`${API_URL}/api/users/${userId}?viewerId=${viewerUserId || ''}`);
+    const response = await fetch(`${API_URL}/users/${userId}?viewerId=${viewerUserId || ''}`);
 
     if (response.status === 403) {
       return NextResponse.json(

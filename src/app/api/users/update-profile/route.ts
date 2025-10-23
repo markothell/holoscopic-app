@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -18,7 +18,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
 
     // Update user profile via backend
-    const response = await fetch(`${API_URL}/api/users/${session.user.id}`, {
+    const response = await fetch(`${API_URL}/users/${session.user.id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

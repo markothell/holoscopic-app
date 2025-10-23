@@ -7,6 +7,7 @@ import { ActivityService } from '@/services/activityService';
 import { HoloscopicActivity } from '@/models/Activity';
 import { FormattingService } from '@/utils/formatting';
 import { useAllAnalytics } from '@/hooks/useAnalytics';
+import UserMenu from '@/components/UserMenu';
 
 export default function MapsPage() {
   const [activities, setActivities] = useState<HoloscopicActivity[]>([]);
@@ -40,7 +41,7 @@ export default function MapsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
           <p className="text-white">Loading activities...</p>
@@ -50,20 +51,25 @@ export default function MapsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+    <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55]">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         {/* Header */}
-        <div className="mb-8 flex justify-between items-center">
-          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-            <Image
-              src="/holoLogo_dark.svg"
-              alt="Holoscopic Logo"
-              width={40}
-              height={40}
-              className="mr-3"
-            />
-            <h1 className="text-3xl font-bold text-white">Maps</h1>
-          </Link>
+        <div className="mb-6 sm:mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link href="/">
+                <Image
+                  src="/holoLogo_dark.svg"
+                  alt="Holoscopic Logo"
+                  width={32}
+                  height={32}
+                  className="sm:w-10 sm:h-10 hover:opacity-80 transition-opacity"
+                />
+              </Link>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">Maps</h1>
+            </div>
+            <UserMenu />
+          </div>
         </div>
 
         {error && (

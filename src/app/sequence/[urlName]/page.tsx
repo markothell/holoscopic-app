@@ -172,17 +172,24 @@ export default function SequenceDetailPage() {
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link href="/">
+                <Image
+                  src="/holoLogo_dark.svg"
+                  alt="Holoscopic Logo"
+                  width={32}
+                  height={32}
+                  className="sm:w-10 sm:h-10 hover:opacity-80 transition-opacity"
+                />
+              </Link>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">{sequence.title}</h1>
+            </div>
+            <UserMenu />
+          </div>
           <Link href="/dashboard" className="inline-flex items-center text-blue-400 hover:text-blue-300 mb-4">
             ← Back to Dashboard
           </Link>
-          <div className="flex items-center gap-3 mb-4">
-            <Link href="/">
-              <Image src="/holoLogo_dark.svg" alt="Holoscopic Logo" width={40} height={40} className="hover:opacity-80 transition-opacity" />
-            </Link>
-            <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">{sequence.title}</h1>
-            </div>
-          </div>
           {sequence.description && (
             <p className="text-gray-400 mb-4">{sequence.description}</p>
           )}

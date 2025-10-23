@@ -118,6 +118,84 @@ router.put('/:userId', async (req, res) => {
   }
 });
 
+// Get user settings
+router.get('/:userId/settings', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Find user
+    const user = await User.findByCustomId(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      notifications: user.notifications || {
+        newActivities: true,
+        enrolledActivities: true
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user settings:', error);
+    res.status(500).json({ error: 'Failed to fetch user settings' });
+  }
+});
+
+// Update user settings (name, email, notifications)
+router.put('/:userId/settings', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name, email, notifications } = req.body;
+
+    // Find user
+    const user = await User.findByCustomId(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update fields if provided
+    if (name !== undefined) {
+      user.name = name;
+    }
+
+    if (email !== undefined) {
+      // Check if email is already taken by another user
+      const existingUser = await User.findByEmail(email);
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(400).json({ error: 'Email already in use' });
+      }
+      user.email = email;
+    }
+
+    if (notifications !== undefined) {
+      // Merge notification settings
+      user.notifications = {
+        newActivities: notifications.newActivities !== undefined
+          ? notifications.newActivities
+          : user.notifications?.newActivities ?? true,
+        enrolledActivities: notifications.enrolledActivities !== undefined
+          ? notifications.enrolledActivities
+          : user.notifications?.enrolledActivities ?? true
+      };
+    }
+
+    await user.save();
+
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      notifications: user.notifications
+    });
+  } catch (error) {
+    console.error('Error updating user settings:', error);
+    res.status(500).json({ error: 'Failed to update user settings' });
+  }
+});
+
 // Helper function to check if viewer can see this profile
 async function checkProfileViewPermission(targetUserId, viewerUserId) {
   // User can always view their own profile

@@ -146,6 +146,71 @@ async function testProfileFlow(user) {
 }
 
 /**
+ * 2b. Test User Settings Management
+ */
+async function testUserSettings(user) {
+  log(`\n${'='.repeat(60)}`, 'cyan');
+  log(`TEST 2b: User Settings Management (${user.name})`, 'cyan');
+  log('='.repeat(60), 'cyan');
+
+  try {
+    // Step 1: Get current user settings
+    log('\n📋 Step 1: Fetching user settings...', 'yellow');
+    const getResponse = await axios.get(`${API_BASE_URL}/api/users/${user.userId}/settings`, {
+      timeout: 10000
+    });
+
+    if (getResponse.data) {
+      log(`✅ Settings retrieved successfully`, 'green');
+      log(`   Name: ${getResponse.data.name || 'Not set'}`, 'blue');
+      log(`   Email: ${getResponse.data.email}`, 'blue');
+      log(`   Notify New Activities: ${getResponse.data.notifications?.newActivities ?? true}`, 'blue');
+      log(`   Notify Enrolled Activities: ${getResponse.data.notifications?.enrolledActivities ?? true}`, 'blue');
+    }
+
+    // Step 2: Update settings with new values
+    log('\n✏️  Step 2: Updating user settings...', 'yellow');
+    const updateResponse = await axios.put(`${API_BASE_URL}/api/users/${user.userId}/settings`, {
+      name: `${user.name} Updated`,
+      notifications: {
+        newActivities: false,
+        enrolledActivities: true
+      }
+    }, { timeout: 10000 });
+
+    if (updateResponse.data) {
+      log(`✅ Settings updated successfully`, 'green');
+      log(`   Updated Name: ${updateResponse.data.name}`, 'blue');
+      log(`   New Activities Notifications: ${updateResponse.data.notifications.newActivities}`, 'blue');
+      log(`   Enrolled Activities Notifications: ${updateResponse.data.notifications.enrolledActivities}`, 'blue');
+    }
+
+    // Step 3: Verify changes persisted
+    log('\n🔍 Step 3: Verifying settings were saved...', 'yellow');
+    const verifyResponse = await axios.get(`${API_BASE_URL}/api/users/${user.userId}/settings`, {
+      timeout: 10000
+    });
+
+    if (verifyResponse.data.name === `${user.name} Updated` &&
+        verifyResponse.data.notifications.newActivities === false) {
+      log(`✅ Settings verified - changes persisted correctly`, 'green');
+      return true;
+    } else {
+      log(`❌ Settings verification failed - changes did not persist`, 'red');
+      return false;
+    }
+
+  } catch (error) {
+    log(`❌ User settings test failed: ${error.message}`, 'red');
+    if (error.response) {
+      log(`   Status: ${error.response.status}`, 'red');
+      log(`   Error: ${JSON.stringify(error.response.data)}`, 'red');
+    }
+    return false;
+  }
+}
+
+/**
  * 3. Test Activity Participation Flow
  */
 async function testActivityParticipation(user, activityId, slotNumber = 1) {
@@ -413,6 +478,7 @@ async function runAllTests() {
   const results = {
     auth: 0,
     profile: 0,
+    settings: 0,
     activity: 0,
     multiEntry: 0,
     sequence: 0,
@@ -442,6 +508,13 @@ async function runAllTests() {
     if (testUsers[0]) {
       const profileSuccess = await testProfileFlow(testUsers[0]);
       if (profileSuccess) results.profile++;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    // Test user settings for first user
+    if (testUsers[0]) {
+      const settingsSuccess = await testUserSettings(testUsers[0]);
+      if (settingsSuccess) results.settings++;
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
@@ -521,13 +594,14 @@ function printTestResults(results) {
 
   log(`\n✅ Authentication Tests: ${results.auth}/3`, results.auth >= 2 ? 'green' : 'red');
   log(`✅ Profile Management Tests: ${results.profile}/1`, results.profile === 1 ? 'green' : 'red');
+  log(`✅ User Settings Tests: ${results.settings}/1`, results.settings === 1 ? 'green' : 'red');
   log(`✅ Activity Participation Tests: ${results.activity}/${testUsers.length}`, results.activity >= 1 ? 'green' : 'red');
   log(`✅ Multi-Entry Slots Tests: ${results.multiEntry}/1`, results.multiEntry === 1 ? 'green' : 'yellow');
   log(`✅ Sequence Enrollment Tests: ${results.sequence}/${testUsers.length}`, results.sequence >= 1 ? 'green' : 'yellow');
   log(`✅ Voting System Tests: ${results.voting}/1`, results.voting === 1 ? 'green' : 'yellow');
 
-  const totalTests = 3 + 1 + testUsers.length + 1 + testUsers.length + 1;
-  const totalPassed = results.auth + results.profile + results.activity + results.multiEntry + results.sequence + results.voting;
+  const totalTests = 3 + 1 + 1 + testUsers.length + 1 + testUsers.length + 1;
+  const totalPassed = results.auth + results.profile + results.settings + results.activity + results.multiEntry + results.sequence + results.voting;
 
   console.log('\n' + '='.repeat(60));
   log(`OVERALL: ${totalPassed}/${totalTests} tests passed (${(totalPassed/totalTests*100).toFixed(1)}%)`, totalPassed >= totalTests * 0.8 ? 'green' : 'red');

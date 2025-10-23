@@ -210,11 +210,19 @@ function SequenceAdminContent() {
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-            <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-              <Image src="/holoLogo_dark.svg" alt="Holoscopic Logo" width={32} height={32} className="mr-2 sm:mr-3 sm:w-10 sm:h-10" />
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link href="/">
+                <Image
+                  src="/holoLogo_dark.svg"
+                  alt="Holoscopic Logo"
+                  width={32}
+                  height={32}
+                  className="sm:w-10 sm:h-10 hover:opacity-80 transition-opacity"
+                />
+              </Link>
               <h1 className="text-2xl sm:text-3xl font-bold text-white">Admin</h1>
-            </Link>
+            </div>
             <UserMenu />
           </div>
 

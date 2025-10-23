@@ -7,17 +7,17 @@ interface AnalyticsStats {
 }
 
 class InternalAnalytics {
-  private apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
+  private apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
   async getStats(activityId?: string): Promise<AnalyticsStats> {
     try {
-      const url = activityId 
-        ? `${this.apiUrl}/api/analytics/stats/${activityId}`
-        : `${this.apiUrl}/api/analytics/stats`;
-      
+      const url = activityId
+        ? `${this.apiUrl}/analytics/stats/${activityId}`
+        : `${this.apiUrl}/analytics/stats`;
+
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch stats');
-      
+
       return await response.json();
     } catch (error) {
       console.error('Failed to fetch analytics stats:', error);
@@ -27,9 +27,9 @@ class InternalAnalytics {
 
   async getAllActivitiesStats(): Promise<{ [activityId: string]: AnalyticsStats }> {
     try {
-      const response = await fetch(`${this.apiUrl}/api/analytics/all-stats`);
+      const response = await fetch(`${this.apiUrl}/analytics/all-stats`);
       if (!response.ok) throw new Error('Failed to fetch all stats');
-      
+
       return await response.json();
     } catch (error) {
       console.error('Failed to fetch all analytics stats:', error);

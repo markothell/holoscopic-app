@@ -51,6 +51,18 @@ const userSchema = new mongoose.Schema({
     default: 'sequence_only'
   },
 
+  // Notification preferences
+  notifications: {
+    newActivities: {
+      type: Boolean,
+      default: true
+    },
+    enrolledActivities: {
+      type: Boolean,
+      default: true
+    }
+  },
+
   // Intake form responses (stored per sequence)
   intakeResponses: [{
     sequenceId: String,
