@@ -210,7 +210,7 @@ function SequenceAdminContent() {
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
             <div className="flex items-center gap-2 sm:gap-3">
               <Link href="/">
                 <Image
@@ -223,7 +223,9 @@ function SequenceAdminContent() {
               </Link>
               <h1 className="text-2xl sm:text-3xl font-bold text-white">Admin</h1>
             </div>
-            <UserMenu />
+            <div className="ml-auto">
+              <UserMenu />
+            </div>
           </div>
 
           {/* Toggle between Activities and Sequences */}

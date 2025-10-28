@@ -274,4 +274,42 @@ export class SequenceService {
       throw error;
     }
   }
+
+  // Manually close an activity in the sequence
+  static async closeActivity(sequenceId: string, activityId: string): Promise<Sequence> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/sequences/${sequenceId}/activities/${activityId}/close`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to close activity');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error closing activity:', error);
+      throw error;
+    }
+  }
+
+  // Manually reopen an activity in the sequence
+  static async reopenActivity(sequenceId: string, activityId: string): Promise<Sequence> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/sequences/${sequenceId}/activities/${activityId}/reopen`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reopen activity');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error reopening activity:', error);
+      throw error;
+    }
+  }
 }

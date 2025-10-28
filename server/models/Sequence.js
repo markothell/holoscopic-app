@@ -319,6 +319,56 @@ SequenceSchema.methods.completeSequence = async function() {
   return await this.save();
 };
 
+// Manually close a specific activity in the sequence
+SequenceSchema.methods.closeActivity = async function(activityId) {
+  try {
+    const activity = this.activities.find(a => a.activityId === activityId);
+
+    if (!activity) {
+      throw new Error('Activity not found in sequence');
+    }
+
+    if (!activity.openedAt) {
+      throw new Error('Cannot close an activity that has not been opened');
+    }
+
+    if (activity.closedAt && new Date() <= activity.closedAt) {
+      throw new Error('Activity is already closed');
+    }
+
+    // Set closedAt to now
+    activity.closedAt = new Date();
+
+    return await this.save();
+  } catch (error) {
+    console.error('Error in closeActivity:', error);
+    throw error;
+  }
+};
+
+// Manually reopen a specific activity in the sequence
+SequenceSchema.methods.reopenActivity = async function(activityId) {
+  try {
+    const activity = this.activities.find(a => a.activityId === activityId);
+
+    if (!activity) {
+      throw new Error('Activity not found in sequence');
+    }
+
+    if (!activity.openedAt) {
+      throw new Error('Cannot reopen an activity that has not been opened');
+    }
+
+    // Clear closedAt to reopen
+    activity.closedAt = null;
+
+    return await this.save();
+  } catch (error) {
+    console.error('Error in reopenActivity:', error);
+    throw error;
+  }
+};
+
 // Virtual for getting member count
 SequenceSchema.virtual('memberCount').get(function() {
   return this.members.length;

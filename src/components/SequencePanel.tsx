@@ -271,6 +271,25 @@ export default function SequencePanel({
     setActivities(updated);
   };
 
+  const handleToggleActivityClosed = async (activityId: string, currentlyClosed: boolean) => {
+    if (!editingSequence) return;
+
+    try {
+      if (currentlyClosed) {
+        // Reopen the activity by clearing closedAt
+        const updatedSequence = await SequenceService.reopenActivity(editingSequence.id, activityId);
+        onSequenceUpdated(updatedSequence);
+      } else {
+        // Close the activity
+        const updatedSequence = await SequenceService.closeActivity(editingSequence.id, activityId);
+        onSequenceUpdated(updatedSequence);
+      }
+    } catch (err: any) {
+      console.error('Error toggling activity status:', err);
+      alert(err.message || 'Failed to toggle activity status');
+    }
+  };
+
   const handleAddEmails = () => {
     if (!newEmailInput.trim()) return;
 
@@ -738,6 +757,44 @@ export default function SequencePanel({
                             />
                           </div>
                         )}
+
+                        {/* Activity Status and Manual Close/Reopen (only for existing sequences) */}
+                        {editingSequence && activity.activityId && (() => {
+                          const seqActivity = editingSequence.activities.find(a => a.activityId === activity.activityId);
+                          if (!seqActivity?.openedAt) return null;
+
+                          const now = new Date();
+                          const closedAt = seqActivity.closedAt ? new Date(seqActivity.closedAt) : null;
+                          const isClosed = closedAt && now > closedAt;
+
+                          return (
+                            <div className="pt-3 border-t border-slate-600">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-xs text-gray-400 mb-1">Current Status</p>
+                                  <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+                                    isClosed
+                                      ? 'bg-red-900 text-red-300'
+                                      : 'bg-green-900 text-green-300'
+                                  }`}>
+                                    {isClosed ? 'Closed' : 'Open'}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleActivityClosed(activity.activityId, !!isClosed)}
+                                  className={`px-3 py-1 text-xs rounded transition-colors ${
+                                    isClosed
+                                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                                      : 'bg-red-600 hover:bg-red-700 text-white'
+                                  }`}
+                                >
+                                  {isClosed ? 'Reopen' : 'Close Now'}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
 

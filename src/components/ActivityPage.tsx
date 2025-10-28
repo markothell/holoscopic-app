@@ -544,9 +544,9 @@ export default function ActivityPage({ activityId, sequenceId }: ActivityPagePro
       {/* Scroll Container with Swipe Support */}
       <div ref={swipeRef} className="relative touch-pan-y">
         {/* Screen 1: Activity Entry with Visual Summary */}
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 text-white relative px-4">
+        <div className="min-h-screen flex flex-col items-center bg-gradient-to-br from-slate-900 to-slate-800 text-white relative px-4 py-8 overflow-y-auto">
 
-          <div className="z-10 max-w-4xl w-full">
+          <div className="z-10 max-w-4xl w-full my-auto">
             {/* Activity Title - Underlined */}
             <h1 className="text-4xl sm:text-6xl font-bold mb-6 text-white text-center">
               {activity.title}
@@ -869,7 +869,7 @@ export default function ActivityPage({ activityId, sequenceId }: ActivityPagePro
 
           {/* Mobile Header */}
           <div className="sm:hidden flex-1 flex flex-col pt-4 pb-4">
-            <div className="flex-shrink-0 px-4 mb-4 flex items-center justify-between">
+            <div className="flex-shrink-0 px-4 mb-4">
               {/* Title - aligned with logo */}
               <div className="ml-16">
                 <p className="text-sm text-gray-300 mb-1">Step 5</p>
@@ -880,9 +880,9 @@ export default function ActivityPage({ activityId, sequenceId }: ActivityPagePro
 
               {/* Slot Navigation Buttons - Only show if maxEntries > 1 */}
               {activity.maxEntries && activity.maxEntries > 1 && (
-                <div className="flex flex-col items-end">
-                  <span className="text-sm text-gray-400 mb-2">Your entries:</span>
-                  <div className="flex gap-3">
+                <div className="flex flex-col items-start ml-16 mt-3">
+                  <span className="text-xs text-gray-400 mb-2">Your entries:</span>
+                  <div className="flex gap-2">
                     {Array.from({ length: activity.maxEntries }, (_, i) => i + 1).map((slot) => {
                       const slotData = getSlotData(slot);
 
@@ -895,14 +895,14 @@ export default function ActivityPage({ activityId, sequenceId }: ActivityPagePro
                           }}
                           onMouseEnter={() => setHoveredSlot(slot)}
                           onMouseLeave={() => setHoveredSlot(null)}
-                          className={`w-10 h-10 rounded-full border-2 transition-all ${
+                          className={`w-8 h-8 rounded-full border-2 transition-all ${
                             slotData.hasData
                               ? 'bg-white border-white hover:bg-white/90'
                               : 'bg-transparent border-white/40 hover:border-white/60'
                           }`}
                           aria-label={`Edit entry ${slot}`}
                         >
-                          <span className={`text-sm font-semibold ${
+                          <span className={`text-xs font-semibold ${
                             slotData.hasData ? 'text-slate-900' : 'text-white/70'
                           }`}>
                             {slot}

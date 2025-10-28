@@ -415,12 +415,12 @@ export default function SequenceDetailPage() {
                     )}
 
                     {/* Action Button */}
-                    {activity && seqActivity.openedAt && status.text !== 'Closed' && isEnrolled && (
+                    {activity && seqActivity.openedAt && isEnrolled && (
                       <Link
                         href={`/${activity.urlName}?sequence=${sequence.id}`}
                         className="inline-block px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-colors"
                       >
-                        {seqActivity.hasParticipated ? 'View Results' : 'Participate Now'}
+                        {status.text === 'Closed' ? 'View Results' : (seqActivity.hasParticipated ? 'View Results' : 'Participate Now')}
                       </Link>
                     )}
                     {activity && seqActivity.openedAt && status.text !== 'Closed' && !isEnrolled && (

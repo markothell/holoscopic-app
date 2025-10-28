@@ -6,6 +6,7 @@ import { ActivityService } from '@/services/activityService';
 import { ValidationService } from '@/utils/validation';
 import { FormattingService } from '@/utils/formatting';
 import { UrlUtils } from '@/utils/urlUtils';
+import { useAuth } from '@/contexts/AuthContext';
 import CollapsibleSection from './CollapsibleSection';
 
 interface AdminPanelProps {
@@ -15,12 +16,13 @@ interface AdminPanelProps {
   onCancel?: () => void;
 }
 
-export default function AdminPanel({ 
-  editingActivity, 
-  onActivityCreated, 
-  onActivityUpdated, 
-  onCancel 
+export default function AdminPanel({
+  editingActivity,
+  onActivityCreated,
+  onActivityUpdated,
+  onCancel
 }: AdminPanelProps) {
+  const { userId, userEmail } = useAuth();
   const [formData, setFormData] = useState<ActivityFormData>({
     title: '',
     urlName: '',
@@ -129,7 +131,29 @@ export default function AdminPanel({
         console.log('Creating new activity...');
         const newActivity = await ActivityService.createActivity(formData);
         console.log('Activity created successfully:', newActivity);
-        onActivityCreated?.(newActivity);
+
+        // Automatically set the author to the current user
+        if (userId && userEmail) {
+          try {
+            console.log('Setting author to current user:', userId, userEmail);
+            await ActivityService.updateActivity(newActivity.id, {
+              author: {
+                userId: userId,
+                name: userEmail
+              }
+            } as any);
+            // Fetch the updated activity to return with author set
+            const updatedActivity = await ActivityService.getActivity(newActivity.id);
+            console.log('Author set successfully');
+            onActivityCreated?.(updatedActivity);
+          } catch (authorError) {
+            console.error('Failed to set author, but activity was created:', authorError);
+            // Still call onActivityCreated even if author setting fails
+            onActivityCreated?.(newActivity);
+          }
+        } else {
+          onActivityCreated?.(newActivity);
+        }
       }
     } catch (error) {
       console.error('Error saving activity:', error);

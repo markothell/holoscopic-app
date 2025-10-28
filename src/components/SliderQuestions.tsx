@@ -85,6 +85,7 @@ export default function SliderQuestions({
                     onChange={handleXChange}
                     onMouseUp={handleXRelease}
                     onTouchEnd={handleXRelease}
+                    inputMode="none"
                     className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer slider"
                   />
                   {/* Center tick mark */}
@@ -124,6 +125,7 @@ export default function SliderQuestions({
                     onChange={handleYChange}
                     onMouseUp={handleYRelease}
                     onTouchEnd={handleYRelease}
+                    inputMode="none"
                     className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer slider"
                   />
                   {/* Center tick mark */}

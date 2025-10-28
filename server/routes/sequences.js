@@ -515,6 +515,42 @@ router.post('/:id/complete', async (req, res) => {
   }
 });
 
+// Manually close an activity in the sequence
+router.post('/:id/activities/:activityId/close', async (req, res) => {
+  try {
+    const { id, activityId } = req.params;
+
+    const sequence = await Sequence.findOne({ id });
+    if (!sequence) {
+      return res.status(404).json({ error: 'Sequence not found' });
+    }
+
+    await sequence.closeActivity(activityId);
+    res.json(sequence);
+  } catch (error) {
+    console.error('Error closing activity:', error);
+    res.status(400).json({ error: error.message || 'Failed to close activity' });
+  }
+});
+
+// Manually reopen an activity in the sequence
+router.post('/:id/activities/:activityId/reopen', async (req, res) => {
+  try {
+    const { id, activityId } = req.params;
+
+    const sequence = await Sequence.findOne({ id });
+    if (!sequence) {
+      return res.status(404).json({ error: 'Sequence not found' });
+    }
+
+    await sequence.reopenActivity(activityId);
+    res.json(sequence);
+  } catch (error) {
+    console.error('Error reopening activity:', error);
+    res.status(400).json({ error: error.message || 'Failed to reopen activity' });
+  }
+});
+
 // Get user profile within sequence context
 router.get('/:sequenceId/profile/:userId', async (req, res) => {
   try {
