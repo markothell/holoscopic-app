@@ -60,10 +60,14 @@ app.use(cors({
 
 app.use(bodyParser.json());
 
+// Environment-aware rate limiting
+const isProduction = process.env.NODE_ENV === 'production';
+const isDevelopment = !isProduction;
+
 // Rate limiting for API endpoints (not admin)
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // 100 requests per minute per IP
+  max: isProduction ? 100 : 10000, // Production: 100/min, Dev/Test: 10,000/min
   message: {
     error: 'Too many requests from this IP, please try again later.',
     retryAfter: '1 minute'
@@ -72,20 +76,26 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
   skip: (req) => {
     // Skip rate limiting for admin endpoints and health checks
-    return req.path.includes('/admin') || req.path === '/health';
+    // Also skip for localhost in development
+    const isLocalhost = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
+    return req.path.includes('/admin') ||
+           req.path === '/health' ||
+           (isDevelopment && isLocalhost);
   }
 });
 
 // WebSocket connection limiting
 const wsLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute  
-  max: 30, // 30 connections per minute per IP
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: isProduction ? 30 : 1000, // Production: 30/min, Dev/Test: 1000/min
   message: {
     error: 'Too many WebSocket connections from this IP, please try again later.'
   },
   skip: (req) => {
-    // Only apply to socket.io requests
-    return !req.path.includes('/socket.io/');
+    // Skip for non-socket.io requests or localhost in development
+    const isLocalhost = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
+    return !req.path.includes('/socket.io/') ||
+           (isDevelopment && isLocalhost);
   }
 });
 
@@ -421,10 +431,10 @@ io.on('connection', (socket) => {
   });
 
   // Submit rating
-  socket.on('submit_rating', async ({ activityId, userId, position, timestamp }) => {
+  socket.on('submit_rating', async ({ activityId, userId, position, objectName, slotNumber, timestamp }) => {
     try {
-      console.log(`⭐ User ${userId} submitting rating for activity ${activityId}`);
-      
+      console.log(`⭐ User ${userId} submitting rating for activity ${activityId} (slot ${slotNumber || 1})`);
+
       // Update database
       let newRating = null;
       await safeDbOperation(async () => {
@@ -432,9 +442,9 @@ io.on('connection', (socket) => {
         if (activity) {
           const participant = activity.participants.find(p => p.id === userId);
           if (participant) {
-            await activity.addRating(userId, participant.username, position);
-            newRating = activity.ratings.find(r => r.userId === userId);
-            console.log(`💾 Rating saved to database for user ${userId}`);
+            const updatedActivity = await activity.addRating(userId, participant.username, position, objectName, slotNumber || 1);
+            newRating = updatedActivity.ratings.find(r => r.userId === userId && r.slotNumber === (slotNumber || 1));
+            console.log(`💾 Rating saved to database for user ${userId}, slot ${slotNumber || 1}`);
           }
         }
       });
@@ -453,10 +463,10 @@ io.on('connection', (socket) => {
   });
 
   // Submit comment
-  socket.on('submit_comment', async ({ activityId, userId, text, timestamp }) => {
+  socket.on('submit_comment', async ({ activityId, userId, text, objectName, slotNumber, timestamp }) => {
     try {
-      console.log(`💬 User ${userId} submitting comment for activity ${activityId}`);
-      
+      console.log(`💬 User ${userId} submitting comment for activity ${activityId} (slot ${slotNumber || 1})`);
+
       // Update database
       let newComment = null;
       await safeDbOperation(async () => {
@@ -464,9 +474,9 @@ io.on('connection', (socket) => {
         if (activity) {
           const participant = activity.participants.find(p => p.id === userId);
           if (participant) {
-            await activity.addComment(userId, participant.username, text);
-            newComment = activity.comments.find(c => c.userId === userId);
-            console.log(`💾 Comment saved to database for user ${userId}`);
+            const updatedActivity = await activity.addComment(userId, participant.username, text, objectName, slotNumber || 1);
+            newComment = updatedActivity.comments.find(c => c.userId === userId && c.slotNumber === (slotNumber || 1));
+            console.log(`💾 Comment saved to database for user ${userId}, slot ${slotNumber || 1}`);
           }
         }
       });

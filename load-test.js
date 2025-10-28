@@ -123,7 +123,7 @@ async function testWebSocketConnection(userId) {
           socket.emit('submit-rating', {
             activityId: 'test-activity',
             userId: `test-user-${userId}`,
-            rating: { x: Math.random() * 100, y: Math.random() * 100 }
+            rating: { x: Math.random(), y: Math.random() } // 0-1 range
           });
           messagesSent++;
         } else {

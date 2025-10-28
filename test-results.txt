@@ -1,0 +1,399 @@
+
+============================================================
+[36m🧪 HOLOSCOPIC INTERACTIVE ROUTE TESTING[0m
+============================================================
+[34m🌐 Server: http://localhost:3001[0m
+[34m⏰ Started: 10/26/2025, 8:08:40 AM[0m
+[33m
+📝 Creating test users...[0m
+[36m
+============================================================[0m
+[36mTEST 1: User Registration and Login Flow (User 1)[0m
+[36m============================================================[0m
+[33m
+📝 Step 1: Registering new user...[0m
+[33m⚠️  User already exists, attempting login...[0m
+[32m✅ Login successful with existing user[0m
+[36m
+============================================================[0m
+[36mTEST 1: User Registration and Login Flow (User 2)[0m
+[36m============================================================[0m
+[33m
+📝 Step 1: Registering new user...[0m
+[33m⚠️  User already exists, attempting login...[0m
+[32m✅ Login successful with existing user[0m
+[36m
+============================================================[0m
+[36mTEST 1: User Registration and Login Flow (User 3)[0m
+[36m============================================================[0m
+[33m
+📝 Step 1: Registering new user...[0m
+[33m⚠️  User already exists, attempting login...[0m
+[32m✅ Login successful with existing user[0m
+[32m
+✅ Created 3 test users[0m
+[36m
+============================================================[0m
+[36mTEST 2: User Profile Management (Test User 1)[0m
+[36m============================================================[0m
+[33m
+✏️  Step 1: Updating profile...[0m
+[31m❌ Profile flow failed: Request failed with status code 404[0m
+[36m
+============================================================[0m
+[36mTEST 2b: User Settings Management (Test User 1)[0m
+[36m============================================================[0m
+[33m
+📋 Step 1: Fetching user settings...[0m
+[32m✅ Settings retrieved successfully[0m
+[34m   Name: Test User 1 Updated[0m
+[34m   Email: testuser1@holoscopic.test[0m
+[34m   Notify New Activities: false[0m
+[34m   Notify Enrolled Activities: true[0m
+[33m
+✏️  Step 2: Updating user settings...[0m
+[32m✅ Settings updated successfully[0m
+[34m   Updated Name: Test User 1 Updated[0m
+[34m   New Activities Notifications: false[0m
+[34m   Enrolled Activities Notifications: true[0m
+[33m
+🔍 Step 3: Verifying settings were saved...[0m
+[32m✅ Settings verified - changes persisted correctly[0m
+[33m
+🔍 Finding a test activity...[0m
+[32m✅ Using activity: testy[0m
+[34m   Activity ID: 57140fa6[0m
+[34m   Max Entries: 2[0m
+[36m
+============================================================[0m
+[36mTEST 3: Activity Participation (Test User 1, Slot 1)[0m
+[36m============================================================[0m
+[33m
+🔌 Step 1: Connecting to WebSocket...[0m
+[32m✅ WebSocket connected[0m
+[33m
+👋 Step 2: Joining activity...[0m
+[32m✅ Joined activity successfully[0m
+[33m
+⭐ Step 3: Submitting rating...[0m
+DEBUG: Received rating_added event: {
+  "rating": {
+    "position": {
+      "x": 0.5379443116807452,
+      "y": 0.3358153899502214
+    },
+    "id": "rating_1761480527016_gu53f2a2i",
+    "userId": "rgthkcpq",
+    "username": "Test User 1",
+    "objectName": "",
+    "slotNumber": 1,
+    "timestamp": "2025-10-26T12:08:47.016Z",
+    "_id": "68fe0f4f8c765971477d2560"
+  }
+}
+DEBUG: Looking for userId=rgthkcpq, slotNumber=1
+DEBUG: Got userId=rgthkcpq, slotNumber=1
+[32m✅ Rating submitted successfully[0m
+[34m   Position: (0.5, 0.3)[0m
+[33m
+💬 Step 4: Submitting comment...[0m
+[32m✅ Comment submitted successfully[0m
+[34m   Comment: "Test comment from Test User 1 for slot 1"[0m
+[33m
+👋 Step 5: Leaving activity...[0m
+[32m✅ Disconnected from activity[0m
+[36m
+============================================================[0m
+[36mTEST 3: Activity Participation (Test User 2, Slot 1)[0m
+[36m============================================================[0m
+[33m
+🔌 Step 1: Connecting to WebSocket...[0m
+[32m✅ WebSocket connected[0m
+[33m
+👋 Step 2: Joining activity...[0m
+[32m✅ Joined activity successfully[0m
+[33m
+⭐ Step 3: Submitting rating...[0m
+DEBUG: Received rating_added event: {
+  "rating": {
+    "position": {
+      "x": 0.22739409211380668,
+      "y": 0.9114617735980948
+    },
+    "id": "rating_1761480530557_ymxn489t0",
+    "userId": "d94wbt8j",
+    "username": "Test User 2",
+    "objectName": "",
+    "slotNumber": 1,
+    "timestamp": "2025-10-26T12:08:50.557Z",
+    "_id": "68fe0f528c765971477d260d"
+  }
+}
+DEBUG: Looking for userId=d94wbt8j, slotNumber=1
+DEBUG: Got userId=d94wbt8j, slotNumber=1
+[32m✅ Rating submitted successfully[0m
+[34m   Position: (0.2, 0.9)[0m
+[33m
+💬 Step 4: Submitting comment...[0m
+[32m✅ Comment submitted successfully[0m
+[34m   Comment: "Test comment from Test User 2 for slot 1"[0m
+[33m
+👋 Step 5: Leaving activity...[0m
+[32m✅ Disconnected from activity[0m
+[36m
+============================================================[0m
+[36mTEST 3: Activity Participation (Test User 3, Slot 1)[0m
+[36m============================================================[0m
+[33m
+🔌 Step 1: Connecting to WebSocket...[0m
+[32m✅ WebSocket connected[0m
+[33m
+👋 Step 2: Joining activity...[0m
+[32m✅ Joined activity successfully[0m
+[33m
+⭐ Step 3: Submitting rating...[0m
+DEBUG: Received rating_added event: {
+  "rating": {
+    "position": {
+      "x": 0.32385414910733545,
+      "y": 0.48547372592617166
+    },
+    "id": "rating_1761480534442_wy5fe4ac7",
+    "userId": "s4q573uc",
+    "username": "Test User 3",
+    "objectName": "",
+    "slotNumber": 1,
+    "timestamp": "2025-10-26T12:08:54.442Z",
+    "_id": "68fe0f578c765971477d26c0"
+  }
+}
+DEBUG: Looking for userId=s4q573uc, slotNumber=1
+DEBUG: Got userId=s4q573uc, slotNumber=1
+[32m✅ Rating submitted successfully[0m
+[34m   Position: (0.3, 0.5)[0m
+[33m
+💬 Step 4: Submitting comment...[0m
+[32m✅ Comment submitted successfully[0m
+[34m   Comment: "Test comment from Test User 3 for slot 1"[0m
+[33m
+👋 Step 5: Leaving activity...[0m
+[32m✅ Disconnected from activity[0m
+[36m
+============================================================[0m
+[36mTEST 4: Multi-Entry Slots (Test User 1)[0m
+[36m============================================================[0m
+[33m
+📊 Testing slot 1/4...[0m
+[36m
+============================================================[0m
+[36mTEST 3: Activity Participation (Test User 1, Slot 1)[0m
+[36m============================================================[0m
+[33m
+🔌 Step 1: Connecting to WebSocket...[0m
+[32m✅ WebSocket connected[0m
+[33m
+👋 Step 2: Joining activity...[0m
+[32m✅ Joined activity successfully[0m
+[33m
+⭐ Step 3: Submitting rating...[0m
+DEBUG: Received rating_added event: {
+  "rating": {
+    "position": {
+      "x": 0.6709780122132172,
+      "y": 0.48842354608506056
+    },
+    "id": "rating_1761480539235_p1lx3y880",
+    "userId": "rgthkcpq",
+    "username": "Test User 1",
+    "objectName": "",
+    "slotNumber": 1,
+    "timestamp": "2025-10-26T12:08:59.236Z",
+    "_id": "68fe0f5b8c765971477d277b"
+  }
+}
+DEBUG: Looking for userId=rgthkcpq, slotNumber=1
+DEBUG: Got userId=rgthkcpq, slotNumber=1
+[32m✅ Rating submitted successfully[0m
+[34m   Position: (0.7, 0.5)[0m
+[33m
+💬 Step 4: Submitting comment...[0m
+[32m✅ Comment submitted successfully[0m
+[34m   Comment: "Test comment from Test User 1 for slot 1"[0m
+[33m
+👋 Step 5: Leaving activity...[0m
+[32m✅ Disconnected from activity[0m
+[33m
+📊 Testing slot 2/4...[0m
+[36m
+============================================================[0m
+[36mTEST 3: Activity Participation (Test User 1, Slot 2)[0m
+[36m============================================================[0m
+[33m
+🔌 Step 1: Connecting to WebSocket...[0m
+[32m✅ WebSocket connected[0m
+[33m
+👋 Step 2: Joining activity...[0m
+[32m✅ Joined activity successfully[0m
+[33m
+⭐ Step 3: Submitting rating...[0m
+DEBUG: Received rating_added event: {
+  "rating": {
+    "position": {
+      "x": 0.853524690633259,
+      "y": 0.028865650722124547
+    },
+    "id": "rating_1761480542723_5v2arrwod",
+    "userId": "rgthkcpq",
+    "username": "Test User 1",
+    "objectName": "",
+    "slotNumber": 2,
+    "timestamp": "2025-10-26T12:09:02.723Z",
+    "_id": "68fe0f5e8c765971477d2838"
+  }
+}
+DEBUG: Looking for userId=rgthkcpq, slotNumber=2
+DEBUG: Got userId=rgthkcpq, slotNumber=2
+[32m✅ Rating submitted successfully[0m
+[34m   Position: (0.9, 0.0)[0m
+[33m
+💬 Step 4: Submitting comment...[0m
+[32m✅ Comment submitted successfully[0m
+[34m   Comment: "Test comment from Test User 1 for slot 2"[0m
+[33m
+👋 Step 5: Leaving activity...[0m
+[32m✅ Disconnected from activity[0m
+[33m
+📊 Testing slot 3/4...[0m
+[36m
+============================================================[0m
+[36mTEST 3: Activity Participation (Test User 1, Slot 3)[0m
+[36m============================================================[0m
+[33m
+🔌 Step 1: Connecting to WebSocket...[0m
+[32m✅ WebSocket connected[0m
+[33m
+👋 Step 2: Joining activity...[0m
+[32m✅ Joined activity successfully[0m
+[33m
+⭐ Step 3: Submitting rating...[0m
+DEBUG: Received rating_added event: {
+  "rating": {
+    "position": {
+      "x": 0.607271465744696,
+      "y": 0.3150540351393152
+    },
+    "id": "rating_1761480546207_uikx8xt3k",
+    "userId": "rgthkcpq",
+    "username": "Test User 1",
+    "objectName": "",
+    "slotNumber": 3,
+    "timestamp": "2025-10-26T12:09:06.207Z",
+    "_id": "68fe0f628c765971477d28fb"
+  }
+}
+DEBUG: Looking for userId=rgthkcpq, slotNumber=3
+DEBUG: Got userId=rgthkcpq, slotNumber=3
+[32m✅ Rating submitted successfully[0m
+[34m   Position: (0.6, 0.3)[0m
+[33m
+💬 Step 4: Submitting comment...[0m
+[32m✅ Comment submitted successfully[0m
+[34m   Comment: "Test comment from Test User 1 for slot 3"[0m
+[33m
+👋 Step 5: Leaving activity...[0m
+[32m✅ Disconnected from activity[0m
+[33m
+📊 Testing slot 4/4...[0m
+[36m
+============================================================[0m
+[36mTEST 3: Activity Participation (Test User 1, Slot 4)[0m
+[36m============================================================[0m
+[33m
+🔌 Step 1: Connecting to WebSocket...[0m
+[32m✅ WebSocket connected[0m
+[33m
+👋 Step 2: Joining activity...[0m
+[32m✅ Joined activity successfully[0m
+[33m
+⭐ Step 3: Submitting rating...[0m
+DEBUG: Received rating_added event: {
+  "rating": {
+    "position": {
+      "x": 0.08648966157681537,
+      "y": 0.30133104867017435
+    },
+    "id": "rating_1761480549714_wqdk6n5pi",
+    "userId": "rgthkcpq",
+    "username": "Test User 1",
+    "objectName": "",
+    "slotNumber": 4,
+    "timestamp": "2025-10-26T12:09:09.714Z",
+    "_id": "68fe0f658c765971477d29c6"
+  }
+}
+DEBUG: Looking for userId=rgthkcpq, slotNumber=4
+DEBUG: Got userId=rgthkcpq, slotNumber=4
+[32m✅ Rating submitted successfully[0m
+[34m   Position: (0.1, 0.3)[0m
+[33m
+💬 Step 4: Submitting comment...[0m
+[32m✅ Comment submitted successfully[0m
+[34m   Comment: "Test comment from Test User 1 for slot 4"[0m
+[33m
+👋 Step 5: Leaving activity...[0m
+[32m✅ Disconnected from activity[0m
+[32m
+✅ Successfully completed 4/4 slots[0m
+[33m
+🔍 Finding a test sequence...[0m
+[32m✅ Using sequence: Welcome3[0m
+[36m
+============================================================[0m
+[36mTEST 5: Sequence Enrollment and Participation (Test User 1)[0m
+[36m============================================================[0m
+[33m
+📋 Step 1: Fetching sequence details...[0m
+[31m❌ Sequence flow failed: Request failed with status code 404[0m
+[36m
+============================================================[0m
+[36mTEST 5: Sequence Enrollment and Participation (Test User 2)[0m
+[36m============================================================[0m
+[33m
+📋 Step 1: Fetching sequence details...[0m
+[31m❌ Sequence flow failed: Request failed with status code 404[0m
+[36m
+============================================================[0m
+[36mTEST 5: Sequence Enrollment and Participation (Test User 3)[0m
+[36m============================================================[0m
+[33m
+📋 Step 1: Fetching sequence details...[0m
+[31m❌ Sequence flow failed: Request failed with status code 404[0m
+[36m
+============================================================[0m
+[36mTEST 6: Voting System (Test User 1)[0m
+[36m============================================================[0m
+[33m
+📊 Step 1: Checking vote limits...[0m
+[32m✅ Vote limit: Unlimited[0m
+[33m
+👍 Step 2: Submitting vote...[0m
+[31m❌ Voting system test failed: Request failed with status code 404[0m
+
+============================================================
+[36m📊 TEST RESULTS SUMMARY[0m
+============================================================
+[32m
+✅ Authentication Tests: 3/3[0m
+[31m✅ Profile Management Tests: 0/1[0m
+[32m✅ User Settings Tests: 1/1[0m
+[32m✅ Activity Participation Tests: 3/3[0m
+[32m✅ Multi-Entry Slots Tests: 1/1[0m
+[33m✅ Sequence Enrollment Tests: 0/3[0m
+[33m✅ Voting System Tests: 0/1[0m
+
+============================================================
+[31mOVERALL: 8/13 tests passed (61.5%)[0m
+============================================================
+
+[32m
+✅ Test suite completed[0m

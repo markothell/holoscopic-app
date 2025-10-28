@@ -165,8 +165,8 @@ class SimulatedUser {
           // Step 3: Submit rating (position)
           await this.delay();
           this.position = {
-            x: Math.random() * 100,
-            y: Math.random() * 100
+            x: Math.random(), // 0-1 range for schema validation
+            y: Math.random()  // 0-1 range for schema validation
           };
 
           this.socket.emit('submit_rating', {

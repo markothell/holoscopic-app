@@ -109,6 +109,42 @@ router.get('/user/:userId', async (req, res) => {
   }
 });
 
+// Get sequence by URL name
+router.get('/by-url/:urlName', async (req, res) => {
+  try {
+    const { urlName } = req.params;
+    const sequence = await Sequence.findOne({ urlName });
+
+    if (!sequence) {
+      return res.status(404).json({ error: 'Sequence not found' });
+    }
+
+    // Populate activity details
+    const activitiesWithDetails = await Promise.all(
+      sequence.activities.map(async (seqActivity) => {
+        const activity = await Activity.findOne({ id: seqActivity.activityId });
+        return {
+          ...seqActivity.toObject(),
+          activity: activity ? {
+            id: activity.id,
+            title: activity.title,
+            urlName: activity.urlName,
+            status: activity.status
+          } : null
+        };
+      })
+    );
+
+    res.json({
+      ...sequence.toObject(),
+      activities: activitiesWithDetails
+    });
+  } catch (error) {
+    console.error('Error fetching sequence by URL:', error);
+    res.status(500).json({ error: 'Failed to fetch sequence' });
+  }
+});
+
 // Get single sequence by ID
 router.get('/:id', async (req, res) => {
   try {
@@ -317,6 +353,42 @@ router.post('/:id/members', async (req, res) => {
       return res.status(403).json({ error: error.message });
     }
     res.status(500).json({ error: 'Failed to add member' });
+  }
+});
+
+// Enroll in sequence (user self-enrollment)
+router.post('/:id/enroll', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, email, displayName } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    const sequence = await Sequence.findOne({ id });
+    if (!sequence) {
+      return res.status(404).json({ error: 'Sequence not found' });
+    }
+
+    // Check invitation requirement
+    if (sequence.requireInvitation && email) {
+      if (!sequence.isEmailInvited(email)) {
+        return res.status(403).json({ error: 'Email not invited to this sequence' });
+      }
+    }
+
+    await sequence.addMember(userId, email);
+    res.json({ success: true, sequence });
+  } catch (error) {
+    console.error('Error enrolling in sequence:', error);
+    if (error.message === 'Email not invited to this sequence') {
+      return res.status(403).json({ error: error.message });
+    }
+    if (error.message === 'User already enrolled in this sequence') {
+      return res.status(409).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Failed to enroll in sequence' });
   }
 });
 

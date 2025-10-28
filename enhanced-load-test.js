@@ -63,11 +63,22 @@ async function measureRequest(category, subcategory, requestFn) {
     testResults.performance.totalRequests++;
     return { success: true, data: result, responseTime };
   } catch (error) {
+    const responseTime = Date.now() - startTime;
+
     if (testResults[category] && testResults[category][subcategory]) {
+      testResults[category][subcategory].requests++; // Count failed requests too
       testResults[category][subcategory].errors++;
+      testResults[category][subcategory].totalTime += responseTime;
+
+      if (testResults[category][subcategory].minTime !== undefined) {
+        testResults[category][subcategory].minTime = Math.min(testResults[category][subcategory].minTime, responseTime);
+        testResults[category][subcategory].maxTime = Math.max(testResults[category][subcategory].maxTime, responseTime);
+      }
     }
+
+    testResults.performance.totalRequests++; // Count failed requests in total too
     testResults.performance.totalErrors++;
-    return { success: false, error: error.message, responseTime: Date.now() - startTime };
+    return { success: false, error: error.message, responseTime };
   }
 }
 
@@ -87,8 +98,8 @@ async function testAuthEndpoints(userIndex) {
     }, { timeout: 10000 });
   });
 
-  if (!signupResult.success) {
-    console.log(`⚠️  Signup failed for user ${userIndex}: ${signupResult.error}`);
+  if (!signupResult.success || !signupResult.data || !signupResult.data.data) {
+    console.log(`⚠️  Signup failed for user ${userIndex}: ${signupResult.error || 'No data returned'}`);
     return null;
   }
 
@@ -100,14 +111,14 @@ async function testAuthEndpoints(userIndex) {
     }, { timeout: 10000 });
   });
 
-  if (!loginResult.success) {
-    console.log(`⚠️  Login failed for user ${userIndex}: ${loginResult.error}`);
+  if (!loginResult.success || !loginResult.data || !loginResult.data.data) {
+    console.log(`⚠️  Login failed for user ${userIndex}: ${loginResult.error || 'No data returned'}`);
     return null;
   }
 
   return {
-    userId: signupResult.data.user.id,
-    userData: loginResult.data.user,
+    userId: signupResult.data.data.user.id,
+    userData: loginResult.data.data.user,
     email
   };
 }
@@ -139,16 +150,14 @@ async function testAPIEndpoints() {
 async function testProfileEndpoints(userId) {
   if (!userId) return;
 
-  // Get profile
+  // Get profile (with viewerId to allow self-viewing)
   await measureRequest('api', 'profiles', async () => {
-    return await axios.get(`${API_BASE_URL}/api/users/${userId}`, { timeout: 10000 });
+    return await axios.get(`${API_BASE_URL}/api/users/${userId}?viewerId=${userId}`, { timeout: 10000 });
   });
 
-  // Update profile
+  // Update profile (using correct endpoint)
   await measureRequest('api', 'profiles', async () => {
-    return await axios.post(`${API_BASE_URL}/api/users/update-profile`, {
-      userId,
-      displayName: `Load Test User ${userId.substring(0, 8)}`,
+    return await axios.put(`${API_BASE_URL}/api/users/${userId}`, {
       bio: 'Testing profile updates under load'
     }, { timeout: 10000 });
   });
@@ -183,7 +192,7 @@ async function testWebSocketActivity(userId, activityId, slotNumber = 1) {
       socket.emit('join_activity', {
         activityId,
         userId,
-        username: `LoadTestUser_${userId.substring(0, 8)}`
+        username: `User_${userId.substring(0, 8)}` // Max 13 chars (under 20 limit)
       });
     });
 
@@ -196,7 +205,7 @@ async function testWebSocketActivity(userId, activityId, slotNumber = 1) {
         socket.emit('submit_rating', {
           activityId,
           userId,
-          position: { x: Math.random() * 100, y: Math.random() * 100 },
+          position: { x: Math.random(), y: Math.random() }, // 0-1 range
           slotNumber,
           timestamp: new Date().toISOString()
         });

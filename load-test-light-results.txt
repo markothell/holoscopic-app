@@ -1,0 +1,77 @@
+
+> holoscopic-app@0.1.0 test:load-light
+> CONCURRENT_USERS=10 TEST_DURATION_MS=15000 node enhanced-load-test.js
+
+🧪 HOLOSCOPIC ENHANCED LOAD TESTING
+================================================================================
+🌐 Server: http://localhost:3001
+👥 Concurrent Users: 10
+⏱️  API Test Duration: 15s
+⏱️  WebSocket Test Duration: 20s
+================================================================================
+📊 Monitoring server health...
+
+
+🚀 Starting API Load Test...
+Testing 10 concurrent users for 15s
+
+⏱️  Health Check: ok, Connections: 0/25, 1ms
+⏱️  Health Check: ok, Connections: 0/25, 0ms
+⏱️  Health Check: ok, Connections: 0/25, 2ms
+✅ API Load Test completed
+   Created 10/10 test users
+
+🔍 Finding test activity for WebSocket tests...
+⚠️  Could not fetch activities: Request failed with status code 429
+
+⚠️  Skipping WebSocket tests - no activity or users available
+
+
+================================================================================
+📈 ENHANCED LOAD TEST RESULTS
+================================================================================
+🌐 Server: http://localhost:3001
+👥 Concurrent Users: 10
+⏱️  Total Duration: 16.0s
+
+📝 AUTHENTICATION:
+  Signups: 10 (0 errors)
+  Avg Signup Time: 678ms
+  Logins: 10 (0 errors)
+  Avg Login Time: 556ms
+
+🌐 API ENDPOINTS:
+  activities:
+    Requests: 21 (275 errors, -1209.5% success)
+    Response Time: 203ms avg, 106ms min, 376ms max
+  sequences:
+    Requests: 20 (276 errors, -1280.0% success)
+    Response Time: 398ms avg, 129ms min, 668ms max
+  analytics:
+    Requests: 14 (282 errors, -1914.3% success)
+    Response Time: 189ms avg, 114ms min, 325ms max
+  health:
+    Requests: 296 (0 errors, 100.0% success)
+    Response Time: 1ms avg, 0ms min, 26ms max
+
+🔌 WEBSOCKET:
+  Connections: 0 (0 errors)
+  Activity Joins: 0
+  Ratings Submitted: 0
+  Comments Submitted: 0
+  Votes Cast: 0
+  Errors: 0
+
+📊 OVERALL PERFORMANCE:
+  Total Requests: 371
+  Total Errors: 1425
+  Success Rate: -284.1%
+  Requests/Second: 23.1
+
+🎯 ASSESSMENT:
+  🔴 POOR - System needs optimization
+
+================================================================================
+
+✅ Load testing completed successfully
+
