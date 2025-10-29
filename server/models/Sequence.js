@@ -212,6 +212,13 @@ SequenceSchema.methods.removeInvitedEmail = async function(email) {
   try {
     const normalizedEmail = email.toLowerCase().trim();
     this.invitedEmails = this.invitedEmails.filter(e => e !== normalizedEmail);
+
+    // Also remove from members if they're enrolled with this email
+    this.members = this.members.filter(m => {
+      const memberEmail = (m.email || '').toLowerCase().trim();
+      return memberEmail !== normalizedEmail;
+    });
+
     return await this.save();
   } catch (error) {
     console.error('Error in removeInvitedEmail:', error);
