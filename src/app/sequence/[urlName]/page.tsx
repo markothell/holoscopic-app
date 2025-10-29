@@ -14,7 +14,7 @@ export default function SequenceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const urlName = params.urlName as string;
-  const { userId, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { userId, userEmail, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [sequence, setSequence] = useState<Sequence | null>(null);
   const [loading, setLoading] = useState(true);
@@ -22,7 +22,6 @@ export default function SequenceDetailPage() {
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
-  const [participantEmail, setParticipantEmail] = useState('');
 
   // Load sequence details
   useEffect(() => {
@@ -59,25 +58,12 @@ export default function SequenceDetailPage() {
       return;
     }
 
-    // Validate email if invitation is required
-    if (sequence.requireInvitation) {
-      if (!participantEmail.trim()) {
-        alert('Email is required for this sequence');
-        return;
-      }
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(participantEmail.trim())) {
-        alert('Please enter a valid email address');
-        return;
-      }
-    }
-
     try {
       setEnrolling(true);
       await SequenceService.addMember(
         sequence.id,
         userId,
-        participantEmail.trim() || undefined
+        userEmail || undefined
       );
       setIsEnrolled(true);
 
@@ -86,11 +72,7 @@ export default function SequenceDetailPage() {
       setSequence(updated);
     } catch (err: any) {
       console.error('Error enrolling:', err);
-      if (err.message && err.message.includes('not invited')) {
-        alert('Your email is not on the invitation list for this sequence. Please contact the sequence organizer.');
-      } else {
-        alert('Failed to enroll in sequence');
-      }
+      alert('Failed to enroll in sequence');
     } finally {
       setEnrolling(false);
     }
@@ -218,27 +200,6 @@ export default function SequenceDetailPage() {
                       >
                         Reference Material →
                       </a>
-                    </div>
-                  )}
-
-                  {/* Email Input if Invitation Required */}
-                  {sequence.requireInvitation && (
-                    <div className="mb-6 max-w-md mx-auto">
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Email Address (required for this sequence) *
-                      </label>
-                      <input
-                        type="email"
-                        value={participantEmail}
-                        onChange={(e) => setParticipantEmail(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="your.email@example.com"
-                        maxLength={100}
-                        required
-                      />
-                      <p className="mt-1 text-xs text-gray-400">
-                        Only invited emails can enroll in this sequence
-                      </p>
                     </div>
                   )}
 
