@@ -57,17 +57,50 @@ export default function PreambleModal({ activity, isOpen, onClose, onBegin }: Pr
             </div>
           )}
 
-          {/* Activity Info */}
-          <div className="bg-slate-700 rounded-lg p-4 space-y-2">
-            <p className="text-sm text-gray-300">
-              <span className="font-semibold">Entries:</span> {activity.maxEntries || 1}
-            </p>
-            <p className="text-sm text-gray-300">
-              <span className="font-semibold">X-Axis:</span> {activity.xAxis.label}
-            </p>
-            <p className="text-sm text-gray-300">
-              <span className="font-semibold">Y-Axis:</span> {activity.yAxis.label}
-            </p>
+          {/* Visual Summary Section */}
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-start">
+            {/* Entries Box */}
+            <div className="bg-slate-700 rounded-lg p-6 backdrop-blur-sm w-full sm:w-[220px]">
+              <h3 className="text-lg font-semibold mb-2 text-center text-white">
+                {activity.maxEntries || 1} {activity.maxEntries === 1 ? 'Entry' : 'Entries'}
+              </h3>
+              <p className="text-sm text-gray-300 text-center">
+                You can submit {activity.maxEntries || 1} response{activity.maxEntries !== 1 ? 's' : ''} for this activity
+              </p>
+            </div>
+
+            {/* Map Axes Visual */}
+            <div className="bg-slate-700 rounded-lg p-6 backdrop-blur-sm w-full sm:w-[220px]">
+              <h3 className="text-lg font-semibold mb-4 text-center text-white">Map Axes</h3>
+              <div className="relative w-[160px] h-[160px] mx-auto">
+                {/* Professional Axes using arrowAx.svg */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <img
+                    src="/arrowAx.svg"
+                    alt="Axis arrows"
+                    className="w-full h-full opacity-90"
+                    style={{ filter: 'brightness(1.1)' }}
+                  />
+                </div>
+
+                {/* X-axis label */}
+                <div className="absolute transform -translate-y-1/2" style={{ top: '50%', left: '55%' }}>
+                  <span className="text-white/90 text-xs font-semibold bg-slate-800 bg-opacity-95 px-2 py-1 rounded shadow-sm">
+                    {activity.xAxis.label}
+                  </span>
+                </div>
+
+                {/* Y-axis label */}
+                <div
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2 -rotate-90"
+                  style={{ left: '50%', top: '25%', transformOrigin: 'center' }}
+                >
+                  <span className="text-white/90 text-xs font-semibold bg-slate-800 bg-opacity-95 px-2 py-1 rounded whitespace-nowrap shadow-sm">
+                    {activity.yAxis.label}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {activity.status === 'completed' && (
