@@ -202,4 +202,5 @@ export interface ResultsViewProps {
   currentUserId?: string;
   hoveredSlotNumber?: number | null;
   sequenceId?: string;
+  hideCommentsPanel?: boolean; // Hide the internal comments panel on lg screens
 }

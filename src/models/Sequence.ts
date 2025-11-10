@@ -88,6 +88,8 @@ export interface UpdateSequenceData {
     order: number;
     autoClose: boolean;
     duration: number | null;
+    openedAt?: Date | string | null;
+    closedAt?: Date | string | null;
   }>;
   invitedEmails?: string[];
   requireInvitation?: boolean;

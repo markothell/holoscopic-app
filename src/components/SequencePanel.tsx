@@ -22,7 +22,7 @@ export default function SequencePanel({
   const [title, setTitle] = useState('');
   const [urlName, setUrlName] = useState('');
   const [description, setDescription] = useState('');
-  const [activities, setActivities] = useState<Array<{activityId: string; order: number; autoClose: boolean; duration: number | null}>>([]);
+  const [activities, setActivities] = useState<Array<{activityId: string; order: number; autoClose: boolean; duration: number | null; openedAt: Date | string | null; closedAt: Date | string | null}>>([]);
   const [availableActivities, setAvailableActivities] = useState<HoloscopicActivity[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +103,9 @@ export default function SequencePanel({
         activityId: a.activityId,
         order: a.order,
         autoClose: a.autoClose ?? false,
-        duration: a.duration ?? null
+        duration: a.duration ?? null,
+        openedAt: a.openedAt ?? null,
+        closedAt: a.closedAt ?? null
       })));
       // Initialize welcomePage with defaults if not present
       if (editingSequence.welcomePage) {
@@ -163,7 +165,9 @@ export default function SequencePanel({
         activityId: '',
         order: newOrder,
         autoClose: false,
-        duration: null
+        duration: null,
+        openedAt: null,
+        closedAt: null
       }]);
     } else if (mode === 'create') {
       // Open admin panel with create form in new tab and return URL
@@ -230,7 +234,9 @@ export default function SequencePanel({
         activityId: created.id,
         order: newOrder,
         autoClose: false,
-        duration: null
+        duration: null,
+        openedAt: null,
+        closedAt: null
       };
       setActivities([...activities, newActivity]);
 

@@ -32,6 +32,13 @@ export default function SequenceDetailPage() {
         setLoading(true);
         setError(null);
         const data = await SequenceService.getSequenceByUrlName(urlName, userId);
+        console.log('🔍 Loaded sequence data:', JSON.stringify(data, null, 2));
+        console.log('📋 Activities:', data.activities.map(a => ({
+          activityId: a.activityId,
+          order: a.order,
+          openedAt: a.openedAt,
+          closedAt: a.closedAt
+        })));
         setSequence(data);
 
         // Check if user is enrolled
@@ -60,15 +67,23 @@ export default function SequenceDetailPage() {
 
     try {
       setEnrolling(true);
-      await SequenceService.addMember(
+      const enrollResult = await SequenceService.addMember(
         sequence.id,
         userId,
         userEmail || undefined
       );
+      console.log('✅ Enrollment result:', JSON.stringify(enrollResult, null, 2));
       setIsEnrolled(true);
 
       // Reload sequence to get updated member count
       const updated = await SequenceService.getSequenceByUrlName(urlName, userId);
+      console.log('🔄 Reloaded sequence after enrollment:', JSON.stringify(updated, null, 2));
+      console.log('📋 Activities after enrollment:', updated.activities.map(a => ({
+        activityId: a.activityId,
+        order: a.order,
+        openedAt: a.openedAt,
+        closedAt: a.closedAt
+      })));
       setSequence(updated);
     } catch (err: any) {
       console.error('Error enrolling:', err);

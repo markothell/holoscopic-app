@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { HoloscopicActivity } from '@/models/Activity';
 import { ActivityService } from '@/services/activityService';
-import ActivityPage from '@/components/ActivityPage';
+import ActivityPageModal from '@/components/ActivityPageModal';
 import { OfflineStorage } from '@/hooks/useLocalStorage';
 import Link from 'next/link';
 
@@ -83,5 +83,5 @@ export default function ActivityByNamePage() {
     );
   }
 
-  return <ActivityPage activityId={activity.id} sequenceId={sequenceId || undefined} />;
+  return <ActivityPageModal activityId={activity.id} sequenceId={sequenceId || undefined} />;
 }

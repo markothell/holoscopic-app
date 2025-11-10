@@ -12,7 +12,8 @@ export default function ResultsView({
   onCommentVote,
   currentUserId,
   hoveredSlotNumber,
-  sequenceId
+  sequenceId,
+  hideCommentsPanel = false
 }: ResultsViewProps) {
   const [activeTab, setActiveTab] = useState<'map' | 'comments'>('map');
   const [hoveredCommentId, setHoveredCommentId] = useState<string | null>(null);
@@ -59,11 +60,11 @@ export default function ResultsView({
   };
 
   return (
-    <div className="h-full">
+    <div className="h-full flex flex-col">
 
       {/* Results Content */}
       {isVisible && (
-        <div className="h-full bg-transparent lg:p-0">
+        <div className="h-full flex flex-col bg-transparent lg:p-0">
           {/* Desktop: Side-by-side layout, Mobile: Tab Navigation */}
           <div className="lg:hidden">
             {/* Mobile Tab Navigation */}
@@ -282,32 +283,34 @@ export default function ResultsView({
               </div>
             </div>
 
-            {/* Right: Full-height Comments Panel */}
-            <div className="w-[400px] flex-shrink-0 bg-slate-700 flex flex-col h-full">
-              {/* Comments Title - Inside panel at top */}
-              <div className="flex-shrink-0 px-6 py-4 border-b border-slate-600">
-                <h3 className="text-xl font-semibold text-white text-center">
-                  {activity.commentQuestion}
-                </h3>
-              </div>
+            {/* Right: Full-height Comments Panel - Only show if not hidden */}
+            {!hideCommentsPanel && (
+              <div className="w-[400px] flex-shrink-0 bg-slate-700 flex flex-col h-full">
+                {/* Comments Title - Inside panel at top */}
+                <div className="flex-shrink-0 px-6 py-4 border-b border-slate-600">
+                  <h3 className="text-xl font-semibold text-white text-center">
+                    {activity.commentQuestion}
+                  </h3>
+                </div>
 
-              {/* Comments Content - Scrollable */}
-              <div className="flex-1 overflow-hidden p-4">
-                <CommentSection
-                  activity={activity}
-                  onCommentSubmit={() => {}} // No submission in results view
-                  onCommentVote={onCommentVote}
-                  showAllComments={true}
-                  readOnly={true}
-                  currentUserId={currentUserId}
-                  onCommentHover={handleCommentHover}
-                  selectedCommentId={selectedCommentId}
-                  onSelectedCommentChange={setSelectedCommentId}
-                  onVisibleCommentsChange={handleVisibleCommentsChange}
-                  sequenceId={sequenceId}
-                />
+                {/* Comments Content - Scrollable */}
+                <div className="flex-1 overflow-hidden p-4">
+                  <CommentSection
+                    activity={activity}
+                    onCommentSubmit={() => {}} // No submission in results view
+                    onCommentVote={onCommentVote}
+                    showAllComments={true}
+                    readOnly={true}
+                    currentUserId={currentUserId}
+                    onCommentHover={handleCommentHover}
+                    selectedCommentId={selectedCommentId}
+                    onSelectedCommentChange={setSelectedCommentId}
+                    onVisibleCommentsChange={handleVisibleCommentsChange}
+                    sequenceId={sequenceId}
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
