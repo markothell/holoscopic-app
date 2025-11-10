@@ -73,15 +73,15 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
 
     webSocketService.connect(activityId, userId, username);
 
-    const handleActivityUpdate = (updated: HoloscopicActivity) => {
-      setActivity(updated);
+    const handleActivityUpdate = (data: { activity: HoloscopicActivity }) => {
+      setActivity(data.activity);
     };
 
-    webSocketService.on('activity_updated', handleActivityUpdate);
+    const unsubscribe = webSocketService.on('activity_updated', handleActivityUpdate);
 
     return () => {
-      webSocketService.off('activity_updated', handleActivityUpdate);
-      webSocketService.leaveActivity(activityId, userId);
+      unsubscribe();
+      webSocketService.disconnect();
     };
   }, [activity, activityId, userId, username]);
 
