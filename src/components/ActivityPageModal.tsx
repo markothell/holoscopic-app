@@ -71,8 +71,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
   useEffect(() => {
     if (!activity || !userId || !username) return;
 
-    webSocketService.connect();
-    webSocketService.joinActivity(activityId, userId, username);
+    webSocketService.connect(activityId, userId, username);
 
     const handleActivityUpdate = (updated: HoloscopicActivity) => {
       setActivity(updated);
