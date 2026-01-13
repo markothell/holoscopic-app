@@ -5,67 +5,136 @@ import Link from 'next/link';
 
 export default function HomePage() {
   return (
-    <div className="bg-gradient-to-b from-[#3d5577] to-[#2a3b55] min-h-screen flex items-center justify-center px-4 py-8 lg:py-0">
-      <div className="w-[650px] max-[700px]:w-[95%] flex flex-col">
+    <div className="bg-gradient-to-b from-[#3d5577] to-[#2a3b55] min-h-screen px-4 py-12">
+      <div className="max-w-4xl mx-auto">
         {/* Logo and Title */}
-        <div className="flex items-center gap-4 max-[450px]:gap-2 mb-8 max-[450px]:mb-6 bg-[#5a6f8a]/40 rounded-full px-8 max-[450px]:px-4 py-4 max-[450px]:py-3 self-start">
-          <Image
-            src="/holoLogo_dark.svg"
-            alt="Holoscopic Logo"
-            width={65}
-            height={65}
-            className="invert max-[450px]:w-[40px] max-[450px]:h-[40px]"
-          />
-          <h1 className="text-white text-5xl max-[450px]:text-3xl font-medium">Holoscopic</h1>
+        <div className="flex items-center gap-4 mb-12">
+          <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
+            <Image
+              src="/holoLogo_dark.svg"
+              alt="Holoscopic Logo"
+              width={40}
+              height={40}
+              className="invert"
+            />
+          </div>
+          <h1 className="text-white text-4xl font-semibold">Holoscopic</h1>
         </div>
 
-        {/* Main Content - In dark blue box */}
-        <div className="bg-[#2a3b55] rounded-2xl py-4 md:py-8 lg:py-10 px-8 lg:px-12 mb-6 md:mb-8 lg:mb-10 max-[700px]:w-full">
-          {/* Level 1: Main headline */}
-          <h2 className="text-white font-light text-xl max-[450px]:text-xl min-[451px]:max-[700px]:text-2xl min-[701px]:text-[50px] leading-tight min-[701px]:leading-[1.1] mb-1.5 min-[701px]:mb-3">
-            Group conversations<br/>
-            that generate knowledge
+        {/* Hero Section */}
+        <div className="mb-16">
+          <h2 className="text-white text-5xl md:text-6xl font-normal leading-tight mb-6">
+            Map your community&apos;s collective mind
           </h2>
+          <p className="text-white/80 text-xl md:text-2xl leading-relaxed mb-8">
+            Turn group conversations into interactive visualizations that reveal shared values, tensions, and pathways forward.
+          </p>
 
-          {/* Level 2: Indented once */}
-          <div className="flex items-start gap-3 ml-0 min-[701px]:ml-4 mb-1.5 min-[701px]:mb-3">
-            <div className="w-[2px] bg-white/60 self-stretch"></div>
-            <p className="text-white/90 text-sm max-[450px]:text-base min-[451px]:max-[700px]:text-lg min-[701px]:text-2xl font-normal">
-              About how to have group conversations<br/>
-              that advance human culture
+          <div className="flex flex-wrap gap-4 mb-8">
+            <Link
+              href="/activities"
+              className="bg-white text-[#2a3b55] px-8 py-4 rounded-lg font-semibold text-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
+            >
+              Try a Live Map
+            </Link>
+            <Link
+              href="/login"
+              className="bg-white/10 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-white/20 transition-all"
+            >
+              Create Account
+            </Link>
+          </div>
+        </div>
+
+        {/* Example Visual */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-8 mb-16 text-center">
+          <svg width="100%" height="200" viewBox="0 0 300 200" className="max-w-md mx-auto">
+            <line x1="40" y1="160" x2="260" y2="160" stroke="rgba(255,255,255,0.3)" strokeWidth="2"/>
+            <line x1="40" y1="160" x2="40" y2="40" stroke="rgba(255,255,255,0.3)" strokeWidth="2"/>
+
+            <circle cx="80" cy="140" r="6" fill="#6BCF7F" opacity="0.8"/>
+            <circle cx="120" cy="110" r="6" fill="#6BCF7F" opacity="0.8"/>
+            <circle cx="150" cy="90" r="6" fill="#F4A460" opacity="0.8"/>
+            <circle cx="180" cy="120" r="6" fill="#F4A460" opacity="0.8"/>
+            <circle cx="210" cy="80" r="6" fill="#ED6A5A" opacity="0.8"/>
+            <circle cx="100" cy="130" r="6" fill="#6BCF7F" opacity="0.8"/>
+            <circle cx="190" cy="100" r="6" fill="#F4A460" opacity="0.8"/>
+            <circle cx="230" cy="70" r="6" fill="#ED6A5A" opacity="0.8"/>
+
+            <text x="150" y="185" fill="rgba(255,255,255,0.5)" fontSize="12" textAnchor="middle">Individual → Collective</text>
+            <text x="20" y="100" fill="rgba(255,255,255,0.5)" fontSize="12" textAnchor="middle" transform="rotate(-90 20 100)">Material → Spiritual</text>
+          </svg>
+          <p className="mt-4 text-sm text-white/60">Example: &quot;What is prosperity?&quot; mapping activity</p>
+        </div>
+
+        {/* Feature Grid */}
+        <div className="grid md:grid-cols-3 gap-6 mb-16">
+          <div className="bg-white/5 p-6 rounded-xl border border-white/10">
+            <div className="text-3xl mb-3">📊</div>
+            <h3 className="text-white text-xl font-semibold mb-3">Active Maps</h3>
+            <p className="text-white/70 text-base leading-relaxed">
+              Join ongoing conversations about prosperity, social media, parenting, and more. See where others stand and add your perspective.
             </p>
           </div>
-
-          {/* Level 3: Indented twice with wiki link - no bar */}
-          <div className="ml-0 min-[701px]:ml-12">
-            <a
-              href="http://wiki.holoscopic.io"
-              className="text-white hover:text-gray-200 text-xs max-[450px]:text-sm min-[451px]:max-[700px]:text-base min-[701px]:text-xl font-light underline underline-offset-2"
-            >
-              Holoscopic Wiki
-            </a>
+          <div className="bg-white/5 p-6 rounded-xl border border-white/10">
+            <div className="text-3xl mb-3">🎯</div>
+            <h3 className="text-white text-xl font-semibold mb-3">Your Communities</h3>
+            <p className="text-white/70 text-base leading-relaxed">
+              Create private mapping activities for your team, organization, or friend group. Track how perspectives evolve over time.
+            </p>
+          </div>
+          <div className="bg-white/5 p-6 rounded-xl border border-white/10">
+            <div className="text-3xl mb-3">🔧</div>
+            <h3 className="text-white text-xl font-semibold mb-3">Design Your Own</h3>
+            <p className="text-white/70 text-base leading-relaxed">
+              Build custom mapping activities with your own questions and frameworks. Export insights as reusable templates.
+            </p>
           </div>
         </div>
 
-        {/* Navigation Links - Outside the box */}
-        <div className="flex flex-col max-[450px]:flex-col min-[451px]:flex-row gap-3 max-[450px]:gap-3 min-[451px]:gap-8 justify-center items-center w-full">
-          <Link
-            href="/activities"
-            className="text-white hover:text-gray-200 text-lg max-[700px]:text-base min-[701px]:text-xl font-light underline underline-offset-4 text-center"
-          >
-            Activities
-          </Link>
-          <Link
-            href="/login"
-            className="text-white hover:text-gray-200 text-lg max-[700px]:text-base min-[701px]:text-xl font-light underline underline-offset-4 text-center"
-          >
-            Log In
-          </Link>
+        {/* Stats Row */}
+        <div className="flex justify-around mb-16 bg-white/5 rounded-xl p-8 border border-white/10">
+          <div className="text-center">
+            <div className="text-4xl font-bold text-white mb-2">50+</div>
+            <div className="text-sm text-white/60">Active Maps</div>
+          </div>
+          <div className="text-center">
+            <div className="text-4xl font-bold text-white mb-2">500+</div>
+            <div className="text-sm text-white/60">Participants</div>
+          </div>
+          <div className="text-center">
+            <div className="text-4xl font-bold text-white mb-2">10+</div>
+            <div className="text-sm text-white/60">Communities</div>
+          </div>
+        </div>
+
+        {/* Cross-link to Wiki */}
+        <div className="bg-white/8 p-6 rounded-xl border-l-4 border-white/30">
+          <h4 className="text-white text-lg font-semibold mb-2">🧠 Want to understand the methodology?</h4>
+          <p className="text-white/70 mb-4 leading-relaxed">
+            Learn how social mapping works, explore the theory behind collective intelligence, and contribute to the design of new activities.
+          </p>
           <a
-            href="http://wiki.holoscopic.io/index.php?title=Special:Contact"
-            className="text-white hover:text-gray-200 text-lg max-[700px]:text-base min-[701px]:text-xl font-light underline underline-offset-4 text-center"
+            href="http://wiki.holoscopic.io"
+            className="text-white hover:text-gray-200 font-medium underline underline-offset-4"
           >
+            Visit the Holoscopic Wiki →
+          </a>
+        </div>
+
+        {/* Footer Navigation */}
+        <div className="mt-12 pt-8 border-t border-white/10 flex flex-wrap gap-6 justify-center text-sm">
+          <Link href="/activities" className="text-white/70 hover:text-white transition-colors">
+            Browse Activities
+          </Link>
+          <Link href="/dashboard" className="text-white/70 hover:text-white transition-colors">
+            Dashboard
+          </Link>
+          <a href="http://wiki.holoscopic.io/index.php?title=Special:Contact" className="text-white/70 hover:text-white transition-colors">
             Contact
+          </a>
+          <a href="http://wiki.holoscopic.io" className="text-white/70 hover:text-white transition-colors">
+            Documentation
           </a>
         </div>
       </div>

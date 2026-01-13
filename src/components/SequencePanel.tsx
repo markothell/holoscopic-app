@@ -209,6 +209,7 @@ export default function SequencePanel({
       const created = await ActivityService.createActivity({
         title: clonedActivity.title!,
         urlName: clonedActivity.urlName!,
+        activityType: clonedActivity.activityType || 'holoscopic',
         mapQuestion: clonedActivity.mapQuestion!,
         mapQuestion2: clonedActivity.mapQuestion2!,
         objectNameQuestion: clonedActivity.objectNameQuestion!,

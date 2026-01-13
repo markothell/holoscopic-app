@@ -112,6 +112,7 @@ export class ActivityService {
       const activityData: Partial<HoloscopicActivity> = {
         title: formData.title,
         urlName,
+        activityType: formData.activityType,
         mapQuestion: formData.mapQuestion,
         mapQuestion2: formData.mapQuestion2,
         objectNameQuestion: formData.objectNameQuestion,
@@ -139,6 +140,10 @@ export class ActivityService {
         comments: [],
       };
 
+      console.log('=== SENDING CREATE ACTIVITY REQUEST ===');
+      console.log('API URL:', `${API_BASE_URL}/activities`);
+      console.log('Activity data:', JSON.stringify(activityData, null, 2));
+
       const response = await fetch(`${API_BASE_URL}/activities`, {
         method: 'POST',
         headers: {
@@ -148,7 +153,9 @@ export class ActivityService {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create activity');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Backend error:', errorData);
+        throw new Error(errorData.error || 'Failed to create activity');
       }
 
       const data: ApiResponse<HoloscopicActivity> = await response.json();
@@ -188,34 +195,43 @@ export class ActivityService {
         urlName = cleanedUrlName;
       }
 
-      const activityData: any = {
-        title: formData.title,
-        mapQuestion: formData.mapQuestion,
-        mapQuestion2: formData.mapQuestion2,
-        objectNameQuestion: formData.objectNameQuestion,
-        xAxis: {
+      const activityData: any = {};
+
+      // Only include fields that are actually provided
+      if (formData.title !== undefined) activityData.title = formData.title;
+      if (formData.mapQuestion !== undefined) activityData.mapQuestion = formData.mapQuestion;
+      if (formData.mapQuestion2 !== undefined) activityData.mapQuestion2 = formData.mapQuestion2;
+      if (formData.objectNameQuestion !== undefined) activityData.objectNameQuestion = formData.objectNameQuestion;
+      if (formData.commentQuestion !== undefined) activityData.commentQuestion = formData.commentQuestion;
+      if (formData.preamble !== undefined) activityData.preamble = formData.preamble;
+      if (formData.wikiLink !== undefined) activityData.wikiLink = formData.wikiLink;
+      if (formData.starterData !== undefined) activityData.starterData = formData.starterData;
+      if (formData.votesPerUser !== undefined) activityData.votesPerUser = formData.votesPerUser;
+      if (formData.maxEntries !== undefined) activityData.maxEntries = formData.maxEntries;
+      if (formData.isPublic !== undefined) activityData.isPublic = formData.isPublic;
+      if (formData.showProfileLinks !== undefined) activityData.showProfileLinks = formData.showProfileLinks;
+      if (urlName) activityData.urlName = urlName;
+
+      // Only include author if provided (for the special case of setting author after creation)
+      if ((formData as any).author !== undefined) {
+        activityData.author = (formData as any).author;
+      }
+
+      // Only include axis data if axis labels are provided (means we're actually updating axes)
+      if (formData.xAxisLabel !== undefined && formData.xAxisMin !== undefined && formData.xAxisMax !== undefined) {
+        activityData.xAxis = {
           label: formData.xAxisLabel,
           min: formData.xAxisMin,
           max: formData.xAxisMax,
-        },
-        yAxis: {
+        };
+      }
+
+      if (formData.yAxisLabel !== undefined && formData.yAxisMin !== undefined && formData.yAxisMax !== undefined) {
+        activityData.yAxis = {
           label: formData.yAxisLabel,
           min: formData.yAxisMin,
           max: formData.yAxisMax,
-        },
-        commentQuestion: formData.commentQuestion,
-        preamble: formData.preamble,
-        wikiLink: formData.wikiLink,
-        starterData: formData.starterData,
-        votesPerUser: formData.votesPerUser,
-        maxEntries: formData.maxEntries,
-        isPublic: formData.isPublic,
-        showProfileLinks: formData.showProfileLinks,
-      };
-
-      // Only include urlName if it's provided
-      if (urlName) {
-        activityData.urlName = urlName;
+        };
       }
 
       const response = await fetch(`${API_BASE_URL}/activities/${id}`, {

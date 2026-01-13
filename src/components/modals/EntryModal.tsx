@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { HoloscopicActivity, Rating, Comment } from '@/models/Activity';
+import QuadrantSelector from '@/components/activities/findthecenter/QuadrantSelector';
 
 interface EntryModalProps {
   activity: HoloscopicActivity;
@@ -28,7 +29,10 @@ export default function EntryModal({
   slotNumber,
   existingData
 }: EntryModalProps) {
-  const [step, setStep] = useState(1); // 1: Name, 2: Slider1, 3: Slider2, 4: Comment
+  const activityType = activity.activityType || 'holoscopic';
+  const totalSteps = activityType === 'findthecenter' ? 3 : 4; // findthecenter: Name, Quadrant, Comment | holoscopic: Name, Slider1, Slider2, Comment
+
+  const [step, setStep] = useState(1);
   const [objectName, setObjectName] = useState('');
   const [xValue, setXValue] = useState(0.5);
   const [yValue, setYValue] = useState(0.5);
@@ -72,7 +76,6 @@ export default function EntryModal({
     }
   };
 
-  const totalSteps = 4;
   const progressPercent = (step / totalSteps) * 100;
 
   return (
@@ -127,8 +130,25 @@ export default function EntryModal({
             </div>
           )}
 
-          {/* Step 2: X-Axis Slider */}
-          {step === 2 && (
+          {/* Step 2: Quadrant Selector (findthecenter) OR X-Axis Slider (holoscopic) */}
+          {step === 2 && activityType === 'findthecenter' && (
+            <div className="space-y-4">
+              <div className="mb-2">
+                <span className="text-sm text-gray-400">Your perspective:</span>
+                <p className="text-lg font-semibold text-blue-400">{objectName}</p>
+              </div>
+              <QuadrantSelector
+                activity={activity}
+                onQuadrantSelect={({ x, y }) => {
+                  setXValue(x);
+                  setYValue(y);
+                }}
+                userRating={existingData?.rating}
+              />
+            </div>
+          )}
+
+          {step === 2 && activityType === 'holoscopic' && (
             <div className="space-y-4">
               <div className="mb-2">
                 <span className="text-sm text-gray-400">Your perspective:</span>
@@ -156,8 +176,28 @@ export default function EntryModal({
             </div>
           )}
 
-          {/* Step 3: Y-Axis Slider */}
-          {step === 3 && (
+          {/* Step 3: Comment (findthecenter) OR Y-Axis Slider (holoscopic) */}
+          {step === 3 && activityType === 'findthecenter' && (
+            <div className="space-y-4">
+              <div className="mb-2">
+                <span className="text-sm text-gray-400">Your perspective:</span>
+                <p className="text-lg font-semibold text-blue-400">{objectName}</p>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">
+                {activity.commentQuestion}
+              </h3>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base resize-none"
+                placeholder="Share your thoughts..."
+                rows={6}
+                autoFocus
+              />
+            </div>
+          )}
+
+          {step === 3 && activityType === 'holoscopic' && (
             <div className="space-y-4">
               <div className="mb-2">
                 <span className="text-sm text-gray-400">Your perspective:</span>
@@ -185,8 +225,8 @@ export default function EntryModal({
             </div>
           )}
 
-          {/* Step 4: Comment */}
-          {step === 4 && (
+          {/* Step 4: Comment (holoscopic only) */}
+          {step === 4 && activityType === 'holoscopic' && (
             <div className="space-y-4">
               <div className="mb-2">
                 <span className="text-sm text-gray-400">Your perspective:</span>

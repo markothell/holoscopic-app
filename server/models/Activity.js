@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-// WeAllExplain Activity Schema - simplified for single-page functionality
+// Holoscopic Activity Schema - unified schema supporting multiple activity types
 const ActivitySchema = new mongoose.Schema({
   id: {
     type: String,
@@ -155,38 +155,14 @@ const ActivitySchema = new mongoose.Schema({
     default: 1
   },
 
-  // Quadrant labels
-  quadrants: {
-    q1: {
-      type: String,
-      required: false,
-      trim: true,
-      maxlength: 20,
-      default: 'Q1 (++)'
-    },
-    q2: {
-      type: String,
-      required: false,
-      trim: true,
-      maxlength: 20,
-      default: 'Q2 (-+)'
-    },
-    q3: {
-      type: String,
-      required: false,
-      trim: true,
-      maxlength: 20,
-      default: 'Q3 (--)'
-    },
-    q4: {
-      type: String,
-      required: false,
-      trim: true,
-      maxlength: 20,
-      default: 'Q4 (+-)'
-    }
+  // Activity type - determines UI/flow behavior
+  activityType: {
+    type: String,
+    required: true,
+    enum: ['holoscopic', 'findthecenter'],
+    default: 'holoscopic'
   },
-  
+
   // Public/Private setting
   isPublic: {
     type: Boolean,
@@ -322,17 +298,6 @@ const ActivitySchema = new mongoose.Schema({
       default: 1,
       min: 1,
       max: 4
-    },
-    quadrantName: {
-      type: String,
-      required: false,
-      trim: true,
-      maxlength: 20
-    },
-    quadrant: {
-      type: String,
-      required: false,
-      enum: ['q1', 'q2', 'q3', 'q4']
     },
     text: {
       type: String,

@@ -1,9 +1,13 @@
 // TypeScript interfaces for Holoscopic data models
 
+// Activity types supported by the app
+export type ActivityType = 'holoscopic' | 'findthecenter';
+
 export interface HoloscopicActivity {
   id: string;
   title: string;
   urlName: string; // URL-friendly name for routing (e.g., "gratitude")
+  activityType: ActivityType; // Determines UI/flow behavior
 
   // Author (optional - for participant-created activities)
   author?: {
@@ -133,8 +137,9 @@ export interface WebSocketEvents {
 export interface ActivityFormData {
   title: string;
   urlName?: string; // Optional - will be generated from title if not provided
+  activityType: ActivityType; // Activity type selection
   mapQuestion: string;
-  mapQuestion2: string;
+  mapQuestion2: string; // Used by holoscopic type, empty for findthecenter
   objectNameQuestion: string;
   xAxisLabel: string;
   xAxisMin: string;

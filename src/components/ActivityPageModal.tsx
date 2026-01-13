@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
 import Link from 'next/link';
 import ResultsView from './ResultsView';
+import ResultsViewSimple from './ResultsViewSimple';
 import CommentSection from './CommentSection';
 import PreambleModal from './modals/PreambleModal';
 import EntryModal from './modals/EntryModal';
@@ -240,23 +241,31 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
           )}
         </div>
         <div className="flex-1 min-h-0 px-4">
-          <ResultsView
-            activity={activity}
-            isVisible={true}
-            onToggle={() => {}}
-            onCommentVote={activity.status === 'completed' ? undefined : async (commentId) => {
-              try {
-                await ActivityService.voteComment(activityId, commentId, userId!);
-                const updated = await ActivityService.getActivity(activityId);
-                setActivity(updated);
-              } catch (err) {
-                console.error('Error voting:', err);
-              }
-            }}
-            currentUserId={userId || ''}
-            hoveredSlotNumber={hoveredSlot}
-            sequenceId={sequenceId}
-          />
+          {activity.activityType === 'findthecenter' ? (
+            <ResultsViewSimple
+              activity={activity}
+              isVisible={true}
+              currentUserId={userId || ''}
+            />
+          ) : (
+            <ResultsView
+              activity={activity}
+              isVisible={true}
+              onToggle={() => {}}
+              onCommentVote={activity.status === 'completed' ? undefined : async (commentId) => {
+                try {
+                  await ActivityService.voteComment(activityId, commentId, userId!);
+                  const updated = await ActivityService.getActivity(activityId);
+                  setActivity(updated);
+                } catch (err) {
+                  console.error('Error voting:', err);
+                }
+              }}
+              currentUserId={userId || ''}
+              hoveredSlotNumber={hoveredSlot}
+              sequenceId={sequenceId}
+            />
+          )}
         </div>
       </div>
 
@@ -316,24 +325,32 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
 
           {/* Map - Use ResultsView for tablet (sm-lg), custom for desktop lg+ */}
           <div className="flex-1 min-h-0">
-            <ResultsView
-              activity={activity}
-              isVisible={true}
-              onToggle={() => {}}
-              onCommentVote={activity.status === 'completed' ? undefined : async (commentId) => {
-                try {
-                  await ActivityService.voteComment(activityId, commentId, userId!);
-                  const updated = await ActivityService.getActivity(activityId);
-                  setActivity(updated);
-                } catch (err) {
-                  console.error('Error voting:', err);
-                }
-              }}
-              currentUserId={userId || ''}
-              hoveredSlotNumber={hoveredSlot}
-              sequenceId={sequenceId}
-              hideCommentsPanel={true}
-            />
+            {activity.activityType === 'findthecenter' ? (
+              <ResultsViewSimple
+                activity={activity}
+                isVisible={true}
+                currentUserId={userId || ''}
+              />
+            ) : (
+              <ResultsView
+                activity={activity}
+                isVisible={true}
+                onToggle={() => {}}
+                onCommentVote={activity.status === 'completed' ? undefined : async (commentId) => {
+                  try {
+                    await ActivityService.voteComment(activityId, commentId, userId!);
+                    const updated = await ActivityService.getActivity(activityId);
+                    setActivity(updated);
+                  } catch (err) {
+                    console.error('Error voting:', err);
+                  }
+                }}
+                currentUserId={userId || ''}
+                hoveredSlotNumber={hoveredSlot}
+                sequenceId={sequenceId}
+                hideCommentsPanel={true}
+              />
+            )}
           </div>
         </div>
 

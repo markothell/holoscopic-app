@@ -94,6 +94,12 @@ router.get('/by-url/:urlName', async (req, res) => {
       id: activityObj.id || activity._id.toString() // Fallback to _id if custom id doesn't exist
     };
 
+    console.log('=== FETCHING ACTIVITY BY URL ===');
+    console.log('URL name:', req.params.urlName);
+    console.log('Activity ID:', transformedActivity.id);
+    console.log('Activity Type:', transformedActivity.activityType);
+    console.log('Activity Title:', transformedActivity.title);
+
     res.json({
       success: true,
       data: transformedActivity
@@ -184,9 +190,13 @@ router.get('/:id', async (req, res) => {
 // Create new activity
 router.post('/', async (req, res) => {
   try {
+    console.log('=== CREATE ACTIVITY REQUEST RECEIVED ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+
     const {
       title,
       urlName,
+      activityType,
       mapQuestion,
       mapQuestion2,
       xAxis,
@@ -201,6 +211,7 @@ router.post('/', async (req, res) => {
       showProfileLinks
     } = req.body;
 
+    console.log('Create activity - activityType:', activityType);
     console.log('Create activity - preamble:', preamble);
     console.log('Create activity - wikiLink:', wikiLink);
 
@@ -211,14 +222,15 @@ router.post('/', async (req, res) => {
         error: 'Title, URL name, map question, and comment question are required'
       });
     }
-    
+
+    // Validate axis configuration (required for all activity types)
     if (!xAxis || !xAxis.label || !xAxis.min || !xAxis.max) {
       return res.status(400).json({
         success: false,
         error: 'X-axis configuration is required'
       });
     }
-    
+
     if (!yAxis || !yAxis.label || !yAxis.min || !yAxis.max) {
       return res.status(400).json({
         success: false,
@@ -230,6 +242,7 @@ router.post('/', async (req, res) => {
     const activity = new Activity({
       title: title.trim(),
       urlName: urlName.trim(),
+      activityType: activityType || 'holoscopic',
       mapQuestion: mapQuestion.trim(),
       mapQuestion2: mapQuestion2 ? mapQuestion2.trim() : '',
       xAxis: {
@@ -351,16 +364,7 @@ router.patch('/:id', async (req, res) => {
     // Apply updates
     Object.assign(activity, updates);
     console.log('Activity after Object.assign:', activity.toObject());
-    
-    // If quadrants were updated, update quadrantName in existing comments
-    if (updates.quadrants) {
-      activity.comments.forEach(comment => {
-        if (comment.quadrant) {
-          comment.quadrantName = activity.quadrants[comment.quadrant];
-        }
-      });
-    }
-    
+
     const updatedActivity = await activity.save();
     console.log('Activity after save:', updatedActivity.toObject());
 

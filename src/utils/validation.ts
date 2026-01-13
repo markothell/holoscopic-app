@@ -41,11 +41,13 @@ export class ValidationService {
       errors.mapQuestion2 = 'Map question 2 must be less than 200 characters';
     }
 
-    // X-axis validation
-    if (!data.xAxisLabel || data.xAxisLabel.trim().length === 0) {
-      errors.xAxisLabel = 'X-axis label is required';
-    } else if (data.xAxisLabel.trim().length > 50) {
-      errors.xAxisLabel = 'X-axis label must be less than 50 characters';
+    // X-axis validation - label only required for holoscopic type
+    if (data.activityType !== 'findthecenter') {
+      if (!data.xAxisLabel || data.xAxisLabel.trim().length === 0) {
+        errors.xAxisLabel = 'X-axis label is required';
+      } else if (data.xAxisLabel.trim().length > 50) {
+        errors.xAxisLabel = 'X-axis label must be less than 50 characters';
+      }
     }
 
     if (!data.xAxisMin || data.xAxisMin.trim().length === 0) {
@@ -60,11 +62,13 @@ export class ValidationService {
       errors.xAxisMax = 'X-axis maximum label must be less than 30 characters';
     }
 
-    // Y-axis validation
-    if (!data.yAxisLabel || data.yAxisLabel.trim().length === 0) {
-      errors.yAxisLabel = 'Y-axis label is required';
-    } else if (data.yAxisLabel.trim().length > 50) {
-      errors.yAxisLabel = 'Y-axis label must be less than 50 characters';
+    // Y-axis validation - label only required for holoscopic type
+    if (data.activityType !== 'findthecenter') {
+      if (!data.yAxisLabel || data.yAxisLabel.trim().length === 0) {
+        errors.yAxisLabel = 'Y-axis label is required';
+      } else if (data.yAxisLabel.trim().length > 50) {
+        errors.yAxisLabel = 'Y-axis label must be less than 50 characters';
+      }
     }
 
     if (!data.yAxisMin || data.yAxisMin.trim().length === 0) {

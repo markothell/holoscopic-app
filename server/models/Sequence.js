@@ -158,7 +158,6 @@ const SequenceSchema = new mongoose.Schema({
 // Indexes for performance
 SequenceSchema.index({ status: 1, createdAt: -1 });
 SequenceSchema.index({ 'members.userId': 1 });
-SequenceSchema.index({ urlName: 1 });
 
 // Helper methods
 SequenceSchema.methods.addMember = async function(userId, email) {
