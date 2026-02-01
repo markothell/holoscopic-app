@@ -45,7 +45,7 @@ export default function CommentPopup({
   if (!comment) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-        <div className="bg-slate-800 rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-[#111827] border border-white/10 rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
           <div className="flex justify-between items-start mb-4">
             <h3 className="text-white font-bold text-lg">No Comment</h3>
             <button
@@ -55,7 +55,7 @@ export default function CommentPopup({
               ✕
             </button>
           </div>
-          <p className="text-gray-300">This participant hasn't added a comment yet.</p>
+          <p className="text-gray-400">This participant hasn't added a comment yet.</p>
         </div>
       </div>
     );
@@ -67,7 +67,7 @@ export default function CommentPopup({
       onClick={onClose}
     >
       <div
-        className="bg-slate-800 rounded-lg p-6 max-w-md w-full shadow-xl border border-slate-600"
+        className="bg-[#111827] rounded-lg p-6 max-w-md w-full shadow-xl border border-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with object name */}
@@ -75,7 +75,7 @@ export default function CommentPopup({
           <div>
             <h3 className="text-white font-bold text-lg">{rating.objectName}</h3>
             {rating.userId === currentUserId && (
-              <span className="text-xs text-blue-400">(Your response)</span>
+              <span className="text-xs text-sky-400">(Your response)</span>
             )}
           </div>
           <button
@@ -87,13 +87,13 @@ export default function CommentPopup({
         </div>
 
         {/* Comment text */}
-        <div className="bg-slate-700 rounded-lg p-4 mb-4">
+        <div className="bg-[#0a0f1a] border border-white/10 rounded-lg p-4 mb-4">
           <p className="text-white text-base leading-relaxed">{comment.text}</p>
         </div>
 
         {/* Vote section */}
         <div className="flex items-center justify-between">
-          <div className="text-gray-300 text-sm">
+          <div className="text-gray-400 text-sm">
             <span className="font-semibold">{comment.voteCount || 0}</span> {comment.voteCount === 1 ? 'vote' : 'votes'}
           </div>
 
@@ -103,8 +103,8 @@ export default function CommentPopup({
               disabled={isVoting}
               className={`px-4 py-2 rounded-lg font-medium transition ${
                 hasVoted
-                  ? 'bg-green-600 text-white hover:bg-red-600'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  ? 'bg-emerald-600 text-white hover:bg-red-600'
+                  : 'bg-sky-600 hover:bg-sky-700 text-white'
               } ${isVoting ? 'opacity-50 cursor-wait' : ''}`}
               title={hasVoted ? 'Click to remove your vote' : 'Click to vote'}
             >
@@ -113,12 +113,12 @@ export default function CommentPopup({
           )}
 
           {rating.userId === currentUserId && (
-            <span className="text-sm text-gray-400">Can't vote for yourself</span>
+            <span className="text-sm text-gray-500">Can't vote for yourself</span>
           )}
         </div>
 
         {/* Timestamp */}
-        <div className="mt-4 pt-4 border-t border-slate-600">
+        <div className="mt-4 pt-4 border-t border-white/10">
           <p className="text-xs text-gray-500">
             Posted {new Date(comment.timestamp).toLocaleDateString()}
           </p>

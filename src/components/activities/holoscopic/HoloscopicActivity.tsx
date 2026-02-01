@@ -155,6 +155,21 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
     };
   };
 
+  // Solo Tracker Mode helpers
+  const isSoloTracker = activity?.maxEntries === 0;
+  const isCreator = activity?.author?.userId === userId;
+  const canAddEntries = !isSoloTracker || isCreator;
+
+  // Count user's existing entries for solo tracker mode
+  const userEntryCount = activity?.ratings.filter(r => r.userId === userId).length || 0;
+
+  // Determine slots to show
+  // For solo tracker: show existing entries + one "add new" slot
+  // For standard mode: show maxEntries slots
+  const slotsToShow = isSoloTracker
+    ? Math.max(1, userEntryCount + (canAddEntries ? 1 : 0))
+    : (activity?.maxEntries || 1);
+
   // Sync activity state when initialActivity prop changes
   useEffect(() => {
     setActivity(initialActivity);
@@ -453,7 +468,7 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
           <p className="text-gray-300 mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700"
           >
             Try Again
           </button>
@@ -477,8 +492,8 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
   // Auth check - private activities require authentication (not just anonymous ID)
   if (!activity.isPublic && !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-slate-800 rounded-lg shadow-xl p-8 text-center">
+      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-[#111827] border border-white/10 rounded-lg shadow-xl p-8 text-center">
           <Image
             src="/holoLogo_dark.svg"
             alt="Holoscopic Logo"
@@ -493,13 +508,13 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
           <div className="flex gap-3 justify-center">
             <a
               href="/login"
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+              className="px-6 py-3 bg-sky-600 text-white rounded-lg font-medium hover:bg-sky-700 transition"
             >
               Sign In
             </a>
             <a
               href="/signup"
-              className="px-6 py-3 bg-slate-700 text-white rounded-lg font-medium hover:bg-slate-600 transition"
+              className="px-6 py-3 bg-white/10 text-white rounded-lg font-medium hover:bg-white/20 transition"
             >
               Create Account
             </a>
@@ -527,7 +542,7 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
       {/* Scroll Container with Swipe Support */}
       <div ref={swipeRef} className="relative touch-pan-y">
         {/* Screen 1: Activity Entry with Visual Summary */}
-        <div className="min-h-screen flex flex-col items-center bg-gradient-to-br from-slate-900 to-slate-800 text-white relative px-4 py-8 overflow-y-auto">
+        <div className="min-h-screen flex flex-col items-center bg-[#0a0f1a] text-white relative px-4 py-8 overflow-y-auto">
 
           <div className="z-10 max-w-4xl w-full my-auto">
             {/* Activity Title - Underlined */}
@@ -565,13 +580,30 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
               {/* Entries Box */}
               <div className="bg-white/10 rounded-lg p-6 backdrop-blur-sm w-full max-w-[532px] sm:w-[250px]">
                 <h2 className="text-xl font-semibold mb-4 text-center">
-                  {activity.maxEntries || 1} {activity.maxEntries === 1 ? 'Entry' : 'Entries'}
+                  {isSoloTracker ? (
+                    canAddEntries ? 'Unlimited Entries' : `${activity.ratings.length} Entries`
+                  ) : (
+                    `${activity.maxEntries || 1} ${(activity.maxEntries || 1) === 1 ? 'Entry' : 'Entries'}`
+                  )}
                 </h2>
+                {isSoloTracker && !canAddEntries ? (
+                  <p className="text-sm text-gray-300 text-center mb-4">
+                    Solo Tracker Mode - View only
+                  </p>
+                ) : null}
                 <button
-                  onClick={() => activity.status === 'completed' ? navigateToScreen(5) : navigateToScreen(1)}
-                  className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
+                  onClick={() => {
+                    if (activity.status === 'completed') {
+                      navigateToScreen(5);
+                    } else if (canAddEntries) {
+                      navigateToScreen(1);
+                    } else {
+                      navigateToScreen(5); // Non-creators go straight to results
+                    }
+                  }}
+                  className="w-full px-6 py-3 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg transition-colors"
                 >
-                  Answer Questions
+                  {canAddEntries && activity.status !== 'completed' ? 'Answer Questions' : 'View Results'}
                 </button>
               </div>
 
@@ -591,7 +623,7 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
 
                   {/* X-axis label */}
                   <div className="absolute transform -translate-y-1/2" style={{ top: '50%', left: '55%' }}>
-                    <span className="text-white/90 text-xs font-semibold bg-slate-800 bg-opacity-95 px-2 py-1 rounded shadow-sm">
+                    <span className="text-white/90 text-xs font-semibold bg-[#0a0f1a] px-2 py-1 rounded shadow-sm">
                       {activity.xAxis.label}
                     </span>
                   </div>
@@ -601,7 +633,7 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
                     className="absolute transform -translate-x-1/2 -translate-y-1/2 -rotate-90"
                     style={{ left: '50%', top: '25%', transformOrigin: 'center' }}
                   >
-                    <span className="text-white/90 text-xs font-semibold bg-slate-800 bg-opacity-95 px-2 py-1 rounded whitespace-nowrap shadow-sm">
+                    <span className="text-white/90 text-xs font-semibold bg-[#0a0f1a] px-2 py-1 rounded whitespace-nowrap shadow-sm">
                       {activity.yAxis.label}
                     </span>
                   </div>
@@ -628,7 +660,7 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
         </div>
 
         {/* Screen 2: Object Name Input */}
-        <div id="object-name-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
+        <div id="object-name-screen" className="min-h-screen flex flex-col bg-[#0a0f1a] text-white relative">
 
           <div className="flex flex-col items-center justify-center flex-1 w-full max-w-2xl mx-auto px-4 pb-24">
             <div className="w-full max-w-3xl mx-auto">
@@ -640,16 +672,19 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
                 Choose a name that will appear with your responses (max 25 characters)
               </p>
 
-              {/* Slot Selector - Only show if maxEntries > 1 */}
-              {activity.maxEntries && activity.maxEntries > 1 && (
+              {/* Slot Selector - Show for multiple entries or solo tracker mode */}
+              {(slotsToShow > 1 || isSoloTracker) && canAddEntries && (
                 <div className="mb-6">
-                  <p className="text-sm text-gray-400 mb-2">Select Entry Slot:</p>
+                  <p className="text-sm text-gray-400 mb-2">
+                    {isSoloTracker ? 'Select or Add Entry:' : 'Select Entry Slot:'}
+                  </p>
                   <div className="flex gap-2 flex-wrap">
-                    {Array.from({ length: activity.maxEntries }, (_, i) => i + 1).map((slot) => {
+                    {Array.from({ length: slotsToShow }, (_, i) => i + 1).map((slot) => {
                       const slotData = getSlotData(slot);
                       const truncatedName = slotData.objectName.length > 12
                         ? slotData.objectName.substring(0, 12) + '...'
                         : slotData.objectName;
+                      const isAddNewSlot = isSoloTracker && slot > userEntryCount;
 
                       return (
                         <button
@@ -660,19 +695,35 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
                               ? 'bg-white text-slate-900'
                               : slotData.hasData
                                 ? 'bg-white/10 text-white hover:bg-white/20 ring-2 ring-white/40'
-                                : 'bg-white/10 text-white hover:bg-white/20'
+                                : isAddNewSlot
+                                  ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30 border border-dashed border-green-500/50'
+                                  : 'bg-white/10 text-white hover:bg-white/20'
                           }`}
                         >
                           <div className="flex flex-col items-center">
-                            <span className="text-xs opacity-70">Entry {slot}</span>
-                            {slotData.objectName && (
-                              <span className="text-sm font-semibold">{truncatedName}</span>
+                            {isAddNewSlot ? (
+                              <>
+                                <span className="text-lg">+</span>
+                                <span className="text-xs opacity-70">New Entry</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-xs opacity-70">Entry {slot}</span>
+                                {slotData.objectName && (
+                                  <span className="text-sm font-semibold">{truncatedName}</span>
+                                )}
+                              </>
                             )}
                           </div>
                         </button>
                       );
                     })}
                   </div>
+                  {isSoloTracker && (
+                    <p className="text-xs text-amber-400 mt-2">
+                      Solo Tracker Mode: You can add unlimited entries
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -722,7 +773,7 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
                         alert('Failed to update object name');
                       }
                     }}
-                    className="flex-1 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-200 rounded-lg transition-colors text-sm font-medium border border-blue-500/40"
+                    className="flex-1 px-4 py-2 bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 rounded-lg transition-colors text-sm font-medium border border-sky-500/40"
                   >
                     Update Name
                   </button>
@@ -758,7 +809,7 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
         </div>
 
         {/* Screen 3: Question 1 */}
-        <div id="question1-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
+        <div id="question1-screen" className="min-h-screen flex flex-col bg-[#0a0f1a] text-white relative">
           
           <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4 pb-24">
             <SliderQuestions
@@ -786,7 +837,7 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
         </div>
 
         {/* Screen 4: Question 2 */}
-        <div id="question2-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
+        <div id="question2-screen" className="min-h-screen flex flex-col bg-[#0a0f1a] text-white relative">
           
           <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4 pb-24">
             <SliderQuestions
@@ -814,7 +865,7 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
         </div>
 
         {/* Screen 5: Comment */}
-        <div id="comment-screen" className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
+        <div id="comment-screen" className="min-h-screen flex flex-col bg-[#0a0f1a] text-white relative">
           
           <div className="flex flex-col items-center justify-center flex-1 w-full max-w-4xl mx-auto px-4 pb-24">
             <div className="text-left mb-6 sm:mb-8 w-full max-w-[600px]">
@@ -824,7 +875,7 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
               </h2>
             </div>
             
-            <div className="bg-slate-600 rounded-lg shadow-lg p-4 sm:p-6 lg:p-8 w-full max-w-[600px]">
+            <div className="bg-[#111827] border border-white/10 rounded-lg shadow-lg p-4 sm:p-6 lg:p-8 w-full max-w-[600px]">
               <CommentSection
                 activity={activity}
                 onCommentSubmit={activity.status === 'completed' ? () => {} : handleCommentSubmit}
@@ -848,7 +899,7 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
         </div>
 
         {/* Screen 6: Results (Map) */}
-        <div id="results-screen" className="min-h-screen lg:h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+        <div id="results-screen" className="min-h-screen lg:h-screen bg-[#0a0f1a]">
 
           {/* Mobile Header */}
           <div className="sm:hidden flex-1 flex flex-col pt-4 pb-4">
@@ -861,13 +912,16 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
                 </h2>
               </div>
 
-              {/* Slot Navigation Buttons - Only show if maxEntries > 1 */}
-              {activity.maxEntries && activity.maxEntries > 1 && (
+              {/* Slot Navigation Buttons - Show for multiple entries or solo tracker mode */}
+              {(slotsToShow > 1 || isSoloTracker) && canAddEntries && (
                 <div className="flex flex-col items-start ml-16 mt-3">
-                  <span className="text-xs text-gray-400 mb-2">Your entries:</span>
-                  <div className="flex gap-2">
-                    {Array.from({ length: activity.maxEntries }, (_, i) => i + 1).map((slot) => {
+                  <span className="text-xs text-gray-400 mb-2">
+                    {isSoloTracker ? `Your entries (${userEntryCount}):` : 'Your entries:'}
+                  </span>
+                  <div className="flex gap-2 flex-wrap">
+                    {Array.from({ length: slotsToShow }, (_, i) => i + 1).map((slot) => {
                       const slotData = getSlotData(slot);
+                      const isAddNewSlot = isSoloTracker && slot > userEntryCount;
 
                       return (
                         <button
@@ -881,14 +935,16 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
                           className={`w-8 h-8 rounded-full border-2 transition-all ${
                             slotData.hasData
                               ? 'bg-white border-white hover:bg-white/90'
-                              : 'bg-transparent border-white/40 hover:border-white/60'
+                              : isAddNewSlot
+                                ? 'bg-green-500/30 border-green-500/50 hover:bg-green-500/40'
+                                : 'bg-transparent border-white/40 hover:border-white/60'
                           }`}
-                          aria-label={`Edit entry ${slot}`}
+                          aria-label={isAddNewSlot ? 'Add new entry' : `Edit entry ${slot}`}
                         >
                           <span className={`text-xs font-semibold ${
-                            slotData.hasData ? 'text-slate-900' : 'text-white/70'
+                            slotData.hasData ? 'text-slate-900' : isAddNewSlot ? 'text-green-300' : 'text-white/70'
                           }`}>
-                            {slot}
+                            {isAddNewSlot ? '+' : slot}
                           </span>
                         </button>
                       );
@@ -923,12 +979,15 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
                 </div>
 
                 {/* Slot Navigation */}
-                {activity.maxEntries && activity.maxEntries > 1 && (
+                {(slotsToShow > 1 || isSoloTracker) && canAddEntries && (
                   <div className="flex flex-col items-start">
-                    <span className="text-sm text-gray-400 mb-2">Your entries:</span>
-                    <div className="flex gap-3">
-                      {Array.from({ length: activity.maxEntries }, (_, i) => i + 1).map((slot) => {
+                    <span className="text-sm text-gray-400 mb-2">
+                      {isSoloTracker ? `Your entries (${userEntryCount}):` : 'Your entries:'}
+                    </span>
+                    <div className="flex gap-3 flex-wrap">
+                      {Array.from({ length: slotsToShow }, (_, i) => i + 1).map((slot) => {
                         const slotData = getSlotData(slot);
+                        const isAddNewSlot = isSoloTracker && slot > userEntryCount;
 
                         return (
                           <button
@@ -942,14 +1001,16 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
                             className={`w-10 h-10 rounded-full border-2 transition-all ${
                               slotData.hasData
                                 ? 'bg-white border-white hover:bg-white/90'
-                                : 'bg-transparent border-white/40 hover:border-white/60'
+                                : isAddNewSlot
+                                  ? 'bg-green-500/30 border-green-500/50 hover:bg-green-500/40'
+                                  : 'bg-transparent border-white/40 hover:border-white/60'
                             }`}
-                            aria-label={`Edit entry ${slot}`}
+                            aria-label={isAddNewSlot ? 'Add new entry' : `Edit entry ${slot}`}
                           >
                             <span className={`text-sm font-semibold ${
-                              slotData.hasData ? 'text-slate-900' : 'text-white/70'
+                              slotData.hasData ? 'text-slate-900' : isAddNewSlot ? 'text-green-300' : 'text-white/70'
                             }`}>
-                              {slot}
+                              {isAddNewSlot ? '+' : slot}
                             </span>
                           </button>
                         );
@@ -965,7 +1026,7 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
                 <div className="hidden lg:flex flex-col items-center">
                   {/* Map Title */}
                   <div className="mb-4">
-                    <div className="bg-slate-600 px-6 py-3 rounded-lg border border-slate-500">
+                    <div className="bg-[#111827] px-6 py-3 rounded-lg border border-white/10">
                       <h3 className="text-xl font-semibold text-white text-center">
                         {activity.xAxis.label} vs {activity.yAxis.label}
                       </h3>
@@ -1006,9 +1067,9 @@ export default function HoloscopicActivity({ activity: initialActivity, sequence
             </div>
 
             {/* Right Column: Comments Panel - Only show on lg+ screens (1024px+) */}
-            <div className="hidden lg:flex w-[400px] flex-shrink-0 bg-slate-700 flex-col">
+            <div className="hidden lg:flex w-[400px] flex-shrink-0 bg-[#111827] border-l border-white/10 flex-col">
               {/* Comments Title */}
-              <div className="flex-shrink-0 px-6 py-4 border-b border-slate-600">
+              <div className="flex-shrink-0 px-6 py-4 border-b border-white/10">
                 <h3 className="text-xl font-semibold text-white text-center">
                   {activity.commentQuestion}
                 </h3>

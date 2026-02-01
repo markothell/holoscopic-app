@@ -105,6 +105,19 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
     };
   };
 
+  // Solo Tracker Mode helpers
+  const isSoloTracker = activity?.maxEntries === 0;
+  const isCreator = activity?.author?.userId === userId;
+  const canAddEntries = !isSoloTracker || isCreator;
+
+  // Count user's existing entries for solo tracker mode
+  const userEntryCount = activity?.ratings.filter(r => r.userId === userId).length || 0;
+
+  // Determine slots to show
+  const slotsToShow = isSoloTracker
+    ? Math.max(1, userEntryCount + (canAddEntries ? 1 : 0))
+    : (activity?.maxEntries || 1);
+
   // Handle entry submission
   const handleEntrySubmit = async (data: {
     objectName: string;
@@ -151,18 +164,18 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
 
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
-        <div className="text-white text-lg">Loading...</div>
+      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
+        <div className="text-gray-400">Loading...</div>
       </div>
     );
   }
 
   if (error || !activity) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center p-4">
         <div className="text-center">
           <p className="text-red-400 mb-4">{error || 'Activity not found'}</p>
-          <Link href="/" className="text-blue-400 hover:text-blue-300">
+          <Link href="/" className="text-sky-400 hover:text-sky-300">
             Return to Home
           </Link>
         </div>
@@ -170,10 +183,10 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
     );
   }
 
-  const maxEntries = activity.maxEntries || 1;
+  const maxEntries = isSoloTracker ? slotsToShow : (activity.maxEntries || 1);
 
   return (
-    <div className="min-h-screen lg:h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+    <div className="min-h-screen lg:h-screen bg-[#0a0f1a]">
       {/* Fixed Logo in top-left */}
       <div className="fixed top-4 left-4 z-20">
         <Link href="/">
@@ -198,7 +211,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
             {(activity.preamble || activity.wikiLink) && (
               <button
                 onClick={() => setShowPreamble(true)}
-                className="w-6 h-6 rounded-full bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold flex items-center justify-center transition-colors flex-shrink-0"
+                className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center justify-center transition-colors flex-shrink-0"
                 aria-label="View information"
                 title="View activity information"
               >
@@ -208,12 +221,15 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
           </div>
 
           {/* Entry Circles */}
-          {activity.status !== 'completed' && (
+          {activity.status !== 'completed' && canAddEntries && (
             <div className="flex flex-col items-start ml-16 mt-3">
-              <span className="text-xs text-gray-400 mb-2">Click to add mapping:</span>
-              <div className="flex gap-2">
+              <span className="text-xs text-gray-400 mb-2">
+                {isSoloTracker ? `Your entries (${userEntryCount}):` : 'Click to add mapping:'}
+              </span>
+              <div className="flex gap-2 flex-wrap">
                 {Array.from({ length: maxEntries }, (_, i) => i + 1).map((slot) => {
                   const slotData = getSlotData(slot);
+                  const isAddNewSlot = isSoloTracker && slot > userEntryCount;
 
                   return (
                     <button
@@ -224,14 +240,16 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                       className={`w-8 h-8 rounded-full border-2 transition-all ${
                         slotData.hasData
                           ? 'bg-white border-white hover:bg-white/90'
-                          : 'bg-transparent border-white/40 hover:border-white/60'
+                          : isAddNewSlot
+                            ? 'bg-green-500/30 border-green-500/50 hover:bg-green-500/40'
+                            : 'bg-transparent border-white/40 hover:border-white/60'
                       }`}
-                      aria-label={`Entry ${slot}`}
+                      aria-label={isAddNewSlot ? 'Add new entry' : `Entry ${slot}`}
                     >
                       <span className={`text-xs font-semibold ${
-                        slotData.hasData ? 'text-slate-900' : 'text-white/70'
+                        slotData.hasData ? 'text-slate-900' : isAddNewSlot ? 'text-green-300' : 'text-white/70'
                       }`}>
-                        {slot}
+                        {isAddNewSlot ? '+' : slot}
                       </span>
                     </button>
                   );
@@ -245,6 +263,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
             <ResultsViewSimple
               activity={activity}
               isVisible={true}
+              onToggle={() => {}}
               currentUserId={userId || ''}
             />
           ) : (
@@ -280,7 +299,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               {(activity.preamble || activity.wikiLink) && (
                 <button
                   onClick={() => setShowPreamble(true)}
-                  className="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold flex items-center justify-center transition-colors"
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-bold flex items-center justify-center transition-colors"
                   aria-label="View information"
                   title="View activity information"
                 >
@@ -290,12 +309,15 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
             </div>
 
             {/* Entry Circles */}
-            {activity.status !== 'completed' && (
+            {activity.status !== 'completed' && canAddEntries && (
               <div className="flex flex-col items-start">
-                <span className="text-sm text-gray-400 mb-2">Click to add mapping:</span>
-                <div className="flex gap-3">
+                <span className="text-sm text-gray-400 mb-2">
+                  {isSoloTracker ? `Your entries (${userEntryCount}):` : 'Click to add mapping:'}
+                </span>
+                <div className="flex gap-3 flex-wrap">
                   {Array.from({ length: maxEntries }, (_, i) => i + 1).map((slot) => {
                     const slotData = getSlotData(slot);
+                    const isAddNewSlot = isSoloTracker && slot > userEntryCount;
 
                     return (
                       <button
@@ -306,14 +328,16 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                         className={`w-10 h-10 rounded-full border-2 transition-all ${
                           slotData.hasData
                             ? 'bg-white border-white hover:bg-white/90'
-                            : 'bg-transparent border-white/40 hover:border-white/60'
+                            : isAddNewSlot
+                              ? 'bg-green-500/30 border-green-500/50 hover:bg-green-500/40'
+                              : 'bg-transparent border-white/40 hover:border-white/60'
                         }`}
-                        aria-label={`Entry ${slot}`}
+                        aria-label={isAddNewSlot ? 'Add new entry' : `Entry ${slot}`}
                       >
                         <span className={`text-sm font-semibold ${
-                          slotData.hasData ? 'text-slate-900' : 'text-white/70'
+                          slotData.hasData ? 'text-slate-900' : isAddNewSlot ? 'text-green-300' : 'text-white/70'
                         }`}>
-                          {slot}
+                          {isAddNewSlot ? '+' : slot}
                         </span>
                       </button>
                     );
@@ -329,6 +353,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               <ResultsViewSimple
                 activity={activity}
                 isVisible={true}
+                onToggle={() => {}}
                 currentUserId={userId || ''}
               />
             ) : (
@@ -355,9 +380,9 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
         </div>
 
         {/* Right Column: Comments Panel - Only show on lg+ screens (1024px+) */}
-        <div className="hidden lg:flex w-[400px] flex-shrink-0 bg-slate-700 flex-col">
+        <div className="hidden lg:flex w-[400px] flex-shrink-0 bg-[#111827] border-l border-white/10 flex-col">
           {/* Comments Title */}
-          <div className="flex-shrink-0 px-6 py-4 border-b border-slate-600">
+          <div className="flex-shrink-0 px-6 py-4 border-b border-white/10">
             <h3 className="text-xl font-semibold text-white text-center">
               {activity.commentQuestion}
             </h3>

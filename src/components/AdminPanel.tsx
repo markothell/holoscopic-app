@@ -679,7 +679,7 @@ export default function AdminPanel({
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-gray-700">Entry Slots per User</h4>
               <p className="text-sm text-gray-600">Allow users to submit multiple entries in this activity</p>
-              <div className="flex gap-4">
+              <div className="flex gap-4 flex-wrap">
                 <label className="flex items-center">
                   <input
                     type="radio"
@@ -713,7 +713,23 @@ export default function AdminPanel({
                   />
                   <span className="ml-2 text-sm text-gray-700">4 entries</span>
                 </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="maxEntries"
+                    value="0"
+                    checked={Number(formData.maxEntries) === 0}
+                    onChange={(e) => setFormData(prev => ({ ...prev, maxEntries: Number(e.target.value) }))}
+                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Unlimited (Solo Tracker)</span>
+                </label>
               </div>
+              {Number(formData.maxEntries) === 0 && (
+                <p className="text-amber-600 text-xs mt-2 bg-amber-50 p-2 rounded">
+                  Solo Tracker Mode: Only you (the creator) can add entries to this activity. Others can view results.
+                </p>
+              )}
             </div>
           </CollapsibleSection>
 

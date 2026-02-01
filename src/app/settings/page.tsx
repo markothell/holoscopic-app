@@ -73,7 +73,6 @@ export default function SettingsPage() {
 
       setSuccess('Settings saved successfully!');
 
-      // Clear success message after 3 seconds
       setTimeout(() => {
         setSuccess(null);
       }, 3000);
@@ -87,128 +86,130 @@ export default function SettingsPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] flex items-center justify-center">
-        <div className="text-white/80">Loading...</div>
+      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
+        <div className="text-gray-400">Loading...</div>
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    return null; // Will redirect
+    return null;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55]">
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Link href="/">
-                <Image
-                  src="/holoLogo_dark.svg"
-                  alt="Holoscopic Logo"
-                  width={32}
-                  height={32}
-                  className="sm:w-10 sm:h-10 hover:opacity-80 transition-opacity"
-                />
-              </Link>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">Settings</h1>
-            </div>
-            <UserMenu />
+    <div className="min-h-screen bg-[#0a0f1a]">
+      {/* Header */}
+      <header className="border-b border-white/10">
+        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-3">
+              <Image
+                src="/holoLogo_dark.svg"
+                alt="Holoscopic"
+                width={28}
+                height={28}
+              />
+              <span className="text-white font-semibold">Holoscopic</span>
+            </Link>
+            <span className="text-gray-600">/</span>
+            <span className="text-gray-400">settings</span>
           </div>
+          <UserMenu />
+        </div>
+      </header>
+
+      <main className="max-w-xl mx-auto px-4 py-8">
+        {/* Page Title */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-white mb-2">Settings</h1>
+          <p className="text-gray-500 text-sm">Manage your account preferences</p>
         </div>
 
-        {/* Main Content */}
-        <main className="max-w-2xl mx-auto">
-          <div className="bg-slate-800 rounded-lg shadow-xl p-6 sm:p-8">
-            {error && (
-            <div className="mb-6 bg-red-500/10 border border-red-500/50 rounded-lg p-4">
+        {/* Form */}
+        <div className="bg-[#111827] border border-white/10 rounded-lg p-6">
+          {error && (
+            <div className="mb-6 bg-red-500/10 border border-red-500/30 rounded px-4 py-3">
               <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
 
           {success && (
-            <div className="mb-6 bg-green-500/10 border border-green-500/50 rounded-lg p-4">
-              <p className="text-green-400 text-sm">{success}</p>
+            <div className="mb-6 bg-emerald-500/10 border border-emerald-500/30 rounded px-4 py-3">
+              <p className="text-emerald-400 text-sm">{success}</p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Profile Information Section */}
             <div>
-              <h2 className="text-lg font-semibold text-white mb-4">Profile Information</h2>
+              <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Profile</h2>
 
-              {/* Name Field */}
-              <div className="mb-4">
-                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
-                  Name
-                </label>
-                <input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your name"
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                  disabled={saving}
-                />
-              </div>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="name" className="block text-sm text-gray-400 mb-1.5">
+                    Name
+                  </label>
+                  <input
+                    id="name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full px-3 py-2 bg-[#0a0f1a] border border-white/10 rounded text-white text-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none transition"
+                    disabled={saving}
+                  />
+                </div>
 
-              {/* Email Field */}
-              <div className="mb-4">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="your@email.com"
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                  disabled={saving}
-                />
+                <div>
+                  <label htmlFor="email" className="block text-sm text-gray-400 mb-1.5">
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="you@example.com"
+                    className="w-full px-3 py-2 bg-[#0a0f1a] border border-white/10 rounded text-white text-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none transition"
+                    disabled={saving}
+                  />
+                </div>
               </div>
             </div>
 
             {/* Notification Preferences Section */}
-            <div className="border-t border-slate-700 pt-6">
-              <h2 className="text-lg font-semibold text-white mb-4">Notification Preferences</h2>
+            <div className="pt-6 border-t border-white/10">
+              <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Notifications</h2>
 
-              {/* New Activities Checkbox */}
-              <div className="mb-4">
-                <label className="flex items-start gap-3 cursor-pointer">
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer group">
                   <input
                     type="checkbox"
                     checked={notifyNewActivities}
                     onChange={(e) => setNotifyNewActivities(e.target.checked)}
-                    className="mt-1 w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 focus:ring-2"
+                    className="mt-0.5 w-4 h-4 rounded border-white/20 bg-[#0a0f1a] text-sky-500 focus:ring-sky-500 focus:ring-offset-0"
                     disabled={saving}
                   />
                   <div>
-                    <span className="text-sm font-medium text-gray-300">New Activities</span>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <span className="text-sm text-white group-hover:text-sky-400 transition-colors">New Activities</span>
+                    <p className="text-xs text-gray-500 mt-0.5">
                       Receive notifications when new activities are published
                     </p>
                   </div>
                 </label>
-              </div>
 
-              {/* Enrolled Activities Checkbox */}
-              <div className="mb-4">
-                <label className="flex items-start gap-3 cursor-pointer">
+                <label className="flex items-start gap-3 cursor-pointer group">
                   <input
                     type="checkbox"
                     checked={notifyEnrolledActivities}
                     onChange={(e) => setNotifyEnrolledActivities(e.target.checked)}
-                    className="mt-1 w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 focus:ring-2"
+                    className="mt-0.5 w-4 h-4 rounded border-white/20 bg-[#0a0f1a] text-sky-500 focus:ring-sky-500 focus:ring-offset-0"
                     disabled={saving}
                   />
                   <div>
-                    <span className="text-sm font-medium text-gray-300">Enrolled Activities</span>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <span className="text-sm text-white group-hover:text-sky-400 transition-colors">Enrolled Activities</span>
+                    <p className="text-xs text-gray-500 mt-0.5">
                       Receive notifications about activities in your enrolled sequences
                     </p>
                   </div>
@@ -216,12 +217,12 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Submit Button */}
-            <div className="flex justify-end gap-3 pt-6 border-t border-slate-700">
+            {/* Submit */}
+            <div className="flex justify-end gap-3 pt-6 border-t border-white/10">
               <button
                 type="button"
                 onClick={() => router.push('/dashboard')}
-                className="px-6 py-2 text-sm text-gray-300 hover:text-white transition"
+                className="px-4 py-2 text-sm text-gray-400 hover:text-white transition"
                 disabled={saving}
               >
                 Cancel
@@ -229,15 +230,21 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:bg-gray-600 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm bg-sky-600 hover:bg-sky-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded transition-colors"
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </form>
-          </div>
-        </main>
-      </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-8 pt-6 border-t border-white/10 flex gap-6 text-sm text-gray-500">
+          <Link href="/" className="hover:text-gray-300">Home</Link>
+          <Link href="/dashboard" className="hover:text-gray-300">Dashboard</Link>
+          <a href="https://wiki.holoscopic.io" className="hover:text-gray-300">Wiki</a>
+        </div>
+      </main>
     </div>
   );
 }

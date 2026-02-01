@@ -70,10 +70,10 @@ export default function ActivityPage({ activityId, sequenceId }: ActivityPagePro
             </svg>
           </div>
           <h2 className="text-xl font-semibold text-white mb-2">Error</h2>
-          <p className="text-gray-300 mb-4">{error}</p>
+          <p className="text-gray-400 mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700"
           >
             Try Again
           </button>
@@ -97,8 +97,8 @@ export default function ActivityPage({ activityId, sequenceId }: ActivityPagePro
   // Auth check - private activities require authentication (not just anonymous ID)
   if (!activity.isPublic && !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-slate-800 rounded-lg shadow-xl p-8 text-center">
+      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-[#111827] border border-white/10 rounded-lg shadow-xl p-8 text-center">
           <Image
             src="/holoLogo_dark.svg"
             alt="Holoscopic Logo"
@@ -107,19 +107,19 @@ export default function ActivityPage({ activityId, sequenceId }: ActivityPagePro
             className="mx-auto mb-6"
           />
           <h1 className="text-2xl font-bold text-white mb-4">Sign in Required</h1>
-          <p className="text-gray-300 mb-6">
+          <p className="text-gray-400 mb-6">
             This is a private activity. Please sign in or create an account to participate.
           </p>
           <div className="flex gap-3 justify-center">
             <a
               href="/login"
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+              className="px-6 py-3 bg-sky-600 text-white rounded-lg font-medium hover:bg-sky-700 transition"
             >
               Sign In
             </a>
             <a
               href="/signup"
-              className="px-6 py-3 bg-slate-700 text-white rounded-lg font-medium hover:bg-slate-600 transition"
+              className="px-6 py-3 bg-white/10 text-white rounded-lg font-medium hover:bg-white/20 transition"
             >
               Create Account
             </a>

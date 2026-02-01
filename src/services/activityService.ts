@@ -109,7 +109,7 @@ export class ActivityService {
         urlName = cleanedUrlName;
       }
 
-      const activityData: Partial<HoloscopicActivity> = {
+      const activityData: Partial<HoloscopicActivity> & { author?: { userId: string; name: string } } = {
         title: formData.title,
         urlName,
         activityType: formData.activityType,
@@ -139,6 +139,11 @@ export class ActivityService {
         ratings: [],
         comments: [],
       };
+
+      // Include author if provided (for solo tracker mode especially)
+      if ((formData as any).author) {
+        activityData.author = (formData as any).author;
+      }
 
       console.log('=== SENDING CREATE ACTIVITY REQUEST ===');
       console.log('API URL:', `${API_BASE_URL}/activities`);

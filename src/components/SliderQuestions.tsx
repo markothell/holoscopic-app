@@ -74,7 +74,7 @@ export default function SliderQuestions({
             
             <div className="space-y-2">
               {/* Slider with pill background */}
-              <div className="bg-slate-800 p-6 rounded-2xl border border-slate-400">
+              <div className="bg-[#111827] p-6 rounded-2xl border border-white/10">
                 <div className="relative">
                   <input
                     type="range"
@@ -86,17 +86,17 @@ export default function SliderQuestions({
                     onMouseUp={handleXRelease}
                     onTouchEnd={handleXRelease}
                     inputMode="none"
-                    className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer slider"
+                    className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
                   />
                   {/* Center tick mark */}
-                  <div 
-                    className="absolute w-0.5 h-6 bg-slate-300 pointer-events-none"
+                  <div
+                    className="absolute w-0.5 h-6 bg-white/30 pointer-events-none"
                     style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
                   />
                 </div>
-                
+
                 {/* Labels */}
-                <div className="flex justify-between text-lg font-semibold text-slate-100 mt-4">
+                <div className="flex justify-between text-lg font-semibold text-gray-200 mt-4">
                   <span>{activity.xAxis.min}</span>
                   <span>{activity.xAxis.max}</span>
                 </div>
@@ -114,7 +114,7 @@ export default function SliderQuestions({
             
             <div className="space-y-2">
               {/* Slider with pill background */}
-              <div className="bg-slate-800 p-6 rounded-2xl border border-slate-400">
+              <div className="bg-[#111827] p-6 rounded-2xl border border-white/10">
                 <div className="relative">
                   <input
                     type="range"
@@ -126,17 +126,17 @@ export default function SliderQuestions({
                     onMouseUp={handleYRelease}
                     onTouchEnd={handleYRelease}
                     inputMode="none"
-                    className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer slider"
+                    className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
                   />
                   {/* Center tick mark */}
-                  <div 
-                    className="absolute w-0.5 h-6 bg-slate-300 pointer-events-none"
+                  <div
+                    className="absolute w-0.5 h-6 bg-white/30 pointer-events-none"
                     style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
                   />
                 </div>
-                
+
                 {/* Labels */}
-                <div className="flex justify-between text-lg font-semibold text-slate-100 mt-4">
+                <div className="flex justify-between text-lg font-semibold text-gray-200 mt-4">
                   <span>{activity.yAxis.min}</span>
                   <span>{activity.yAxis.max}</span>
                 </div>
@@ -152,7 +152,7 @@ export default function SliderQuestions({
           height: 20px;
           width: 20px;
           border-radius: 50%;
-          background: #3b82f6;
+          background: #0ea5e9;
           border: 2px solid white;
           cursor: pointer;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -162,7 +162,7 @@ export default function SliderQuestions({
           height: 20px;
           width: 20px;
           border-radius: 50%;
-          background: #3b82f6;
+          background: #0ea5e9;
           border: 2px solid white;
           cursor: pointer;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -173,7 +173,7 @@ export default function SliderQuestions({
         }
 
         .slider:focus::-webkit-slider-thumb {
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+          box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.3);
         }
       `}</style>
     </div>

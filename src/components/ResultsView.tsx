@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { ResultsViewProps } from '@/models/Activity';
 import { FormattingService } from '@/utils/formatting';
+import { ValidationService } from '@/utils/validation';
 import MappingGrid from './MappingGrid';
 import CommentSection from './CommentSection';
 
@@ -69,13 +70,13 @@ export default function ResultsView({
           <div className="lg:hidden">
             {/* Mobile Tab Navigation */}
             <div className="flex justify-center mb-2">
-              <div className="flex bg-white rounded-lg p-1 shadow-sm">
+              <div className="flex bg-[#111827] rounded-lg p-1 border border-white/10">
                 <button
                   onClick={() => setActiveTab('map')}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     activeTab === 'map'
-                      ? 'bg-blue-500 text-white'
-                      : 'text-gray-600 hover:text-gray-800'
+                      ? 'bg-sky-600 text-white'
+                      : 'text-gray-400 hover:text-white'
                   }`}
                 >
                   Map View
@@ -84,8 +85,8 @@ export default function ResultsView({
                   onClick={() => setActiveTab('comments')}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     activeTab === 'comments'
-                      ? 'bg-blue-500 text-white'
-                      : 'text-gray-600 hover:text-gray-800'
+                      ? 'bg-sky-600 text-white'
+                      : 'text-gray-400 hover:text-white'
                   }`}
                 >
                   Comments
@@ -99,7 +100,7 @@ export default function ResultsView({
                 <div>
                   {/* Mobile Map Title */}
                   <div className="flex justify-center mb-2">
-                    <div className="bg-slate-600 px-3 py-2 rounded-lg border border-slate-500">
+                    <div className="bg-[#111827] px-3 py-2 rounded-lg border border-white/10">
                       <h3 className="text-sm font-semibold text-white text-center" style={{ fontSize: 'clamp(0.8rem, 3vw, 0.9rem)', lineHeight: '1.2' }}>
                         {activity.xAxis.label} vs {activity.yAxis.label}
                       </h3>
@@ -142,7 +143,7 @@ export default function ResultsView({
                 <div>
                   {/* Mobile Comments Title */}
                   <div className="flex justify-center mb-2">
-                    <div className="bg-slate-600 px-3 py-2 rounded-lg max-w-xs border border-slate-500">
+                    <div className="bg-[#111827] px-3 py-2 rounded-lg max-w-xs border border-white/10">
                       <h3 className="text-sm font-semibold text-white text-center" style={{ fontSize: 'clamp(0.8rem, 3vw, 0.9rem)', lineHeight: '1.2' }}>
                         {activity.commentQuestion}
                       </h3>
@@ -169,42 +170,51 @@ export default function ResultsView({
 
           {/* Mobile Comment Popup */}
           {mobilePopupComment && (
-            <div className="lg:hidden fixed inset-0 z-50 flex items-center justify-center p-4">
-              <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-lg p-6 max-w-sm w-full max-h-[70vh] overflow-y-auto shadow-xl border border-gray-200">
+            <div className="lg:hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+              <div className="bg-[#111827] rounded-lg p-6 max-w-sm w-full max-h-[70vh] overflow-y-auto shadow-xl border border-white/10">
                 {(() => {
                   const comment = activity.comments.find(c => c.id === mobilePopupComment);
                   if (!comment) return null;
-                  
+
+                  // Get the associated rating to get objectName and quadrant color
+                  const rating = activity.ratings.find(r =>
+                    r.userId === comment.userId && (r.slotNumber || 1) === (comment.slotNumber || 1)
+                  );
+
+                  // Get display name (prefer objectName, fallback to username)
+                  const displayName = comment.objectName || rating?.objectName || comment.username;
+
+                  // Get color based on quadrant position
+                  const dotColor = rating
+                    ? ValidationService.getQuadrantColor(ValidationService.getQuadrant(rating.position))
+                    : FormattingService.generateColorFromString(comment.username);
+
                   return (
                     <div>
                       <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900">Comment</h3>
+                        <div className="flex items-center space-x-2">
+                          <div
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: dotColor }}
+                          />
+                          <h3 className="text-lg font-semibold text-white">{displayName}</h3>
+                        </div>
                         <button
                           onClick={() => setMobilePopupComment(null)}
-                          className="text-gray-400 hover:text-gray-600"
+                          className="text-gray-400 hover:text-white"
                         >
                           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </button>
                       </div>
-                      
+
                       <div className="space-y-3">
-                        <div className="flex items-center space-x-2">
-                          <div
-                            className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: FormattingService.generateColorFromString(comment.username) }}
-                          />
-                          <span className="font-medium text-sm" style={{ color: FormattingService.generateColorFromString(comment.username) }}>
-                            {comment.username}
-                          </span>
-                        </div>
-                        
-                        <p className="text-gray-700 text-sm whitespace-pre-wrap">
+                        <p className="text-gray-200 text-sm whitespace-pre-wrap">
                           {comment.text}
                         </p>
-                        
-                        <div className="flex justify-between items-center pt-2 border-t">
+
+                        <div className="flex justify-between items-center pt-2 border-t border-white/10">
                           <span className="text-xs text-gray-500">
                             {FormattingService.formatTimestamp(comment.timestamp)}
                           </span>
@@ -217,13 +227,13 @@ export default function ResultsView({
                                   console.error('Vote failed:', error);
                                 }
                               }}
-                              className="flex items-center space-x-1 px-2 py-1 rounded text-xs transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              className="flex items-center space-x-1 px-2 py-1 rounded text-xs transition-colors bg-white/10 text-gray-300 hover:bg-white/20"
                             >
                               <span>▲</span>
                               <span>{comment.voteCount || 0}</span>
                             </button>
                           ) : (
-                            <div className="flex items-center space-x-1 text-xs text-gray-600">
+                            <div className="flex items-center space-x-1 text-xs text-gray-400">
                               <span>▲</span>
                               <span>{comment.voteCount || 0}</span>
                             </div>
@@ -244,7 +254,7 @@ export default function ResultsView({
               <div className="flex flex-col items-center">
                 {/* Map Title */}
                 <div className="mb-4">
-                  <div className="bg-slate-600 px-6 py-3 rounded-lg border border-slate-500">
+                  <div className="bg-[#111827] px-6 py-3 rounded-lg border border-white/10">
                     <h3 className="text-xl font-semibold text-white text-center">
                       {activity.xAxis.label} vs {activity.yAxis.label}
                     </h3>
@@ -285,9 +295,9 @@ export default function ResultsView({
 
             {/* Right: Full-height Comments Panel - Only show if not hidden */}
             {!hideCommentsPanel && (
-              <div className="w-[400px] flex-shrink-0 bg-slate-700 flex flex-col h-full">
+              <div className="w-[400px] flex-shrink-0 bg-[#111827] border-l border-white/10 flex flex-col h-full">
                 {/* Comments Title - Inside panel at top */}
-                <div className="flex-shrink-0 px-6 py-4 border-b border-slate-600">
+                <div className="flex-shrink-0 px-6 py-4 border-b border-white/10">
                   <h3 className="text-xl font-semibold text-white text-center">
                     {activity.commentQuestion}
                   </h3>

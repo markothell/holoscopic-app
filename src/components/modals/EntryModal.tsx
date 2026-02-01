@@ -80,9 +80,9 @@ export default function EntryModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-      <div className="bg-slate-800 rounded-lg shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col">
+      <div className="bg-[#111827] border border-white/10 rounded-lg shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col">
         {/* Header with Progress */}
-        <div className="border-b border-slate-700 p-4">
+        <div className="border-b border-white/10 p-4">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-semibold text-white">
               Entry {slotNumber} - Step {step} of {totalSteps}
@@ -96,9 +96,9 @@ export default function EntryModal({
             </button>
           </div>
           {/* Progress Bar */}
-          <div className="w-full bg-slate-700 rounded-full h-2">
+          <div className="w-full bg-white/10 rounded-full h-2">
             <div
-              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+              className="bg-sky-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -119,7 +119,7 @@ export default function EntryModal({
                 type="text"
                 value={objectName}
                 onChange={(e) => setObjectName(e.target.value.slice(0, 25))}
-                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+                className="w-full px-4 py-3 bg-[#0a0f1a] border border-white/10 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 text-lg"
                 placeholder="Enter name..."
                 maxLength={25}
                 autoFocus
@@ -135,7 +135,7 @@ export default function EntryModal({
             <div className="space-y-4">
               <div className="mb-2">
                 <span className="text-sm text-gray-400">Your perspective:</span>
-                <p className="text-lg font-semibold text-blue-400">{objectName}</p>
+                <p className="text-lg font-semibold text-sky-400">{objectName}</p>
               </div>
               <QuadrantSelector
                 activity={activity}
@@ -152,12 +152,12 @@ export default function EntryModal({
             <div className="space-y-4">
               <div className="mb-2">
                 <span className="text-sm text-gray-400">Your perspective:</span>
-                <p className="text-lg font-semibold text-blue-400">{objectName}</p>
+                <p className="text-lg font-semibold text-sky-400">{objectName}</p>
               </div>
               <h3 className="text-2xl font-bold text-white mb-4">
                 {activity.mapQuestion}
               </h3>
-              <div className="bg-slate-700 p-6 rounded-lg">
+              <div className="bg-[#0a0f1a] border border-white/10 p-6 rounded-lg">
                 <input
                   type="range"
                   min="0"
@@ -166,7 +166,7 @@ export default function EntryModal({
                   value={xValue}
                   onChange={(e) => setXValue(parseFloat(e.target.value))}
                   inputMode="none"
-                  className="w-full h-2 bg-slate-500 rounded-lg appearance-none cursor-pointer slider"
+                  className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
                 />
                 <div className="flex justify-between text-sm font-semibold text-gray-300 mt-4">
                   <span>{activity.xAxis.min}</span>
@@ -181,7 +181,7 @@ export default function EntryModal({
             <div className="space-y-4">
               <div className="mb-2">
                 <span className="text-sm text-gray-400">Your perspective:</span>
-                <p className="text-lg font-semibold text-blue-400">{objectName}</p>
+                <p className="text-lg font-semibold text-sky-400">{objectName}</p>
               </div>
               <h3 className="text-2xl font-bold text-white mb-2">
                 {activity.commentQuestion}
@@ -189,7 +189,7 @@ export default function EntryModal({
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base resize-none"
+                className="w-full px-4 py-3 bg-[#0a0f1a] border border-white/10 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 text-base resize-none"
                 placeholder="Share your thoughts..."
                 rows={6}
                 autoFocus
@@ -201,12 +201,12 @@ export default function EntryModal({
             <div className="space-y-4">
               <div className="mb-2">
                 <span className="text-sm text-gray-400">Your perspective:</span>
-                <p className="text-lg font-semibold text-blue-400">{objectName}</p>
+                <p className="text-lg font-semibold text-sky-400">{objectName}</p>
               </div>
               <h3 className="text-2xl font-bold text-white mb-4">
                 {activity.mapQuestion2 || activity.mapQuestion}
               </h3>
-              <div className="bg-slate-700 p-6 rounded-lg">
+              <div className="bg-[#0a0f1a] border border-white/10 p-6 rounded-lg">
                 <input
                   type="range"
                   min="0"
@@ -215,7 +215,7 @@ export default function EntryModal({
                   value={yValue}
                   onChange={(e) => setYValue(parseFloat(e.target.value))}
                   inputMode="none"
-                  className="w-full h-2 bg-slate-500 rounded-lg appearance-none cursor-pointer slider"
+                  className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
                 />
                 <div className="flex justify-between text-sm font-semibold text-gray-300 mt-4">
                   <span>{activity.yAxis.min}</span>
@@ -230,7 +230,7 @@ export default function EntryModal({
             <div className="space-y-4">
               <div className="mb-2">
                 <span className="text-sm text-gray-400">Your perspective:</span>
-                <p className="text-lg font-semibold text-blue-400">{objectName}</p>
+                <p className="text-lg font-semibold text-sky-400">{objectName}</p>
               </div>
               <h3 className="text-2xl font-bold text-white mb-2">
                 {activity.commentQuestion}
@@ -238,7 +238,7 @@ export default function EntryModal({
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value.slice(0, 500))}
-                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[150px] resize-none"
+                className="w-full px-4 py-3 bg-[#0a0f1a] border border-white/10 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 min-h-[150px] resize-none"
                 placeholder="Share your thoughts..."
                 maxLength={500}
               />
@@ -250,17 +250,17 @@ export default function EntryModal({
         </div>
 
         {/* Footer with Navigation */}
-        <div className="border-t border-slate-700 p-4 flex gap-3">
+        <div className="border-t border-white/10 p-4 flex gap-3">
           <button
             onClick={handlePrevious}
             disabled={step === 1}
-            className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Previous
           </button>
           <button
             onClick={handleNext}
-            className="flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
+            className="flex-1 px-6 py-3 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg transition-colors"
           >
             {step === 4 ? 'Submit' : 'Next'}
           </button>
@@ -273,7 +273,7 @@ export default function EntryModal({
           height: 20px;
           width: 20px;
           border-radius: 50%;
-          background: #3b82f6;
+          background: #0ea5e9;
           border: 2px solid white;
           cursor: pointer;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -283,7 +283,7 @@ export default function EntryModal({
           height: 20px;
           width: 20px;
           border-radius: 50%;
-          background: #3b82f6;
+          background: #0ea5e9;
           border: 2px solid white;
           cursor: pointer;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);

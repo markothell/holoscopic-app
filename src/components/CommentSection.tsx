@@ -256,7 +256,7 @@ export default function CommentSection({
               value={commentText}
               onChange={handleTextChange}
               placeholder="Share your thoughts..."
-              className="w-full p-3 border border-slate-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-black bg-slate-300"
+              className="w-full p-3 border border-white/10 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent resize-none text-white bg-[#0a0f1a]"
               style={{ 
                 height: isKeyboardVisible ? '120px' : '150px', // Smaller when keyboard is visible
                 fontSize: '16px' // Prevents zoom on iOS
@@ -279,7 +279,7 @@ export default function CommentSection({
             <button
               type="submit"
               disabled={isSubmitting || !commentText.trim()}
-              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
             >
               {isSubmitting ? 'Submitting...' : userComment ? 'Update Comment' : 'Submit Comment'}
             </button>
@@ -292,15 +292,15 @@ export default function CommentSection({
         <div className={readOnly ? "h-full flex flex-col" : "space-y-3"}>
           {/* Sort Dropdown and Vote Counter */}
           <div className="flex justify-between items-center mb-4 flex-shrink-0">
-            {/* Vote Counter - Left side - Show if vote limit is configured */}
-            {activity.votesPerUser !== null && activity.votesPerUser !== undefined && currentUserId && (() => {
+            {/* Vote Counter - Left side - Show if vote limit is configured (not for solo tracker mode) */}
+            {activity.maxEntries !== 0 && activity.votesPerUser !== null && activity.votesPerUser !== undefined && currentUserId && (() => {
               const votedCommentIds = activity.comments.filter(c =>
                 c.votes.some(v => v.userId === currentUserId)
               ).length;
               const remainingVotes = Math.max(0, activity.votesPerUser - votedCommentIds);
               return (
                 <div className={`px-3 py-1 rounded text-sm font-medium ${
-                  remainingVotes > 0 ? 'bg-blue-500 text-white' : 'bg-gray-600 text-gray-200'
+                  remainingVotes > 0 ? 'bg-sky-600 text-white' : 'bg-gray-700 text-gray-400'
                 }`}>
                   {remainingVotes > 0
                     ? `${remainingVotes} vote${remainingVotes !== 1 ? 's' : ''} left`
@@ -323,10 +323,10 @@ export default function CommentSection({
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as CommentSortOrder)}
-                className={`px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                className={`px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 ${
                   readOnly
-                    ? "bg-slate-700 border-slate-600 text-gray-200"
-                    : "bg-white border-gray-300 text-gray-900"
+                    ? "bg-[#0a0f1a] border-white/10 text-gray-200"
+                    : "bg-[#0a0f1a] border-white/10 text-gray-200"
                 }`}
               >
                 <option value="newest">Newest</option>
@@ -345,8 +345,8 @@ export default function CommentSection({
                     key={comment.id}
                     ref={(el) => { commentRefs.current[comment.id] = el; }}
                     className={`p-3 rounded-lg border-l-4 transition-all duration-200 ${
-                      readOnly ? "bg-slate-600" : "bg-gray-50"
-                    } ${selectedCommentId === comment.id ? 'ring-2 ring-blue-500' : ''}`}
+                      readOnly ? "bg-[#0a0f1a]" : "bg-[#0a0f1a]"
+                    } ${selectedCommentId === comment.id ? 'ring-2 ring-sky-500' : ''}`}
                     style={{ borderLeftColor: getUserColor(comment) }}
                     onMouseEnter={() => onCommentHover?.(comment.id)}
                     onMouseLeave={() => onCommentHover?.(null)}
@@ -382,12 +382,8 @@ export default function CommentSection({
                             onClick={() => handleVote(comment.id)}
                             className={`flex items-center space-x-1 px-2 py-1 rounded text-xs transition-colors ${
                               hasUserVoted(comment)
-                                ? readOnly
-                                  ? "bg-blue-900 text-blue-300 hover:bg-blue-800"
-                                  : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-                                : readOnly
-                                  ? "bg-slate-700 text-gray-300 hover:bg-slate-600"
-                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                ? "bg-sky-900/50 text-sky-300 hover:bg-sky-800/50"
+                                : "bg-white/10 text-gray-300 hover:bg-white/20"
                             }`}
                             disabled={!currentUserId}
                           >
@@ -397,9 +393,7 @@ export default function CommentSection({
                         )}
                         {/* Vote count for when no vote handler */}
                         {showAllComments && !onCommentVote && (
-                          <div className={`flex items-center space-x-1 px-2 py-1 rounded text-xs ${
-                            readOnly ? "bg-slate-700 text-gray-300" : "bg-gray-100 text-gray-600"
-                          }`}>
+                          <div className="flex items-center space-x-1 px-2 py-1 rounded text-xs bg-white/10 text-gray-300">
                             <span className="text-base">▲</span>
                             <span>{comment.voteCount || 0}</span>
                           </div>

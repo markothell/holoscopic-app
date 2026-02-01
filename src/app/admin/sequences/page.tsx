@@ -46,7 +46,7 @@ function SequenceAdminContent() {
           }
         }
       } catch (err) {
-        setError('Failed to load sequences. The backend server may not be running.');
+        setError('Failed to load sequences.');
         console.error('Error loading sequences:', err);
       } finally {
         setLoading(false);
@@ -59,8 +59,8 @@ function SequenceAdminContent() {
   // Show loading while checking auth
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] flex items-center justify-center p-4">
-        <div className="text-white text-lg">Loading...</div>
+      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
+        <div className="text-gray-400">Loading...</div>
       </div>
     );
   }
@@ -68,22 +68,16 @@ function SequenceAdminContent() {
   // Access denied screen
   if (!hasAdminAccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-800 rounded-lg shadow-xl p-6 sm:p-8">
-          <div className="flex justify-center mb-6">
-            <Image src="/holoLogo_dark.svg" alt="Holoscopic Logo" width={60} height={60} />
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white mb-6 text-center">Admin Access Required</h1>
-
-          <p className="text-gray-300 text-center mb-6">
+      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center p-4">
+        <div className="max-w-sm w-full text-center">
+          <Image src="/holoLogo_dark.svg" alt="Holoscopic" width={48} height={48} className="mx-auto mb-6" />
+          <h1 className="text-xl font-semibold text-white mb-4">Admin Access Required</h1>
+          <p className="text-gray-500 mb-6">
             You need administrator privileges to access this page.
           </p>
-
-          <div className="text-center">
-            <Link href="/admin" className="text-sm text-gray-400 hover:text-gray-300">
-              ← Back to Admin
-            </Link>
-          </div>
+          <Link href="/admin" className="text-sky-400 hover:underline text-sm">
+            ← Back to Admin
+          </Link>
         </div>
       </div>
     );
@@ -163,39 +157,29 @@ function SequenceAdminContent() {
     router.push('/admin/sequences');
   };
 
-  const getStatusBadge = (sequence: Sequence) => {
-    if (sequence.status === 'draft') {
-      return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-700 text-gray-300">Draft</span>;
-    }
-    if (sequence.status === 'completed') {
-      return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-900 text-red-300">Completed</span>;
-    }
-    return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-900 text-green-300">Active</span>;
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] p-4 sm:p-8">
-        <div className="text-center text-gray-300">Loading...</div>
+      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
+        <div className="text-gray-400">Loading...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] p-4 sm:p-8">
-        <div className="max-w-2xl mx-auto text-center">
-          <div className="text-red-400 mb-4 text-sm sm:text-base">{error}</div>
+      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="text-red-400 mb-4">{error}</div>
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => window.location.reload()}
-              className="px-4 sm:px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+              className="px-4 py-2 text-sm bg-white/10 hover:bg-white/20 text-white rounded transition-colors"
             >
               Retry
             </button>
             <button
               onClick={() => setShowCreateForm(true)}
-              className="px-4 sm:px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+              className="px-4 py-2 text-sm bg-sky-600 hover:bg-sky-700 text-white rounded transition-colors"
             >
               Create First Sequence
             </button>
@@ -206,43 +190,47 @@ function SequenceAdminContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55]">
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Link href="/">
-                <Image
-                  src="/holoLogo_dark.svg"
-                  alt="Holoscopic Logo"
-                  width={32}
-                  height={32}
-                  className="sm:w-10 sm:h-10 hover:opacity-80 transition-opacity"
-                />
-              </Link>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">Admin</h1>
-            </div>
-            <div className="ml-auto">
-              <UserMenu />
-            </div>
+    <div className="min-h-screen bg-[#0a0f1a]">
+      {/* Header */}
+      <header className="border-b border-white/10">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-3">
+              <Image
+                src="/holoLogo_dark.svg"
+                alt="Holoscopic"
+                width={28}
+                height={28}
+              />
+              <span className="text-white font-semibold">Holoscopic</span>
+            </Link>
+            <span className="text-gray-600">/</span>
+            <span className="text-gray-400">admin</span>
           </div>
+          <UserMenu />
+        </div>
+      </header>
 
-          {/* Toggle between Activities and Sequences */}
-          <div className="flex gap-2 border-b border-slate-700">
-            <Link
-              href="/admin"
-              className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent hover:border-slate-600"
-            >
-              Activities
-            </Link>
-            <Link
-              href="/admin/sequences"
-              className="px-4 py-2 text-sm font-medium text-white border-b-2 border-blue-500"
-            >
-              Sequences
-            </Link>
-          </div>
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        {/* Page Title */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-white mb-2">Admin</h1>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-6 border-b border-white/10 mb-6">
+          <Link
+            href="/admin"
+            className="pb-3 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-300 -mb-px"
+          >
+            Activities
+          </Link>
+          <Link
+            href="/admin/sequences"
+            className="pb-3 text-sm font-medium text-white border-b-2 border-sky-500 -mb-px"
+          >
+            Sequences
+          </Link>
         </div>
 
         {showCreateForm ? (
@@ -257,89 +245,95 @@ function SequenceAdminContent() {
             }}
           />
         ) : (
-          <div className="space-y-4 sm:space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <h2 className="text-lg sm:text-xl font-semibold text-white">Sequences</h2>
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-medium text-white">Sequences</h2>
               <button
                 onClick={() => setShowCreateForm(true)}
-                className="w-full sm:w-auto px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors text-sm sm:text-base"
+                className="px-4 py-2 text-sm bg-sky-600 hover:bg-sky-700 text-white rounded transition-colors"
               >
-                Create New Sequence
+                New Sequence
               </button>
             </div>
 
             {sequences.length === 0 ? (
-              <div className="bg-slate-800 rounded-lg shadow-xl p-6 sm:p-8 text-center text-gray-400">
+              <div className="text-center py-12 text-gray-500">
                 No sequences yet. Create your first one!
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {sequences.map(sequence => (
-                  <div key={sequence.id} className="bg-slate-800 rounded-lg shadow-xl p-4 sm:p-6">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex-1">
-                        <h3 className="text-white font-medium text-lg">{sequence.title}</h3>
+                  <div key={sequence.id} className="bg-[#111827] border border-white/10 rounded-lg p-4 hover:bg-white/5 transition-colors">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-medium">{sequence.title}</h3>
                         <Link
                           href={`/sequence/${sequence.urlName}`}
                           target="_blank"
-                          className="text-sm text-blue-400 hover:text-blue-300"
+                          className="text-xs text-sky-400 hover:underline"
                         >
                           /sequence/{sequence.urlName} ↗
                         </Link>
                         {sequence.description && (
-                          <p className="text-sm text-gray-400 mt-1">{sequence.description}</p>
+                          <p className="text-sm text-gray-500 mt-1 truncate">{sequence.description}</p>
                         )}
-                        <div className="text-xs text-gray-400 mt-1">
-                          Created {FormattingService.formatTimestamp(sequence.createdAt)}
-                        </div>
                       </div>
-                      {getStatusBadge(sequence)}
+                      <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
+                        sequence.status === 'draft'
+                          ? 'bg-gray-800 text-gray-400'
+                          : sequence.status === 'completed'
+                          ? 'bg-gray-800 text-gray-400'
+                          : 'bg-emerald-900/50 text-emerald-400'
+                      }`}>
+                        {sequence.status}
+                      </span>
                     </div>
 
-                    <div className="text-sm text-gray-400 mb-3 flex gap-4">
+                    <div className="text-xs text-gray-500 mb-3 flex gap-4">
                       <span>{sequence.activities.length} activities</span>
                       <span>{sequence.members.length} members</span>
                       <span>{sequence.activities.filter(a => a.openedAt).length} opened</span>
+                      <span>{FormattingService.formatTimestamp(sequence.createdAt)}</span>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-3 text-xs">
                       <button
                         onClick={() => {
                           setEditingSequence(sequence);
                           setShowCreateForm(true);
                           router.push(`/admin/sequences?sequence=${sequence.id}`);
                         }}
-                        className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded"
+                        className="text-sky-400 hover:underline"
                       >
                         Edit
                       </button>
                       {sequence.status === 'draft' && (
                         <button
                           onClick={() => handleStartSequence(sequence.id)}
-                          className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded"
+                          className="text-emerald-400 hover:underline"
                         >
-                          Start Sequence
+                          Start
                         </button>
                       )}
                       {sequence.status === 'active' && (
                         <>
                           <button
                             onClick={() => handleOpenNextActivity(sequence.id)}
-                            className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded"
+                            className="text-violet-400 hover:underline"
                           >
-                            Open Next Activity
+                            Open Next
                           </button>
                           <button
                             onClick={() => handleCompleteSequence(sequence.id)}
-                            className="px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 text-white rounded"
+                            className="text-yellow-400 hover:underline"
                           >
-                            Complete Sequence
+                            Complete
                           </button>
                         </>
                       )}
                       <button
                         onClick={() => handleDeleteSequence(sequence.id)}
-                        className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
+                        className="text-red-400 hover:underline"
                       >
                         Delete
                       </button>
@@ -350,7 +344,7 @@ function SequenceAdminContent() {
             )}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
@@ -358,8 +352,8 @@ function SequenceAdminContent() {
 export default function SequenceAdminPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] p-4 sm:p-8">
-        <div className="text-center text-gray-300">Loading admin panel...</div>
+      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
+        <div className="text-gray-400">Loading...</div>
       </div>
     }>
       <SequenceAdminContent />

@@ -34,7 +34,7 @@ export default function ResultsViewSimple({
   return (
     <div className="h-full flex flex-col items-center justify-center p-4">
       {/* Dot Grid - Square aspect ratio */}
-      <div className="w-full max-w-[600px] aspect-square bg-slate-900 rounded-lg overflow-hidden relative">
+      <div className="w-full max-w-[600px] aspect-square bg-[#111827] border border-white/10 rounded-lg overflow-hidden relative">
         <DotGrid
           activity={activity}
           currentUserId={currentUserId}

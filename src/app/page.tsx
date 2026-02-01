@@ -29,7 +29,7 @@ function ConstellationDot({
 // Interactive particle field background
 function ParticleField() {
   const [particles, setParticles] = useState<Array<{id: number; x: number; y: number; vx: number; vy: number; size: number; opacity: number}>>([]);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     // Initialize particles

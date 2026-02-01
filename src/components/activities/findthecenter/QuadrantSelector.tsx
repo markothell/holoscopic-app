@@ -122,13 +122,13 @@ export default function QuadrantSelector({
               onClick={() => handleQuadrantClick(3)}
               className={`relative transition-all duration-200 ${
                 selectedQuadrant === 3
-                  ? 'bg-blue-600/30'
-                  : 'bg-transparent hover:bg-slate-700/20'
+                  ? 'bg-sky-600/30'
+                  : 'bg-transparent hover:bg-white/10'
               }`}
             >
               {selectedQuadrant === 3 && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-white" />
+                  <div className="w-6 h-6 rounded-full bg-sky-500 border-2 border-white" />
                 </div>
               )}
             </button>
@@ -138,13 +138,13 @@ export default function QuadrantSelector({
               onClick={() => handleQuadrantClick(4)}
               className={`relative transition-all duration-200 ${
                 selectedQuadrant === 4
-                  ? 'bg-blue-600/30'
-                  : 'bg-transparent hover:bg-slate-700/20'
+                  ? 'bg-sky-600/30'
+                  : 'bg-transparent hover:bg-white/10'
               }`}
             >
               {selectedQuadrant === 4 && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-white" />
+                  <div className="w-6 h-6 rounded-full bg-sky-500 border-2 border-white" />
                 </div>
               )}
             </button>
@@ -154,13 +154,13 @@ export default function QuadrantSelector({
               onClick={() => handleQuadrantClick(2)}
               className={`relative transition-all duration-200 ${
                 selectedQuadrant === 2
-                  ? 'bg-blue-600/30'
-                  : 'bg-transparent hover:bg-slate-700/20'
+                  ? 'bg-sky-600/30'
+                  : 'bg-transparent hover:bg-white/10'
               }`}
             >
               {selectedQuadrant === 2 && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-white" />
+                  <div className="w-6 h-6 rounded-full bg-sky-500 border-2 border-white" />
                 </div>
               )}
             </button>
@@ -170,13 +170,13 @@ export default function QuadrantSelector({
               onClick={() => handleQuadrantClick(1)}
               className={`relative transition-all duration-200 ${
                 selectedQuadrant === 1
-                  ? 'bg-blue-600/30'
-                  : 'bg-transparent hover:bg-slate-700/20'
+                  ? 'bg-sky-600/30'
+                  : 'bg-transparent hover:bg-white/10'
               }`}
             >
               {selectedQuadrant === 1 && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-white" />
+                  <div className="w-6 h-6 rounded-full bg-sky-500 border-2 border-white" />
                 </div>
               )}
             </button>

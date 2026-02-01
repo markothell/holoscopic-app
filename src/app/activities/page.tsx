@@ -79,18 +79,18 @@ export default function ActivitiesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] flex items-center justify-center">
-        <div className="text-white/80">Loading activities...</div>
+      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
+        <div className="text-gray-400">Loading...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] flex items-center justify-center p-4">
-        <div className="bg-slate-800 rounded-lg shadow-xl p-8 max-w-md w-full text-center">
+      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center p-4">
+        <div className="text-center">
           <div className="text-red-400 mb-4">{error}</div>
-          <Link href="/" className="text-blue-400 hover:text-blue-300">
+          <Link href="/" className="text-sky-400 hover:underline">
             Back to Home
           </Link>
         </div>
@@ -99,127 +99,102 @@ export default function ActivitiesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55]">
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Link href="/">
-                <Image
-                  src="/holoLogo_dark.svg"
-                  alt="Holoscopic Logo"
-                  width={32}
-                  height={32}
-                  className="sm:w-10 sm:h-10 hover:opacity-80 transition-opacity"
-                />
-              </Link>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">
-                {activeTab === 'activities' ? 'Activities' : 'Sequences'}
-              </h1>
-            </div>
-            <UserMenu />
+    <div className="min-h-screen bg-[#0a0f1a]">
+      {/* Header */}
+      <header className="border-b border-white/10">
+        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-3">
+              <Image
+                src="/holoLogo_dark.svg"
+                alt="Holoscopic"
+                width={28}
+                height={28}
+              />
+              <span className="text-white font-semibold">Holoscopic</span>
+            </Link>
+            <span className="text-gray-600">/</span>
+            <span className="text-gray-400">explore</span>
           </div>
-          <p className="text-gray-400 mb-4">
-            {activeTab === 'activities'
-              ? 'Open mapping activities you can participate in right now'
-              : 'Public sequences you can enroll in'}
-          </p>
+          <UserMenu />
+        </div>
+      </header>
 
-          {/* Tabs */}
-          <div className="flex gap-2 border-b border-slate-700 mt-6">
-            <button
-              onClick={() => setActiveTab('activities')}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'activities'
-                  ? 'text-white border-blue-500'
-                  : 'text-gray-400 border-transparent hover:text-white hover:border-slate-600'
-              }`}
-            >
-              Activities ({activities.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('sequences')}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'sequences'
-                  ? 'text-white border-blue-500'
-                  : 'text-gray-400 border-transparent hover:text-white hover:border-slate-600'
-              }`}
-            >
-              Sequences ({sequences.length})
-            </button>
-          </div>
+      <main className="max-w-5xl mx-auto px-4 py-8">
+        {/* Page Title */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-white mb-2">Explore</h1>
+          <p className="text-gray-500 text-sm">
+            Public mapping activities and learning sequences
+          </p>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-6 border-b border-white/10 mb-6">
+          <button
+            onClick={() => setActiveTab('activities')}
+            className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === 'activities'
+                ? 'text-white border-sky-500'
+                : 'text-gray-500 border-transparent hover:text-gray-300'
+            }`}
+          >
+            Activities ({activities.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('sequences')}
+            className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === 'sequences'
+                ? 'text-white border-sky-500'
+                : 'text-gray-500 border-transparent hover:text-gray-300'
+            }`}
+          >
+            Sequences ({sequences.length})
+          </button>
         </div>
 
         {/* Content */}
         {activeTab === 'activities' ? (
-          // Activities List
           activities.length === 0 ? (
-            <div className="bg-slate-800 rounded-lg shadow-xl p-8 text-center">
-              <p className="text-gray-300 mb-4">No public activities available at the moment.</p>
-              <p className="text-gray-400 text-sm">Check back later for new activities!</p>
+            <div className="text-center py-12 text-gray-500">
+              No public activities available at the moment.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              {activities.map((activity) => (
+            <div className="space-y-1">
+              {activities.map((activity, index) => (
                 <Link
                   key={activity.id}
                   href={`/${activity.urlName}`}
-                  className="block bg-slate-800 rounded-lg shadow-xl p-6 hover:shadow-2xl transition-shadow"
+                  className="flex items-baseline gap-3 py-2 px-3 -mx-3 rounded hover:bg-white/5 transition-colors group"
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h2 className="text-xl font-bold text-white mb-2">
-                        {activity.title}
-                      </h2>
-                      <p className="text-gray-400 mb-3 text-sm">
-                        Map: {activity.xAxis.label}//{activity.yAxis.label}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Activity Stats */}
-                  <div className="flex gap-4 text-xs text-gray-400 mb-4">
-                    <div className="flex items-center gap-1">
-                      <span className="font-semibold text-gray-300">
-                        {activity.participants.length}
-                      </span>
-                      <span>participants</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="font-semibold text-gray-300">
-                        {activity.ratings.length}
-                      </span>
-                      <span>mappings</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="font-semibold text-gray-300">
-                        {activity.comments.length}
-                      </span>
-                      <span>comments</span>
-                    </div>
-                  </div>
-
-                  {/* Enter Button */}
-                  <div className="pt-3 border-t border-slate-700">
-                    <span className="text-blue-400 font-medium hover:text-blue-300">
-                      Enter
+                  <span className="text-gray-600 text-sm w-6 text-right flex-shrink-0">
+                    {index + 1}.
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-white group-hover:text-sky-400 transition-colors">
+                      {activity.title}
                     </span>
+                    <span className="text-gray-600 text-sm ml-2">
+                      ({activity.xAxis.label} / {activity.yAxis.label})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-gray-500 flex-shrink-0">
+                    <span>{activity.participants.length} participants</span>
+                    <span>{activity.ratings.length} mappings</span>
+                    <span>{activity.comments.length} comments</span>
                   </div>
                 </Link>
               ))}
             </div>
           )
         ) : (
-          // Sequences List
           sequences.length === 0 ? (
-            <div className="bg-slate-800 rounded-lg shadow-xl p-8 text-center">
-              <p className="text-gray-300 mb-4">No public sequences available at the moment.</p>
-              <p className="text-gray-400 text-sm">Check back later for new sequences!</p>
+            <div className="text-center py-12 text-gray-500">
+              No public sequences available at the moment.
             </div>
           ) : (
-            <div className="space-y-4 mb-8">
-              {sequences.map((sequence) => {
+            <div className="space-y-1">
+              {sequences.map((sequence, index) => {
                 const total = sequence.activities.length;
                 const opened = sequence.activities.filter(a => a.openedAt).length;
 
@@ -227,51 +202,25 @@ export default function ActivitiesPage() {
                   <Link
                     key={sequence.id}
                     href={`/sequence/${sequence.urlName}`}
-                    className="block bg-slate-800 rounded-lg shadow-xl p-6 hover:shadow-2xl transition-shadow"
+                    className="flex items-baseline gap-3 py-2 px-3 -mx-3 rounded hover:bg-white/5 transition-colors group"
                   >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h2 className="text-xl font-bold text-white mb-2">
-                          {sequence.title}
-                        </h2>
-                        {sequence.description && (
-                          <p className="text-gray-400 text-sm">
-                            {sequence.description}
-                          </p>
-                        )}
-                      </div>
-                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-900 text-green-300">
-                        Public
+                    <span className="text-gray-600 text-sm w-6 text-right flex-shrink-0">
+                      {index + 1}.
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-white group-hover:text-sky-400 transition-colors">
+                        {sequence.title}
                       </span>
+                      {sequence.description && (
+                        <span className="text-gray-600 text-sm ml-2 truncate">
+                          — {sequence.description}
+                        </span>
+                      )}
                     </div>
-
-                    {/* Sequence Stats */}
-                    <div className="flex gap-4 text-xs text-gray-400 mb-4">
-                      <div className="flex items-center gap-1">
-                        <span className="font-semibold text-gray-300">
-                          {total}
-                        </span>
-                        <span>activities</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="font-semibold text-gray-300">
-                          {opened}
-                        </span>
-                        <span>opened</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="font-semibold text-gray-300">
-                          {sequence.members.length}
-                        </span>
-                        <span>members</span>
-                      </div>
-                    </div>
-
-                    {/* View Button */}
-                    <div className="pt-3 border-t border-slate-700">
-                      <span className="text-blue-400 font-medium hover:text-blue-300">
-                        View Details
-                      </span>
+                    <div className="flex items-center gap-4 text-xs text-gray-500 flex-shrink-0">
+                      <span>{total} activities</span>
+                      <span>{opened} open</span>
+                      <span>{sequence.members.length} members</span>
                     </div>
                   </Link>
                 );
@@ -280,28 +229,14 @@ export default function ActivitiesPage() {
           )
         )}
 
-        {/* Footer Links */}
-        <div className="pt-8 mt-8 border-t border-white/20 flex justify-center gap-8">
-          <Link
-            href="/"
-            className="text-white/80 hover:text-white text-sm underline underline-offset-4"
-          >
-            Home
-          </Link>
-          <Link
-            href="/login"
-            className="text-white/80 hover:text-white text-sm underline underline-offset-4"
-          >
-            Log In
-          </Link>
-          <a
-            href="http://wiki.holoscopic.io"
-            className="text-white/80 hover:text-white text-sm underline underline-offset-4"
-          >
-            Wiki
-          </a>
+        {/* Footer */}
+        <div className="mt-12 pt-6 border-t border-white/10 flex gap-6 text-sm text-gray-500">
+          <Link href="/" className="hover:text-gray-300">Home</Link>
+          <Link href="/login" className="hover:text-gray-300">Log In</Link>
+          <Link href="/dashboard" className="hover:text-gray-300">Dashboard</Link>
+          <a href="https://wiki.holoscopic.io" className="hover:text-gray-300">Wiki</a>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

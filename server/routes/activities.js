@@ -5,6 +5,14 @@ const Activity = require('../models/Activity');
 module.exports = function(io) {
   const router = express.Router();
 
+  // Helper to check if activity is in solo tracker mode
+  const isSoloTrackerMode = (activity) => activity.maxEntries === 0;
+
+  // Helper to check if user is the activity creator
+  const isActivityCreator = (activity, userId) => {
+    return activity.author?.userId && activity.author.userId === userId;
+  };
+
 // Get all activities (admin endpoint - includes drafts)
 router.get('/admin', async (req, res) => {
   try {
@@ -208,7 +216,8 @@ router.post('/', async (req, res) => {
       starterData,
       votesPerUser,
       maxEntries,
-      showProfileLinks
+      showProfileLinks,
+      author
     } = req.body;
 
     console.log('Create activity - activityType:', activityType);
@@ -261,8 +270,14 @@ router.post('/', async (req, res) => {
       wikiLink: wikiLink ? wikiLink.trim() : '',
       starterData: starterData ? starterData.trim() : '',
       votesPerUser: votesPerUser !== null && votesPerUser !== undefined ? Number(votesPerUser) : null,
-      maxEntries: maxEntries && [1, 2, 4].includes(Number(maxEntries)) ? Number(maxEntries) : 1,
+      // maxEntries: 0 = unlimited (solo tracker mode), 1/2/4 = standard entry slots
+      maxEntries: maxEntries !== undefined && [0, 1, 2, 4].includes(Number(maxEntries)) ? Number(maxEntries) : 1,
       showProfileLinks: showProfileLinks !== undefined ? showProfileLinks : true,
+      // Auto-set author if provided (for solo tracker mode especially)
+      author: author ? {
+        userId: author.userId,
+        name: author.name
+      } : undefined,
       status: 'active',
       participants: [],
       ratings: [],
@@ -343,10 +358,10 @@ router.patch('/:id', async (req, res) => {
 
     for (const key of allowedUpdates) {
       if (req.body[key] !== undefined) {
-        // Validate maxEntries if present
+        // Validate maxEntries if present (0 = unlimited/solo tracker, 1/2/4 = standard)
         if (key === 'maxEntries') {
           const value = Number(req.body[key]);
-          if ([1, 2, 4].includes(value)) {
+          if ([0, 1, 2, 4].includes(value)) {
             updates[key] = value;
           }
         } else {
@@ -570,11 +585,11 @@ router.post('/:id/rating', async (req, res) => {
       });
     }
 
-    // Validate slotNumber
-    if (slotNumber < 1 || slotNumber > 4 || !Number.isInteger(slotNumber)) {
+    // Basic slotNumber validation (must be positive integer)
+    if (slotNumber < 1 || !Number.isInteger(slotNumber)) {
       return res.status(400).json({
         success: false,
-        error: 'Slot number must be an integer between 1 and 4'
+        error: 'Slot number must be a positive integer'
       });
     }
 
@@ -594,12 +609,23 @@ router.post('/:id/rating', async (req, res) => {
       });
     }
 
-    // Validate slot number against activity's maxEntries
-    if (slotNumber > (activity.maxEntries || 1)) {
-      return res.status(400).json({
-        success: false,
-        error: `This activity only allows ${activity.maxEntries || 1} entry slot(s)`
-      });
+    // Solo Tracker Mode: maxEntries === 0 means unlimited entries but creator-only
+    if (isSoloTrackerMode(activity)) {
+      if (!isActivityCreator(activity, userId)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Only the creator can add entries to this activity'
+        });
+      }
+      // No slot limit for unlimited mode - any positive integer is valid
+    } else {
+      // Standard mode: Validate slot number against activity's maxEntries
+      if (slotNumber > (activity.maxEntries || 1)) {
+        return res.status(400).json({
+          success: false,
+          error: `This activity only allows ${activity.maxEntries || 1} entry slot(s)`
+        });
+      }
     }
 
     // Find participant to get username
@@ -673,11 +699,11 @@ router.post('/:id/comment', async (req, res) => {
       });
     }
 
-    // Validate slotNumber
-    if (slotNumber < 1 || slotNumber > 4 || !Number.isInteger(slotNumber)) {
+    // Basic slotNumber validation (must be positive integer)
+    if (slotNumber < 1 || !Number.isInteger(slotNumber)) {
       return res.status(400).json({
         success: false,
-        error: 'Slot number must be an integer between 1 and 4'
+        error: 'Slot number must be a positive integer'
       });
     }
 
@@ -697,12 +723,23 @@ router.post('/:id/comment', async (req, res) => {
       });
     }
 
-    // Validate slot number against activity's maxEntries
-    if (slotNumber > (activity.maxEntries || 1)) {
-      return res.status(400).json({
-        success: false,
-        error: `This activity only allows ${activity.maxEntries || 1} entry slot(s)`
-      });
+    // Solo Tracker Mode: maxEntries === 0 means unlimited entries but creator-only
+    if (isSoloTrackerMode(activity)) {
+      if (!isActivityCreator(activity, userId)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Only the creator can add entries to this activity'
+        });
+      }
+      // No slot limit for unlimited mode
+    } else {
+      // Standard mode: Validate slot number against activity's maxEntries
+      if (slotNumber > (activity.maxEntries || 1)) {
+        return res.status(400).json({
+          success: false,
+          error: `This activity only allows ${activity.maxEntries || 1} entry slot(s)`
+        });
+      }
     }
 
     // Find participant to get username

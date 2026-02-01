@@ -44,7 +44,9 @@ export interface HoloscopicActivity {
   votesPerUser?: number | null; // null/undefined = unlimited votes
 
   // Multi-entry configuration
-  maxEntries?: number; // 1, 2, or 4 entry slots per user
+  // 0 = unlimited entries (solo tracker mode - only creator can add entries)
+  // 1, 2, 4 = standard entry slots per user
+  maxEntries?: number;
 
   // Public/Private access
   isPublic?: boolean; // If true, no authentication required
@@ -152,7 +154,7 @@ export interface ActivityFormData {
   wikiLink?: string; // Optional link to wiki page
   starterData?: string; // JSON string of initial data
   votesPerUser?: number | null; // Vote limit configuration
-  maxEntries?: number; // Multi-entry configuration (1, 2, or 4)
+  maxEntries?: number; // 0 = unlimited/solo tracker, 1/2/4 = standard entry slots
   isPublic?: boolean; // Public/Private access
   showProfileLinks?: boolean; // Show profile icons in results
 }
