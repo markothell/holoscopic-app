@@ -4,11 +4,17 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { Sequence } from '@/models/Sequence';
 import { SequenceService } from '@/services/sequenceService';
 import { FormattingService } from '@/utils/formatting';
 import { useAuth } from '@/contexts/AuthContext';
 import UserMenu from '@/components/UserMenu';
+
+const SequenceGraphView = dynamic(
+  () => import('@/components/graph/SequenceGraphView'),
+  { ssr: false, loading: () => <div className="h-[500px] bg-[#111827] rounded-lg animate-pulse" /> }
+);
 
 export default function SequenceDetailPage() {
   const params = useParams();
@@ -22,6 +28,7 @@ export default function SequenceDetailPage() {
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'graph'>('list');
 
   // Load sequence details
   useEffect(() => {
@@ -276,12 +283,40 @@ export default function SequenceDetailPage() {
           </div>
         )}
 
-        {/* Activities List */}
-        <h2 className="text-lg font-medium text-white mb-4">Activities</h2>
+        {/* Activities Section */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-medium text-white">Activities</h2>
+          {sequence.activities.length > 0 && (
+            <div className="flex gap-0.5 bg-[#111827] border border-white/10 rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  viewMode === 'list' ? 'bg-sky-600 text-white' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                List
+              </button>
+              <button
+                onClick={() => setViewMode('graph')}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  viewMode === 'graph' ? 'bg-sky-600 text-white' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Graph
+              </button>
+            </div>
+          )}
+        </div>
         {sequence.activities.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             No activities in this sequence yet.
           </div>
+        ) : viewMode === 'graph' ? (
+          <SequenceGraphView
+            activities={sequence.activities}
+            sequenceId={sequence.id}
+            isEnrolled={isEnrolled}
+          />
         ) : (
           <div className="space-y-2">
             {sequence.activities

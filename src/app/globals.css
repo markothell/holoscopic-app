@@ -93,3 +93,15 @@ input::placeholder, textarea::placeholder {
   background: rgba(56, 189, 248, 0.3);
   color: var(--text-primary);
 }
+
+/* React Flow dark theme overrides */
+.react-flow__controls button {
+  background: var(--bg-secondary) !important;
+  border-color: var(--border-default) !important;
+  fill: var(--text-secondary) !important;
+}
+
+.react-flow__controls button:hover {
+  background: var(--bg-tertiary) !important;
+  fill: var(--text-primary) !important;
+}

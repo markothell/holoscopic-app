@@ -7,6 +7,7 @@ export interface SequenceActivity {
   duration: number | null; // days (null if autoClose is false)
   openedAt: Date | null;
   closedAt: Date | null;
+  parentActivityIds?: string[]; // DAG relationships (empty/undefined = root node)
   // Populated from Activity
   activity?: {
     id: string;
@@ -73,6 +74,7 @@ export interface CreateSequenceData {
     order: number;
     autoClose: boolean;
     duration: number | null;
+    parentActivityIds?: string[];
   }>;
   requireInvitation?: boolean;
   invitedEmails?: string[];
@@ -90,6 +92,7 @@ export interface UpdateSequenceData {
     duration: number | null;
     openedAt?: Date | string | null;
     closedAt?: Date | string | null;
+    parentActivityIds?: string[];
   }>;
   invitedEmails?: string[];
   requireInvitation?: boolean;

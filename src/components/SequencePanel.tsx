@@ -22,7 +22,7 @@ export default function SequencePanel({
   const [title, setTitle] = useState('');
   const [urlName, setUrlName] = useState('');
   const [description, setDescription] = useState('');
-  const [activities, setActivities] = useState<Array<{activityId: string; order: number; autoClose: boolean; duration: number | null; openedAt: Date | string | null; closedAt: Date | string | null}>>([]);
+  const [activities, setActivities] = useState<Array<{activityId: string; order: number; autoClose: boolean; duration: number | null; openedAt: Date | string | null; closedAt: Date | string | null; parentActivityIds: string[]}>>([]);
   const [availableActivities, setAvailableActivities] = useState<HoloscopicActivity[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +105,8 @@ export default function SequencePanel({
         autoClose: a.autoClose ?? false,
         duration: a.duration ?? null,
         openedAt: a.openedAt ?? null,
-        closedAt: a.closedAt ?? null
+        closedAt: a.closedAt ?? null,
+        parentActivityIds: a.parentActivityIds || []
       })));
       // Initialize welcomePage with defaults if not present
       if (editingSequence.welcomePage) {
@@ -167,7 +168,8 @@ export default function SequencePanel({
         autoClose: false,
         duration: null,
         openedAt: null,
-        closedAt: null
+        closedAt: null,
+        parentActivityIds: []
       }]);
     } else if (mode === 'create') {
       // Open admin panel with create form in new tab and return URL
@@ -237,7 +239,8 @@ export default function SequencePanel({
         autoClose: false,
         duration: null,
         openedAt: null,
-        closedAt: null
+        closedAt: null,
+        parentActivityIds: [] as string[]
       };
       setActivities([...activities, newActivity]);
 
@@ -275,6 +278,39 @@ export default function SequencePanel({
       activity.order = i + 1;
     });
 
+    setActivities(updated);
+  };
+
+  // Check if adding a parent would create a cycle in the DAG
+  const wouldCreateCycle = (targetIndex: number, newParentId: string): boolean => {
+    const targetId = activities[targetIndex].activityId;
+    const visited = new Set<string>();
+
+    function hasPath(fromId: string): boolean {
+      if (fromId === targetId) return true;
+      if (visited.has(fromId)) return false;
+      visited.add(fromId);
+      // Find all children of fromId (activities that list fromId as a parent)
+      return activities
+        .filter(a => (a.parentActivityIds || []).includes(fromId))
+        .some(child => hasPath(child.activityId));
+    }
+
+    return hasPath(newParentId);
+  };
+
+  const handleParentChange = (index: number, parentId: string, checked: boolean) => {
+    if (checked && wouldCreateCycle(index, parentId)) {
+      alert('Cannot add this parent — it would create a cycle.');
+      return;
+    }
+    const updated = [...activities];
+    const current = updated[index].parentActivityIds || [];
+    if (checked) {
+      updated[index] = { ...updated[index], parentActivityIds: [...current, parentId] };
+    } else {
+      updated[index] = { ...updated[index], parentActivityIds: current.filter(id => id !== parentId) };
+    }
     setActivities(updated);
   };
 
@@ -762,6 +798,34 @@ export default function SequencePanel({
                               min="1"
                               required={activity.autoClose}
                             />
+                          </div>
+                        )}
+
+                        {/* Parent Activity Selection (DAG relationships) */}
+                        {activity.activityId && activities.filter(a => a.activityId && a.activityId !== activity.activityId).length > 0 && (
+                          <div className="pt-3 border-t border-slate-600">
+                            <label className="block text-xs text-gray-400 mb-1">Depends on</label>
+                            <div className="space-y-1">
+                              {activities
+                                .filter(a => a.activityId && a.activityId !== activity.activityId)
+                                .map((otherActivity) => {
+                                  const actTitle = availableActivities.find(
+                                    a => a.id === otherActivity.activityId
+                                  )?.title || otherActivity.activityId;
+
+                                  return (
+                                    <label key={otherActivity.activityId} className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={(activity.parentActivityIds || []).includes(otherActivity.activityId)}
+                                        onChange={(e) => handleParentChange(index, otherActivity.activityId, e.target.checked)}
+                                        className="w-3 h-3 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500"
+                                      />
+                                      {actTitle}
+                                    </label>
+                                  );
+                                })}
+                            </div>
                           </div>
                         )}
 

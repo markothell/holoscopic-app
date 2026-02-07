@@ -98,7 +98,11 @@ const SequenceSchema = new mongoose.Schema({
     closedAt: {
       type: Date,
       default: null
-    }
+    },
+    // Parent activity IDs for DAG relationships (empty = root node)
+    parentActivityIds: [{
+      type: String
+    }]
   }],
 
   // Cohort members (user IDs)
