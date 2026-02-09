@@ -161,8 +161,8 @@ const ActivitySchema = new mongoose.Schema({
   activityType: {
     type: String,
     required: true,
-    enum: ['holoscopic', 'findthecenter'],
-    default: 'holoscopic'
+    enum: ['holoscopic', 'findthecenter', 'dissolve', 'resolve'],
+    default: 'dissolve'
   },
 
   // Public/Private setting
@@ -530,6 +530,11 @@ ActivitySchema.methods.voteComment = function(commentId, userId, username) {
   const comment = this.comments.find(c => c.id === commentId);
   if (!comment) {
     throw new Error('Comment not found');
+  }
+
+  // Prevent self-voting
+  if (comment.userId === userId) {
+    throw new Error('Cannot vote on your own comment');
   }
 
   // Check if user already voted

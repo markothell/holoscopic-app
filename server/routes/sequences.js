@@ -38,6 +38,7 @@ router.get('/public', async (req, res) => {
                 id: activity.id,
                 title: activity.title,
                 urlName: activity.urlName,
+                activityType: activity.activityType,
                 status: activity.status,
                 isDraft: activity.isDraft,
                 participants: activity.participants.length,
@@ -88,6 +89,7 @@ router.get('/user/:userId', async (req, res) => {
                 id: activity.id,
                 title: activity.title,
                 urlName: activity.urlName,
+                activityType: activity.activityType,
                 status: activity.status
               } : null,
               hasParticipated

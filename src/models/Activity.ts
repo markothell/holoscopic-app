@@ -1,7 +1,8 @@
 // TypeScript interfaces for Holoscopic data models
 
 // Activity types supported by the app
-export type ActivityType = 'holoscopic' | 'findthecenter';
+// New names: 'dissolve' and 'resolve'. Old names kept for backward compatibility with existing DB documents.
+export type ActivityType = 'dissolve' | 'resolve' | 'holoscopic' | 'findthecenter';
 
 export interface HoloscopicActivity {
   id: string;
@@ -141,7 +142,7 @@ export interface ActivityFormData {
   urlName?: string; // Optional - will be generated from title if not provided
   activityType: ActivityType; // Activity type selection
   mapQuestion: string;
-  mapQuestion2: string; // Used by holoscopic type, empty for findthecenter
+  mapQuestion2: string; // Used by holoscopic type, empty for resolve
   objectNameQuestion: string;
   xAxisLabel: string;
   xAxisMin: string;

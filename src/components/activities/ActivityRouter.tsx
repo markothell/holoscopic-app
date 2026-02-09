@@ -1,8 +1,9 @@
 'use client';
 
 import { HoloscopicActivity } from '@/models/Activity';
-import HoloscopicActivityComponent from './holoscopic/HoloscopicActivity';
-import FindTheCenterActivity from './findthecenter/FindTheCenterActivity';
+import { normalizeActivityType } from './types';
+import DissolveActivity from './dissolve/DissolveActivity';
+import ResolveActivity from './resolve/ResolveActivity';
 
 interface ActivityRouterProps {
   activity: HoloscopicActivity;
@@ -16,22 +17,14 @@ interface ActivityRouterProps {
  * It examines the activity's type and renders the corresponding component.
  */
 export default function ActivityRouter({ activity, sequenceId }: ActivityRouterProps) {
-  // Default to holoscopic if activityType is not set (backwards compatibility)
-  const activityType = activity.activityType || 'holoscopic';
-
-  console.log('=== ACTIVITY ROUTER ===');
-  console.log('Activity ID:', activity.id);
-  console.log('Activity Type:', activityType);
-  console.log('Activity Title:', activity.title);
+  const activityType = normalizeActivityType(activity.activityType || 'dissolve');
 
   switch (activityType) {
-    case 'findthecenter':
-      console.log('Routing to FindTheCenterActivity');
-      return <FindTheCenterActivity activity={activity} sequenceId={sequenceId} />;
+    case 'resolve':
+      return <ResolveActivity activity={activity} sequenceId={sequenceId} />;
 
-    case 'holoscopic':
+    case 'dissolve':
     default:
-      console.log('Routing to HoloscopicActivity');
-      return <HoloscopicActivityComponent activity={activity} sequenceId={sequenceId} />;
+      return <DissolveActivity activity={activity} sequenceId={sequenceId} />;
   }
 }

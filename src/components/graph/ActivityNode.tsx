@@ -3,6 +3,8 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { SequenceActivity } from '@/models/Sequence';
+import ActivityTypeIcon from '@/components/icons/ActivityTypeIcon';
+import type { ActivityType } from '@/models/Activity';
 
 interface ActivityNodeProps {
   data: {
@@ -55,10 +57,13 @@ function ActivityNode({ data }: ActivityNodeProps) {
           flex flex-col items-center justify-center cursor-pointer
           hover:border-sky-400 hover:bg-sky-900/20 transition-colors`}
       >
+        {act?.activityType && (
+          <ActivityTypeIcon type={act.activityType as ActivityType} size={16} className="text-gray-400 mb-0.5" />
+        )}
         <span className="text-white text-xs font-medium text-center px-3 leading-tight line-clamp-2">
           {act?.title || 'Unknown'}
         </span>
-        <span className="text-[10px] text-gray-400 mt-1">
+        <span className="text-[10px] text-gray-400 mt-0.5">
           {act?.participants || 0} users
         </span>
         <span className={`text-[10px] mt-0.5 ${statusColor}`}>

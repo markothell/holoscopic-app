@@ -12,12 +12,12 @@ import ResultsViewSimple from '@/components/ResultsViewSimple';
 import QuadrantSelector from './QuadrantSelector';
 import Image from 'next/image';
 
-interface FindTheCenterActivityProps {
+interface ResolveActivityProps {
   activity: HoloscopicActivityType;
   sequenceId?: string;
 }
 
-export default function FindTheCenterActivity({ activity: initialActivity, sequenceId }: FindTheCenterActivityProps) {
+export default function ResolveActivity({ activity: initialActivity, sequenceId }: ResolveActivityProps) {
   const { userId, isLoading: authLoading, isAuthenticated } = useAuth();
   const [activity, setActivity] = useState<HoloscopicActivityType | null>(initialActivity);
   const [error, setError] = useState<string | null>(null);

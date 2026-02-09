@@ -13,12 +13,12 @@ import SliderQuestions from '@/components/SliderQuestions';
 import MappingGrid from '@/components/MappingGrid';
 import Image from 'next/image';
 
-interface HoloscopicActivityProps {
+interface DissolveActivityProps {
   activity: HoloscopicActivityType;
   sequenceId?: string;
 }
 
-export default function HoloscopicActivity({ activity: initialActivity, sequenceId }: HoloscopicActivityProps) {
+export default function DissolveActivity({ activity: initialActivity, sequenceId }: DissolveActivityProps) {
   const { userId, isLoading: authLoading, isAuthenticated } = useAuth();
   const [activity, setActivity] = useState<HoloscopicActivityType | null>(initialActivity);
   const [error, setError] = useState<string | null>(null);

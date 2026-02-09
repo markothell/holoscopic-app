@@ -85,7 +85,7 @@ export default function DotGrid({ activity, currentUserId, onDotClick }: DotGrid
     [1, 2, 3, 4].forEach(quadrant => {
       const ratingsInQuadrant = ratingsByQuadrant[quadrant];
       const GRID_SIZE = 5; // Always 5x5 grid
-      const DOT_SPACING = 40 / (GRID_SIZE + 1); // Fixed spacing for 5x5
+      const DOT_SPACING = 32 / (GRID_SIZE + 1); // Tighter spacing for 5x5
 
       // Create a mapping from [row,col] to rating index
       const positionToRating = new Map<string, typeof ratingsInQuadrant[0]>();
@@ -102,8 +102,8 @@ export default function DotGrid({ activity, currentUserId, onDotClick }: DotGrid
           // Calculate position based on quadrant
           let x: number, y: number;
 
-          const CHANNEL = 52; // % where channel starts
-          const START_OFFSET = 4; // Start 4% from axis
+          const CHANNEL = 53; // % where channel edge is
+          const START_OFFSET = 3; // Start 3% from axis edge
 
           switch(quadrant) {
             case 1: // Top-right
@@ -152,10 +152,10 @@ export default function DotGrid({ activity, currentUserId, onDotClick }: DotGrid
   const getDotColor = (quadrant: number, voteCount: number): string => {
     // Base colors for each quadrant
     const baseColors = {
-      1: { r: 59, g: 130, b: 246 },   // Blue
-      2: { r: 16, g: 185, b: 129 },   // Green
-      3: { r: 239, g: 68, b: 68 },    // Red
-      4: { r: 245, g: 158, b: 11 },   // Yellow
+      1: { r: 125, g: 211, b: 252 },  // Sky blue
+      2: { r: 45, g: 212, b: 191 },   // Teal
+      3: { r: 167, g: 139, b: 250 },  // Lavender
+      4: { r: 234, g: 179, b: 8 },    // Amber
     };
 
     const base = baseColors[quadrant as keyof typeof baseColors];
@@ -179,21 +179,32 @@ export default function DotGrid({ activity, currentUserId, onDotClick }: DotGrid
   };
 
   return (
-    <div className="relative w-full h-full bg-[#4A6FA5]">
-      {/* Axis channel background with border lines */}
+    <div className="relative w-full h-full bg-[#111827]">
+      {/* Axis channel background with border lines and arrows */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
         {/* Vertical channel */}
-        <rect x="48" y="0" width="4" height="100" fill="rgba(0,0,0,0.15)" />
+        <rect x="47" y="0" width="6" height="100" fill="rgba(255,255,255,0.04)" />
         {/* Horizontal channel */}
-        <rect x="0" y="48" width="100" height="4" fill="rgba(0,0,0,0.15)" />
+        <rect x="0" y="47" width="100" height="6" fill="rgba(255,255,255,0.04)" />
 
         {/* Border lines on edges of channels */}
         {/* Vertical channel borders */}
-        <line x1="48" y1="0" x2="48" y2="100" stroke="white" strokeWidth="0.4" />
-        <line x1="52" y1="0" x2="52" y2="100" stroke="white" strokeWidth="0.4" />
+        <line x1="47" y1="0" x2="47" y2="100" stroke="white" strokeWidth="0.5" />
+        <line x1="53" y1="0" x2="53" y2="100" stroke="white" strokeWidth="0.5" />
         {/* Horizontal channel borders */}
-        <line x1="0" y1="48" x2="100" y2="48" stroke="white" strokeWidth="0.4" />
-        <line x1="0" y1="52" x2="100" y2="52" stroke="white" strokeWidth="0.4" />
+        <line x1="0" y1="47" x2="100" y2="47" stroke="white" strokeWidth="0.5" />
+        <line x1="0" y1="53" x2="100" y2="53" stroke="white" strokeWidth="0.5" />
+      </svg>
+      {/* Arrow markers at axis ends */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100">
+        {/* Top arrow */}
+        <polygon points="50,1 47.2,5 52.8,5" fill="white" opacity="0.85" />
+        {/* Bottom arrow */}
+        <polygon points="50,99 47.2,95 52.8,95" fill="white" opacity="0.85" />
+        {/* Left arrow */}
+        <polygon points="1,50 5,47.2 5,52.8" fill="white" opacity="0.85" />
+        {/* Right arrow */}
+        <polygon points="99,50 95,47.2 95,52.8" fill="white" opacity="0.85" />
       </svg>
 
       {/* Axis labels */}
@@ -214,8 +225,8 @@ export default function DotGrid({ activity, currentUserId, onDotClick }: DotGrid
         </div>
       </div>
 
-      {/* Center circle - sized to fit inside channel with padding */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-2 border-white bg-transparent" />
+      {/* Center circle - sized to fit inside channel */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white/80 bg-transparent" />
 
       {/* Render all grid positions */}
       {gridPositions.map((pos, index) => {
@@ -239,7 +250,7 @@ export default function DotGrid({ activity, currentUserId, onDotClick }: DotGrid
               onMouseLeave={() => setHoveredDot(null)}
             >
               <div
-                className="w-5 h-5 rounded-full transition-all duration-200"
+                className="w-6 h-6 rounded-full transition-all duration-200 border border-white/30"
                 style={{
                   backgroundColor: getDotColor(pos.quadrant, voteCount),
                   outline: isHovered ? '2px solid white' : 'none',
@@ -260,7 +271,7 @@ export default function DotGrid({ activity, currentUserId, onDotClick }: DotGrid
                 transform: 'translate(-50%, -50%)',
               }}
             >
-              <div className="w-1.5 h-1.5 rounded-full border border-white opacity-40" style={{ backgroundColor: 'transparent' }} />
+              <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
             </div>
           );
         }

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { HoloscopicActivity, Rating, Comment } from '@/models/Activity';
-import QuadrantSelector from '@/components/activities/findthecenter/QuadrantSelector';
+import QuadrantSelector from '@/components/activities/resolve/QuadrantSelector';
+import { normalizeActivityType } from '@/components/activities/types';
 
 interface EntryModalProps {
   activity: HoloscopicActivity;
@@ -29,8 +30,8 @@ export default function EntryModal({
   slotNumber,
   existingData
 }: EntryModalProps) {
-  const activityType = activity.activityType || 'holoscopic';
-  const totalSteps = activityType === 'findthecenter' ? 3 : 4; // findthecenter: Name, Quadrant, Comment | holoscopic: Name, Slider1, Slider2, Comment
+  const activityType = normalizeActivityType(activity.activityType || 'dissolve');
+  const totalSteps = activityType === 'resolve' ? 3 : 4; // resolve: Name, Quadrant, Comment | dissolve: Name, Slider1, Slider2, Comment
 
   const [step, setStep] = useState(1);
   const [objectName, setObjectName] = useState('');
@@ -56,7 +57,7 @@ export default function EntryModal({
       alert('Please enter a name for your perspective');
       return;
     }
-    if (step < 4) {
+    if (step < totalSteps) {
       setStep(step + 1);
     } else {
       // Final submit
@@ -130,8 +131,8 @@ export default function EntryModal({
             </div>
           )}
 
-          {/* Step 2: Quadrant Selector (findthecenter) OR X-Axis Slider (holoscopic) */}
-          {step === 2 && activityType === 'findthecenter' && (
+          {/* Step 2: Quadrant Selector (resolve) OR X-Axis Slider (dissolve) */}
+          {step === 2 && activityType === 'resolve' && (
             <div className="space-y-4">
               <div className="mb-2">
                 <span className="text-sm text-gray-400">Your perspective:</span>
@@ -148,7 +149,7 @@ export default function EntryModal({
             </div>
           )}
 
-          {step === 2 && activityType === 'holoscopic' && (
+          {step === 2 && activityType === 'dissolve' && (
             <div className="space-y-4">
               <div className="mb-2">
                 <span className="text-sm text-gray-400">Your perspective:</span>
@@ -176,8 +177,8 @@ export default function EntryModal({
             </div>
           )}
 
-          {/* Step 3: Comment (findthecenter) OR Y-Axis Slider (holoscopic) */}
-          {step === 3 && activityType === 'findthecenter' && (
+          {/* Step 3: Comment (resolve) OR Y-Axis Slider (dissolve) */}
+          {step === 3 && activityType === 'resolve' && (
             <div className="space-y-4">
               <div className="mb-2">
                 <span className="text-sm text-gray-400">Your perspective:</span>
@@ -197,7 +198,7 @@ export default function EntryModal({
             </div>
           )}
 
-          {step === 3 && activityType === 'holoscopic' && (
+          {step === 3 && activityType === 'dissolve' && (
             <div className="space-y-4">
               <div className="mb-2">
                 <span className="text-sm text-gray-400">Your perspective:</span>
@@ -226,7 +227,7 @@ export default function EntryModal({
           )}
 
           {/* Step 4: Comment (holoscopic only) */}
-          {step === 4 && activityType === 'holoscopic' && (
+          {step === 4 && activityType === 'dissolve' && (
             <div className="space-y-4">
               <div className="mb-2">
                 <span className="text-sm text-gray-400">Your perspective:</span>
@@ -262,7 +263,7 @@ export default function EntryModal({
             onClick={handleNext}
             className="flex-1 px-6 py-3 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg transition-colors"
           >
-            {step === 4 ? 'Submit' : 'Next'}
+            {step === totalSteps ? 'Submit' : 'Next'}
           </button>
         </div>
       </div>

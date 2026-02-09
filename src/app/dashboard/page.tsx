@@ -11,6 +11,8 @@ import { ActivityService } from '@/services/activityService';
 import { FormattingService } from '@/utils/formatting';
 import { useAuth } from '@/contexts/AuthContext';
 import UserMenu from '@/components/UserMenu';
+import ActivityTypeIcon from '@/components/icons/ActivityTypeIcon';
+import { getActivityTypeLabel } from '@/components/activities/types';
 
 type TabType = 'activities' | 'sequences';
 type SequenceFilterType = 'enrolled' | 'invitations' | 'open';
@@ -362,12 +364,18 @@ export default function DashboardPage() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline justify-between gap-4 mb-1">
-                        <Link
-                          href={`/${activity.urlName}`}
-                          className="text-white hover:text-sky-400 transition-colors font-medium"
-                        >
-                          {activity.title}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/${activity.urlName}`}
+                            className="text-white hover:text-sky-400 transition-colors font-medium"
+                          >
+                            {activity.title}
+                          </Link>
+                          <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                            <ActivityTypeIcon type={activity.activityType} size={12} />
+                            {getActivityTypeLabel(activity.activityType)}
+                          </span>
+                        </div>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           hasSubmitted
                             ? 'bg-emerald-900/50 text-emerald-400'

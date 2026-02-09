@@ -41,8 +41,8 @@ export class ValidationService {
       errors.mapQuestion2 = 'Map question 2 must be less than 200 characters';
     }
 
-    // X-axis validation - label only required for holoscopic type
-    if (data.activityType !== 'findthecenter') {
+    // X-axis validation - label only required for dissolve type
+    if (data.activityType !== 'findthecenter' && data.activityType !== 'resolve') {
       if (!data.xAxisLabel || data.xAxisLabel.trim().length === 0) {
         errors.xAxisLabel = 'X-axis label is required';
       } else if (data.xAxisLabel.trim().length > 50) {
@@ -62,8 +62,8 @@ export class ValidationService {
       errors.xAxisMax = 'X-axis maximum label must be less than 30 characters';
     }
 
-    // Y-axis validation - label only required for holoscopic type
-    if (data.activityType !== 'findthecenter') {
+    // Y-axis validation - label only required for dissolve type
+    if (data.activityType !== 'findthecenter' && data.activityType !== 'resolve') {
       if (!data.yAxisLabel || data.yAxisLabel.trim().length === 0) {
         errors.yAxisLabel = 'Y-axis label is required';
       } else if (data.yAxisLabel.trim().length > 50) {
@@ -223,10 +223,10 @@ export class ValidationService {
   // Get quadrant color
   static getQuadrantColor(quadrant: 'q1' | 'q2' | 'q3' | 'q4'): string {
     const colors = {
-      q1: '#3b82f6', // Blue
-      q2: '#10b981', // Green  
-      q3: '#ef4444', // Red
-      q4: '#f59e0b', // Yellow
+      q1: '#7dd3fc', // Sky blue
+      q2: '#2dd4bf', // Teal
+      q3: '#a78bfa', // Lavender
+      q4: '#eab308', // Amber
     };
     return colors[quadrant];
   }
@@ -234,10 +234,10 @@ export class ValidationService {
   // Get quadrant color class
   static getQuadrantColorClass(quadrant: 'q1' | 'q2' | 'q3' | 'q4'): string {
     const colorClasses = {
-      q1: 'bg-blue-500',
-      q2: 'bg-green-500',
-      q3: 'bg-red-500',
-      q4: 'bg-yellow-500',
+      q1: 'bg-sky-300',
+      q2: 'bg-teal-400',
+      q3: 'bg-violet-400',
+      q4: 'bg-amber-500',
     };
     return colorClasses[quadrant];
   }

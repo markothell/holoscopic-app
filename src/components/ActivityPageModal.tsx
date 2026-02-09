@@ -12,6 +12,7 @@ import ResultsViewSimple from './ResultsViewSimple';
 import CommentSection from './CommentSection';
 import PreambleModal from './modals/PreambleModal';
 import EntryModal from './modals/EntryModal';
+import { normalizeActivityType } from './activities/types';
 
 interface ActivityPageModalProps {
   activityId: string;
@@ -259,7 +260,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
           )}
         </div>
         <div className="flex-1 min-h-0 px-4">
-          {activity.activityType === 'findthecenter' ? (
+          {normalizeActivityType(activity.activityType) === 'resolve' ? (
             <ResultsViewSimple
               activity={activity}
               isVisible={true}
@@ -349,7 +350,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
 
           {/* Map - Use ResultsView for tablet (sm-lg), custom for desktop lg+ */}
           <div className="flex-1 min-h-0">
-            {activity.activityType === 'findthecenter' ? (
+            {normalizeActivityType(activity.activityType) === 'resolve' ? (
               <ResultsViewSimple
                 activity={activity}
                 isVisible={true}

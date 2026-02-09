@@ -13,36 +13,47 @@ export interface ActivityTypeConfig {
   screens: string[];
 
   // Field requirements
-  requiresMapQuestion2: boolean;  // Second question for Y-axis (holoscopic only)
+  requiresMapQuestion2: boolean;  // Second question for Y-axis (dissolve only)
 
   // Positioning method
   positioningMethod: 'sliders' | 'quadrant';
 }
 
-export const ACTIVITY_TYPES: Record<ActivityType, ActivityTypeConfig> = {
-  holoscopic: {
-    id: 'holoscopic',
-    label: 'Holoscopic',
+// Normalize legacy activity type names from existing DB documents
+export function normalizeActivityType(type: string): 'dissolve' | 'resolve' {
+  if (type === 'holoscopic' || type === 'dissolve') return 'dissolve';
+  if (type === 'findthecenter' || type === 'resolve') return 'resolve';
+  return 'dissolve'; // default
+}
+
+const ACTIVITY_TYPE_CONFIGS: Record<'dissolve' | 'resolve', ActivityTypeConfig> = {
+  dissolve: {
+    id: 'dissolve',
+    label: 'Dissolve',
     description: 'Precise 2D positioning with dual sliders for X and Y axes. Best for nuanced perspective mapping where continuous positioning matters.',
     icon: '🎯',
     screens: ['intro', 'objectName', 'xSlider', 'ySlider', 'comment', 'results'],
     requiresMapQuestion2: true,
     positioningMethod: 'sliders',
   },
-  findthecenter: {
-    id: 'findthecenter',
-    label: 'Find The Center',
+  resolve: {
+    id: 'resolve',
+    label: 'Resolve',
     description: 'Simplified 4-quadrant selection for quick positioning. Best for rapid categorization and finding common ground.',
     icon: '⬛',
     screens: ['intro', 'objectName', 'quadrant', 'comment', 'results'],
     requiresMapQuestion2: false,
     positioningMethod: 'quadrant',
   },
-} as const;
+};
+
+// Export as ACTIVITY_TYPES for backward compat
+export const ACTIVITY_TYPES = ACTIVITY_TYPE_CONFIGS;
 
 // Helper functions
 export function getActivityTypeConfig(type: ActivityType): ActivityTypeConfig {
-  return ACTIVITY_TYPES[type] || ACTIVITY_TYPES.holoscopic;
+  const normalized = normalizeActivityType(type);
+  return ACTIVITY_TYPE_CONFIGS[normalized];
 }
 
 export function getActivityTypeLabel(type: ActivityType): string {
@@ -54,10 +65,10 @@ export function getActivityTypeIcon(type: ActivityType): string {
 }
 
 export function getAllActivityTypes(): ActivityTypeConfig[] {
-  return Object.values(ACTIVITY_TYPES);
+  return Object.values(ACTIVITY_TYPE_CONFIGS);
 }
 
-// Quadrant position mapping for findthecenter type
+// Quadrant position mapping for resolve type
 export const QUADRANT_POSITIONS = {
   1: { x: 0.75, y: 0.75 }, // Top-right
   2: { x: 0.25, y: 0.75 }, // Top-left

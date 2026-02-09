@@ -9,6 +9,8 @@ import { useAllAnalytics, type AnalyticsStats } from '@/hooks/useAnalytics';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminPanel from '@/components/AdminPanel';
 import UserMenu from '@/components/UserMenu';
+import ActivityTypeIcon from '@/components/icons/ActivityTypeIcon';
+import { getActivityTypeLabel } from '@/components/activities/types';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -383,13 +385,19 @@ function AdminContent() {
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex-1 min-w-0">
                             <h3 className="text-white font-medium truncate">{activity.title}</h3>
-                            <Link
-                              href={`/${activity.urlName}`}
-                              target="_blank"
-                              className="text-xs text-sky-400 hover:underline"
-                            >
-                              /{activity.urlName} ↗
-                            </Link>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="flex items-center gap-1 text-xs text-gray-400">
+                                <ActivityTypeIcon type={activity.activityType} size={14} />
+                                {getActivityTypeLabel(activity.activityType)}
+                              </span>
+                              <Link
+                                href={`/${activity.urlName}`}
+                                target="_blank"
+                                className="text-xs text-sky-400 hover:underline"
+                              >
+                                /{activity.urlName} ↗
+                              </Link>
+                            </div>
                           </div>
                           <span className={`text-xs px-2 py-0.5 rounded-full ml-2 ${
                             activity.isDraft
@@ -504,8 +512,13 @@ function AdminContent() {
                                 <div className="text-sm text-white">
                                   {activity.title}
                                 </div>
-                                <div className="text-xs text-gray-500">
-                                  {FormattingService.formatTimestamp(activity.createdAt)}
+                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                  <span className="flex items-center gap-1">
+                                    <ActivityTypeIcon type={activity.activityType} size={12} />
+                                    {getActivityTypeLabel(activity.activityType)}
+                                  </span>
+                                  <span>·</span>
+                                  <span>{FormattingService.formatTimestamp(activity.createdAt)}</span>
                                 </div>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">

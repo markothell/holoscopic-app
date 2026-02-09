@@ -8,6 +8,9 @@ import { SequenceService } from '@/services/sequenceService';
 import { FormattingService } from '@/utils/formatting';
 import { useAuth } from '@/contexts/AuthContext';
 import UserMenu from '@/components/UserMenu';
+import ActivityTypeIcon from '@/components/icons/ActivityTypeIcon';
+import { getActivityTypeLabel } from '@/components/activities/types';
+import type { ActivityType } from '@/models/Activity';
 
 interface Activity {
   id: string;
@@ -24,6 +27,7 @@ interface Activity {
     min: string;
     max: string;
   };
+  activityType?: string;
   status: 'draft' | 'active' | 'completed';
   isDraft?: boolean;
   participants: any[];
@@ -174,8 +178,9 @@ export default function ActivitiesPage() {
                     <span className="text-white group-hover:text-sky-400 transition-colors">
                       {activity.title}
                     </span>
-                    <span className="text-gray-600 text-sm ml-2">
-                      ({activity.xAxis.label} / {activity.yAxis.label})
+                    <span className="inline-flex items-center gap-1 text-gray-500 text-xs ml-2">
+                      <ActivityTypeIcon type={(activity.activityType || 'dissolve') as ActivityType} size={12} />
+                      {getActivityTypeLabel((activity.activityType || 'dissolve') as ActivityType)}
                     </span>
                   </div>
                   <div className="flex items-center gap-4 text-xs text-gray-500 flex-shrink-0">

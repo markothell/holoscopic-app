@@ -13,6 +13,7 @@ export interface SequenceActivity {
     id: string;
     title: string;
     urlName: string;
+    activityType?: string;
     status: string;
     isDraft?: boolean;
     participants?: number;

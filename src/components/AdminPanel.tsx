@@ -7,7 +7,7 @@ import { ValidationService } from '@/utils/validation';
 import { UrlUtils } from '@/utils/urlUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import CollapsibleSection from './CollapsibleSection';
-import { ACTIVITY_TYPES } from './activities/types';
+import { ACTIVITY_TYPES, getActivityTypeConfig, normalizeActivityType } from './activities/types';
 
 interface AdminPanelProps {
   editingActivity?: HoloscopicActivity;
@@ -18,7 +18,7 @@ interface AdminPanelProps {
 
 // Get default form data based on activity type
 const getDefaultFormData = (activityType: ActivityType): ActivityFormData => {
-  if (activityType === 'findthecenter') {
+  if (activityType === 'resolve') {
     return {
       title: '',
       urlName: '',
@@ -42,7 +42,7 @@ const getDefaultFormData = (activityType: ActivityType): ActivityFormData => {
     };
   }
 
-  // holoscopic defaults
+  // dissolve defaults
   return {
     title: '',
     urlName: '',
@@ -75,9 +75,9 @@ export default function AdminPanel({
   const { userId, userEmail } = useAuth();
 
   // For new activities, show type selection first
-  const [selectedType, setSelectedType] = useState<ActivityType | null>(editingActivity ? editingActivity.activityType || 'holoscopic' : null);
+  const [selectedType, setSelectedType] = useState<ActivityType | null>(editingActivity ? editingActivity.activityType || 'dissolve' : null);
 
-  const [formData, setFormData] = useState<ActivityFormData>(getDefaultFormData('holoscopic'));
+  const [formData, setFormData] = useState<ActivityFormData>(getDefaultFormData('dissolve'));
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,7 +88,7 @@ export default function AdminPanel({
   // Populate form when editing
   useEffect(() => {
     if (editingActivity) {
-      const activityType = editingActivity.activityType || 'holoscopic';
+      const activityType = editingActivity.activityType || 'dissolve';
       setSelectedType(activityType);
 
       const formValues = {
@@ -270,7 +270,7 @@ export default function AdminPanel({
               >
                 <h3 className="text-lg font-semibold text-gray-800">{type.label}</h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  {type.id === 'holoscopic'
+                  {type.id === 'dissolve'
                     ? 'Two slider questions to position responses on X and Y axes. Best for continuous 2D mapping.'
                     : '4-quadrant selector with gravity-based clustering. Best for categorical positioning.'}
                 </p>
@@ -309,7 +309,7 @@ export default function AdminPanel({
                 {editingActivity ? 'Edit Activity' : 'Create New Activity'}
               </h2>
               <p className="text-gray-600 mt-1">
-                {ACTIVITY_TYPES[formData.activityType]?.label || 'Activity'} Configuration
+                {getActivityTypeConfig(formData.activityType)?.label || 'Activity'} Configuration
               </p>
             </div>
             {!editingActivity && (
@@ -434,8 +434,8 @@ export default function AdminPanel({
             </div>
           </CollapsibleSection>
 
-          {/* Map Axes Section - Only for holoscopic activity type */}
-          {formData.activityType === 'holoscopic' && (
+          {/* Map Axes Section - Only for dissolve activity type */}
+          {formData.activityType === 'dissolve' && (
             <CollapsibleSection title="Map Axes" defaultOpen={false}>
               {/* X-Axis Configuration */}
               <div className="space-y-4">
@@ -561,8 +561,8 @@ export default function AdminPanel({
             </CollapsibleSection>
           )}
 
-          {/* Axis Endpoints Section - Only for findthecenter activity type */}
-          {formData.activityType === 'findthecenter' && (
+          {/* Axis Endpoints Section - Only for resolve activity type */}
+          {formData.activityType === 'resolve' && (
             <CollapsibleSection title="Axis Endpoints" defaultOpen={false}>
               <p className="text-sm text-gray-600 mb-4">
                 These labels will appear on the quadrant grid selector and results view.
@@ -735,13 +735,13 @@ export default function AdminPanel({
 
           {/* Positioning Questions Section - differs by activity type */}
           <CollapsibleSection
-            title={formData.activityType === 'holoscopic' ? 'Slider Questions' : 'Quadrant Question'}
+            title={formData.activityType === 'dissolve' ? 'Slider Questions' : 'Quadrant Question'}
             defaultOpen={false}
           >
             {/* Map Question 1 (used for both types) */}
             <div>
               <label htmlFor="mapQuestion" className="block text-sm font-medium text-gray-700 mb-2">
-                {formData.activityType === 'holoscopic' ? 'First Slider Question' : 'Quadrant Selection Question'}
+                {formData.activityType === 'dissolve' ? 'First Slider Question' : 'Quadrant Selection Question'}
               </label>
               <input
                 type="text"
@@ -749,7 +749,7 @@ export default function AdminPanel({
                 value={formData.mapQuestion}
                 onChange={(e) => handleFieldChange('mapQuestion', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                placeholder={formData.activityType === 'holoscopic'
+                placeholder={formData.activityType === 'dissolve'
                   ? "e.g., How much money did you have as a kid?"
                   : "e.g., Which quadrant best represents your perspective?"}
                 maxLength={200}
@@ -759,8 +759,8 @@ export default function AdminPanel({
               )}
             </div>
 
-            {/* Map Question 2 - Only for holoscopic type */}
-            {formData.activityType === 'holoscopic' && (
+            {/* Map Question 2 - Only for dissolve type */}
+            {formData.activityType === 'dissolve' && (
               <div>
                 <label htmlFor="mapQuestion2" className="block text-sm font-medium text-gray-700 mb-2">
                   Second Slider Question
@@ -887,7 +887,7 @@ export default function AdminPanel({
             <div className="space-y-4">
               <h4 className="text-md font-semibold text-gray-800">Starter Data (Optional)</h4>
               <p className="text-sm text-gray-600 mb-4">
-                {formData.activityType === 'holoscopic'
+                {formData.activityType === 'dissolve'
                   ? 'Add initial data points to seed the activity. Format: JSON array with x, y (0-1), objectName, and comment fields.'
                   : 'Add initial data points to seed the activity. Format: JSON array with quadrant (1-4), objectName, and comment fields.'}
               </p>
@@ -901,7 +901,7 @@ export default function AdminPanel({
                   value={formData.starterData}
                   onChange={(e) => handleFieldChange('starterData', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black font-mono text-sm"
-                  placeholder={formData.activityType === 'holoscopic'
+                  placeholder={formData.activityType === 'dissolve'
                     ? '[{"x": 0.7, "y": 0.3, "objectName": "Gratitude", "comment": "Daily journaling helps me stay grounded"}]'
                     : '[{"quadrant": 1, "objectName": "Gratitude", "comment": "Daily journaling helps me stay grounded"}]'}
                   rows={6}
@@ -909,7 +909,7 @@ export default function AdminPanel({
                 {validationErrors.starterData && (
                   <p className="text-red-600 text-sm mt-1">{validationErrors.starterData}</p>
                 )}
-                {formData.activityType === 'holoscopic' ? (
+                {formData.activityType === 'dissolve' ? (
                   <p className="text-xs text-gray-500 mt-2">
                     Fields: x (0-1), y (0-1), objectName, comment
                   </p>

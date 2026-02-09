@@ -376,8 +376,8 @@ export default function CommentSection({
                             />
                           </a>
                         )}
-                        {/* Upvote Button */}
-                        {showAllComments && onCommentVote && (
+                        {/* Upvote Button (hidden for own comments) */}
+                        {showAllComments && onCommentVote && comment.userId !== currentUserId && (
                           <button
                             onClick={() => handleVote(comment.id)}
                             className={`flex items-center space-x-1 px-2 py-1 rounded text-xs transition-colors ${
@@ -390,6 +390,13 @@ export default function CommentSection({
                             <span className="text-base">▲</span>
                             <span>{comment.voteCount || 0}</span>
                           </button>
+                        )}
+                        {/* Vote count display for own comments */}
+                        {showAllComments && onCommentVote && comment.userId === currentUserId && (
+                          <div className="flex items-center space-x-1 px-2 py-1 rounded text-xs bg-white/10 text-gray-500">
+                            <span className="text-base">▲</span>
+                            <span>{comment.voteCount || 0}</span>
+                          </div>
                         )}
                         {/* Vote count for when no vote handler */}
                         {showAllComments && !onCommentVote && (

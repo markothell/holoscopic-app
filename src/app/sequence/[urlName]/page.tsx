@@ -10,6 +10,9 @@ import { SequenceService } from '@/services/sequenceService';
 import { FormattingService } from '@/utils/formatting';
 import { useAuth } from '@/contexts/AuthContext';
 import UserMenu from '@/components/UserMenu';
+import ActivityTypeIcon from '@/components/icons/ActivityTypeIcon';
+import { getActivityTypeLabel } from '@/components/activities/types';
+import type { ActivityType } from '@/models/Activity';
 
 const SequenceGraphView = dynamic(
   () => import('@/components/graph/SequenceGraphView'),
@@ -338,9 +341,17 @@ export default function SequenceDetailPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-3 mb-1">
                           <div className="flex-1">
+                            <div className="flex items-center gap-2">
                             <h3 className="text-white font-medium">
                               {activity?.title || 'Activity Not Found'}
                             </h3>
+                            {activity?.activityType && (
+                              <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                                <ActivityTypeIcon type={activity.activityType as ActivityType} size={12} />
+                                {getActivityTypeLabel(activity.activityType as ActivityType)}
+                              </span>
+                            )}
+                          </div>
                             {seqActivity.openedAt && (
                               <p className="text-xs text-gray-500 mt-1">
                                 Opened {FormattingService.formatTimestamp(seqActivity.openedAt)}
