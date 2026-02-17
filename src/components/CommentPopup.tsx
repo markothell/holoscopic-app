@@ -45,17 +45,17 @@ export default function CommentPopup({
   if (!comment) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-        <div className="bg-[#111827] border border-white/10 rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-[#252120] border border-[rgba(215,205,195,0.12)] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
           <div className="flex justify-between items-start mb-4">
-            <h3 className="text-white font-bold text-lg">No Comment</h3>
+            <h3 className="text-[#F5F0EB] font-bold text-lg" style={{ fontFamily: 'var(--font-barlow), sans-serif' }}>No Comment</h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white transition"
+              className="text-[#7A7068] hover:text-[#F5F0EB] transition"
             >
-              ✕
+              &#x2715;
             </button>
           </div>
-          <p className="text-gray-400">This participant hasn't added a comment yet.</p>
+          <p className="text-[#7A7068]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>This participant hasn&apos;t added a comment yet.</p>
         </div>
       </div>
     );
@@ -67,33 +67,33 @@ export default function CommentPopup({
       onClick={onClose}
     >
       <div
-        className="bg-[#111827] rounded-lg p-6 max-w-md w-full shadow-xl border border-white/10"
+        className="bg-[#252120] rounded-lg p-6 max-w-md w-full shadow-xl border border-[rgba(215,205,195,0.12)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with object name */}
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h3 className="text-white font-bold text-lg">{rating.objectName}</h3>
+            <h3 className="text-[#F5F0EB] font-bold text-lg" style={{ fontFamily: 'var(--font-barlow), sans-serif' }}>{rating.objectName}</h3>
             {rating.userId === currentUserId && (
-              <span className="text-xs text-sky-400">(Your response)</span>
+              <span className="text-xs text-[#C83B50]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>(Your response)</span>
             )}
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition text-2xl leading-none"
+            className="text-[#7A7068] hover:text-[#F5F0EB] transition text-2xl leading-none"
           >
-            ✕
+            &#x2715;
           </button>
         </div>
 
         {/* Comment text */}
-        <div className="bg-[#0a0f1a] border border-white/10 rounded-lg p-4 mb-4">
-          <p className="text-white text-base leading-relaxed">{comment.text}</p>
+        <div className="bg-[#1A1714] border border-[rgba(215,205,195,0.12)] rounded-lg p-4 mb-4">
+          <p className="text-[#F5F0EB] text-base leading-relaxed" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>{comment.text}</p>
         </div>
 
         {/* Vote section */}
         <div className="flex items-center justify-between">
-          <div className="text-gray-400 text-sm">
+          <div className="text-[#7A7068] text-sm" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em' }}>
             <span className="font-semibold">{comment.voteCount || 0}</span> {comment.voteCount === 1 ? 'vote' : 'votes'}
           </div>
 
@@ -104,22 +104,23 @@ export default function CommentPopup({
               className={`px-4 py-2 rounded-lg font-medium transition ${
                 hasVoted
                   ? 'bg-emerald-600 text-white hover:bg-red-600'
-                  : 'bg-sky-600 hover:bg-sky-700 text-white'
+                  : 'bg-[#C83B50] hover:bg-[#B03248] text-white'
               } ${isVoting ? 'opacity-50 cursor-wait' : ''}`}
+              style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', fontWeight: 300, letterSpacing: '0.1em', textTransform: 'uppercase' }}
               title={hasVoted ? 'Click to remove your vote' : 'Click to vote'}
             >
-              {hasVoted ? '✓ Voted' : 'Vote'}
+              {hasVoted ? '\u2713 Voted' : 'Vote'}
             </button>
           )}
 
           {rating.userId === currentUserId && (
-            <span className="text-sm text-gray-500">Can't vote for yourself</span>
+            <span className="text-sm text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>Can&apos;t vote for yourself</span>
           )}
         </div>
 
         {/* Timestamp */}
-        <div className="mt-4 pt-4 border-t border-white/10">
-          <p className="text-xs text-gray-500">
+        <div className="mt-4 pt-4 border-t border-[rgba(215,205,195,0.12)]">
+          <p className="text-xs text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>
             Posted {new Date(comment.timestamp).toLocaleDateString()}
           </p>
         </div>

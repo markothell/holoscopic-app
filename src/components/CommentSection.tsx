@@ -40,10 +40,10 @@ export default function CommentSection({
   const getUserObjectName = (userId: string): string | null => {
     const userRating = activity.ratings.find(r => r.userId === userId);
     if (userRating?.objectName) return userRating.objectName;
-    
+
     const userComment = activity.comments.find(c => c.userId === userId);
     if (userComment?.objectName) return userComment.objectName;
-    
+
     return null;
   };
 
@@ -52,7 +52,7 @@ export default function CommentSection({
     if (onVisibleCommentsChange) {
       const comments = [...activity.comments];
       let visibleComments: Comment[] = [];
-      
+
       switch (sortOrder) {
         case 'newest':
           visibleComments = comments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -66,7 +66,7 @@ export default function CommentSection({
         default:
           visibleComments = comments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       }
-      
+
       onVisibleCommentsChange(visibleComments.map(c => c.id));
     }
   }, [sortOrder, activity.comments, activity.ratings, onVisibleCommentsChange]);
@@ -77,18 +77,18 @@ export default function CommentSection({
       // Only scroll within the comment container, not the whole page
       const commentElement = commentRefs.current[selectedCommentId];
       const container = commentElement?.closest('.overflow-y-auto');
-      
+
       if (container && commentElement) {
         const containerRect = container.getBoundingClientRect();
         const elementRect = commentElement.getBoundingClientRect();
-        
+
         // Check if element is already visible in container
-        const isVisible = elementRect.top >= containerRect.top && 
+        const isVisible = elementRect.top >= containerRect.top &&
                          elementRect.bottom <= containerRect.bottom;
-        
+
         if (!isVisible) {
           // Scroll within container only
-          const scrollTop = elementRect.top - containerRect.top + container.scrollTop - 
+          const scrollTop = elementRect.top - containerRect.top + container.scrollTop -
                            (containerRect.height - elementRect.height) / 2;
           container.scrollTo({
             top: scrollTop,
@@ -96,7 +96,7 @@ export default function CommentSection({
           });
         }
       }
-      
+
       // Clear selection after highlighting
       setTimeout(() => {
         onSelectedCommentChange?.(null);
@@ -137,7 +137,7 @@ export default function CommentSection({
     }
 
     window.addEventListener('resize', handleResize);
-    
+
     return () => {
       if (textarea) {
         textarea.removeEventListener('focus', handleFocus);
@@ -152,7 +152,7 @@ export default function CommentSection({
   // Handle comment submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (isSubmitting) return;
 
     // Validate comment
@@ -200,13 +200,13 @@ export default function CommentSection({
     if (comment.objectName) {
       return comment.objectName;
     }
-    
+
     // Try to get objectName from user's rating
     const objectName = getUserObjectName(comment.userId);
     if (objectName) {
       return objectName;
     }
-    
+
     // Fallback to username for backward compatibility
     return comment.username;
   };
@@ -225,7 +225,7 @@ export default function CommentSection({
   // Sort comments based on selected order
   const getSortedComments = (): Comment[] => {
     const comments = [...activity.comments];
-    
+
     switch (sortOrder) {
       case 'newest':
         return comments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -256,22 +256,23 @@ export default function CommentSection({
               value={commentText}
               onChange={handleTextChange}
               placeholder="Share your thoughts..."
-              className="w-full p-3 border border-white/10 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent resize-none text-white bg-[#0a0f1a]"
-              style={{ 
+              className="w-full p-3 border border-[rgba(215,205,195,0.12)] rounded-lg focus:ring-2 focus:ring-[#C83B50] focus:border-transparent resize-none text-[#F5F0EB] bg-[#1A1714]"
+              style={{
                 height: isKeyboardVisible ? '120px' : '150px', // Smaller when keyboard is visible
-                fontSize: '16px' // Prevents zoom on iOS
+                fontSize: '16px', // Prevents zoom on iOS
+                fontFamily: 'var(--font-cormorant), Georgia, serif',
               }}
               maxLength={280}
               disabled={isSubmitting}
             />
-            <div className="absolute bottom-2 right-2 text-xs text-gray-500">
+            <div className="absolute bottom-2 right-2 text-xs text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem' }}>
               {commentText.length}/280
             </div>
           </div>
 
           {/* Validation Error */}
           {validationError && (
-            <p className="text-red-600 text-sm">{validationError}</p>
+            <p className="text-[#C83B50] text-sm">{validationError}</p>
           )}
 
           {/* Submit Button */}
@@ -279,7 +280,8 @@ export default function CommentSection({
             <button
               type="submit"
               disabled={isSubmitting || !commentText.trim()}
-              className="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-2 bg-[#C83B50] text-white rounded-lg hover:bg-[#B03248] disabled:bg-[#302B28] disabled:text-[#7A7068] disabled:cursor-not-allowed transition-colors"
+              style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', fontWeight: 300, letterSpacing: '0.1em', textTransform: 'uppercase' }}
             >
               {isSubmitting ? 'Submitting...' : userComment ? 'Update Comment' : 'Submit Comment'}
             </button>
@@ -299,9 +301,12 @@ export default function CommentSection({
               ).length;
               const remainingVotes = Math.max(0, activity.votesPerUser - votedCommentIds);
               return (
-                <div className={`px-3 py-1 rounded text-sm font-medium ${
-                  remainingVotes > 0 ? 'bg-sky-600 text-white' : 'bg-gray-700 text-gray-400'
-                }`}>
+                <div
+                  className={`px-3 py-1 rounded text-sm font-medium ${
+                    remainingVotes > 0 ? 'bg-[#C83B50] text-white' : 'bg-[#302B28] text-[#7A7068]'
+                  }`}
+                  style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em' }}
+                >
                   {remainingVotes > 0
                     ? `${remainingVotes} vote${remainingVotes !== 1 ? 's' : ''} left`
                     : 'No votes left'}
@@ -310,24 +315,21 @@ export default function CommentSection({
             })()}
 
             {!readOnly && (
-              <h4 className="font-semibold text-gray-800">
+              <h4 className="font-semibold text-[#A89F96]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 {FormattingService.formatCommentCount(activity.comments.length)}
               </h4>
             )}
 
             {/* Sort Dropdown - Right side */}
             <div className="flex items-center space-x-2">
-              <label className={`text-sm font-medium ${readOnly ? "text-gray-300" : "text-gray-700"}`}>
+              <label className="text-sm font-medium text-[#A89F96]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 Order:
               </label>
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as CommentSortOrder)}
-                className={`px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 ${
-                  readOnly
-                    ? "bg-[#0a0f1a] border-white/10 text-gray-200"
-                    : "bg-[#0a0f1a] border-white/10 text-gray-200"
-                }`}
+                className="px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-[#C83B50] bg-[#1A1714] border-[rgba(215,205,195,0.12)] text-[#A89F96]"
+                style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem' }}
               >
                 <option value="newest">Newest</option>
                 <option value="oldest">Oldest</option>
@@ -335,7 +337,7 @@ export default function CommentSection({
               </select>
             </div>
           </div>
-          
+
           {/* Comments or No Comments Message */}
           {activity.comments.length > 0 ? (
             <div className={`space-y-3 overflow-y-auto ${readOnly ? "flex-1 min-h-0" : "max-h-60"}`}>
@@ -344,9 +346,7 @@ export default function CommentSection({
                   <div
                     key={comment.id}
                     ref={(el) => { commentRefs.current[comment.id] = el; }}
-                    className={`p-3 rounded-lg border-l-4 transition-all duration-200 ${
-                      readOnly ? "bg-[#0a0f1a]" : "bg-[#0a0f1a]"
-                    } ${selectedCommentId === comment.id ? 'ring-2 ring-sky-500' : ''}`}
+                    className={`p-3 rounded-lg border-l-4 transition-all duration-200 bg-[#1A1714] ${selectedCommentId === comment.id ? 'ring-2 ring-[#C83B50]' : ''}`}
                     style={{ borderLeftColor: getUserColor(comment) }}
                     onMouseEnter={() => onCommentHover?.(comment.id)}
                     onMouseLeave={() => onCommentHover?.(null)}
@@ -354,7 +354,7 @@ export default function CommentSection({
                     <div className="flex justify-between items-start mb-2">
                       <span
                         className="font-medium text-sm"
-                        style={{ color: getUserColor(comment) }}
+                        style={{ color: getUserColor(comment), fontFamily: 'var(--font-barlow), sans-serif', fontWeight: 600 }}
                       >
                         {getDisplayName(comment)}
                       </span>
@@ -364,9 +364,7 @@ export default function CommentSection({
                           <a
                             href={`/profile/${comment.userId}?sequence=${sequenceId}`}
                             onClick={(e) => e.stopPropagation()}
-                            className={`flex items-center justify-center transition-opacity hover:opacity-80 ${
-                              readOnly ? "opacity-90" : "opacity-100"
-                            }`}
+                            className="flex items-center justify-center transition-opacity hover:opacity-80 opacity-90"
                             title="View profile"
                           >
                             <img
@@ -382,37 +380,37 @@ export default function CommentSection({
                             onClick={() => handleVote(comment.id)}
                             className={`flex items-center space-x-1 px-2 py-1 rounded text-xs transition-colors ${
                               hasUserVoted(comment)
-                                ? "bg-sky-900/50 text-sky-300 hover:bg-sky-800/50"
-                                : "bg-white/10 text-gray-300 hover:bg-white/20"
+                                ? "bg-[rgba(200,59,80,0.2)] text-[#C83B50] hover:bg-[rgba(200,59,80,0.3)]"
+                                : "bg-[rgba(215,205,195,0.1)] text-[#A89F96] hover:bg-[rgba(215,205,195,0.18)]"
                             }`}
                             disabled={!currentUserId}
                           >
-                            <span className="text-base">▲</span>
+                            <span className="text-base">&#x25B2;</span>
                             <span>{comment.voteCount || 0}</span>
                           </button>
                         )}
                         {/* Vote count display for own comments */}
                         {showAllComments && onCommentVote && comment.userId === currentUserId && (
-                          <div className="flex items-center space-x-1 px-2 py-1 rounded text-xs bg-white/10 text-gray-500">
-                            <span className="text-base">▲</span>
+                          <div className="flex items-center space-x-1 px-2 py-1 rounded text-xs bg-[rgba(215,205,195,0.1)] text-[#7A7068]">
+                            <span className="text-base">&#x25B2;</span>
                             <span>{comment.voteCount || 0}</span>
                           </div>
                         )}
                         {/* Vote count for when no vote handler */}
                         {showAllComments && !onCommentVote && (
-                          <div className="flex items-center space-x-1 px-2 py-1 rounded text-xs bg-white/10 text-gray-300">
-                            <span className="text-base">▲</span>
+                          <div className="flex items-center space-x-1 px-2 py-1 rounded text-xs bg-[rgba(215,205,195,0.1)] text-[#A89F96]">
+                            <span className="text-base">&#x25B2;</span>
                             <span>{comment.voteCount || 0}</span>
                           </div>
                         )}
                       </div>
                     </div>
-                    <p className={`text-sm whitespace-pre-wrap mb-2 ${readOnly ? "text-gray-100" : "text-gray-700"}`}>
+                    <p className="text-sm whitespace-pre-wrap mb-2 text-[#F5F0EB]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>
                       {comment.text}
                     </p>
                     {/* Timestamp moved to bottom */}
                     <div className="flex justify-end">
-                      <span className={`text-xs ${readOnly ? "text-gray-300" : "text-gray-500"}`}>
+                      <span className="text-xs text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', letterSpacing: '0.06em' }}>
                         {FormattingService.formatTimestamp(comment.timestamp)}
                       </span>
                     </div>
@@ -421,7 +419,7 @@ export default function CommentSection({
               })}
             </div>
           ) : (
-            <div className={`text-center py-8 ${readOnly ? "text-gray-300 flex-1 flex items-center justify-center" : "text-gray-500"}`}>
+            <div className={`text-center py-8 ${readOnly ? "text-[#A89F96] flex-1 flex items-center justify-center" : "text-[#7A7068]"}`} style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', fontStyle: 'italic' }}>
               <p>No comments yet. Be the first to share your thoughts!</p>
             </div>
           )}

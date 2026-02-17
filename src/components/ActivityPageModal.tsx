@@ -165,18 +165,18 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
 
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
-        <div className="text-gray-400">Loading...</div>
+      <div className="min-h-screen bg-[#1A1714] flex items-center justify-center">
+        <div className="text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Loading...</div>
       </div>
     );
   }
 
   if (error || !activity) {
     return (
-      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#1A1714] flex items-center justify-center p-4">
         <div className="text-center">
-          <p className="text-red-400 mb-4">{error || 'Activity not found'}</p>
-          <Link href="/" className="text-sky-400 hover:text-sky-300">
+          <p className="text-[#C83B50] mb-4">{error || 'Activity not found'}</p>
+          <Link href="/" className="text-[#C83B50] hover:text-[#e04d63] transition-colors" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
             Return to Home
           </Link>
         </div>
@@ -187,7 +187,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
   const maxEntries = isSoloTracker ? slotsToShow : (activity.maxEntries || 1);
 
   return (
-    <div className="min-h-screen lg:h-screen bg-[#0a0f1a]">
+    <div className="min-h-screen lg:h-screen bg-[#1A1714]">
       {/* Fixed Logo in top-left */}
       <div className="fixed top-4 left-4 z-20">
         <Link href="/">
@@ -206,13 +206,13 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
         <div className="flex-shrink-0 px-4 mb-4">
           {/* Title with Info Icon */}
           <div className="ml-16 flex items-center gap-2">
-            <h2 className="text-2xl font-bold text-white">
+            <h2 className="text-2xl font-bold text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
               {activity.title}
             </h2>
             {(activity.preamble || activity.wikiLink) && (
               <button
                 onClick={() => setShowPreamble(true)}
-                className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center justify-center transition-colors flex-shrink-0"
+                className="w-6 h-6 rounded-full bg-[rgba(215,205,195,0.1)] hover:bg-[rgba(215,205,195,0.18)] text-[#F5F0EB] text-xs font-bold flex items-center justify-center transition-colors flex-shrink-0"
                 aria-label="View information"
                 title="View activity information"
               >
@@ -224,10 +224,10 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
           {/* Entry Circles */}
           {activity.status !== 'completed' && canAddEntries && (
             <div className="flex flex-col items-start ml-16 mt-3">
-              <span className="text-xs text-gray-400 mb-2">
+              <span className="text-xs text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 {isSoloTracker ? `Your entries (${userEntryCount}):` : 'Click to add mapping:'}
               </span>
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2 flex-wrap mt-2">
                 {Array.from({ length: maxEntries }, (_, i) => i + 1).map((slot) => {
                   const slotData = getSlotData(slot);
                   const isAddNewSlot = isSoloTracker && slot > userEntryCount;
@@ -240,15 +240,15 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                       onMouseLeave={() => setHoveredSlot(null)}
                       className={`w-8 h-8 rounded-full border-2 transition-all ${
                         slotData.hasData
-                          ? 'bg-white border-white hover:bg-white/90'
+                          ? 'bg-[#F5F0EB] border-[#F5F0EB] hover:bg-[#F5F0EB]/90'
                           : isAddNewSlot
                             ? 'bg-green-500/30 border-green-500/50 hover:bg-green-500/40'
-                            : 'bg-transparent border-white/40 hover:border-white/60'
+                            : 'bg-transparent border-[rgba(215,205,195,0.3)] hover:border-[rgba(215,205,195,0.5)]'
                       }`}
                       aria-label={isAddNewSlot ? 'Add new entry' : `Entry ${slot}`}
                     >
                       <span className={`text-xs font-semibold ${
-                        slotData.hasData ? 'text-slate-900' : isAddNewSlot ? 'text-green-300' : 'text-white/70'
+                        slotData.hasData ? 'text-[#1A1714]' : isAddNewSlot ? 'text-green-300' : 'text-[#A89F96]'
                       }`}>
                         {isAddNewSlot ? '+' : slot}
                       </span>
@@ -296,11 +296,11 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
           <div className="flex-shrink-0 mb-6 ml-24 xl:ml-32">
             {/* Title with Info Icon */}
             <div className="mb-3 flex items-center gap-3">
-              <h2 className="text-3xl font-bold text-white">{activity.title}</h2>
+              <h2 className="text-3xl font-bold text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>{activity.title}</h2>
               {(activity.preamble || activity.wikiLink) && (
                 <button
                   onClick={() => setShowPreamble(true)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-bold flex items-center justify-center transition-colors"
+                  className="w-8 h-8 rounded-full bg-[rgba(215,205,195,0.1)] hover:bg-[rgba(215,205,195,0.18)] text-[#F5F0EB] text-sm font-bold flex items-center justify-center transition-colors"
                   aria-label="View information"
                   title="View activity information"
                 >
@@ -312,10 +312,10 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
             {/* Entry Circles */}
             {activity.status !== 'completed' && canAddEntries && (
               <div className="flex flex-col items-start">
-                <span className="text-sm text-gray-400 mb-2">
+                <span className="text-sm text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                   {isSoloTracker ? `Your entries (${userEntryCount}):` : 'Click to add mapping:'}
                 </span>
-                <div className="flex gap-3 flex-wrap">
+                <div className="flex gap-3 flex-wrap mt-2">
                   {Array.from({ length: maxEntries }, (_, i) => i + 1).map((slot) => {
                     const slotData = getSlotData(slot);
                     const isAddNewSlot = isSoloTracker && slot > userEntryCount;
@@ -328,15 +328,15 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                         onMouseLeave={() => setHoveredSlot(null)}
                         className={`w-10 h-10 rounded-full border-2 transition-all ${
                           slotData.hasData
-                            ? 'bg-white border-white hover:bg-white/90'
+                            ? 'bg-[#F5F0EB] border-[#F5F0EB] hover:bg-[#F5F0EB]/90'
                             : isAddNewSlot
                               ? 'bg-green-500/30 border-green-500/50 hover:bg-green-500/40'
-                              : 'bg-transparent border-white/40 hover:border-white/60'
+                              : 'bg-transparent border-[rgba(215,205,195,0.3)] hover:border-[rgba(215,205,195,0.5)]'
                         }`}
                         aria-label={isAddNewSlot ? 'Add new entry' : `Entry ${slot}`}
                       >
                         <span className={`text-sm font-semibold ${
-                          slotData.hasData ? 'text-slate-900' : isAddNewSlot ? 'text-green-300' : 'text-white/70'
+                          slotData.hasData ? 'text-[#1A1714]' : isAddNewSlot ? 'text-green-300' : 'text-[#A89F96]'
                         }`}>
                           {isAddNewSlot ? '+' : slot}
                         </span>
@@ -381,10 +381,10 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
         </div>
 
         {/* Right Column: Comments Panel - Only show on lg+ screens (1024px+) */}
-        <div className="hidden lg:flex w-[400px] flex-shrink-0 bg-[#111827] border-l border-white/10 flex-col">
+        <div className="hidden lg:flex w-[400px] flex-shrink-0 bg-[#252120] border-l border-[rgba(215,205,195,0.12)] flex-col">
           {/* Comments Title */}
-          <div className="flex-shrink-0 px-6 py-4 border-b border-white/10">
-            <h3 className="text-xl font-semibold text-white text-center">
+          <div className="flex-shrink-0 px-6 py-4 border-b border-[rgba(215,205,195,0.12)]">
+            <h3 className="text-xl font-semibold text-[#F5F0EB] text-center" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
               {activity.commentQuestion}
             </h3>
           </div>

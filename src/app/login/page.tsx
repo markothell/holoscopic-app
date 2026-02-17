@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
+import styles from './page.module.css';
 
 function LoginForm() {
   const router = useRouter();
@@ -17,7 +17,12 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Redirect if already logged in
+  useEffect(() => {
+    const original = document.body.style.background;
+    document.body.style.background = '#F7F4EF';
+    return () => { document.body.style.background = original; };
+  }, []);
+
   useEffect(() => {
     if (status === 'authenticated') {
       router.push(callbackUrl);
@@ -44,7 +49,6 @@ function LoginForm() {
       }
 
       if (result?.ok) {
-        // Force a page reload to ensure session is loaded
         window.location.href = callbackUrl;
       }
     } catch (err) {
@@ -53,47 +57,31 @@ function LoginForm() {
     }
   };
 
-  // Show loading state while checking session
   if (status === 'loading') {
-    return (
-      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
-        <div className="text-gray-400">Loading...</div>
-      </div>
-    );
+    return <div className={styles.loading}>Loading...</div>;
   }
 
-  // Don't render login form if already authenticated (will redirect)
   if (status === 'authenticated') {
-    return (
-      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
-        <div className="text-gray-400">Redirecting...</div>
-      </div>
-    );
+    return <div className={styles.loading}>Redirecting...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-3">
-            <Image
-              src="/holoLogo_dark.svg"
-              alt="Holoscopic"
-              width={40}
-              height={40}
-            />
-            <span className="text-xl font-semibold text-white">Holoscopic</span>
-          </Link>
-        </div>
+    <div className={styles.page}>
+      <div className={styles.grain} />
 
-        {/* Login Form */}
-        <div className="bg-[#111827] border border-white/10 rounded-lg p-6">
-          <h1 className="text-lg font-medium text-white mb-6">Sign in</h1>
+      <div className={styles.wrapper}>
+        <Link href="/" className={styles.logo}>
+          <span className={styles.logoText}>
+            Holo<span className={styles.logoAccent}>scopic</span>
+          </span>
+        </Link>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <div className={styles.card}>
+          <h1 className={styles.cardTitle}>Sign In</h1>
+
+          <form onSubmit={handleSubmit} className={styles.form}>
             <div>
-              <label htmlFor="email" className="block text-sm text-gray-400 mb-1.5">
+              <label htmlFor="email" className={styles.fieldLabel}>
                 Email
               </label>
               <input
@@ -102,14 +90,14 @@ function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-3 py-2 bg-[#0a0f1a] border border-white/10 rounded text-white text-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none transition"
+                className={styles.fieldInput}
                 placeholder="you@example.com"
                 disabled={isLoading}
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm text-gray-400 mb-1.5">
+              <label htmlFor="password" className={styles.fieldLabel}>
                 Password
               </label>
               <input
@@ -119,44 +107,37 @@ function LoginForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
-                className="w-full px-3 py-2 bg-[#0a0f1a] border border-white/10 rounded text-white text-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none transition"
+                className={styles.fieldInput}
                 placeholder="••••••••"
                 disabled={isLoading}
               />
             </div>
 
-            {error && (
-              <div className="text-red-400 text-sm py-2">
-                {error}
-              </div>
-            )}
+            {error && <div className={styles.error}>{error}</div>}
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2 bg-sky-600 hover:bg-sky-700 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-medium rounded transition-colors"
+              className={styles.submitBtn}
             >
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-white/10 text-center text-sm">
-            <span className="text-gray-500">Don't have an account? </span>
+          <div className={styles.divider}>
+            <span className={styles.dividerText}>Don&apos;t have an account? </span>
             <Link
               href={`/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`}
-              className="text-sky-400 hover:underline"
+              className={styles.dividerLink}
             >
               Sign up
             </Link>
           </div>
         </div>
 
-        {/* Back link */}
-        <div className="text-center mt-6">
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-300">
-            ← Back to home
-          </Link>
-        </div>
+        <Link href="/" className={styles.backLink}>
+          &larr; Back to home
+        </Link>
       </div>
     </div>
   );
@@ -164,11 +145,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
-        <div className="text-gray-400">Loading...</div>
-      </div>
-    }>
+    <Suspense fallback={<div className={styles.loading}>Loading...</div>}>
       <LoginForm />
     </Suspense>
   );

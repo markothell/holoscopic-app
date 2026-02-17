@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserService } from '@/services/userService';
 import { UserSettings } from '@/models/User';
 import UserMenu from '@/components/UserMenu';
+import styles from './page.module.css';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -22,6 +22,14 @@ export default function SettingsPage() {
   const [email, setEmail] = useState('');
   const [notifyNewActivities, setNotifyNewActivities] = useState(true);
   const [notifyEnrolledActivities, setNotifyEnrolledActivities] = useState(true);
+
+  // Set body background
+  useEffect(() => {
+    document.body.style.background = '#F7F4EF';
+    return () => {
+      document.body.style.background = '';
+    };
+  }, []);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -86,8 +94,8 @@ export default function SettingsPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
-        <div className="text-gray-400">Loading...</div>
+      <div className={styles.loading}>
+        <div>Loading...</div>
       </div>
     );
   }
@@ -97,56 +105,50 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0f1a]">
+    <div className={styles.container}>
       {/* Header */}
-      <header className="border-b border-white/10">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-3">
-              <Image
-                src="/holoLogo_dark.svg"
-                alt="Holoscopic"
-                width={28}
-                height={28}
-              />
-              <span className="text-white font-semibold">Holoscopic</span>
+      <header className={styles.header}>
+        <div className={styles.headerInner}>
+          <nav className={styles.nav}>
+            <Link href="/" className={styles.wordmark}>
+              Holo<span className={styles.wordmarkAccent}>scopic</span>
             </Link>
-            <span className="text-gray-600">/</span>
-            <span className="text-gray-400">settings</span>
-          </div>
+            <span className={styles.separator}>/</span>
+            <span className={styles.pageLabel}>Settings</span>
+          </nav>
           <UserMenu />
         </div>
       </header>
 
-      <main className="max-w-xl mx-auto px-4 py-8">
+      <main className={styles.main}>
         {/* Page Title */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-white mb-2">Settings</h1>
-          <p className="text-gray-500 text-sm">Manage your account preferences</p>
+        <div className={styles.pageTitle}>
+          <h1>Settings</h1>
+          <p>Manage your account preferences</p>
         </div>
 
         {/* Form */}
-        <div className="bg-[#111827] border border-white/10 rounded-lg p-6">
+        <div className={styles.formCard}>
           {error && (
-            <div className="mb-6 bg-red-500/10 border border-red-500/30 rounded px-4 py-3">
-              <p className="text-red-400 text-sm">{error}</p>
+            <div className={`${styles.alert} ${styles.alertError}`}>
+              {error}
             </div>
           )}
 
           {success && (
-            <div className="mb-6 bg-emerald-500/10 border border-emerald-500/30 rounded px-4 py-3">
-              <p className="text-emerald-400 text-sm">{success}</p>
+            <div className={`${styles.alert} ${styles.alertSuccess}`}>
+              {success}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit}>
             {/* Profile Information Section */}
-            <div>
-              <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Profile</h2>
+            <div className={styles.section}>
+              <h2 className={styles.sectionTitle}>Profile</h2>
 
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="name" className="block text-sm text-gray-400 mb-1.5">
+              <div className={styles.fieldGroup}>
+                <div className={styles.field}>
+                  <label htmlFor="name" className={styles.label}>
                     Name
                   </label>
                   <input
@@ -155,13 +157,13 @@ export default function SettingsPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Your name"
-                    className="w-full px-3 py-2 bg-[#0a0f1a] border border-white/10 rounded text-white text-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none transition"
+                    className={styles.input}
                     disabled={saving}
                   />
                 </div>
 
-                <div>
-                  <label htmlFor="email" className="block text-sm text-gray-400 mb-1.5">
+                <div className={styles.field}>
+                  <label htmlFor="email" className={styles.label}>
                     Email
                   </label>
                   <input
@@ -171,7 +173,7 @@ export default function SettingsPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     placeholder="you@example.com"
-                    className="w-full px-3 py-2 bg-[#0a0f1a] border border-white/10 rounded text-white text-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none transition"
+                    className={styles.input}
                     disabled={saving}
                   />
                 </div>
@@ -179,37 +181,37 @@ export default function SettingsPage() {
             </div>
 
             {/* Notification Preferences Section */}
-            <div className="pt-6 border-t border-white/10">
-              <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Notifications</h2>
+            <div className={`${styles.section} ${styles.sectionDivider}`}>
+              <h2 className={styles.sectionTitle}>Notifications</h2>
 
-              <div className="space-y-3">
-                <label className="flex items-start gap-3 cursor-pointer group">
+              <div className={styles.checkboxGroup}>
+                <label className={styles.checkboxLabel}>
                   <input
                     type="checkbox"
                     checked={notifyNewActivities}
                     onChange={(e) => setNotifyNewActivities(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded border-white/20 bg-[#0a0f1a] text-sky-500 focus:ring-sky-500 focus:ring-offset-0"
+                    className={styles.checkbox}
                     disabled={saving}
                   />
-                  <div>
-                    <span className="text-sm text-white group-hover:text-sky-400 transition-colors">New Activities</span>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                  <div className={styles.checkboxText}>
+                    <div className={styles.checkboxTitle}>New Activities</div>
+                    <p className={styles.checkboxDescription}>
                       Receive notifications when new activities are published
                     </p>
                   </div>
                 </label>
 
-                <label className="flex items-start gap-3 cursor-pointer group">
+                <label className={styles.checkboxLabel}>
                   <input
                     type="checkbox"
                     checked={notifyEnrolledActivities}
                     onChange={(e) => setNotifyEnrolledActivities(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded border-white/20 bg-[#0a0f1a] text-sky-500 focus:ring-sky-500 focus:ring-offset-0"
+                    className={styles.checkbox}
                     disabled={saving}
                   />
-                  <div>
-                    <span className="text-sm text-white group-hover:text-sky-400 transition-colors">Enrolled Activities</span>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                  <div className={styles.checkboxText}>
+                    <div className={styles.checkboxTitle}>Enrolled Activities</div>
+                    <p className={styles.checkboxDescription}>
                       Receive notifications about activities in your enrolled sequences
                     </p>
                   </div>
@@ -218,11 +220,11 @@ export default function SettingsPage() {
             </div>
 
             {/* Submit */}
-            <div className="flex justify-end gap-3 pt-6 border-t border-white/10">
+            <div className={styles.actions}>
               <button
                 type="button"
                 onClick={() => router.push('/dashboard')}
-                className="px-4 py-2 text-sm text-gray-400 hover:text-white transition"
+                className={`${styles.button} ${styles.buttonSecondary}`}
                 disabled={saving}
               >
                 Cancel
@@ -230,7 +232,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 text-sm bg-sky-600 hover:bg-sky-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded transition-colors"
+                className={`${styles.button} ${styles.buttonPrimary}`}
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
@@ -239,10 +241,10 @@ export default function SettingsPage() {
         </div>
 
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-white/10 flex gap-6 text-sm text-gray-500">
-          <Link href="/" className="hover:text-gray-300">Home</Link>
-          <Link href="/dashboard" className="hover:text-gray-300">Dashboard</Link>
-          <a href="https://wiki.holoscopic.io" className="hover:text-gray-300">Wiki</a>
+        <div className={styles.footer}>
+          <Link href="/" className={styles.footerLink}>Home</Link>
+          <Link href="/dashboard" className={styles.footerLink}>Dashboard</Link>
+          <a href="https://wiki.holoscopic.io" className={styles.footerLink}>Wiki</a>
         </div>
       </main>
     </div>

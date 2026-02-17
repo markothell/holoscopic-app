@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
+import UserMenu from '@/components/UserMenu';
 import styles from './page.module.css';
 
 function RevealSection({
@@ -94,6 +95,11 @@ export default function HomePage() {
     <div className={styles.page}>
       <div className={styles.grain} />
 
+      {/* Fixed UserMenu */}
+      <div className={styles.userMenuWrapper}>
+        <UserMenu />
+      </div>
+
       <main className={styles.container}>
         {/* ---- Hero ---- */}
         <section className={styles.hero}>
@@ -139,7 +145,7 @@ export default function HomePage() {
             <br />
             <br />
             This project asks: what happens if we start designing them
-            consciously? Together? 
+            consciously, together?
           </p>
         </RevealSection>
 
@@ -149,8 +155,8 @@ export default function HomePage() {
         <RevealSection id="problem" className={styles.section}>
           <p className={styles.sectionLabel}>The Problem/Opportunity</p>
           <h2 className={styles.sectionHeadline}>
-            Polarization, Domination, 
-            <br />Obfuscation, <em>Devastation</em>
+            Polarization, Distraction, 
+            <br />Domination, <em>Transformation</em>
           </h2>
 
           <div className={styles.expandGroup}>
@@ -189,22 +195,24 @@ export default function HomePage() {
           <div className={styles.expandGroup}>
             <ExpandItem title="Map Culture">
               If we want to graduate from systems that reinforce separation,
-              we must learn to see, think and act as a collective.
-              Maps help us see the whole.
+              we must learn to see, think and act as collectives.
+              Maps help us transfer knowledge from one to another, compare and expand 
+              knowledge across time, unify layers of intersecting knowledge, and 
+              see the whole.
             </ExpandItem>
 
             <ExpandItem title="Study Collective Transformation">
-              Reflection is a process for seeing oneself. If we add action, we have
-              a feedback loop that allows us to witness how we change in relation
-              to the world. We can do this together.
+              Collectives &apos;see&apos; through ideas.<br/> Mapping sequences create
+              feedback loops that allows us to witness how we change in relation to the world. 
+              By visualizing this processes we create paths for others to follow, i.e. 
+              lower the ladder. By doing it as collectives we build models of the world that serve the whole.
             </ExpandItem>
 
-            <ExpandItem title="Programming For Humanity">
+            <ExpandItem title="Programming Humanity">
               The insights that transform individuals and communities can be turned
               into repeatable processes. Those processes can be shared, forked —
               like open source code, but for how humans find alignment with the world.
-              Take this far enough and you have a programming language for human
-              progress.
+              Human readable algorithms backed by 
             </ExpandItem>
           </div>
         </RevealSection>

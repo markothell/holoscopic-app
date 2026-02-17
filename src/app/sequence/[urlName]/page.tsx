@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { Sequence } from '@/models/Sequence';
 import { SequenceService } from '@/services/sequenceService';
@@ -13,10 +12,11 @@ import UserMenu from '@/components/UserMenu';
 import ActivityTypeIcon from '@/components/icons/ActivityTypeIcon';
 import { getActivityTypeLabel } from '@/components/activities/types';
 import type { ActivityType } from '@/models/Activity';
+import styles from './page.module.css';
 
 const SequenceGraphView = dynamic(
   () => import('@/components/graph/SequenceGraphView'),
-  { ssr: false, loading: () => <div className="h-[500px] bg-[#111827] rounded-lg animate-pulse" /> }
+  { ssr: false, loading: () => <div style={{ height: 500, background: 'rgba(0,0,0,0.03)', borderRadius: 8 }} /> }
 );
 
 export default function SequenceDetailPage() {
@@ -33,7 +33,12 @@ export default function SequenceDetailPage() {
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'graph'>('list');
 
-  // Load sequence details
+  useEffect(() => {
+    const original = document.body.style.background;
+    document.body.style.background = '#F7F4EF';
+    return () => { document.body.style.background = original; };
+  }, []);
+
   useEffect(() => {
     if (!urlName || !userId) return;
 
@@ -43,8 +48,6 @@ export default function SequenceDetailPage() {
         setError(null);
         const data = await SequenceService.getSequenceByUrlName(urlName, userId);
         setSequence(data);
-
-        // Check if user is enrolled
         const member = data.members.find(m => m.userId === userId);
         setIsEnrolled(!!member);
       } catch (err) {
@@ -58,11 +61,9 @@ export default function SequenceDetailPage() {
     loadSequence();
   }, [urlName, userId]);
 
-  // Handle enrollment
   const handleEnroll = async () => {
     if (!sequence || !userId) return;
 
-    // Check if user is authenticated - redirect to signup if not
     if (!isAuthenticated) {
       router.push(`/signup?callbackUrl=${encodeURIComponent(`/sequence/${urlName}`)}`);
       return;
@@ -72,8 +73,6 @@ export default function SequenceDetailPage() {
       setEnrolling(true);
       await SequenceService.addMember(sequence.id, userId, userEmail || undefined);
       setIsEnrolled(true);
-
-      // Reload sequence to get updated data
       const updated = await SequenceService.getSequenceByUrlName(urlName, userId);
       setSequence(updated);
     } catch (err: any) {
@@ -84,57 +83,37 @@ export default function SequenceDetailPage() {
     }
   };
 
-  // Get activity status
   const getActivityStatus = (activity: any) => {
     const now = new Date();
     const openedAt = activity.openedAt ? new Date(activity.openedAt) : null;
     const closedAt = activity.closedAt ? new Date(activity.closedAt) : null;
 
-    if (!openedAt) {
-      return { text: 'Not Started', color: 'bg-gray-800 text-gray-500' };
-    }
-    if (closedAt && now > closedAt) {
-      return { text: 'Closed', color: 'bg-gray-800 text-gray-400' };
-    }
-    return { text: 'Open', color: 'bg-emerald-900/50 text-emerald-400' };
+    if (!openedAt) return { text: 'Not Started', style: styles.badgeNotStarted };
+    if (closedAt && now > closedAt) return { text: 'Closed', style: styles.badgeClosed };
+    return { text: 'Open', style: styles.badgeOpen };
   };
 
-  // Calculate days remaining
   const getDaysRemaining = (activity: any) => {
-    if (!activity.openedAt) return null;
-    if (!activity.autoClose || !activity.closedAt) return null;
-
+    if (!activity.openedAt || !activity.autoClose || !activity.closedAt) return null;
     const now = new Date();
     const closedAt = new Date(activity.closedAt);
-
     if (now > closedAt) return 0;
-
     const diff = closedAt.getTime() - now.getTime();
-    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-    return days;
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
-        <div className="text-gray-400">Loading...</div>
-      </div>
-    );
+    return <div className={styles.loading}>Loading...</div>;
   }
 
   if (error || !sequence) {
     return (
-      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="text-red-400 mb-4">{error || 'Sequence not found'}</div>
-          <div className="flex gap-3 justify-center">
-            <Link href="/dashboard" className="text-sky-400 hover:underline text-sm">
-              ← Dashboard
-            </Link>
-            <button
-              onClick={() => window.location.reload()}
-              className="text-gray-400 hover:underline text-sm"
-            >
+      <div className={styles.loading}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ color: '#C83B50', marginBottom: '1.5rem' }}>{error || 'Sequence not found'}</div>
+          <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center' }}>
+            <Link href="/dashboard" className={styles.errorLink}>&larr; Dashboard</Link>
+            <button onClick={() => window.location.reload()} className={styles.errorLink} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
               Retry
             </button>
           </div>
@@ -152,89 +131,76 @@ export default function SequenceDetailPage() {
   const progressPercent = stats.total > 0 ? Math.round((stats.participated / stats.total) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[#0a0f1a]">
-      {/* Header */}
-      <header className="border-b border-white/10">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-3">
-              <Image
-                src="/holoLogo_dark.svg"
-                alt="Holoscopic"
-                width={28}
-                height={28}
-              />
-              <span className="text-white font-semibold">Holoscopic</span>
-            </Link>
-            <span className="text-gray-600">/</span>
-            <span className="text-gray-400 truncate max-w-[150px]">{sequence.title}</span>
-          </div>
-          <UserMenu />
-        </div>
-      </header>
+    <div className={styles.page}>
+      <div className={styles.grain} />
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <div className={styles.container}>
+        {/* Nav */}
+        <nav className={styles.nav}>
+          <div className={styles.navInner}>
+            <Link href="/" className={styles.navHome}>
+              Holo<span>scopic</span>
+            </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+              <span className={styles.navLabel}>{sequence.title}</span>
+              <UserMenu />
+            </div>
+          </div>
+        </nav>
+
         {/* Breadcrumb */}
-        <Link href="/dashboard" className="text-sm text-sky-400 hover:underline mb-4 inline-block">
-          ← Dashboard
+        <Link href="/dashboard" className={styles.breadcrumb}>
+          &larr; Dashboard
         </Link>
 
-        {/* Page Title */}
-        <div className="mb-6">
-          <div className="flex items-start justify-between gap-4">
+        {/* Header */}
+        <div className={styles.header}>
+          <div className={styles.headerRow}>
             <div>
-              <h1 className="text-2xl font-semibold text-white mb-2">{sequence.title}</h1>
+              <h1 className={styles.title}>{sequence.title}</h1>
               {sequence.description && (
-                <p className="text-gray-500">{sequence.description}</p>
+                <p className={styles.description}>{sequence.description}</p>
               )}
             </div>
-            <span className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
-              sequence.status === 'active'
-                ? 'bg-emerald-900/50 text-emerald-400'
-                : sequence.status === 'completed'
-                ? 'bg-gray-800 text-gray-400'
-                : 'bg-gray-800 text-gray-500'
+            <span className={`${styles.badge} ${
+              sequence.status === 'active' ? styles.badgeActive
+                : sequence.status === 'completed' ? styles.badgeCompleted
+                : styles.badgeDraft
             }`}>
               {sequence.status}
             </span>
           </div>
         </div>
 
-        {/* Enrollment / Welcome Section */}
+        <div className={styles.divider} />
+
+        {/* Enrollment / Welcome */}
         {!isEnrolled && sequence.status !== 'completed' && (
-          <div className="bg-[#111827] border border-white/10 rounded-lg p-6 mb-6">
+          <div className={styles.enrollCard}>
             {sequence.welcomePage?.enabled && sequence.welcomePage.welcomeText ? (
               <>
-                <div className="text-gray-300 whitespace-pre-wrap mb-6">{sequence.welcomePage.welcomeText}</div>
+                <div className={styles.enrollWelcome}>{sequence.welcomePage.welcomeText}</div>
                 {sequence.welcomePage.referenceLink && (
                   <a
                     href={sequence.welcomePage.referenceLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sky-400 hover:underline text-sm mb-6 inline-block"
+                    className={styles.enrollRefLink}
                   >
-                    Reference Material →
+                    Reference Material &rarr;
                   </a>
                 )}
-                <button
-                  onClick={handleEnroll}
-                  disabled={enrolling}
-                  className="w-full py-3 bg-sky-600 hover:bg-sky-700 disabled:bg-gray-700 text-white font-medium rounded transition-colors"
-                >
+                <button onClick={handleEnroll} disabled={enrolling} className={styles.enrollBtn}>
                   {enrolling ? 'Enrolling...' : 'Enroll in This Sequence'}
                 </button>
               </>
             ) : (
-              <div className="flex items-center justify-between">
+              <div className={styles.enrollInline}>
                 <div>
-                  <h2 className="text-white font-medium mb-1">Not Enrolled</h2>
-                  <p className="text-sm text-gray-500">Join this sequence to participate</p>
+                  <h2 className={styles.enrollInlineTitle}>Not Enrolled</h2>
+                  <p className={styles.enrollInlineSub}>Join this sequence to participate</p>
                 </div>
-                <button
-                  onClick={handleEnroll}
-                  disabled={enrolling}
-                  className="px-6 py-2 bg-sky-600 hover:bg-sky-700 disabled:bg-gray-700 text-white text-sm font-medium rounded transition-colors"
-                >
+                <button onClick={handleEnroll} disabled={enrolling} className={styles.enrollInlineBtn}>
                   {enrolling ? 'Enrolling...' : 'Enroll'}
                 </button>
               </div>
@@ -242,33 +208,33 @@ export default function SequenceDetailPage() {
           </div>
         )}
 
-        {/* Progress Section (for enrolled users) */}
+        {/* Progress (enrolled users) */}
         {isEnrolled && (
-          <div className="bg-[#111827] border border-white/10 rounded-lg mb-6">
+          <div className={styles.progressCard}>
             <button
               onClick={() => setDetailsExpanded(!detailsExpanded)}
-              className="w-full px-4 py-3 flex justify-between items-center hover:bg-white/5 transition-colors rounded-lg"
+              className={styles.progressToggle}
             >
-              <div className="flex items-center gap-4">
-                <span className="text-white font-medium">Progress</span>
-                <span className="text-sm text-gray-500">{stats.participated}/{stats.total} completed</span>
-                <div className="w-24 h-1 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-sky-500 rounded-full" style={{ width: `${progressPercent}%` }} />
+              <div className={styles.progressInfo}>
+                <span className={styles.progressLabel}>Progress</span>
+                <span className={styles.progressCount}>{stats.participated}/{stats.total} completed</span>
+                <div className={styles.progressBar}>
+                  <div className={styles.progressFill} style={{ width: `${progressPercent}%` }} />
                 </div>
               </div>
-              <span className="text-gray-500">{detailsExpanded ? '−' : '+'}</span>
+              <span className={styles.progressIcon}>{detailsExpanded ? '\u2212' : '+'}</span>
             </button>
 
             {detailsExpanded && (
-              <div className="px-4 pb-4 border-t border-white/5">
-                <div className="pt-4 flex gap-6 text-sm text-gray-500">
-                  <span><strong className="text-white">{stats.opened}</strong> open</span>
-                  <span><strong className="text-white">{sequence.members.length}</strong> members</span>
+              <div className={styles.progressDetails}>
+                <div className={styles.progressStats}>
+                  <span><strong className={styles.progressStatsStrong}>{stats.opened}</strong> open</span>
+                  <span><strong className={styles.progressStatsStrong}>{sequence.members.length}</strong> members</span>
                 </div>
                 {sequence.welcomePage?.enabled && sequence.welcomePage.welcomeText && (
-                  <div className="mt-4 pt-4 border-t border-white/5">
-                    <h3 className="text-sm font-medium text-gray-400 mb-2">About</h3>
-                    <p className="text-sm text-gray-500 whitespace-pre-wrap">{sequence.welcomePage.welcomeText}</p>
+                  <div className={styles.progressAbout}>
+                    <h3 className={styles.progressAboutLabel}>About</h3>
+                    <p className={styles.progressAboutText}>{sequence.welcomePage.welcomeText}</p>
                   </div>
                 )}
                 {sequence.welcomePage?.enabled && sequence.welcomePage.referenceLink && (
@@ -276,9 +242,10 @@ export default function SequenceDetailPage() {
                     href={sequence.welcomePage.referenceLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sky-400 hover:underline text-sm mt-4 inline-block"
+                    className={styles.enrollRefLink}
+                    style={{ marginTop: '1rem' }}
                   >
-                    Reference Material →
+                    Reference Material &rarr;
                   </a>
                 )}
               </div>
@@ -286,34 +253,29 @@ export default function SequenceDetailPage() {
           </div>
         )}
 
-        {/* Activities Section */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-white">Activities</h2>
+        {/* Activities */}
+        <div className={styles.activitiesHeader}>
+          <h2 className={styles.activitiesTitle}>Activities</h2>
           {sequence.activities.length > 0 && (
-            <div className="flex gap-0.5 bg-[#111827] border border-white/10 rounded-lg p-0.5">
+            <div className={styles.viewToggle}>
               <button
                 onClick={() => setViewMode('list')}
-                className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                  viewMode === 'list' ? 'bg-sky-600 text-white' : 'text-gray-400 hover:text-white'
-                }`}
+                className={`${styles.viewToggleBtn} ${viewMode === 'list' ? styles.viewToggleBtnActive : ''}`}
               >
                 List
               </button>
               <button
                 onClick={() => setViewMode('graph')}
-                className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                  viewMode === 'graph' ? 'bg-sky-600 text-white' : 'text-gray-400 hover:text-white'
-                }`}
+                className={`${styles.viewToggleBtn} ${viewMode === 'graph' ? styles.viewToggleBtnActive : ''}`}
               >
                 Graph
               </button>
             </div>
           )}
         </div>
+
         {sequence.activities.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            No activities in this sequence yet.
-          </div>
+          <div className={styles.empty}>No activities in this sequence yet.</div>
         ) : viewMode === 'graph' ? (
           <SequenceGraphView
             activities={sequence.activities}
@@ -321,7 +283,7 @@ export default function SequenceDetailPage() {
             isEnrolled={isEnrolled}
           />
         ) : (
-          <div className="space-y-2">
+          <div className={styles.activityCards}>
             {sequence.activities
               .sort((a, b) => a.order - b.order)
               .map((seqActivity, index) => {
@@ -330,43 +292,36 @@ export default function SequenceDetailPage() {
                 const daysRemaining = getDaysRemaining(seqActivity);
 
                 return (
-                  <div
-                    key={seqActivity.activityId}
-                    className="bg-[#111827] border border-white/10 rounded-lg p-4 hover:bg-white/5 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-sm text-gray-400 font-medium">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-3 mb-1">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                            <h3 className="text-white font-medium">
+                  <div key={seqActivity.activityId} className={styles.activityCard}>
+                    <div className={styles.activityRow}>
+                      <div className={styles.activityNum}>{index + 1}</div>
+                      <div className={styles.activityBody}>
+                        <div className={styles.activityHeader}>
+                          <div>
+                            <span className={styles.activityTitle}>
                               {activity?.title || 'Activity Not Found'}
-                            </h3>
+                            </span>
                             {activity?.activityType && (
-                              <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                              <span className={styles.activityType}>
                                 <ActivityTypeIcon type={activity.activityType as ActivityType} size={12} />
                                 {getActivityTypeLabel(activity.activityType as ActivityType)}
                               </span>
                             )}
-                          </div>
                             {seqActivity.openedAt && (
-                              <p className="text-xs text-gray-500 mt-1">
+                              <p className={styles.activityDate}>
                                 Opened {FormattingService.formatTimestamp(seqActivity.openedAt)}
                                 {daysRemaining !== null && daysRemaining > 0 && (
-                                  <span className="ml-2">• {daysRemaining} days remaining</span>
+                                  <span> &middot; {daysRemaining} days remaining</span>
                                 )}
                               </p>
                             )}
                           </div>
-                          <div className="flex flex-col gap-1 items-end flex-shrink-0">
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${status.color}`}>
+                          <div className={styles.activityBadges}>
+                            <span className={`${styles.badge} ${status.style}`}>
                               {status.text}
                             </span>
                             {seqActivity.hasParticipated && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-sky-900/50 text-sky-400">
+                              <span className={`${styles.badge} ${styles.badgeDone}`}>
                                 Done
                               </span>
                             )}
@@ -374,7 +329,7 @@ export default function SequenceDetailPage() {
                         </div>
 
                         {activity && (
-                          <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
+                          <div className={styles.activityMeta}>
                             <span>{activity.participants || 0} participants</span>
                             <span>{activity.completedMappings || 0} mappings</span>
                             {seqActivity.autoClose && seqActivity.duration && (
@@ -383,23 +338,22 @@ export default function SequenceDetailPage() {
                           </div>
                         )}
 
-                        {/* Action */}
                         {activity && seqActivity.openedAt && isEnrolled && (
                           <Link
                             href={`/${activity.urlName}?sequence=${sequence.id}`}
-                            className="inline-block mt-3 text-sm text-sky-400 hover:underline"
+                            className={styles.activityLink}
                           >
-                            {status.text === 'Closed' || seqActivity.hasParticipated ? 'View Results →' : 'Participate →'}
+                            {status.text === 'Closed' || seqActivity.hasParticipated ? 'View Results \u2192' : 'Participate \u2192'}
                           </Link>
                         )}
                         {activity && seqActivity.openedAt && status.text !== 'Closed' && !isEnrolled && (
-                          <p className="text-sm text-gray-500 mt-3">Enroll to participate</p>
+                          <p className={styles.activityHint}>Enroll to participate</p>
                         )}
                         {!activity && (
-                          <p className="text-sm text-red-400 mt-3">Activity data unavailable</p>
+                          <p className={styles.activityError}>Activity data unavailable</p>
                         )}
                         {!seqActivity.openedAt && (
-                          <p className="text-sm text-gray-500 mt-3">Opens later</p>
+                          <p className={styles.activityHint}>Opens later</p>
                         )}
                       </div>
                     </div>
@@ -410,12 +364,14 @@ export default function SequenceDetailPage() {
         )}
 
         {/* Footer */}
-        <div className="mt-12 pt-6 border-t border-white/10 flex gap-6 text-sm text-gray-500">
-          <Link href="/" className="hover:text-gray-300">Home</Link>
-          <Link href="/dashboard" className="hover:text-gray-300">Dashboard</Link>
-          <a href="https://wiki.holoscopic.io" className="hover:text-gray-300">Wiki</a>
-        </div>
-      </main>
+        <footer className={styles.footer}>
+          <div className={styles.footerInner}>
+            <Link href="/" className={styles.footerLink}>Home</Link>
+            <Link href="/dashboard" className={styles.footerLink}>Dashboard</Link>
+            <a href="https://wiki.holoscopic.io" className={styles.footerLink}>Wiki</a>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

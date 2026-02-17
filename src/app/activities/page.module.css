@@ -1,0 +1,298 @@
+/* Activities/Explore — warm editorial */
+
+.page {
+  --bg: #F7F4EF;
+  --ink: #0F0D0B;
+  --ink-light: #6B6560;
+  --accent: #C83B50;
+  --accent-blue: #1A4FD4;
+  --rule: #D9D4CC;
+
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: 18px;
+  line-height: 1.7;
+  min-height: 100vh;
+}
+
+.grain {
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.35;
+}
+
+.container {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 0 2.5rem;
+}
+
+/* ---- NAV ---- */
+
+.nav {
+  padding: 2.5rem 0;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards;
+  animation-delay: 0.1s;
+  position: relative;
+  z-index: 1100;
+}
+
+.navInner {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.navHome {
+  font-family: var(--font-barlow), sans-serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--ink) !important;
+  text-decoration: none !important;
+  transition: color 0.2s;
+}
+
+.navHome span { color: var(--accent); }
+.navHome:hover { color: var(--accent) !important; }
+
+.navLabel {
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 300;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--ink-light);
+}
+
+/* ---- HEADER ---- */
+
+.header {
+  padding: 3rem 0 1rem;
+  opacity: 0;
+  animation: fadeUp 1s ease forwards;
+  animation-delay: 0.2s;
+}
+
+.title {
+  font-family: var(--font-barlow), sans-serif;
+  font-size: clamp(2.8rem, 8vw, 4.5rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+  margin-bottom: 1rem;
+}
+
+.subtitle {
+  font-size: 1.15rem;
+  font-weight: 300;
+  font-style: italic;
+  color: var(--ink-light);
+  max-width: 420px;
+}
+
+.divider {
+  width: 48px;
+  height: 1px;
+  background: var(--rule);
+  margin: 2.5rem 0;
+}
+
+/* ---- TABS ---- */
+
+.tabs {
+  display: flex;
+  gap: 2.5rem;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 2.5rem;
+}
+
+.tab {
+  padding-bottom: 0.75rem;
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.68rem;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-light);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.tab:hover { color: var(--ink); }
+
+.tabActive {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+/* ---- LIST ---- */
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.listItem {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--rule);
+  text-decoration: none !important;
+  transition: background 0.15s;
+}
+
+.listItem:first-child { border-top: 1px solid var(--rule); }
+.listItem:hover { background: rgba(0, 0, 0, 0.02); }
+
+.listNum {
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.65rem;
+  color: var(--rule);
+  width: 1.5rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.listBody { flex: 1; min-width: 0; }
+
+.listTitle {
+  color: var(--ink) !important;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: color 0.2s;
+}
+
+.listItem:hover .listTitle { color: var(--accent) !important; }
+
+.listType {
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.6rem;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-light);
+  margin-left: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.listMeta {
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.6rem;
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  color: var(--ink-light);
+  display: flex;
+  gap: 1.25rem;
+  flex-shrink: 0;
+}
+
+.listDesc {
+  font-size: 0.95rem;
+  color: var(--ink-light);
+  margin-left: 0.75rem;
+  font-style: italic;
+}
+
+/* ---- EMPTY STATE ---- */
+
+.empty {
+  text-align: center;
+  padding: 4rem 0;
+  color: var(--ink-light);
+  font-style: italic;
+}
+
+/* ---- LOADING ---- */
+
+.loading {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-light);
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.errorText {
+  color: var(--accent);
+  margin-bottom: 1.5rem;
+}
+
+.errorLink {
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-light) !important;
+  text-decoration: none !important;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.2rem;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.errorLink:hover {
+  color: var(--accent) !important;
+  border-color: var(--accent);
+}
+
+/* ---- FOOTER ---- */
+
+.footer {
+  padding: 3rem 0 4.5rem;
+  border-top: 1px solid var(--rule);
+  margin-top: 4rem;
+}
+
+.footerInner {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.footerLink {
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-light) !important;
+  text-decoration: none !important;
+  transition: color 0.2s;
+}
+
+.footerLink:hover {
+  color: var(--accent) !important;
+  text-decoration: none !important;
+}
+
+/* ---- ANIMATIONS ---- */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+  .container { padding: 0 1.5rem; }
+  .listItem { flex-wrap: wrap; }
+  .listMeta { margin-top: 0.25rem; }
+}

@@ -5,8 +5,8 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import Image from 'next/image';
 import UserMenu from '@/components/UserMenu';
+import styles from './page.module.css';
 
 interface Activity {
   id: string;
@@ -48,16 +48,19 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    document.body.style.background = '#F7F4EF';
+    return () => { document.body.style.background = ''; };
+  }, []);
+
+  useEffect(() => {
     async function fetchProfile() {
       try {
-        // Require sequence context
         if (!sequenceId) {
           setError('Sequence context is required. Please access this profile from within a sequence.');
           setLoading(false);
           return;
         }
 
-        // Check if this is a starter/sample data user
         if (targetUserId.startsWith('starter_')) {
           setProfile({
             id: targetUserId,
@@ -106,24 +109,28 @@ export default function ProfilePage() {
   }, [targetUserId, sequenceId, viewerId]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] flex items-center justify-center">
-        <div className="text-white/80">Loading profile...</div>
-      </div>
-    );
+    return <div className={styles.loading}>Loading profile...</div>;
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
-          <div className="text-red-600 mb-4">{error}</div>
-          <button
-            onClick={() => router.back()}
-            className="text-indigo-600 hover:text-indigo-800"
-          >
-            Go Back
-          </button>
+      <div className={styles.page}>
+        <div className={styles.grain} />
+        <div className={styles.container}>
+          <nav className={styles.nav}>
+            <Link href="/" className={styles.wordmark}>
+              Holo<span>scopic</span>
+            </Link>
+            <UserMenu />
+          </nav>
+          <div style={{ paddingTop: '4rem' }}>
+            <div className={styles.errorCard}>
+              <div className={styles.errorText}>{error}</div>
+              <button onClick={() => router.back()} className={styles.errorLink}>
+                Go Back
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -137,109 +144,94 @@ export default function ProfilePage() {
   const displayName = profile.name || 'Anonymous';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55]">
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Link href="/">
-                <Image
-                  src="/holoLogo_dark.svg"
-                  alt="Holoscopic Logo"
-                  width={32}
-                  height={32}
-                  className="sm:w-10 sm:h-10 hover:opacity-80 transition-opacity"
-                />
-              </Link>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">{displayName}'s Profile</h1>
-            </div>
+    <div className={styles.page}>
+      <div className={styles.grain} />
+
+      <div className={styles.container}>
+        <nav className={styles.nav}>
+          <Link href="/" className={styles.wordmark}>
+            Holo<span>scopic</span>
+          </Link>
+          <div className={styles.navRight}>
+            <span className={styles.navLabel}>Profile</span>
             <UserMenu />
           </div>
+        </nav>
+
+        {profile.sequenceUrlName && (
           <Link
             href={`/sequence/${profile.sequenceUrlName}`}
-            className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-2"
+            className={styles.breadcrumb}
           >
-            ← Back to {profile.sequenceTitle}
+            &larr; Back to {profile.sequenceTitle}
           </Link>
-        </div>
+        )}
 
-        {/* Profile Content */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-4">
-              {/* Profile Icon */}
-              <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-2xl font-bold text-indigo-600">
-                {displayName.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{displayName}</h1>
-                <p className="text-gray-500 text-sm">
-                  {profile.sequenceTitle} • Joined {new Date(profile.joinedAt).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
+        <div className={styles.profileHeader}>
+          <div className={styles.avatar}>
+            {displayName.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <h1 className={styles.profileName}>{displayName}</h1>
+            <p className={styles.profileMeta}>
+              {profile.sequenceTitle} &middot; Joined {new Date(profile.joinedAt).toLocaleDateString()}
+            </p>
           </div>
         </div>
 
-        {/* Participated Activities */}
+        <div className={styles.divider} />
+
         {profile.participatedActivities && profile.participatedActivities.length > 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Activity Participation</h2>
-            <div className="space-y-4">
-              {profile.participatedActivities.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="p-4 border border-gray-200 rounded-lg"
-                >
-                  <h3 className="font-semibold text-gray-900 mb-2">{activity.title}</h3>
-                  <div className="text-sm text-gray-500 mb-3">
-                    {activity.xAxisLabel} × {activity.yAxisLabel}
-                  </div>
-
-                  {activity.userEntries && activity.userEntries.length > 0 && (
-                    <div className="space-y-2">
-                      {activity.userEntries.map((entry) => (
-                        <div
-                          key={entry.slotNumber}
-                          className="bg-gray-50 p-3 rounded border border-gray-200"
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-semibold text-gray-500">
-                              Slot {entry.slotNumber}
-                            </span>
-                            <span className="font-medium text-gray-900">{entry.objectName}</span>
-                          </div>
-                          {entry.x !== undefined && entry.y !== undefined && (
-                            <div className="text-xs text-gray-600">
-                              Position: ({entry.x.toFixed(1)}, {entry.y.toFixed(1)})
-                            </div>
-                          )}
-                          {entry.comment && (
-                            <div className="text-sm text-gray-700 mt-2 italic">
-                              "{entry.comment}"
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+          <div>
+            <h2 className={styles.sectionTitle}>Activity Participation</h2>
+            {profile.participatedActivities.map((activity) => (
+              <div key={activity.id} className={styles.activityCard}>
+                <div className={styles.activityTitle}>{activity.title}</div>
+                <div className={styles.activityAxes}>
+                  {activity.xAxisLabel} &times; {activity.yAxisLabel}
                 </div>
-              ))}
-            </div>
+
+                {activity.userEntries && activity.userEntries.length > 0 && (
+                  <div>
+                    {activity.userEntries.map((entry) => (
+                      <div key={entry.slotNumber} className={styles.entryCard}>
+                        <div className={styles.entryHeader}>
+                          <span className={styles.entrySlot}>Slot {entry.slotNumber}</span>
+                          <span className={styles.entryName}>{entry.objectName}</span>
+                        </div>
+                        {entry.x !== undefined && entry.y !== undefined && (
+                          <div className={styles.entryPosition}>
+                            Position: ({entry.x.toFixed(1)}, {entry.y.toFixed(1)})
+                          </div>
+                        )}
+                        {entry.comment && (
+                          <div className={styles.entryComment}>
+                            &ldquo;{entry.comment}&rdquo;
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Empty State */}
         {(!profile.participatedActivities || profile.participatedActivities.length === 0) && (
-          <div className="bg-white rounded-lg shadow-lg p-8 text-center text-gray-500">
-            {isOwnProfile ? (
-              <p>You haven't participated in any activities in this sequence yet.</p>
-            ) : (
-              <p>{displayName} hasn't participated in any activities in this sequence yet.</p>
-            )}
+          <div className={styles.empty}>
+            {isOwnProfile
+              ? "You haven't participated in any activities in this sequence yet."
+              : `${displayName} hasn't participated in any activities in this sequence yet.`
+            }
           </div>
         )}
+
+        <footer className={styles.footer}>
+          <Link href="/" className={styles.footerLink}>Home</Link>
+          <Link href="/dashboard" className={styles.footerLink}>Dashboard</Link>
+          <a href="https://wiki.holoscopic.io" className={styles.footerLink}>Wiki</a>
+        </footer>
       </div>
     </div>
   );

@@ -31,16 +31,51 @@ export default function UserMenu() {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex gap-2">
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
         <button
           onClick={() => router.push('/login')}
-          className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900"
+          style={{
+            fontFamily: 'var(--font-dm-mono), monospace',
+            fontSize: '0.62rem',
+            fontWeight: 300,
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase' as const,
+            color: '#6B6560',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '0.5rem 0.75rem',
+            transition: 'color 0.2s',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = '#C83B50')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = '#6B6560')}
         >
           Login
         </button>
         <button
           onClick={() => router.push('/signup')}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          style={{
+            fontFamily: 'var(--font-dm-mono), monospace',
+            fontSize: '0.62rem',
+            fontWeight: 300,
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase' as const,
+            color: '#C83B50',
+            background: 'none',
+            border: '1px solid #C83B50',
+            borderRadius: '999px',
+            cursor: 'pointer',
+            padding: '0.4rem 1rem',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#C83B50';
+            e.currentTarget.style.color = '#fff';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'none';
+            e.currentTarget.style.color = '#C83B50';
+          }}
         >
           Sign Up
         </button>
@@ -49,16 +84,47 @@ export default function UserMenu() {
   }
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div style={{ position: 'relative' }} ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-700 transition-colors"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          padding: '0.4rem 0.6rem',
+          borderRadius: '8px',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          transition: 'background 0.2s',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.04)')}
+        onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
       >
-        <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-medium text-sm">
+        <div style={{
+          width: '2rem',
+          height: '2rem',
+          borderRadius: '50%',
+          background: '#C83B50',
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: 'var(--font-barlow), sans-serif',
+          fontWeight: 700,
+          fontSize: '0.75rem',
+          textTransform: 'uppercase' as const,
+        }}>
           {userName ? userName[0].toUpperCase() : userEmail?.[0].toUpperCase() || 'U'}
         </div>
         <svg
-          className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          style={{
+            width: '0.75rem',
+            height: '0.75rem',
+            color: '#6B6560',
+            transition: 'transform 0.2s',
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+          }}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -68,53 +134,118 @@ export default function UserMenu() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-          <div className="px-4 py-3 border-b border-gray-200">
-            <p className="text-sm font-medium text-gray-900">{userName || 'User'}</p>
-            <p className="text-xs text-gray-500 truncate">{userEmail}</p>
+        <div style={{
+          position: 'absolute',
+          right: 0,
+          marginTop: '0.5rem',
+          width: '14rem',
+          background: '#F7F4EF',
+          borderRadius: '8px',
+          boxShadow: '0 4px 24px rgba(15, 13, 11, 0.12)',
+          border: '1px solid #D9D4CC',
+          padding: '0.25rem 0',
+          zIndex: 1100,
+        }}>
+          <div style={{
+            padding: '0.75rem 1rem',
+            borderBottom: '1px solid #D9D4CC',
+          }}>
+            <p style={{
+              fontFamily: 'var(--font-cormorant), Georgia, serif',
+              fontSize: '0.95rem',
+              fontWeight: 600,
+              color: '#0F0D0B',
+              margin: 0,
+            }}>{userName || 'User'}</p>
+            <p style={{
+              fontFamily: 'var(--font-dm-mono), monospace',
+              fontSize: '0.55rem',
+              fontWeight: 300,
+              letterSpacing: '0.08em',
+              color: '#6B6560',
+              margin: '0.15rem 0 0 0',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap' as const,
+            }}>{userEmail}</p>
             {userRole === 'admin' && (
-              <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded">
+              <span style={{
+                display: 'inline-block',
+                marginTop: '0.35rem',
+                padding: '0.15rem 0.5rem',
+                fontFamily: 'var(--font-dm-mono), monospace',
+                fontSize: '0.5rem',
+                fontWeight: 300,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase' as const,
+                background: 'rgba(200, 59, 80, 0.1)',
+                color: '#C83B50',
+                borderRadius: '999px',
+              }}>
                 Admin
               </span>
             )}
           </div>
 
-          <button
-            onClick={() => {
-              router.push('/dashboard');
-              setIsOpen(false);
-            }}
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Dashboard
-          </button>
-
-          <button
-            onClick={() => {
-              router.push('/settings');
-              setIsOpen(false);
-            }}
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Settings
-          </button>
-
-          {userRole === 'admin' && (
+          {[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Settings', path: '/settings' },
+            ...(userRole === 'admin' ? [{ label: 'Admin Panel', path: '/admin' }] : []),
+          ].map((item) => (
             <button
+              key={item.path}
               onClick={() => {
-                router.push('/admin');
+                router.push(item.path);
                 setIsOpen(false);
               }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              style={{
+                width: '100%',
+                textAlign: 'left' as const,
+                padding: '0.6rem 1rem',
+                fontFamily: 'var(--font-dm-mono), monospace',
+                fontSize: '0.6rem',
+                fontWeight: 300,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase' as const,
+                color: '#0F0D0B',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background 0.15s, color 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(0,0,0,0.04)';
+                e.currentTarget.style.color = '#C83B50';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'none';
+                e.currentTarget.style.color = '#0F0D0B';
+              }}
             >
-              Admin Panel
+              {item.label}
             </button>
-          )}
+          ))}
 
-          <div className="border-t border-gray-200 mt-1 pt-1">
+          <div style={{ borderTop: '1px solid #D9D4CC', marginTop: '0.25rem', paddingTop: '0.25rem' }}>
             <button
               onClick={handleSignOut}
-              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+              style={{
+                width: '100%',
+                textAlign: 'left' as const,
+                padding: '0.6rem 1rem',
+                fontFamily: 'var(--font-dm-mono), monospace',
+                fontSize: '0.6rem',
+                fontWeight: 300,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase' as const,
+                color: '#C83B50',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(200, 59, 80, 0.06)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
             >
               Sign Out
             </button>

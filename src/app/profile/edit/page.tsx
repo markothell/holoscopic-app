@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import Image from 'next/image';
 import UserMenu from '@/components/UserMenu';
+import styles from './page.module.css';
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -19,6 +19,11 @@ export default function EditProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    document.body.style.background = '#F7F4EF';
+    return () => { document.body.style.background = ''; };
+  }, []);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -81,105 +86,92 @@ export default function EditProfilePage() {
   };
 
   if (status === 'loading' || loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55] flex items-center justify-center">
-        <div className="text-white/80">Loading...</div>
-      </div>
-    );
+    return <div className={styles.loading}>Loading...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#3d5577] to-[#2a3b55]">
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Link href="/">
-                <Image
-                  src="/holoLogo_dark.svg"
-                  alt="Holoscopic Logo"
-                  width={32}
-                  height={32}
-                  className="sm:w-10 sm:h-10 hover:opacity-80 transition-opacity"
-                />
-              </Link>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">Edit Profile</h1>
-            </div>
+    <div className={styles.page}>
+      <div className={styles.grain} />
+
+      <div className={styles.container}>
+        <nav className={styles.nav}>
+          <Link href="/" className={styles.wordmark}>
+            Holo<span>scopic</span>
+          </Link>
+          <div className={styles.navRight}>
+            <span className={styles.navLabel}>Edit Profile</span>
             <UserMenu />
           </div>
+        </nav>
+
+        <div className={styles.header}>
+          <h1 className={styles.title}>Edit Profile</h1>
+          <p className={styles.subtitle}>Update your public information</p>
         </div>
 
-        {/* Form */}
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className={styles.divider} />
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                Name
-              </label>
+        <div className={styles.formCard}>
+          {error && (
+            <div className={`${styles.alert} ${styles.alertError}`}>
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className={`${styles.alert} ${styles.alertSuccess}`}>
+              Profile updated successfully! Redirecting...
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            <div className={styles.field}>
+              <label htmlFor="name" className={styles.label}>Name</label>
               <input
                 type="text"
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 maxLength={50}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                className={styles.input}
                 placeholder="Your name"
+                disabled={saving}
               />
-              <p className="text-sm text-gray-500 mt-1">
-                {formData.name.length}/50 characters
-              </p>
+              <p className={styles.charCount}>{formData.name.length}/50</p>
             </div>
 
-            {/* Bio */}
-            <div>
-              <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">
-                Bio
-              </label>
+            <div className={styles.field}>
+              <label htmlFor="bio" className={styles.label}>Bio</label>
               <textarea
                 id="bio"
                 value={formData.bio}
                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                 maxLength={500}
                 rows={6}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-gray-900"
+                className={styles.textarea}
                 placeholder="Tell others about yourself..."
+                disabled={saving}
               />
-              <p className="text-sm text-gray-500 mt-1">
-                {formData.bio.length}/500 characters
-              </p>
+              <p className={styles.charCount}>{formData.bio.length}/500</p>
             </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
-                {error}
-              </div>
-            )}
-
-            {/* Success Message */}
-            {success && (
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-600">
-                Profile updated successfully! Redirecting...
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <div className="flex gap-4">
+            <div className={styles.actions}>
               <button
                 type="submit"
                 disabled={saving}
-                className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+                className={`${styles.button} ${styles.buttonPrimary}`}
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </form>
-          </div>
         </div>
+
+        <footer className={styles.footer}>
+          <Link href="/" className={styles.footerLink}>Home</Link>
+          <Link href="/dashboard" className={styles.footerLink}>Dashboard</Link>
+          <a href="https://wiki.holoscopic.io" className={styles.footerLink}>Wiki</a>
+        </footer>
       </div>
     </div>
   );

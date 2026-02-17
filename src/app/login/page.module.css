@@ -1,0 +1,226 @@
+/* Login — warm editorial */
+
+.page {
+  --bg: #F7F4EF;
+  --ink: #0F0D0B;
+  --ink-light: #6B6560;
+  --accent: #C83B50;
+  --rule: #D9D4CC;
+
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: 18px;
+  line-height: 1.7;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+}
+
+.grain {
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.35;
+}
+
+.wrapper {
+  width: 100%;
+  max-width: 380px;
+  opacity: 0;
+  animation: fadeUp 0.9s ease forwards;
+  animation-delay: 0.15s;
+}
+
+/* ---- LOGO ---- */
+
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 3rem;
+  text-decoration: none !important;
+}
+
+.logoText {
+  font-family: var(--font-barlow), sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--ink) !important;
+  text-decoration: none !important;
+}
+
+.logoAccent {
+  color: var(--accent);
+}
+
+/* ---- CARD ---- */
+
+.card {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 2.5rem 2rem;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.cardTitle {
+  font-family: var(--font-barlow), sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin-bottom: 2rem;
+}
+
+/* ---- FORM ---- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.fieldLabel {
+  display: block;
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.65rem;
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-light);
+  margin-bottom: 0.5rem;
+}
+
+.fieldInput {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  background: rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid var(--rule) !important;
+  border-radius: 4px;
+  color: var(--ink) !important;
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.fieldInput::placeholder {
+  color: var(--rule) !important;
+}
+
+.fieldInput:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 1px var(--accent) !important;
+}
+
+.fieldInput:disabled {
+  opacity: 0.5;
+}
+
+.error {
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.7rem;
+  color: var(--accent);
+  padding: 0.5rem 0;
+}
+
+.submitBtn {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 0.5rem;
+}
+
+.submitBtn:hover {
+  background: #B03248;
+}
+
+.submitBtn:disabled {
+  background: var(--rule);
+  color: var(--ink-light);
+  cursor: not-allowed;
+}
+
+/* ---- DIVIDER ---- */
+
+.divider {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rule);
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.dividerText {
+  color: var(--ink-light);
+}
+
+.dividerLink {
+  color: var(--accent) !important;
+  text-decoration: none !important;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.dividerLink:hover {
+  text-decoration: underline !important;
+}
+
+/* ---- BACK LINK ---- */
+
+.backLink {
+  display: block;
+  text-align: center;
+  margin-top: 2rem;
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.68rem;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-light) !important;
+  text-decoration: none !important;
+  transition: color 0.2s;
+}
+
+.backLink:hover {
+  color: var(--accent) !important;
+  text-decoration: none !important;
+}
+
+/* ---- LOADING ---- */
+
+.loading {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-light);
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* ---- ANIMATIONS ---- */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

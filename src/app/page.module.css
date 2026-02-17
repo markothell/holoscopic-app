@@ -32,6 +32,15 @@
   padding: 0 2.5rem;
 }
 
+/* ---- USER MENU ---- */
+
+.userMenuWrapper {
+  position: fixed;
+  top: 1.5rem;
+  right: 2.5rem;
+  z-index: 1100;
+}
+
 /* ---- HERO ---- */
 
 .hero {

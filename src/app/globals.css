@@ -1,32 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  /* Base colors */
-  --bg-primary: #0a0f1a;
-  --bg-secondary: #111827;
-  --bg-tertiary: #1f2937;
-  --bg-elevated: #161f2e;
+  /* Warm-dark base colors */
+  --bg-primary: #1A1714;
+  --bg-secondary: #252120;
+  --bg-tertiary: #302B28;
+  --bg-elevated: #2A2522;
 
-  /* Text colors */
-  --text-primary: #f9fafb;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
+  /* Warm text colors */
+  --text-primary: #F5F0EB;
+  --text-secondary: #A89F96;
+  --text-muted: #7A7068;
 
-  /* Accent colors */
-  --accent-sky: #38bdf8;
-  --accent-violet: #8b5cf6;
-  --accent-orange: #fb923c;
+  /* Accent colors — shared with editorial palette */
+  --accent: #C83B50;
+  --accent-blue: #1A4FD4;
   --accent-emerald: #34d399;
-  --accent-rose: #f43f5e;
 
-  /* Border colors */
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-default: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.2);
+  /* Border colors — warm tones */
+  --border-subtle: rgba(215, 205, 195, 0.06);
+  --border-default: rgba(215, 205, 195, 0.12);
+  --border-strong: rgba(215, 205, 195, 0.22);
+
+  /* Editorial warm palette (used by page modules) */
+  --warm-bg: #F7F4EF;
+  --warm-ink: #0F0D0B;
+  --warm-ink-light: #6B6560;
+  --warm-rule: #D9D4CC;
 
   /* Legacy compatibility */
-  --background: #0a0f1a;
-  --foreground: #f9fafb;
+  --background: #1A1714;
+  --foreground: #F5F0EB;
 }
 
 @theme inline {
@@ -44,7 +48,7 @@ body {
 
 /* Utilitarian link style */
 a {
-  color: var(--accent-sky);
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -52,7 +56,7 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Form inputs - dark theme */
+/* Form inputs - warm-dark theme */
 input, textarea, select {
   background: var(--bg-secondary);
   border: 1px solid var(--border-default);
@@ -61,8 +65,8 @@ input, textarea, select {
 
 input:focus, textarea:focus, select:focus {
   outline: none;
-  border-color: var(--accent-sky);
-  box-shadow: 0 0 0 1px var(--accent-sky);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 input::placeholder, textarea::placeholder {
@@ -85,12 +89,12 @@ input::placeholder, textarea::placeholder {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #374151;
+  background: #3D3632;
 }
 
 /* Selection styling */
 ::selection {
-  background: rgba(56, 189, 248, 0.3);
+  background: rgba(200, 59, 80, 0.3);
   color: var(--text-primary);
 }
 
