@@ -16,7 +16,7 @@ import styles from './page.module.css';
 
 const SequenceGraphView = dynamic(
   () => import('@/components/graph/SequenceGraphView'),
-  { ssr: false, loading: () => <div style={{ height: 500, background: 'rgba(0,0,0,0.03)', borderRadius: 8 }} /> }
+  { ssr: false, loading: () => <div style={{ height: 500, background: '#F7F4EF', border: '1px solid #D9D4CC', borderRadius: 8 }} /> }
 );
 
 export default function SequenceDetailPage() {

@@ -346,7 +346,7 @@ export default function CommentSection({
                   <div
                     key={comment.id}
                     ref={(el) => { commentRefs.current[comment.id] = el; }}
-                    className={`p-3 rounded-lg border-l-4 transition-all duration-200 bg-[#1A1714] ${selectedCommentId === comment.id ? 'ring-2 ring-[#C83B50]' : ''}`}
+                    className={`p-3 rounded-lg border-l-4 border border-white/8 transition-all duration-200 bg-[#111827] ${selectedCommentId === comment.id ? 'ring-2 ring-[#C83B50]' : ''}`}
                     style={{ borderLeftColor: getUserColor(comment) }}
                     onMouseEnter={() => onCommentHover?.(comment.id)}
                     onMouseLeave={() => onCommentHover?.(null)}

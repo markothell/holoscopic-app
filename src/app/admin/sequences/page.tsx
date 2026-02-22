@@ -3,13 +3,13 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Sequence } from '@/models/Sequence';
 import { SequenceService } from '@/services/sequenceService';
 import { FormattingService } from '@/utils/formatting';
 import { useAuth } from '@/contexts/AuthContext';
 import SequencePanel from '@/components/SequencePanel';
 import UserMenu from '@/components/UserMenu';
+import styles from '../page.module.css';
 
 function SequenceAdminContent() {
   const router = useRouter();
@@ -25,6 +25,12 @@ function SequenceAdminContent() {
 
   // Check if user has admin role
   const hasAdminAccess = isAuthenticated && userRole === 'admin';
+
+  useEffect(() => {
+    const original = document.body.style.background;
+    document.body.style.background = '#F7F4EF';
+    return () => { document.body.style.background = original; };
+  }, []);
 
   // Load sequences and editing sequence
   useEffect(() => {
@@ -58,25 +64,20 @@ function SequenceAdminContent() {
 
   // Show loading while checking auth
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
-        <div className="text-gray-400">Loading...</div>
-      </div>
-    );
+    return <div className={styles.loading}>Loading...</div>;
   }
 
   // Access denied screen
   if (!hasAdminAccess) {
     return (
-      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center p-4">
-        <div className="max-w-sm w-full text-center">
-          <Image src="/holoLogo_dark.svg" alt="Holoscopic" width={48} height={48} className="mx-auto mb-6" />
-          <h1 className="text-xl font-semibold text-white mb-4">Admin Access Required</h1>
-          <p className="text-gray-500 mb-6">
+      <div className={styles.denied}>
+        <div className={styles.deniedCard}>
+          <h1 className={styles.deniedTitle}>Admin Access Required</h1>
+          <p className={styles.deniedText}>
             You need administrator privileges to access this page.
           </p>
-          <Link href="/admin" className="text-sky-400 hover:underline text-sm">
-            ← Back to Admin
+          <Link href="/admin" className={styles.deniedLink}>
+            &larr; Back to Admin
           </Link>
         </div>
       </div>
@@ -158,29 +159,19 @@ function SequenceAdminContent() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
-        <div className="text-gray-400">Loading...</div>
-      </div>
-    );
+    return <div className={styles.loading}>Loading...</div>;
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="text-red-400 mb-4">{error}</div>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 text-sm bg-white/10 hover:bg-white/20 text-white rounded transition-colors"
-            >
+      <div className={styles.loading}>
+        <div style={{ textAlign: 'center' }}>
+          <div className={styles.errorText}>{error}</div>
+          <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center' }}>
+            <button onClick={() => window.location.reload()} className={styles.secondaryBtn}>
               Retry
             </button>
-            <button
-              onClick={() => setShowCreateForm(true)}
-              className="px-4 py-2 text-sm bg-sky-600 hover:bg-sky-700 text-white rounded transition-colors"
-            >
+            <button onClick={() => setShowCreateForm(true)} className={styles.primaryBtn}>
               Create First Sequence
             </button>
           </div>
@@ -190,45 +181,30 @@ function SequenceAdminContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0f1a]">
+    <div className={styles.page}>
       {/* Header */}
-      <header className="border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-3">
-              <Image
-                src="/holoLogo_dark.svg"
-                alt="Holoscopic"
-                width={28}
-                height={28}
-              />
-              <span className="text-white font-semibold">Holoscopic</span>
-            </Link>
-            <span className="text-gray-600">/</span>
-            <span className="text-gray-400">admin</span>
+      <header className={styles.header}>
+        <div className={styles.headerInner}>
+          <Link href="/" className={styles.wordmark}>
+            Holo<span className={styles.wordmarkAccent}>scopic</span>
+          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <span className={styles.pageLabel}>admin</span>
+            <UserMenu />
           </div>
-          <UserMenu />
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className={styles.main}>
         {/* Page Title */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-white mb-2">Admin</h1>
-        </div>
+        <h1 className={styles.pageTitle}>Admin</h1>
 
         {/* Tabs */}
-        <div className="flex gap-6 border-b border-white/10 mb-6">
-          <Link
-            href="/admin"
-            className="pb-3 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-300 -mb-px"
-          >
+        <div className={styles.tabs}>
+          <Link href="/admin" className={styles.tab}>
             Activities
           </Link>
-          <Link
-            href="/admin/sequences"
-            className="pb-3 text-sm font-medium text-white border-b-2 border-sky-500 -mb-px"
-          >
+          <Link href="/admin/sequences" className={`${styles.tab} ${styles.tabActive}`}>
             Sequences
           </Link>
         </div>
@@ -246,94 +222,99 @@ function SequenceAdminContent() {
           />
         ) : (
           <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-medium text-white">Sequences</h2>
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="px-4 py-2 text-sm bg-sky-600 hover:bg-sky-700 text-white rounded transition-colors"
-              >
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Sequences</h2>
+              <button onClick={() => setShowCreateForm(true)} className={styles.primaryBtn}>
                 New Sequence
               </button>
             </div>
 
             {sequences.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
+              <div className={styles.empty}>
                 No sequences yet. Create your first one!
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className={styles.cardList}>
                 {sequences.map(sequence => (
-                  <div key={sequence.id} className="bg-[#111827] border border-white/10 rounded-lg p-4 hover:bg-white/5 transition-colors">
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-medium">{sequence.title}</h3>
+                  <div key={sequence.id} className={styles.card}>
+                    <div className={styles.cardTop}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className={styles.cardTitle}>{sequence.title}</div>
                         <Link
                           href={`/sequence/${sequence.urlName}`}
                           target="_blank"
-                          className="text-xs text-sky-400 hover:underline"
+                          className={styles.cardLink}
                         >
                           /sequence/{sequence.urlName} ↗
                         </Link>
                         {sequence.description && (
-                          <p className="text-sm text-gray-500 mt-1 truncate">{sequence.description}</p>
+                          <p style={{ fontSize: '0.9rem', color: '#6B6560', fontStyle: 'italic', marginTop: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {sequence.description}
+                          </p>
                         )}
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
+                      <span className={`${styles.badge} ${
                         sequence.status === 'draft'
-                          ? 'bg-gray-800 text-gray-400'
+                          ? styles.badgeDraft
                           : sequence.status === 'completed'
-                          ? 'bg-gray-800 text-gray-400'
-                          : 'bg-emerald-900/50 text-emerald-400'
+                          ? styles.badgeCompleted
+                          : styles.badgeActive
                       }`}>
                         {sequence.status}
                       </span>
                     </div>
 
-                    <div className="text-xs text-gray-500 mb-3 flex gap-4">
+                    <div className={styles.cardMeta}>
                       <span>{sequence.activities.length} activities</span>
                       <span>{sequence.members.length} members</span>
                       <span>{sequence.activities.filter(a => a.openedAt).length} opened</span>
                       <span>{FormattingService.formatTimestamp(sequence.createdAt)}</span>
                     </div>
 
-                    <div className="flex flex-wrap gap-3 text-xs">
+                    <div className={styles.actions}>
                       <button
                         onClick={() => {
                           setEditingSequence(sequence);
                           setShowCreateForm(true);
                           router.push(`/admin/sequences?sequence=${sequence.id}`);
                         }}
-                        className="text-sky-400 hover:underline"
+                        className={`${styles.actionBtn} ${styles.actionEdit}`}
                       >
                         Edit
                       </button>
                       {sequence.status === 'draft' && (
-                        <button
-                          onClick={() => handleStartSequence(sequence.id)}
-                          className="text-emerald-400 hover:underline"
-                        >
-                          Start
-                        </button>
+                        <>
+                          <span className={styles.actionDot}>&middot;</span>
+                          <button
+                            onClick={() => handleStartSequence(sequence.id)}
+                            className={`${styles.actionBtn} ${styles.actionStart}`}
+                          >
+                            Start
+                          </button>
+                        </>
                       )}
                       {sequence.status === 'active' && (
                         <>
+                          <span className={styles.actionDot}>&middot;</span>
                           <button
                             onClick={() => handleOpenNextActivity(sequence.id)}
-                            className="text-violet-400 hover:underline"
+                            className={`${styles.actionBtn} ${styles.actionOpenNext}`}
                           >
                             Open Next
                           </button>
+                          <span className={styles.actionDot}>&middot;</span>
                           <button
                             onClick={() => handleCompleteSequence(sequence.id)}
-                            className="text-yellow-400 hover:underline"
+                            className={`${styles.actionBtn} ${styles.actionPublish}`}
                           >
                             Complete
                           </button>
                         </>
                       )}
+                      <span className={styles.actionDot}>&middot;</span>
                       <button
                         onClick={() => handleDeleteSequence(sequence.id)}
-                        className="text-red-400 hover:underline"
+                        className={`${styles.actionBtn} ${styles.actionDelete}`}
                       >
                         Delete
                       </button>
@@ -352,9 +333,7 @@ function SequenceAdminContent() {
 export default function SequenceAdminPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
-        <div className="text-gray-400">Loading...</div>
-      </div>
+      <div className={styles.loading}>Loading...</div>
     }>
       <SequenceAdminContent />
     </Suspense>

@@ -106,19 +106,18 @@ export default function SettingsPage() {
 
   return (
     <div className={styles.container}>
-      {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <nav className={styles.nav}>
-            <Link href="/" className={styles.wordmark}>
-              Holo<span className={styles.wordmarkAccent}>scopic</span>
-            </Link>
-            <span className={styles.separator}>/</span>
-            <span className={styles.pageLabel}>Settings</span>
-          </nav>
-          <UserMenu />
-        </div>
-      </header>
+      {/* Nav */}
+      <div className={styles.navOuter}>
+        <nav className={styles.nav}>
+          <Link href="/" className={styles.navHome}>
+            Holo<span>scopic</span>
+          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <span className={styles.navLabel}>Settings</span>
+            <UserMenu />
+          </div>
+        </nav>
+      </div>
 
       <main className={styles.main}>
         {/* Page Title */}

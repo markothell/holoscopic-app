@@ -5,54 +5,40 @@
   background-color: #F7F4EF;
 }
 
-.header {
-  border-bottom: 1px solid #D9D4CC;
-  background-color: rgba(255, 255, 255, 0.4);
-}
-
-.headerInner {
-  max-width: 64rem;
+.navOuter {
+  max-width: 42rem;
   margin: 0 auto;
-  padding: 1rem 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  padding: 0 1rem;
 }
 
 .nav {
+  padding: 2rem 0;
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: baseline;
 }
 
-.wordmark {
+.navHome {
   font-family: var(--font-barlow);
-  font-weight: 600;
-  font-size: 1.25rem;
+  font-weight: 800;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
   color: #0F0D0B;
   text-decoration: none;
-  transition: opacity 0.2s;
+  transition: color 0.2s;
 }
 
-.wordmark:hover {
-  opacity: 0.7;
-}
+.navHome:hover { color: #C83B50; }
+.navHome span { color: #C83B50; }
 
-.wordmarkAccent {
-  color: #C83B50;
-}
-
-.separator {
-  color: #D9D4CC;
+.navLabel {
   font-family: var(--font-dm-mono);
-}
-
-.pageLabel {
-  font-family: var(--font-dm-mono);
-  font-size: 0.875rem;
-  color: #6B6560;
+  font-size: 0.62rem;
+  font-weight: 300;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  color: #6B6560;
 }
 
 .main {

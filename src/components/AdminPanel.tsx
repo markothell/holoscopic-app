@@ -16,6 +16,59 @@ interface AdminPanelProps {
   onCancel?: () => void;
 }
 
+/* ---- Warm editorial inline style helpers ---- */
+const s = {
+  label: {
+    display: 'block' as const,
+    fontFamily: 'var(--font-dm-mono), monospace',
+    fontSize: '0.75rem',
+    fontWeight: 500,
+    color: '#6B6560',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.15em',
+    marginBottom: '0.5rem',
+  },
+  input: {
+    width: '100%',
+    padding: '0.625rem 0.875rem',
+    background: 'rgba(255, 255, 255, 0.6)',
+    border: '1px solid #D9D4CC',
+    borderRadius: '4px',
+    color: '#0F0D0B',
+    fontFamily: 'var(--font-cormorant), Georgia, serif',
+    fontSize: '1rem',
+    outline: 'none',
+  },
+  hint: {
+    fontFamily: 'var(--font-dm-mono), monospace',
+    fontSize: '0.65rem',
+    color: '#6B6560',
+    marginTop: '0.25rem',
+    letterSpacing: '0.05em',
+  },
+  error: {
+    color: '#C83B50',
+    fontSize: '0.8rem',
+    marginTop: '0.25rem',
+    fontFamily: 'var(--font-cormorant), Georgia, serif',
+  },
+  checkbox: {
+    width: '1rem',
+    height: '1rem',
+    borderRadius: '3px',
+    border: '1px solid #D9D4CC',
+    background: 'rgba(255, 255, 255, 0.6)',
+    accentColor: '#C83B50',
+    cursor: 'pointer' as const,
+  },
+  radio: {
+    width: '1rem',
+    height: '1rem',
+    accentColor: '#C83B50',
+    cursor: 'pointer' as const,
+  },
+};
+
 // Get default form data based on activity type
 const getDefaultFormData = (activityType: ActivityType): ActivityFormData => {
   if (activityType === 'resolve') {
@@ -130,7 +183,7 @@ export default function AdminPanel({
       ...prev,
       [field]: value
     }));
-    
+
     // Clear validation error for this field
     if (validationErrors[field]) {
       setValidationErrors(prev => ({
@@ -144,7 +197,7 @@ export default function AdminPanel({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Form submitted with data:', formData);
-    
+
     if (isSubmitting) {
       console.log('Already submitting, returning early');
       return;
@@ -154,7 +207,7 @@ export default function AdminPanel({
     console.log('Validating form data...');
     const validation = ValidationService.validateActivityForm(formData);
     console.log('Validation result:', validation);
-    
+
     if (!validation.isValid) {
       console.error('Form validation failed:', validation.errors);
       setValidationErrors(validation.errors);
@@ -193,7 +246,6 @@ export default function AdminPanel({
             onActivityCreated?.(updatedActivity);
           } catch (authorError) {
             console.error('Failed to set author, but activity was created:', authorError);
-            // Still call onActivityCreated even if author setting fails
             onActivityCreated?.(newActivity);
           }
         } else {
@@ -232,12 +284,12 @@ export default function AdminPanel({
       // Then sync the starter data to database
       const updatedActivity = await ActivityService.syncStarterData(editingActivity.id);
       setSyncMessage('Starter data synced successfully!');
-      
+
       // Update the parent component with the refreshed activity
       if (onActivityUpdated) {
         onActivityUpdated(updatedActivity);
       }
-      
+
       // Clear message after 3 seconds
       setTimeout(() => setSyncMessage(null), 3000);
     } catch (error) {
@@ -252,30 +304,53 @@ export default function AdminPanel({
   // If no type selected yet (new activity), show type selection screen
   if (!selectedType && !editingActivity) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-sm p-6">
+      <div style={{ maxWidth: '42rem', margin: '0 auto' }}>
+        <div style={{ background: 'rgba(255, 255, 255, 0.4)', border: '1px solid #D9D4CC', borderRadius: '8px', padding: '2rem' }}>
           {/* Header */}
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Create New Activity</h2>
-            <p className="text-gray-600 mt-2">Select an activity type to get started</p>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h2 style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: '1.5rem', fontWeight: 700, textTransform: 'uppercase', color: '#0F0D0B' }}>
+              Create New Activity
+            </h2>
+            <p style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', color: '#6B6560', marginTop: '0.5rem', fontStyle: 'italic' }}>
+              Select an activity type to get started
+            </p>
           </div>
 
           {/* Activity Type Selection */}
-          <div className="space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {Object.values(ACTIVITY_TYPES).map((type) => (
               <button
                 key={type.id}
                 onClick={() => handleTypeSelect(type.id)}
-                className="w-full p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
+                style={{
+                  width: '100%',
+                  padding: '1.5rem',
+                  border: '2px solid #D9D4CC',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.4)',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#C83B50';
+                  e.currentTarget.style.background = 'rgba(200, 59, 80, 0.04)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#D9D4CC';
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.4)';
+                }}
               >
-                <h3 className="text-lg font-semibold text-gray-800">{type.label}</h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <h3 style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: '1.1rem', fontWeight: 600, textTransform: 'uppercase', color: '#0F0D0B', marginBottom: '0.25rem' }}>
+                  {type.label}
+                </h3>
+                <p style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.9rem', color: '#6B6560' }}>
                   {type.id === 'dissolve'
                     ? 'Two slider questions to position responses on X and Y axes. Best for continuous 2D mapping.'
                     : '4-quadrant selector with gravity-based clustering. Best for categorical positioning.'}
                 </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Screens: {type.screens.join(' → ')}
+                <p style={{ ...s.hint, marginTop: '0.5rem' }}>
+                  Screens: {type.screens.join(' \u2192 ')}
                 </p>
               </button>
             ))}
@@ -283,11 +358,22 @@ export default function AdminPanel({
 
           {/* Cancel Button */}
           {onCancel && (
-            <div className="mt-6 flex justify-end">
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                style={{
+                  padding: '0.5rem 1.25rem',
+                  background: 'transparent',
+                  color: '#6B6560',
+                  border: '1px solid #D9D4CC',
+                  borderRadius: '4px',
+                  fontFamily: 'var(--font-dm-mono), monospace',
+                  fontSize: '0.68rem',
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                }}
               >
                 Cancel
               </button>
@@ -299,16 +385,16 @@ export default function AdminPanel({
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-white rounded-lg shadow-sm p-6">
+    <div style={{ maxWidth: '42rem', margin: '0 auto' }}>
+      <div style={{ background: 'rgba(255, 255, 255, 0.4)', border: '1px solid #D9D4CC', borderRadius: '8px', padding: '2rem' }}>
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
+        <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <h2 className="text-2xl font-bold text-gray-800">
+              <h2 style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: '1.5rem', fontWeight: 700, textTransform: 'uppercase', color: '#0F0D0B' }}>
                 {editingActivity ? 'Edit Activity' : 'Create New Activity'}
               </h2>
-              <p className="text-gray-600 mt-1">
+              <p style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.68rem', color: '#6B6560', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '0.25rem' }}>
                 {getActivityTypeConfig(formData.activityType)?.label || 'Activity'} Configuration
               </p>
             </div>
@@ -316,7 +402,7 @@ export default function AdminPanel({
               <button
                 type="button"
                 onClick={() => setSelectedType(null)}
-                className="text-sm text-blue-600 hover:text-blue-800"
+                style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.68rem', color: '#C83B50', background: 'none', border: 'none', cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase' }}
               >
                 Change Type
               </button>
@@ -325,236 +411,142 @@ export default function AdminPanel({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Entry Section */}
           <CollapsibleSection title="Entry" defaultOpen={false}>
             {/* Title */}
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                Activity Title
-              </label>
+              <label htmlFor="title" style={s.label}>Activity Title</label>
               <input
                 type="text"
                 id="title"
                 value={formData.title}
                 onChange={(e) => handleFieldChange('title', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                style={s.input}
                 placeholder="e.g., Gratitude Mapping"
                 maxLength={100}
               />
-              {validationErrors.title && (
-                <p className="text-red-600 text-sm mt-1">{validationErrors.title}</p>
-              )}
+              {validationErrors.title && <p style={s.error}>{validationErrors.title}</p>}
             </div>
 
             {/* URL Name */}
             <div>
-              <label htmlFor="urlName" className="block text-sm font-medium text-gray-700 mb-2">
-                URL Name
-              </label>
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500 text-sm">holoscopic.io/</span>
+              <label htmlFor="urlName" style={s.label}>URL Name</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ ...s.hint, marginTop: 0 }}>holoscopic.io/</span>
                 <input
                   type="text"
                   id="urlName"
                   value={formData.urlName || ''}
                   onChange={(e) => handleFieldChange('urlName', e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  style={{ ...s.input, flex: 1 }}
                   placeholder="e.g., gratitude"
                   maxLength={50}
                 />
               </div>
-              <p className="text-gray-500 text-sm mt-1">
+              <p style={s.hint}>
                 {formData.urlName ?
                   `URL: holoscopic.io/${UrlUtils.cleanActivityName(formData.urlName)}` :
                   'Leave empty to auto-generate from title'
                 }
               </p>
-              {validationErrors.urlName && (
-                <p className="text-red-600 text-sm mt-1">{validationErrors.urlName}</p>
-              )}
+              {validationErrors.urlName && <p style={s.error}>{validationErrors.urlName}</p>}
             </div>
 
             {/* Public/Private Access */}
-            <div className="space-y-3">
-              <label className="flex items-center">
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={formData.isPublic || false}
                   onChange={(e) => {
                     setFormData(prev => ({ ...prev, isPublic: e.target.checked }));
                   }}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  style={s.checkbox}
                 />
-                <span className="ml-2 text-sm font-medium text-gray-700">Make activity public (no login required)</span>
+                <span style={{ marginLeft: '0.5rem', fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.95rem', color: '#0F0D0B' }}>
+                  Make activity public (no login required)
+                </span>
               </label>
-              <p className="text-gray-500 text-xs ml-6">
-                Public activities can be accessed by anyone without creating an account. Private activities require authentication.
+              <p style={{ ...s.hint, marginLeft: '1.5rem' }}>
+                Public activities can be accessed by anyone without creating an account.
               </p>
             </div>
 
-            {/* Preamble (Optional) */}
+            {/* Preamble */}
             <div>
-              <label htmlFor="preamble" className="block text-sm font-medium text-gray-700 mb-2">
-                Activity Description (Optional)
-              </label>
+              <label htmlFor="preamble" style={s.label}>Activity Description (Optional)</label>
               <textarea
                 id="preamble"
                 value={formData.preamble || ''}
                 onChange={(e) => handleFieldChange('preamble', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                style={{ ...s.input, resize: 'vertical' as const }}
                 placeholder="e.g., This activity explores our relationship with gratitude..."
                 maxLength={500}
                 rows={3}
               />
-              <p className="text-gray-500 text-xs mt-1">A short paragraph shown on the activity entry page</p>
-              {validationErrors.preamble && (
-                <p className="text-red-600 text-sm mt-1">{validationErrors.preamble}</p>
-              )}
+              <p style={s.hint}>A short paragraph shown on the activity entry page</p>
+              {validationErrors.preamble && <p style={s.error}>{validationErrors.preamble}</p>}
             </div>
 
-            {/* Wiki Link (Optional) */}
+            {/* Wiki Link */}
             <div>
-              <label htmlFor="wikiLink" className="block text-sm font-medium text-gray-700 mb-2">
-                Wiki Page Link (Optional)
-              </label>
+              <label htmlFor="wikiLink" style={s.label}>Wiki Page Link (Optional)</label>
               <input
                 type="text"
                 id="wikiLink"
                 value={formData.wikiLink || ''}
                 onChange={(e) => handleFieldChange('wikiLink', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                style={s.input}
                 placeholder="e.g., http://holoscopic.io/wiki/gratitude"
                 maxLength={200}
               />
-              <p className="text-gray-500 text-xs mt-1">Link to the wiki page for more information about this activity</p>
-              {validationErrors.wikiLink && (
-                <p className="text-red-600 text-sm mt-1">{validationErrors.wikiLink}</p>
-              )}
+              <p style={s.hint}>Link to the wiki page for more information about this activity</p>
+              {validationErrors.wikiLink && <p style={s.error}>{validationErrors.wikiLink}</p>}
             </div>
           </CollapsibleSection>
 
           {/* Map Axes Section - Only for dissolve activity type */}
           {formData.activityType === 'dissolve' && (
             <CollapsibleSection title="Map Axes" defaultOpen={false}>
-              {/* X-Axis Configuration */}
-              <div className="space-y-4">
-                <h4 className="text-md font-semibold text-gray-800">X-Axis Configuration</h4>
-
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <h4 style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', color: '#0F0D0B' }}>X-Axis Configuration</h4>
                 <div>
-                  <label htmlFor="xAxisLabel" className="block text-sm font-medium text-gray-700 mb-2">
-                    X-Axis Label
-                  </label>
-                  <input
-                    type="text"
-                    id="xAxisLabel"
-                    value={formData.xAxisLabel}
-                    onChange={(e) => handleFieldChange('xAxisLabel', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                    placeholder="e.g., ...do you have now?"
-                    maxLength={50}
-                  />
-                  {validationErrors.xAxisLabel && (
-                    <p className="text-red-600 text-sm mt-1">{validationErrors.xAxisLabel}</p>
-                  )}
+                  <label htmlFor="xAxisLabel" style={s.label}>X-Axis Label</label>
+                  <input type="text" id="xAxisLabel" value={formData.xAxisLabel} onChange={(e) => handleFieldChange('xAxisLabel', e.target.value)} style={s.input} placeholder="e.g., ...do you have now?" maxLength={50} />
+                  {validationErrors.xAxisLabel && <p style={s.error}>{validationErrors.xAxisLabel}</p>}
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
-                    <label htmlFor="xAxisMin" className="block text-sm font-medium text-gray-700 mb-2">
-                      X-Axis Minimum
-                    </label>
-                    <input
-                      type="text"
-                      id="xAxisMin"
-                      value={formData.xAxisMin}
-                      onChange={(e) => handleFieldChange('xAxisMin', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      placeholder="e.g., None"
-                      maxLength={30}
-                    />
-                    {validationErrors.xAxisMin && (
-                      <p className="text-red-600 text-sm mt-1">{validationErrors.xAxisMin}</p>
-                    )}
+                    <label htmlFor="xAxisMin" style={s.label}>X-Axis Minimum</label>
+                    <input type="text" id="xAxisMin" value={formData.xAxisMin} onChange={(e) => handleFieldChange('xAxisMin', e.target.value)} style={s.input} placeholder="e.g., None" maxLength={30} />
+                    {validationErrors.xAxisMin && <p style={s.error}>{validationErrors.xAxisMin}</p>}
                   </div>
-
                   <div>
-                    <label htmlFor="xAxisMax" className="block text-sm font-medium text-gray-700 mb-2">
-                      X-Axis Maximum
-                    </label>
-                    <input
-                      type="text"
-                      id="xAxisMax"
-                      value={formData.xAxisMax}
-                      onChange={(e) => handleFieldChange('xAxisMax', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      placeholder="e.g., So much"
-                      maxLength={30}
-                    />
-                    {validationErrors.xAxisMax && (
-                      <p className="text-red-600 text-sm mt-1">{validationErrors.xAxisMax}</p>
-                    )}
+                    <label htmlFor="xAxisMax" style={s.label}>X-Axis Maximum</label>
+                    <input type="text" id="xAxisMax" value={formData.xAxisMax} onChange={(e) => handleFieldChange('xAxisMax', e.target.value)} style={s.input} placeholder="e.g., So much" maxLength={30} />
+                    {validationErrors.xAxisMax && <p style={s.error}>{validationErrors.xAxisMax}</p>}
                   </div>
                 </div>
               </div>
 
-              {/* Y-Axis Configuration */}
-              <div className="space-y-4">
-                <h4 className="text-md font-semibold text-gray-800">Y-Axis Configuration</h4>
-
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <h4 style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', color: '#0F0D0B' }}>Y-Axis Configuration</h4>
                 <div>
-                  <label htmlFor="yAxisLabel" className="block text-sm font-medium text-gray-700 mb-2">
-                    Y-Axis Label
-                  </label>
-                  <input
-                    type="text"
-                    id="yAxisLabel"
-                    value={formData.yAxisLabel}
-                    onChange={(e) => handleFieldChange('yAxisLabel', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                    placeholder="e.g., ...did you have as a kid?"
-                    maxLength={50}
-                  />
-                  {validationErrors.yAxisLabel && (
-                    <p className="text-red-600 text-sm mt-1">{validationErrors.yAxisLabel}</p>
-                  )}
+                  <label htmlFor="yAxisLabel" style={s.label}>Y-Axis Label</label>
+                  <input type="text" id="yAxisLabel" value={formData.yAxisLabel} onChange={(e) => handleFieldChange('yAxisLabel', e.target.value)} style={s.input} placeholder="e.g., ...did you have as a kid?" maxLength={50} />
+                  {validationErrors.yAxisLabel && <p style={s.error}>{validationErrors.yAxisLabel}</p>}
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
-                    <label htmlFor="yAxisMin" className="block text-sm font-medium text-gray-700 mb-2">
-                      Y-Axis Minimum
-                    </label>
-                    <input
-                      type="text"
-                      id="yAxisMin"
-                      value={formData.yAxisMin}
-                      onChange={(e) => handleFieldChange('yAxisMin', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      placeholder="e.g., None"
-                      maxLength={30}
-                    />
-                    {validationErrors.yAxisMin && (
-                      <p className="text-red-600 text-sm mt-1">{validationErrors.yAxisMin}</p>
-                    )}
+                    <label htmlFor="yAxisMin" style={s.label}>Y-Axis Minimum</label>
+                    <input type="text" id="yAxisMin" value={formData.yAxisMin} onChange={(e) => handleFieldChange('yAxisMin', e.target.value)} style={s.input} placeholder="e.g., None" maxLength={30} />
+                    {validationErrors.yAxisMin && <p style={s.error}>{validationErrors.yAxisMin}</p>}
                   </div>
-
                   <div>
-                    <label htmlFor="yAxisMax" className="block text-sm font-medium text-gray-700 mb-2">
-                      Y-Axis Maximum
-                    </label>
-                    <input
-                      type="text"
-                      id="yAxisMax"
-                      value={formData.yAxisMax}
-                      onChange={(e) => handleFieldChange('yAxisMax', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      placeholder="e.g., So much"
-                      maxLength={30}
-                    />
-                    {validationErrors.yAxisMax && (
-                      <p className="text-red-600 text-sm mt-1">{validationErrors.yAxisMax}</p>
-                    )}
+                    <label htmlFor="yAxisMax" style={s.label}>Y-Axis Maximum</label>
+                    <input type="text" id="yAxisMax" value={formData.yAxisMax} onChange={(e) => handleFieldChange('yAxisMax', e.target.value)} style={s.input} placeholder="e.g., So much" maxLength={30} />
+                    {validationErrors.yAxisMax && <p style={s.error}>{validationErrors.yAxisMax}</p>}
                   </div>
                 </div>
               </div>
@@ -564,90 +556,38 @@ export default function AdminPanel({
           {/* Axis Endpoints Section - Only for resolve activity type */}
           {formData.activityType === 'resolve' && (
             <CollapsibleSection title="Axis Endpoints" defaultOpen={false}>
-              <p className="text-sm text-gray-600 mb-4">
+              <p style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.9rem', color: '#6B6560', fontStyle: 'italic', marginBottom: '0.5rem' }}>
                 These labels will appear on the quadrant grid selector and results view.
               </p>
 
-              {/* Horizontal Axis */}
-              <div className="space-y-4">
-                <h4 className="text-md font-semibold text-gray-800">Horizontal Axis</h4>
-                <div className="grid grid-cols-2 gap-4">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <h4 style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', color: '#0F0D0B' }}>Horizontal Axis</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
-                    <label htmlFor="xAxisMin" className="block text-sm font-medium text-gray-700 mb-2">
-                      Left Label
-                    </label>
-                    <input
-                      type="text"
-                      id="xAxisMin"
-                      value={formData.xAxisMin}
-                      onChange={(e) => handleFieldChange('xAxisMin', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      placeholder="e.g., Left"
-                      maxLength={30}
-                    />
-                    {validationErrors.xAxisMin && (
-                      <p className="text-red-600 text-sm mt-1">{validationErrors.xAxisMin}</p>
-                    )}
+                    <label htmlFor="xAxisMin" style={s.label}>Left Label</label>
+                    <input type="text" id="xAxisMin" value={formData.xAxisMin} onChange={(e) => handleFieldChange('xAxisMin', e.target.value)} style={s.input} placeholder="e.g., Left" maxLength={30} />
+                    {validationErrors.xAxisMin && <p style={s.error}>{validationErrors.xAxisMin}</p>}
                   </div>
-
                   <div>
-                    <label htmlFor="xAxisMax" className="block text-sm font-medium text-gray-700 mb-2">
-                      Right Label
-                    </label>
-                    <input
-                      type="text"
-                      id="xAxisMax"
-                      value={formData.xAxisMax}
-                      onChange={(e) => handleFieldChange('xAxisMax', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      placeholder="e.g., Right"
-                      maxLength={30}
-                    />
-                    {validationErrors.xAxisMax && (
-                      <p className="text-red-600 text-sm mt-1">{validationErrors.xAxisMax}</p>
-                    )}
+                    <label htmlFor="xAxisMax" style={s.label}>Right Label</label>
+                    <input type="text" id="xAxisMax" value={formData.xAxisMax} onChange={(e) => handleFieldChange('xAxisMax', e.target.value)} style={s.input} placeholder="e.g., Right" maxLength={30} />
+                    {validationErrors.xAxisMax && <p style={s.error}>{validationErrors.xAxisMax}</p>}
                   </div>
                 </div>
               </div>
 
-              {/* Vertical Axis */}
-              <div className="space-y-4">
-                <h4 className="text-md font-semibold text-gray-800">Vertical Axis</h4>
-                <div className="grid grid-cols-2 gap-4">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <h4 style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', color: '#0F0D0B' }}>Vertical Axis</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
-                    <label htmlFor="yAxisMin" className="block text-sm font-medium text-gray-700 mb-2">
-                      Bottom Label
-                    </label>
-                    <input
-                      type="text"
-                      id="yAxisMin"
-                      value={formData.yAxisMin}
-                      onChange={(e) => handleFieldChange('yAxisMin', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      placeholder="e.g., Bottom"
-                      maxLength={30}
-                    />
-                    {validationErrors.yAxisMin && (
-                      <p className="text-red-600 text-sm mt-1">{validationErrors.yAxisMin}</p>
-                    )}
+                    <label htmlFor="yAxisMin" style={s.label}>Bottom Label</label>
+                    <input type="text" id="yAxisMin" value={formData.yAxisMin} onChange={(e) => handleFieldChange('yAxisMin', e.target.value)} style={s.input} placeholder="e.g., Bottom" maxLength={30} />
+                    {validationErrors.yAxisMin && <p style={s.error}>{validationErrors.yAxisMin}</p>}
                   </div>
-
                   <div>
-                    <label htmlFor="yAxisMax" className="block text-sm font-medium text-gray-700 mb-2">
-                      Top Label
-                    </label>
-                    <input
-                      type="text"
-                      id="yAxisMax"
-                      value={formData.yAxisMax}
-                      onChange={(e) => handleFieldChange('yAxisMax', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      placeholder="e.g., Top"
-                      maxLength={30}
-                    />
-                    {validationErrors.yAxisMax && (
-                      <p className="text-red-600 text-sm mt-1">{validationErrors.yAxisMax}</p>
-                    )}
+                    <label htmlFor="yAxisMax" style={s.label}>Top Label</label>
+                    <input type="text" id="yAxisMax" value={formData.yAxisMax} onChange={(e) => handleFieldChange('yAxisMax', e.target.value)} style={s.input} placeholder="e.g., Top" maxLength={30} />
+                    {validationErrors.yAxisMax && <p style={s.error}>{validationErrors.yAxisMax}</p>}
                   </div>
                 </div>
               </div>
@@ -656,91 +596,54 @@ export default function AdminPanel({
 
           {/* Naming Section */}
           <CollapsibleSection title="Naming" defaultOpen={false}>
-            {/* Object Name Question */}
             <div>
-              <label htmlFor="objectNameQuestion" className="block text-sm font-medium text-gray-700 mb-2">
-                Object Name Question
-              </label>
+              <label htmlFor="objectNameQuestion" style={s.label}>Object Name Question</label>
               <input
                 type="text"
                 id="objectNameQuestion"
                 value={formData.objectNameQuestion}
                 onChange={(e) => handleFieldChange('objectNameQuestion', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                style={s.input}
                 placeholder="e.g., Name something that represents your perspective"
                 maxLength={200}
               />
-              {validationErrors.objectNameQuestion && (
-                <p className="text-red-600 text-sm mt-1">{validationErrors.objectNameQuestion}</p>
-              )}
+              {validationErrors.objectNameQuestion && <p style={s.error}>{validationErrors.objectNameQuestion}</p>}
             </div>
 
             {/* Multi-Entry Configuration */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium text-gray-700">Entry Slots per User</h4>
-              <p className="text-sm text-gray-600">Allow users to submit multiple entries in this activity</p>
-              <div className="flex gap-4 flex-wrap">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="maxEntries"
-                    value="1"
-                    checked={Number(formData.maxEntries) === 1}
-                    onChange={(e) => setFormData(prev => ({ ...prev, maxEntries: Number(e.target.value) }))}
-                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">1 entry</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="maxEntries"
-                    value="2"
-                    checked={Number(formData.maxEntries) === 2}
-                    onChange={(e) => setFormData(prev => ({ ...prev, maxEntries: Number(e.target.value) }))}
-                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">2 entries</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="maxEntries"
-                    value="4"
-                    checked={Number(formData.maxEntries) === 4}
-                    onChange={(e) => setFormData(prev => ({ ...prev, maxEntries: Number(e.target.value) }))}
-                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">4 entries</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="maxEntries"
-                    value="0"
-                    checked={Number(formData.maxEntries) === 0}
-                    onChange={(e) => setFormData(prev => ({ ...prev, maxEntries: Number(e.target.value) }))}
-                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Unlimited (Solo Tracker)</span>
-                </label>
+            <div>
+              <h4 style={s.label}>Entry Slots per User</h4>
+              <p style={{ ...s.hint, marginBottom: '0.75rem' }}>Allow users to submit multiple entries in this activity</p>
+              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                {[{ value: 1, label: '1 entry' }, { value: 2, label: '2 entries' }, { value: 4, label: '4 entries' }, { value: 0, label: 'Unlimited (Solo Tracker)' }].map(opt => (
+                  <label key={opt.value} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="maxEntries"
+                      value={opt.value}
+                      checked={Number(formData.maxEntries) === opt.value}
+                      onChange={(e) => setFormData(prev => ({ ...prev, maxEntries: Number(e.target.value) }))}
+                      style={s.radio}
+                    />
+                    <span style={{ marginLeft: '0.375rem', fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.9rem', color: '#0F0D0B' }}>{opt.label}</span>
+                  </label>
+                ))}
               </div>
               {Number(formData.maxEntries) === 0 && (
-                <p className="text-amber-600 text-xs mt-2 bg-amber-50 p-2 rounded">
+                <p style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(200, 59, 80, 0.06)', border: '1px solid rgba(200, 59, 80, 0.15)', borderRadius: '4px', fontSize: '0.8rem', color: '#C83B50', fontFamily: 'var(--font-cormorant), Georgia, serif' }}>
                   Solo Tracker Mode: Only you (the creator) can add entries to this activity. Others can view results.
                 </p>
               )}
             </div>
           </CollapsibleSection>
 
-          {/* Positioning Questions Section - differs by activity type */}
+          {/* Positioning Questions Section */}
           <CollapsibleSection
             title={formData.activityType === 'dissolve' ? 'Slider Questions' : 'Quadrant Question'}
             defaultOpen={false}
           >
-            {/* Map Question 1 (used for both types) */}
             <div>
-              <label htmlFor="mapQuestion" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="mapQuestion" style={s.label}>
                 {formData.activityType === 'dissolve' ? 'First Slider Question' : 'Quadrant Selection Question'}
               </label>
               <input
@@ -748,84 +651,74 @@ export default function AdminPanel({
                 id="mapQuestion"
                 value={formData.mapQuestion}
                 onChange={(e) => handleFieldChange('mapQuestion', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                style={s.input}
                 placeholder={formData.activityType === 'dissolve'
                   ? "e.g., How much money did you have as a kid?"
                   : "e.g., Which quadrant best represents your perspective?"}
                 maxLength={200}
               />
-              {validationErrors.mapQuestion && (
-                <p className="text-red-600 text-sm mt-1">{validationErrors.mapQuestion}</p>
-              )}
+              {validationErrors.mapQuestion && <p style={s.error}>{validationErrors.mapQuestion}</p>}
             </div>
 
-            {/* Map Question 2 - Only for dissolve type */}
             {formData.activityType === 'dissolve' && (
               <div>
-                <label htmlFor="mapQuestion2" className="block text-sm font-medium text-gray-700 mb-2">
-                  Second Slider Question
-                </label>
+                <label htmlFor="mapQuestion2" style={s.label}>Second Slider Question</label>
                 <input
                   type="text"
                   id="mapQuestion2"
                   value={formData.mapQuestion2}
                   onChange={(e) => handleFieldChange('mapQuestion2', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                  style={s.input}
                   placeholder="e.g., How much money do you have now?"
                   maxLength={200}
                 />
-                {validationErrors.mapQuestion2 && (
-                  <p className="text-red-600 text-sm mt-1">{validationErrors.mapQuestion2}</p>
-                )}
+                {validationErrors.mapQuestion2 && <p style={s.error}>{validationErrors.mapQuestion2}</p>}
               </div>
             )}
           </CollapsibleSection>
 
           {/* Comment Section */}
           <CollapsibleSection title="Comment" defaultOpen={false}>
-            {/* Comment Question */}
             <div>
-              <label htmlFor="commentQuestion" className="block text-sm font-medium text-gray-700 mb-2">
-                Comment Question
-              </label>
+              <label htmlFor="commentQuestion" style={s.label}>Comment Question</label>
               <input
                 type="text"
                 id="commentQuestion"
                 value={formData.commentQuestion}
                 onChange={(e) => handleFieldChange('commentQuestion', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                style={s.input}
                 placeholder="e.g., How do you express gratitude?"
                 maxLength={200}
               />
-              {validationErrors.commentQuestion && (
-                <p className="text-red-600 text-sm mt-1">{validationErrors.commentQuestion}</p>
-              )}
+              {validationErrors.commentQuestion && <p style={s.error}>{validationErrors.commentQuestion}</p>}
             </div>
           </CollapsibleSection>
 
           {/* Results Section */}
           <CollapsibleSection title="Results" defaultOpen={false}>
             {/* Profile Links Toggle */}
-            <div className="space-y-3">
-              <label className="flex items-center">
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={formData.showProfileLinks ?? true}
                   onChange={(e) => {
                     setFormData(prev => ({ ...prev, showProfileLinks: e.target.checked }));
                   }}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  style={s.checkbox}
                 />
-                <span className="ml-2 text-sm font-medium text-gray-700">Show profile links in results</span>
+                <span style={{ marginLeft: '0.5rem', fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.95rem', color: '#0F0D0B' }}>
+                  Show profile links in results
+                </span>
               </label>
-              <p className="text-gray-500 text-xs ml-6">
-                When enabled, authenticated users will see clickable profile icons next to comments in the results view.
+              <p style={{ ...s.hint, marginLeft: '1.5rem' }}>
+                When enabled, authenticated users will see clickable profile icons next to comments.
               </p>
             </div>
 
             {/* Vote Limit Configuration */}
-            <div className="space-y-3">
-              <label className="flex items-center">
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={formData.votesPerUser !== null && formData.votesPerUser !== undefined}
@@ -836,104 +729,90 @@ export default function AdminPanel({
                       setFormData(prev => ({ ...prev, votesPerUser: null }));
                     }
                   }}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  style={s.checkbox}
                 />
-                <span className="ml-2 text-sm font-medium text-gray-700">Limit votes per user</span>
+                <span style={{ marginLeft: '0.5rem', fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.95rem', color: '#0F0D0B' }}>
+                  Limit votes per user
+                </span>
               </label>
 
               {formData.votesPerUser !== null && formData.votesPerUser !== undefined && (
-                <div className="ml-6 space-y-2">
-                  <p className="text-sm text-gray-600">Each user can vote on:</p>
-                  <div className="flex gap-4">
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        name="votesPerUser"
-                        value="1"
-                        checked={Number(formData.votesPerUser) === 1}
-                        onChange={(e) => setFormData(prev => ({ ...prev, votesPerUser: Number(e.target.value) }))}
-                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">1 comment</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        name="votesPerUser"
-                        value="2"
-                        checked={Number(formData.votesPerUser) === 2}
-                        onChange={(e) => setFormData(prev => ({ ...prev, votesPerUser: Number(e.target.value) }))}
-                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">2 comments</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        name="votesPerUser"
-                        value="4"
-                        checked={Number(formData.votesPerUser) === 4}
-                        onChange={(e) => setFormData(prev => ({ ...prev, votesPerUser: Number(e.target.value) }))}
-                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">4 comments</span>
-                    </label>
+                <div style={{ marginLeft: '1.5rem', marginTop: '0.5rem' }}>
+                  <p style={{ ...s.hint, marginBottom: '0.5rem' }}>Each user can vote on:</p>
+                  <div style={{ display: 'flex', gap: '1.5rem' }}>
+                    {[1, 2, 4].map(n => (
+                      <label key={n} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name="votesPerUser"
+                          value={n}
+                          checked={Number(formData.votesPerUser) === n}
+                          onChange={(e) => setFormData(prev => ({ ...prev, votesPerUser: Number(e.target.value) }))}
+                          style={s.radio}
+                        />
+                        <span style={{ marginLeft: '0.375rem', fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.9rem', color: '#0F0D0B' }}>{n} comment{n > 1 ? 's' : ''}</span>
+                      </label>
+                    ))}
                   </div>
                 </div>
               )}
             </div>
 
             {/* Starter Data Configuration */}
-            <div className="space-y-4">
-              <h4 className="text-md font-semibold text-gray-800">Starter Data (Optional)</h4>
-              <p className="text-sm text-gray-600 mb-4">
+            <div>
+              <h4 style={{ ...s.label, marginBottom: '0.25rem' }}>Starter Data (Optional)</h4>
+              <p style={{ ...s.hint, marginBottom: '0.75rem' }}>
                 {formData.activityType === 'dissolve'
                   ? 'Add initial data points to seed the activity. Format: JSON array with x, y (0-1), objectName, and comment fields.'
                   : 'Add initial data points to seed the activity. Format: JSON array with quadrant (1-4), objectName, and comment fields.'}
               </p>
 
               <div>
-                <label htmlFor="starterData" className="block text-sm font-medium text-gray-700 mb-2">
-                  Starter Data JSON
-                </label>
+                <label htmlFor="starterData" style={s.label}>Starter Data JSON</label>
                 <textarea
                   id="starterData"
                   value={formData.starterData}
                   onChange={(e) => handleFieldChange('starterData', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black font-mono text-sm"
+                  style={{ ...s.input, fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.85rem', resize: 'vertical' as const }}
                   placeholder={formData.activityType === 'dissolve'
                     ? '[{"x": 0.7, "y": 0.3, "objectName": "Gratitude", "comment": "Daily journaling helps me stay grounded"}]'
                     : '[{"quadrant": 1, "objectName": "Gratitude", "comment": "Daily journaling helps me stay grounded"}]'}
                   rows={6}
                 />
-                {validationErrors.starterData && (
-                  <p className="text-red-600 text-sm mt-1">{validationErrors.starterData}</p>
-                )}
+                {validationErrors.starterData && <p style={s.error}>{validationErrors.starterData}</p>}
                 {formData.activityType === 'dissolve' ? (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Fields: x (0-1), y (0-1), objectName, comment
-                  </p>
+                  <p style={s.hint}>Fields: x (0-1), y (0-1), objectName, comment</p>
                 ) : (
-                  <div className="text-xs text-gray-500 mt-2 space-y-1">
+                  <div style={s.hint}>
                     <p>Fields: quadrant, objectName, comment</p>
                     <p>Quadrants: 1=Top-Right, 2=Top-Left, 3=Bottom-Left, 4=Bottom-Right</p>
                   </div>
                 )}
 
-                {/* Sync Starter Data Button - only show when editing */}
+                {/* Sync Starter Data Button */}
                 {editingActivity && (
-                  <div className="mt-3">
+                  <div style={{ marginTop: '0.75rem' }}>
                     <button
                       type="button"
                       onClick={handleSyncStarterData}
                       disabled={isSyncing}
-                      className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                      style={{
+                        padding: '0.4rem 0.75rem',
+                        background: isSyncing ? '#D9D4CC' : '#2a9d6f',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontFamily: 'var(--font-dm-mono), monospace',
+                        fontSize: '0.65rem',
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                        cursor: isSyncing ? 'not-allowed' : 'pointer',
+                        transition: 'background 0.2s',
+                      }}
                     >
                       {isSyncing ? 'Syncing...' : 'Sync to Database'}
                     </button>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Updates database records to match the starter data above
-                    </p>
+                    <p style={s.hint}>Updates database records to match the starter data above</p>
                   </div>
                 )}
               </div>
@@ -942,16 +821,13 @@ export default function AdminPanel({
 
           {/* Sync Message */}
           {syncMessage && (
-            <div className={`p-4 border rounded-md ${
-              syncMessage.includes('successfully')
-                ? 'bg-green-50 border-green-200'
-                : 'bg-red-50 border-red-200'
-            }`}>
-              <p className={`text-sm ${
-                syncMessage.includes('successfully')
-                  ? 'text-green-600'
-                  : 'text-red-600'
-              }`}>
+            <div style={{
+              padding: '0.75rem 1rem',
+              borderRadius: '4px',
+              border: `1px solid ${syncMessage.includes('successfully') ? 'rgba(42, 157, 111, 0.3)' : 'rgba(200, 59, 80, 0.3)'}`,
+              background: syncMessage.includes('successfully') ? 'rgba(42, 157, 111, 0.06)' : 'rgba(200, 59, 80, 0.06)',
+            }}>
+              <p style={{ fontSize: '0.9rem', color: syncMessage.includes('successfully') ? '#2a9d6f' : '#C83B50', fontFamily: 'var(--font-cormorant), Georgia, serif' }}>
                 {syncMessage}
               </p>
             </div>
@@ -959,18 +835,30 @@ export default function AdminPanel({
 
           {/* Submit Error */}
           {submitError && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-red-600 text-sm">{submitError}</p>
+            <div style={{ padding: '0.75rem 1rem', background: 'rgba(200, 59, 80, 0.06)', border: '1px solid rgba(200, 59, 80, 0.3)', borderRadius: '4px' }}>
+              <p style={{ color: '#C83B50', fontSize: '0.9rem', fontFamily: 'var(--font-cormorant), Georgia, serif' }}>{submitError}</p>
             </div>
           )}
 
           {/* Form Actions */}
-          <div className="flex justify-end gap-3 pt-4">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid #D9D4CC' }}>
             {onCancel && (
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                style={{
+                  padding: '0.625rem 1.25rem',
+                  background: 'transparent',
+                  color: '#6B6560',
+                  border: '1px solid #D9D4CC',
+                  borderRadius: '4px',
+                  fontFamily: 'var(--font-dm-mono), monospace',
+                  fontSize: '0.75rem',
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
               >
                 Cancel
               </button>
@@ -978,12 +866,24 @@ export default function AdminPanel({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              style={{
+                padding: '0.625rem 1.5rem',
+                background: isSubmitting ? '#D9D4CC' : '#C83B50',
+                color: isSubmitting ? '#6B6560' : '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                fontFamily: 'var(--font-dm-mono), monospace',
+                fontSize: '0.75rem',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                transition: 'background 0.2s',
+              }}
             >
-              {isSubmitting 
-                ? 'Saving...' 
-                : editingActivity 
-                  ? 'Update Activity' 
+              {isSubmitting
+                ? 'Saving...'
+                : editingActivity
+                  ? 'Update Activity'
                   : 'Create Activity'
               }
             </button>

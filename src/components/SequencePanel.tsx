@@ -13,6 +13,117 @@ interface SequencePanelProps {
   onCancel: () => void;
 }
 
+/* ---- Shared warm editorial styles ---- */
+const sx = {
+  card: {
+    background: 'rgba(255, 255, 255, 0.4)',
+    border: '1px solid #D9D4CC',
+    borderRadius: '8px',
+    padding: '2rem',
+  } as React.CSSProperties,
+  sectionCard: {
+    background: 'rgba(255, 255, 255, 0.3)',
+    border: '1px solid #D9D4CC',
+    borderRadius: '8px',
+    padding: '1.25rem',
+  } as React.CSSProperties,
+  heading: {
+    fontFamily: 'var(--font-barlow), sans-serif',
+    fontWeight: 700 as const,
+    textTransform: 'uppercase' as const,
+    color: '#0F0D0B',
+  },
+  label: {
+    display: 'block' as const,
+    fontFamily: 'var(--font-dm-mono), monospace',
+    fontSize: '0.75rem',
+    fontWeight: 500,
+    color: '#6B6560',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.15em',
+    marginBottom: '0.5rem',
+  },
+  input: {
+    width: '100%',
+    padding: '0.625rem 0.875rem',
+    background: 'rgba(255, 255, 255, 0.6)',
+    border: '1px solid #D9D4CC',
+    borderRadius: '4px',
+    color: '#0F0D0B',
+    fontFamily: 'var(--font-cormorant), Georgia, serif',
+    fontSize: '1rem',
+    outline: 'none',
+  } as React.CSSProperties,
+  hint: {
+    fontFamily: 'var(--font-dm-mono), monospace',
+    fontSize: '0.65rem',
+    color: '#6B6560',
+    marginTop: '0.25rem',
+    letterSpacing: '0.05em',
+  } as React.CSSProperties,
+  checkbox: {
+    width: '1rem',
+    height: '1rem',
+    borderRadius: '3px',
+    border: '1px solid #D9D4CC',
+    background: 'rgba(255, 255, 255, 0.6)',
+    accentColor: '#C83B50',
+    cursor: 'pointer' as const,
+  },
+  primaryBtn: {
+    padding: '0.5rem 1.25rem',
+    background: '#C83B50',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    fontFamily: 'var(--font-dm-mono), monospace',
+    fontSize: '0.68rem',
+    fontWeight: 400,
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase' as const,
+    cursor: 'pointer' as const,
+    transition: 'background 0.2s',
+  } as React.CSSProperties,
+  secondaryBtn: {
+    padding: '0.5rem 1.25rem',
+    background: 'transparent',
+    color: '#6B6560',
+    border: '1px solid #D9D4CC',
+    borderRadius: '4px',
+    fontFamily: 'var(--font-dm-mono), monospace',
+    fontSize: '0.68rem',
+    fontWeight: 400,
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase' as const,
+    cursor: 'pointer' as const,
+    transition: 'all 0.2s',
+  } as React.CSSProperties,
+  accentBtn: {
+    padding: '0.4rem 0.75rem',
+    background: '#1A4FD4',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    fontFamily: 'var(--font-dm-mono), monospace',
+    fontSize: '0.62rem',
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase' as const,
+    cursor: 'pointer' as const,
+    transition: 'background 0.2s',
+  } as React.CSSProperties,
+  smallLink: {
+    fontFamily: 'var(--font-dm-mono), monospace',
+    fontSize: '0.62rem',
+    color: '#1A4FD4',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer' as const,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase' as const,
+    padding: 0,
+  } as React.CSSProperties,
+};
+
 export default function SequencePanel({
   editingSequence,
   onSequenceCreated,
@@ -77,7 +188,6 @@ export default function SequencePanel({
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.users) {
-            // Map userId -> display name
             const names: Record<string, string> = {};
             Object.keys(data.users).forEach(userId => {
               names[userId] = data.users[userId].name;
@@ -108,18 +218,11 @@ export default function SequencePanel({
         closedAt: a.closedAt ?? null,
         parentActivityIds: a.parentActivityIds || []
       })));
-      // Initialize welcomePage with defaults if not present
       if (editingSequence.welcomePage) {
         setWelcomePage(editingSequence.welcomePage);
       } else {
-        setWelcomePage({
-          enabled: false,
-          requestName: false,
-          welcomeText: '',
-          referenceLink: ''
-        });
+        setWelcomePage({ enabled: false, requestName: false, welcomeText: '', referenceLink: '' });
       }
-      // Initialize invitation settings
       setRequireInvitation(editingSequence.requireInvitation || false);
       setInvitedEmails(editingSequence.invitedEmails || []);
     }
@@ -160,7 +263,6 @@ export default function SequencePanel({
     setShowActivityModal(false);
 
     if (mode === 'existing') {
-      // Add empty activity for user to select
       const newOrder = activities.length > 0 ? Math.max(...activities.map(a => a.order)) + 1 : 1;
       setActivities([...activities, {
         activityId: '',
@@ -172,11 +274,9 @@ export default function SequencePanel({
         parentActivityIds: []
       }]);
     } else if (mode === 'create') {
-      // Open admin panel with create form in new tab and return URL
       const returnUrl = window.location.href;
       window.open(`/admin?create=true&returnUrl=${encodeURIComponent(returnUrl)}`, '_blank');
     } else if (mode === 'clone') {
-      // Show clone selection UI
       setActivityMode('clone');
     }
   };
@@ -185,17 +285,15 @@ export default function SequencePanel({
     if (!activityIdToClone) return;
 
     try {
-      // Fetch the activity to clone
       const activityToClone = availableActivities.find(a => a.id === activityIdToClone);
       if (!activityToClone) {
         alert('Activity not found');
         return;
       }
 
-      // Create a cloned activity
       const clonedActivity: Partial<HoloscopicActivity> = {
         ...activityToClone,
-        id: '', // Clear ID so a new one will be generated
+        id: '',
         urlName: `${activityToClone.urlName}-copy-${Date.now()}`,
         title: `${activityToClone.title} (Copy)`,
         isDraft: true,
@@ -207,7 +305,6 @@ export default function SequencePanel({
       delete (clonedActivity as any).createdAt;
       delete (clonedActivity as any).updatedAt;
 
-      // Create the cloned activity via API
       const created = await ActivityService.createActivity({
         title: clonedActivity.title!,
         urlName: clonedActivity.urlName!,
@@ -227,13 +324,11 @@ export default function SequencePanel({
         starterData: clonedActivity.starterData || ''
       });
 
-      // Reload available activities
       const updatedActivities = await ActivityService.getAdminActivities();
       setAvailableActivities(updatedActivities);
 
-      // Add the cloned activity to the sequence with the new activity pre-selected
       const newOrder = activities.length > 0 ? Math.max(...activities.map(a => a.order)) + 1 : 1;
-      const newActivity = {
+      setActivities([...activities, {
         activityId: created.id,
         order: newOrder,
         autoClose: false,
@@ -241,8 +336,7 @@ export default function SequencePanel({
         openedAt: null,
         closedAt: null,
         parentActivityIds: [] as string[]
-      };
-      setActivities([...activities, newActivity]);
+      }]);
 
       setActivityMode('existing');
       setSelectedCloneActivityId('');
@@ -269,19 +363,11 @@ export default function SequencePanel({
 
     const updated = [...activities];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-
-    // Swap
     [updated[index], updated[targetIndex]] = [updated[targetIndex], updated[index]];
-
-    // Update order values
-    updated.forEach((activity, i) => {
-      activity.order = i + 1;
-    });
-
+    updated.forEach((activity, i) => { activity.order = i + 1; });
     setActivities(updated);
   };
 
-  // Check if adding a parent would create a cycle in the DAG
   const wouldCreateCycle = (targetIndex: number, newParentId: string): boolean => {
     const targetId = activities[targetIndex].activityId;
     const visited = new Set<string>();
@@ -290,7 +376,6 @@ export default function SequencePanel({
       if (fromId === targetId) return true;
       if (visited.has(fromId)) return false;
       visited.add(fromId);
-      // Find all children of fromId (activities that list fromId as a parent)
       return activities
         .filter(a => (a.parentActivityIds || []).includes(fromId))
         .some(child => hasPath(child.activityId));
@@ -301,7 +386,7 @@ export default function SequencePanel({
 
   const handleParentChange = (index: number, parentId: string, checked: boolean) => {
     if (checked && wouldCreateCycle(index, parentId)) {
-      alert('Cannot add this parent — it would create a cycle.');
+      alert('Cannot add this parent \u2014 it would create a cycle.');
       return;
     }
     const updated = [...activities];
@@ -319,11 +404,9 @@ export default function SequencePanel({
 
     try {
       if (currentlyClosed) {
-        // Reopen the activity by clearing closedAt
         const updatedSequence = await SequenceService.reopenActivity(editingSequence.id, activityId);
         onSequenceUpdated(updatedSequence);
       } else {
-        // Close the activity
         const updatedSequence = await SequenceService.closeActivity(editingSequence.id, activityId);
         onSequenceUpdated(updatedSequence);
       }
@@ -336,18 +419,16 @@ export default function SequencePanel({
   const handleAddEmails = () => {
     if (!newEmailInput.trim()) return;
 
-    // Split by newlines, commas, or semicolons
     const emailsToAdd = newEmailInput
       .split(/[\n,;]+/)
       .map(e => e.trim().toLowerCase())
-      .filter(e => e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)); // Basic email validation
+      .filter(e => e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
 
     if (emailsToAdd.length === 0) {
       alert('No valid emails found. Please enter valid email addresses.');
       return;
     }
 
-    // Deduplicate and add to list
     const uniqueEmails = [...new Set([...invitedEmails, ...emailsToAdd])];
     setInvitedEmails(uniqueEmails);
     setNewEmailInput('');
@@ -358,60 +439,52 @@ export default function SequencePanel({
   };
 
   return (
-    <div className="bg-slate-800 rounded-lg shadow-xl p-4 sm:p-6 lg:p-8">
-      <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">
+    <div style={sx.card}>
+      <h2 style={{ ...sx.heading, fontSize: '1.5rem', marginBottom: '1.5rem' }}>
         {editingSequence ? 'Edit Sequence' : 'Create New Sequence'}
       </h2>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm">
+        <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: 'rgba(200, 59, 80, 0.06)', border: '1px solid rgba(200, 59, 80, 0.2)', borderRadius: '4px', color: '#C83B50', fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.9rem' }}>
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         {/* Basic Info */}
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Sequence Title *
-            </label>
+            <label style={sx.label}>Sequence Title *</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={sx.input}
               placeholder="e.g., Spring 2024 Cohort"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              URL Name *
-            </label>
+            <label style={sx.label}>URL Name *</label>
             <input
               type="text"
               value={urlName}
               onChange={(e) => setUrlName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={sx.input}
               placeholder="e.g., spring-2024-cohort"
               pattern="[a-z0-9\-]+"
               required
             />
-            <p className="mt-1 text-xs text-gray-400">
-              Lowercase letters, numbers, and hyphens only
-            </p>
+            <p style={sx.hint}>Lowercase letters, numbers, and hyphens only</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Description
-            </label>
+            <label style={sx.label}>Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={{ ...sx.input, resize: 'vertical' as const }}
               placeholder="Brief description of this sequence..."
               rows={3}
             />
@@ -419,42 +492,35 @@ export default function SequencePanel({
         </div>
 
         {/* Public/Private */}
-        <div className="bg-slate-700 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-white mb-4">Public/Private</h3>
+        <div style={sx.sectionCard}>
+          <h3 style={{ ...sx.heading, fontSize: '1rem', marginBottom: '1rem' }}>Public/Private</h3>
 
-          <div className="space-y-4">
-            <div className="flex items-center">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
               <input
                 type="checkbox"
-                id="requireInvitation"
                 checked={requireInvitation}
                 onChange={(e) => setRequireInvitation(e.target.checked)}
-                className="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500"
+                style={sx.checkbox}
               />
-              <label htmlFor="requireInvitation" className="ml-2 text-sm text-gray-300">
+              <span style={{ marginLeft: '0.5rem', fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.95rem', color: '#0F0D0B' }}>
                 Private (require invitation to enroll)
-              </label>
-            </div>
+              </span>
+            </label>
 
             {requireInvitation && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Add Invited Emails
-                  </label>
+                  <label style={sx.label}>Add Invited Emails</label>
                   <textarea
                     value={newEmailInput}
                     onChange={(e) => setNewEmailInput(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-600 border border-slate-500 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                    placeholder="Enter emails (one per line, or comma/semicolon separated)&#10;example@domain.com&#10;another@domain.com"
+                    style={{ ...sx.input, fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.85rem', resize: 'vertical' as const }}
+                    placeholder={"Enter emails (one per line, or comma/semicolon separated)\nexample@domain.com\nanother@domain.com"}
                     rows={4}
                   />
-                  <div className="mt-2">
-                    <button
-                      type="button"
-                      onClick={handleAddEmails}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
-                    >
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <button type="button" onClick={handleAddEmails} style={sx.accentBtn}>
                       Add Emails
                     </button>
                   </div>
@@ -462,20 +528,18 @@ export default function SequencePanel({
 
                 {invitedEmails.length > 0 && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Invited Emails ({invitedEmails.length})
-                    </label>
-                    <div className="bg-slate-600 rounded-lg p-3 max-h-48 overflow-y-auto">
-                      <div className="space-y-1">
+                    <label style={sx.label}>Invited Emails ({invitedEmails.length})</label>
+                    <div style={{ background: 'rgba(255, 255, 255, 0.4)', border: '1px solid #D9D4CC', borderRadius: '6px', padding: '0.75rem', maxHeight: '12rem', overflowY: 'auto' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                         {invitedEmails.map((email, index) => (
-                          <div key={index} className="flex items-center justify-between py-1 px-2 bg-slate-700 rounded text-sm">
-                            <span className="text-gray-300 font-mono">{email}</span>
+                          <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.25rem 0.5rem', background: 'rgba(0, 0, 0, 0.02)', borderRadius: '4px' }}>
+                            <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.75rem', color: '#0F0D0B' }}>{email}</span>
                             <button
                               type="button"
                               onClick={() => handleRemoveEmail(email)}
-                              className="text-red-400 hover:text-red-300 ml-2"
+                              style={{ color: '#C83B50', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '0 0.25rem' }}
                             >
-                              ×
+                              &times;
                             </button>
                           </div>
                         ))}
@@ -484,8 +548,8 @@ export default function SequencePanel({
                   </div>
                 )}
 
-                <div className="text-xs text-gray-400 bg-slate-600 rounded p-3">
-                  <strong>Note:</strong> When invitation is required, only users with emails on this list will be able to enroll in the sequence. The sequence will not appear in public listings.
+                <div style={{ ...sx.hint, background: 'rgba(0, 0, 0, 0.02)', borderRadius: '4px', padding: '0.5rem 0.75rem' }}>
+                  <strong>Note:</strong> When invitation is required, only users with emails on this list will be able to enroll.
                 </div>
               </>
             )}
@@ -494,81 +558,67 @@ export default function SequencePanel({
 
         {/* Welcome Page Form */}
         {showWelcomePageForm && (
-          <div className="bg-slate-700 rounded-lg p-4 mb-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Welcome Page Settings</h3>
+          <div style={sx.sectionCard}>
+            <h3 style={{ ...sx.heading, fontSize: '1rem', marginBottom: '1rem' }}>Welcome Page Settings</h3>
 
-            <div className="space-y-4">
-              <div className="flex items-center">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
-                  id="welcomeEnabled"
                   checked={welcomePage.enabled}
                   onChange={(e) => setWelcomePage({ ...welcomePage, enabled: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500"
+                  style={sx.checkbox}
                 />
-                <label htmlFor="welcomeEnabled" className="ml-2 text-sm text-gray-300">
+                <span style={{ marginLeft: '0.5rem', fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.95rem', color: '#0F0D0B' }}>
                   Enable welcome page for this sequence
-                </label>
-              </div>
+                </span>
+              </label>
 
               {welcomePage.enabled && (
                 <>
-                  <div className="flex items-center">
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                     <input
                       type="checkbox"
-                      id="requestName"
                       checked={welcomePage.requestName}
                       onChange={(e) => setWelcomePage({ ...welcomePage, requestName: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500"
+                      style={sx.checkbox}
                     />
-                    <label htmlFor="requestName" className="ml-2 text-sm text-gray-300">
+                    <span style={{ marginLeft: '0.5rem', fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.95rem', color: '#0F0D0B' }}>
                       Request participant name for this sequence
-                    </label>
-                  </div>
+                    </span>
+                  </label>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Welcome Text
-                    </label>
+                    <label style={sx.label}>Welcome Text</label>
                     <textarea
                       value={welcomePage.welcomeText}
                       onChange={(e) => setWelcomePage({ ...welcomePage, welcomeText: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-600 border border-slate-500 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ ...sx.input, resize: 'vertical' as const }}
                       placeholder="Enter welcome text for participants..."
                       rows={4}
                       maxLength={2000}
                     />
-                    <p className="mt-1 text-xs text-gray-400">
-                      {welcomePage.welcomeText.length}/2000 characters
-                    </p>
+                    <p style={sx.hint}>{welcomePage.welcomeText.length}/2000 characters</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Reference Link (optional)
-                    </label>
+                    <label style={sx.label}>Reference Link (optional)</label>
                     <input
                       type="url"
                       value={welcomePage.referenceLink}
                       onChange={(e) => setWelcomePage({ ...welcomePage, referenceLink: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-600 border border-slate-500 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={sx.input}
                       placeholder="https://holoscopic.io/wiki/..."
                       maxLength={500}
                     />
-                    <p className="mt-1 text-xs text-gray-400">
-                      Link to wiki page or other reference material
-                    </p>
+                    <p style={sx.hint}>Link to wiki page or other reference material</p>
                   </div>
                 </>
               )}
             </div>
 
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={() => setShowWelcomePageForm(false)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
-              >
+            <div style={{ marginTop: '1rem' }}>
+              <button type="button" onClick={() => setShowWelcomePageForm(false)} style={sx.accentBtn}>
                 Done
               </button>
             </div>
@@ -577,67 +627,81 @@ export default function SequencePanel({
 
         {/* Activities */}
         <div>
-          <div className="flex justify-between items-center mb-3">
-            <label className="block text-sm font-medium text-gray-300">
-              Activities
-            </label>
-            <div className="flex gap-2">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <label style={{ ...sx.label, marginBottom: 0 }}>Activities</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button
                 type="button"
                 onClick={() => setShowWelcomePageForm(!showWelcomePageForm)}
-                className={`px-3 py-1 text-white text-sm rounded transition-colors ${
-                  welcomePage.enabled
-                    ? 'bg-green-600 hover:bg-green-700'
-                    : 'bg-gray-600 hover:bg-gray-700'
-                }`}
+                style={{
+                  ...sx.secondaryBtn,
+                  borderColor: welcomePage.enabled ? '#2a9d6f' : '#D9D4CC',
+                  color: welcomePage.enabled ? '#2a9d6f' : '#6B6560',
+                }}
               >
-                {welcomePage.enabled ? '✓ Set Welcome Page' : 'Set Welcome Page'}
+                {welcomePage.enabled ? '\u2713 Welcome Page' : 'Set Welcome Page'}
               </button>
-              <div className="relative">
+              <div style={{ position: 'relative' }}>
                 <button
                   type="button"
                   onClick={() => setShowActivityModal(!showActivityModal)}
-                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+                  style={sx.primaryBtn}
                 >
                   + Add Activity
                 </button>
                 {showActivityModal && (
-                <div className="absolute right-0 top-full mt-2 bg-slate-700 rounded-lg shadow-xl p-2 z-10 w-48">
-                  <button
-                    type="button"
-                    onClick={() => handleAddActivity('existing')}
-                    className="w-full text-left px-3 py-2 text-sm text-white hover:bg-slate-600 rounded"
-                  >
-                    Add Existing Activity
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleAddActivity('clone')}
-                    className="w-full text-left px-3 py-2 text-sm text-white hover:bg-slate-600 rounded"
-                  >
-                    Clone Activity
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleAddActivity('create')}
-                    className="w-full text-left px-3 py-2 text-sm text-white hover:bg-slate-600 rounded"
-                  >
-                    Create New Activity
-                  </button>
-                </div>
-              )}
+                  <div style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '100%',
+                    marginTop: '0.5rem',
+                    background: '#fff',
+                    border: '1px solid #D9D4CC',
+                    borderRadius: '6px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+                    padding: '0.25rem',
+                    zIndex: 10,
+                    width: '12rem',
+                  }}>
+                    {['existing', 'clone', 'create'].map(mode => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => handleAddActivity(mode as any)}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '0.5rem 0.75rem',
+                          fontFamily: 'var(--font-dm-mono), monospace',
+                          fontSize: '0.65rem',
+                          letterSpacing: '0.08em',
+                          color: '#0F0D0B',
+                          background: 'none',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          transition: 'background 0.15s',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0, 0, 0, 0.03)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                      >
+                        {mode === 'existing' ? 'Add Existing Activity' : mode === 'clone' ? 'Clone Activity' : 'Create New Activity'}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* Clone Activity Selection */}
           {activityMode === 'clone' && (
-            <div className="bg-slate-700 rounded-lg p-4 mb-4">
-              <h3 className="text-sm font-medium text-white mb-3">Select Activity to Clone</h3>
+            <div style={{ ...sx.sectionCard, marginBottom: '1rem' }}>
+              <h3 style={{ ...sx.label, marginBottom: '0.75rem' }}>Select Activity to Clone</h3>
               <select
                 value={selectedCloneActivityId}
                 onChange={(e) => setSelectedCloneActivityId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-600 border border-slate-500 text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+                style={{ ...sx.input, marginBottom: '0.75rem' }}
               >
                 <option value="">Select an activity...</option>
                 {availableActivities.map((act) => (
@@ -646,22 +710,19 @@ export default function SequencePanel({
                   </option>
                 ))}
               </select>
-              <div className="flex gap-2">
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button
                   type="button"
                   onClick={() => handleCloneActivity(selectedCloneActivityId)}
                   disabled={!selectedCloneActivityId}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white text-sm rounded transition-colors"
+                  style={{ ...sx.accentBtn, opacity: selectedCloneActivityId ? 1 : 0.5, cursor: selectedCloneActivityId ? 'pointer' : 'not-allowed' }}
                 >
-                  Clone & Add to Sequence
+                  Clone &amp; Add to Sequence
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setActivityMode('existing');
-                    setSelectedCloneActivityId('');
-                  }}
-                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors"
+                  onClick={() => { setActivityMode('existing'); setSelectedCloneActivityId(''); }}
+                  style={sx.secondaryBtn}
                 >
                   Cancel
                 </button>
@@ -670,22 +731,34 @@ export default function SequencePanel({
           )}
 
           {activities.length === 0 && activityMode !== 'clone' ? (
-            <div className="text-center py-6 text-gray-400 text-sm">
-              No activities added yet. Click "Add Activity" to get started.
+            <div style={{ textAlign: 'center', padding: '2rem 0', color: '#6B6560', fontFamily: 'var(--font-cormorant), Georgia, serif', fontStyle: 'italic' }}>
+              No activities added yet. Click &ldquo;Add Activity&rdquo; to get started.
             </div>
           ) : activityMode !== 'clone' ? (
-            <div className="space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {activities.map((activity, index) => (
-                <div key={index} className="bg-slate-700 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-white font-semibold text-sm">
+                <div key={index} style={sx.sectionCard}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <div style={{
+                      flexShrink: 0,
+                      width: '2rem',
+                      height: '2rem',
+                      borderRadius: '50%',
+                      border: '1px solid #D9D4CC',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontFamily: 'var(--font-dm-mono), monospace',
+                      fontSize: '0.7rem',
+                      color: '#6B6560',
+                    }}>
                       {index + 1}
                     </div>
 
-                    <div className="flex-1 space-y-3">
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <div>
-                        <div className="flex justify-between items-center mb-1">
-                          <label className="block text-xs text-gray-400">Activity</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                          <label style={{ ...sx.hint, margin: 0 }}>Activity</label>
                           {activity.activityId && (
                             <button
                               type="button"
@@ -693,16 +766,16 @@ export default function SequencePanel({
                                 const returnUrl = window.location.href;
                                 window.open(`/admin?activity=${activity.activityId}&returnUrl=${encodeURIComponent(returnUrl)}`, '_blank');
                               }}
-                              className="text-xs text-blue-400 hover:text-blue-300"
+                              style={sx.smallLink}
                             >
-                              Edit →
+                              Edit &rarr;
                             </button>
                           )}
                         </div>
                         <select
                           value={activity.activityId}
                           onChange={(e) => handleActivityChange(index, 'activityId', e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-600 border border-slate-500 text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          style={sx.input}
                           required
                         >
                           <option value="">Select an activity...</option>
@@ -714,10 +787,10 @@ export default function SequencePanel({
                         </select>
                       </div>
 
-                      {/* Author Selection (from sequence members) */}
+                      {/* Author Selection */}
                       {activity.activityId && editingSequence && editingSequence.members.length > 0 && (
                         <div>
-                          <label className="block text-xs text-gray-400 mb-1">Author (optional)</label>
+                          <label style={{ ...sx.hint, margin: 0, marginBottom: '0.25rem', display: 'block' }}>Author (optional)</label>
                           <select
                             value={
                               availableActivities.find(a => a.id === activity.activityId)?.author?.userId || ''
@@ -725,7 +798,6 @@ export default function SequencePanel({
                             onChange={async (e) => {
                               const selectedUserId = e.target.value;
                               if (!selectedUserId) {
-                                // Clear author
                                 try {
                                   await ActivityService.updateActivity(activity.activityId, { author: null } as any);
                                   const updatedActivities = await ActivityService.getAdminActivities();
@@ -735,14 +807,10 @@ export default function SequencePanel({
                                   alert('Failed to clear author');
                                 }
                               } else {
-                                // Set author
                                 const authorName = memberNames[selectedUserId] || selectedUserId;
                                 try {
                                   await ActivityService.updateActivity(activity.activityId, {
-                                    author: {
-                                      userId: selectedUserId,
-                                      name: authorName
-                                    }
+                                    author: { userId: selectedUserId, name: authorName }
                                   } as any);
                                   const updatedActivities = await ActivityService.getAdminActivities();
                                   setAvailableActivities(updatedActivities);
@@ -752,7 +820,7 @@ export default function SequencePanel({
                                 }
                               }
                             }}
-                            className="w-full px-3 py-2 bg-slate-600 border border-slate-500 text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            style={sx.input}
                           >
                             <option value="">No author</option>
                             {editingSequence.members.map((member) => (
@@ -761,40 +829,36 @@ export default function SequencePanel({
                               </option>
                             ))}
                           </select>
-                          <p className="text-xs text-gray-400 mt-1">
-                            Set who proposed this activity
-                          </p>
+                          <p style={sx.hint}>Set who proposed this activity</p>
                         </div>
                       )}
 
-                      <div className="space-y-3">
-                        <div className="flex items-center">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                           <input
                             type="checkbox"
-                            id={`autoClose-${index}`}
                             checked={activity.autoClose}
                             onChange={(e) => {
                               handleActivityChange(index, 'autoClose', e.target.checked);
-                              // Set default duration when enabling autoClose
                               if (e.target.checked && !activity.duration) {
                                 handleActivityChange(index, 'duration', 7);
                               }
                             }}
-                            className="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500"
+                            style={sx.checkbox}
                           />
-                          <label htmlFor={`autoClose-${index}`} className="ml-2 text-xs text-gray-300">
+                          <span style={{ marginLeft: '0.5rem', fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.9rem', color: '#0F0D0B' }}>
                             Automatically close after duration
-                          </label>
-                        </div>
+                          </span>
+                        </label>
 
                         {activity.autoClose && (
                           <div>
-                            <label className="block text-xs text-gray-400 mb-1">Duration (days)</label>
+                            <label style={{ ...sx.hint, margin: 0, marginBottom: '0.25rem', display: 'block' }}>Duration (days)</label>
                             <input
                               type="number"
                               value={activity.duration || 7}
                               onChange={(e) => handleActivityChange(index, 'duration', parseInt(e.target.value) || 1)}
-                              className="w-full px-3 py-2 bg-slate-600 border border-slate-500 text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              style={sx.input}
                               min="1"
                               required={activity.autoClose}
                             />
@@ -803,9 +867,9 @@ export default function SequencePanel({
 
                         {/* Parent Activity Selection (DAG relationships) */}
                         {activity.activityId && activities.filter(a => a.activityId && a.activityId !== activity.activityId).length > 0 && (
-                          <div className="pt-3 border-t border-slate-600">
-                            <label className="block text-xs text-gray-400 mb-1">Depends on</label>
-                            <div className="space-y-1">
+                          <div style={{ paddingTop: '0.75rem', borderTop: '1px solid #D9D4CC' }}>
+                            <label style={{ ...sx.hint, margin: 0, marginBottom: '0.25rem', display: 'block' }}>Depends on</label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                               {activities
                                 .filter(a => a.activityId && a.activityId !== activity.activityId)
                                 .map((otherActivity) => {
@@ -814,14 +878,16 @@ export default function SequencePanel({
                                   )?.title || otherActivity.activityId;
 
                                   return (
-                                    <label key={otherActivity.activityId} className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                                    <label key={otherActivity.activityId} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                                       <input
                                         type="checkbox"
                                         checked={(activity.parentActivityIds || []).includes(otherActivity.activityId)}
                                         onChange={(e) => handleParentChange(index, otherActivity.activityId, e.target.checked)}
-                                        className="w-3 h-3 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500"
+                                        style={{ ...sx.checkbox, width: '0.75rem', height: '0.75rem' }}
                                       />
-                                      {actTitle}
+                                      <span style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.85rem', color: '#0F0D0B' }}>
+                                        {actTitle}
+                                      </span>
                                     </label>
                                   );
                                 })}
@@ -829,7 +895,7 @@ export default function SequencePanel({
                           </div>
                         )}
 
-                        {/* Activity Status and Manual Close/Reopen (only for existing sequences) */}
+                        {/* Activity Status and Manual Close/Reopen */}
                         {editingSequence && activity.activityId && (() => {
                           const seqActivity = editingSequence.activities.find(a => a.activityId === activity.activityId);
                           if (!seqActivity?.openedAt) return null;
@@ -839,26 +905,31 @@ export default function SequencePanel({
                           const isClosed = closedAt && now > closedAt;
 
                           return (
-                            <div className="pt-3 border-t border-slate-600">
-                              <div className="flex items-center justify-between">
+                            <div style={{ paddingTop: '0.75rem', borderTop: '1px solid #D9D4CC' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div>
-                                  <p className="text-xs text-gray-400 mb-1">Current Status</p>
-                                  <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                                    isClosed
-                                      ? 'bg-red-900 text-red-300'
-                                      : 'bg-green-900 text-green-300'
-                                  }`}>
+                                  <p style={{ ...sx.hint, margin: 0, marginBottom: '0.25rem' }}>Current Status</p>
+                                  <span style={{
+                                    display: 'inline-block',
+                                    fontFamily: 'var(--font-dm-mono), monospace',
+                                    fontSize: '0.55rem',
+                                    letterSpacing: '0.12em',
+                                    textTransform: 'uppercase',
+                                    padding: '0.2rem 0.6rem',
+                                    borderRadius: '999px',
+                                    background: isClosed ? 'rgba(200, 59, 80, 0.1)' : 'rgba(42, 157, 111, 0.15)',
+                                    color: isClosed ? '#C83B50' : '#2a9d6f',
+                                  }}>
                                     {isClosed ? 'Closed' : 'Open'}
                                   </span>
                                 </div>
                                 <button
                                   type="button"
                                   onClick={() => handleToggleActivityClosed(activity.activityId, !!isClosed)}
-                                  className={`px-3 py-1 text-xs rounded transition-colors ${
-                                    isClosed
-                                      ? 'bg-green-600 hover:bg-green-700 text-white'
-                                      : 'bg-red-600 hover:bg-red-700 text-white'
-                                  }`}
+                                  style={{
+                                    ...sx.accentBtn,
+                                    background: isClosed ? '#2a9d6f' : '#C83B50',
+                                  }}
                                 >
                                   {isClosed ? 'Reopen' : 'Close Now'}
                                 </button>
@@ -869,29 +940,29 @@ export default function SequencePanel({
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-1">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                       <button
                         type="button"
                         onClick={() => handleMoveActivity(index, 'up')}
                         disabled={index === 0}
-                        className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                        style={{ padding: '0.25rem', color: index === 0 ? '#D9D4CC' : '#6B6560', background: 'none', border: 'none', cursor: index === 0 ? 'not-allowed' : 'pointer', fontSize: '0.9rem' }}
                       >
-                        ↑
+                        &uarr;
                       </button>
                       <button
                         type="button"
                         onClick={() => handleMoveActivity(index, 'down')}
                         disabled={index === activities.length - 1}
-                        className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                        style={{ padding: '0.25rem', color: index === activities.length - 1 ? '#D9D4CC' : '#6B6560', background: 'none', border: 'none', cursor: index === activities.length - 1 ? 'not-allowed' : 'pointer', fontSize: '0.9rem' }}
                       >
-                        ↓
+                        &darr;
                       </button>
                       <button
                         type="button"
                         onClick={() => handleRemoveActivity(index)}
-                        className="p-1 text-red-400 hover:text-red-300"
+                        style={{ padding: '0.25rem', color: '#C83B50', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }}
                       >
-                        ×
+                        &times;
                       </button>
                     </div>
                   </div>
@@ -902,11 +973,17 @@ export default function SequencePanel({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 pt-4">
+        <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid #D9D4CC' }}>
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white font-medium rounded-lg transition-colors"
+            style={{
+              ...sx.primaryBtn,
+              flex: 1,
+              padding: '0.75rem',
+              opacity: loading ? 0.5 : 1,
+              cursor: loading ? 'not-allowed' : 'pointer',
+            }}
           >
             {loading ? 'Saving...' : (editingSequence ? 'Update Sequence' : 'Create Sequence')}
           </button>
@@ -914,7 +991,12 @@ export default function SequencePanel({
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="px-6 py-3 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600/50 text-white font-medium rounded-lg transition-colors"
+            style={{
+              ...sx.secondaryBtn,
+              padding: '0.75rem 1.5rem',
+              opacity: loading ? 0.5 : 1,
+              cursor: loading ? 'not-allowed' : 'pointer',
+            }}
           >
             Cancel
           </button>

@@ -66,7 +66,7 @@ export function getLayoutedElements(
           source: parentId,
           target: activity.activityId,
           type: 'default',
-          style: { stroke: '#38bdf8', strokeWidth: 2 },
+          style: { stroke: '#D9D4CC', strokeWidth: 2 },
         });
       }
     });

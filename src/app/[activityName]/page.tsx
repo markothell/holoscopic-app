@@ -50,34 +50,24 @@ export default function ActivityByNamePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white">Loading activity...</p>
-        </div>
+      <div className="min-h-screen bg-[#1A1714] flex items-center justify-center">
+        <div className="text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Loading...</div>
       </div>
     );
   }
 
   if (error || !activity) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-[#1A1714] flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="mb-8">
-            <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <h2 className="text-2xl font-semibold text-white mb-2">Activity Not Found</h2>
-            <p className="text-gray-300 mb-6">
-              The activity "{activityName}" could not be found.
-            </p>
-            <Link
-              href="/"
-              className="inline-flex items-center px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              Back to Home
-            </Link>
-          </div>
+          <p className="text-[#C83B50] mb-4">{error || `Activity "${activityName}" not found`}</p>
+          <Link
+            href="/"
+            className="text-[#C83B50] hover:text-[#e04d63] transition-colors"
+            style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}
+          >
+            Return to Home
+          </Link>
         </div>
       </div>
     );

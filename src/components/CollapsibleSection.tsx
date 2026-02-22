@@ -16,26 +16,54 @@ export default function CollapsibleSection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="border border-gray-300 rounded-lg overflow-hidden">
+    <div style={{ border: '1px solid #D9D4CC', borderRadius: '8px', overflow: 'hidden' }}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 flex items-center justify-between transition-colors"
+        style={{
+          width: '100%',
+          padding: '0.75rem 1rem',
+          background: 'rgba(0, 0, 0, 0.02)',
+          border: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          transition: 'background 0.15s',
+          fontFamily: 'var(--font-barlow), sans-serif',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0, 0, 0, 0.04)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)'; }}
       >
-        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
-        {isOpen ? (
-          <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-          </svg>
-        ) : (
-          <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        )}
+        <h3 style={{
+          fontFamily: 'var(--font-barlow), sans-serif',
+          fontSize: '1rem',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.02em',
+          color: '#0F0D0B',
+          margin: 0,
+        }}>
+          {title}
+        </h3>
+        <svg
+          style={{ width: '1.25rem', height: '1.25rem', color: '#6B6560', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
       </button>
 
       {isOpen && (
-        <div className="p-4 bg-white space-y-4">
+        <div style={{
+          padding: '1rem',
+          background: 'rgba(255, 255, 255, 0.4)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem',
+        }}>
           {children}
         </div>
       )}

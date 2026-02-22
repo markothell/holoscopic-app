@@ -50,11 +50,8 @@ export default function ActivityPage({ activityId, sequenceId }: ActivityPagePro
   // Loading state
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white">Loading activity...</p>
-        </div>
+      <div className="min-h-screen bg-[#1A1714] flex items-center justify-center">
+        <div className="text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Loading...</div>
       </div>
     );
   }
@@ -62,18 +59,13 @@ export default function ActivityPage({ activityId, sequenceId }: ActivityPagePro
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-[#1A1714] flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="text-red-400 mb-4">
-            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h2 className="text-xl font-semibold text-white mb-2">Error</h2>
-          <p className="text-gray-400 mb-4">{error}</p>
+          <p className="text-[#C83B50] mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700"
+            className="text-[#C83B50] hover:text-[#e04d63] transition-colors"
+            style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}
           >
             Try Again
           </button>
@@ -85,10 +77,9 @@ export default function ActivityPage({ activityId, sequenceId }: ActivityPagePro
   // Activity not found
   if (!activity) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#1A1714] flex items-center justify-center p-4">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Activity Not Found</h2>
-          <p className="text-gray-600">The activity you&apos;re looking for doesn&apos;t exist.</p>
+          <p className="text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Activity not found</p>
         </div>
       </div>
     );
@@ -100,9 +91,9 @@ export default function ActivityPage({ activityId, sequenceId }: ActivityPagePro
       <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-[#111827] border border-white/10 rounded-lg shadow-xl p-8 text-center">
           <Image
-            src="/holoLogo_dark.svg"
-            alt="Holoscopic Logo"
-            width={60}
+            src="/HS.svg"
+            alt="Holoscopic"
+            width={44}
             height={60}
             className="mx-auto mb-6"
           />

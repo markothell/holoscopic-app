@@ -50,7 +50,7 @@ function ExpandItem({
   title,
   children,
 }: {
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -78,6 +78,144 @@ function ExpandItem({
   );
 }
 
+function MappingVisual() {
+  return (
+    <svg
+      width="300"
+      height="300"
+      viewBox="0 0 300 300"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={styles.visualSvg}
+    >
+      <rect width="300" height="300" rx="16" fill="#1A1F2E" />
+
+      {/* Grid */}
+      <line x1="150" y1="20" x2="150" y2="280" stroke="#ffffff" strokeOpacity="0.08" strokeWidth="1" />
+      <line x1="20" y1="150" x2="280" y2="150" stroke="#ffffff" strokeOpacity="0.08" strokeWidth="1" />
+      <line x1="85" y1="20" x2="85" y2="280" stroke="#ffffff" strokeOpacity="0.04" strokeWidth="0.5" />
+      <line x1="215" y1="20" x2="215" y2="280" stroke="#ffffff" strokeOpacity="0.04" strokeWidth="0.5" />
+      <line x1="20" y1="85" x2="280" y2="85" stroke="#ffffff" strokeOpacity="0.04" strokeWidth="0.5" />
+      <line x1="20" y1="215" x2="280" y2="215" stroke="#ffffff" strokeOpacity="0.04" strokeWidth="0.5" />
+
+      {/* Axis labels */}
+      <text x="150" y="15" textAnchor="middle" fill="#ffffff" fillOpacity="0.25" fontSize="8" fontFamily="monospace" letterSpacing="1.5">INDIVIDUAL</text>
+      <text x="150" y="296" textAnchor="middle" fill="#ffffff" fillOpacity="0.25" fontSize="8" fontFamily="monospace" letterSpacing="1.5">COLLECTIVE</text>
+      <text x="14" y="154" textAnchor="middle" fill="#ffffff" fillOpacity="0.25" fontSize="8" fontFamily="monospace" letterSpacing="1.5" transform="rotate(-90 14 150)">SHORT</text>
+      <text x="290" y="150" textAnchor="middle" fill="#ffffff" fillOpacity="0.25" fontSize="8" fontFamily="monospace" letterSpacing="1.5" transform="rotate(90 288 148)">LONG</text>
+
+      {/* GREEN dots — top-left */}
+      <circle cx="60" cy="55" r="4" fill="#3DD68C" fillOpacity="0.55" />
+      <circle cx="95" cy="72" r="3.5" fill="#3DD68C" fillOpacity="0.5" />
+      <circle cx="75" cy="102" r="4" fill="#3DD68C" fillOpacity="0.62" />
+      <circle cx="112" cy="85" r="3" fill="#3DD68C" fillOpacity="0.5" />
+      <circle cx="120" cy="50" r="3.5" fill="#3DD68C" fillOpacity="0.5" />
+      <circle cx="55" cy="122" r="3" fill="#3DD68C" fillOpacity="0.48" />
+      <circle cx="135" cy="110" r="3.5" fill="#3DD68C" fillOpacity="0.55" />
+      <circle cx="118" cy="128" r="14" fill="#3DD68C" fillOpacity="0.08" />
+      <circle cx="118" cy="128" r="10" fill="#3DD68C" fillOpacity="0.9" />
+
+      {/* BLUE dots — top-right */}
+      <circle cx="240" cy="46" r="4.5" fill="#60A5FA" fillOpacity="0.65" />
+      <circle cx="222" cy="80" r="4.5" fill="#60A5FA" fillOpacity="0.65" />
+      <circle cx="265" cy="92" r="5" fill="#60A5FA" fillOpacity="0.7" />
+      <circle cx="202" cy="55" r="3.5" fill="#60A5FA" fillOpacity="0.55" />
+      <circle cx="252" cy="122" r="3" fill="#60A5FA" fillOpacity="0.48" />
+      <circle cx="185" cy="100" r="4" fill="#60A5FA" fillOpacity="0.5" />
+      <circle cx="175" cy="60" r="3.5" fill="#60A5FA" fillOpacity="0.45" />
+
+      {/* RED dots — bottom-left */}
+      <circle cx="95" cy="202" r="5" fill="#F87171" fillOpacity="0.65" />
+      <circle cx="76" cy="262" r="4" fill="#F87171" fillOpacity="0.6" />
+      <circle cx="122" cy="242" r="3.5" fill="#F87171" fillOpacity="0.55" />
+      <circle cx="112" cy="212" r="3" fill="#F87171" fillOpacity="0.48" />
+      <circle cx="58" cy="232" r="4" fill="#F87171" fillOpacity="0.55" />
+      <circle cx="136" cy="270" r="3" fill="#F87171" fillOpacity="0.38" />
+      <circle cx="55" cy="195" r="18" fill="#F87171" fillOpacity="0.07" />
+      <circle cx="55" cy="195" r="12" fill="#F87171" fillOpacity="0.9" />
+
+      {/* ORANGE dots — bottom-right */}
+      <circle cx="212" cy="226" r="5" fill="#FB923C" fillOpacity="0.7" />
+      <circle cx="237" cy="202" r="4" fill="#FB923C" fillOpacity="0.62" />
+      <circle cx="272" cy="218" r="3.5" fill="#FB923C" fillOpacity="0.65" />
+      <circle cx="196" cy="252" r="4" fill="#FB923C" fillOpacity="0.55" />
+      <circle cx="217" cy="275" r="3" fill="#FB923C" fillOpacity="0.5" />
+      <circle cx="262" cy="242" r="4" fill="#FB923C" fillOpacity="0.45" />
+      <circle cx="185" cy="212" r="3" fill="#FB923C" fillOpacity="0.4" />
+      <circle cx="252" cy="258" r="5" fill="#FB923C" fillOpacity="0.65" />
+
+      {/* Center crosshair */}
+      <circle cx="150" cy="150" r="2" fill="#ffffff" fillOpacity="0.2" />
+    </svg>
+  );
+}
+
+function SequenceVisual() {
+  return (
+    <svg
+      width="300"
+      height="260"
+      viewBox="0 0 300 260"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={styles.visualSvg}
+    >
+      <rect width="300" height="260" rx="16" fill="#1A1F2E" />
+
+      {/* Stage dashed lines */}
+      <line x1="65" y1="42" x2="65" y2="238" stroke="white" strokeOpacity="0.1" strokeWidth="1" strokeDasharray="3 4" />
+      <line x1="150" y1="42" x2="150" y2="238" stroke="white" strokeOpacity="0.1" strokeWidth="1" strokeDasharray="3 4" />
+      <line x1="235" y1="42" x2="235" y2="238" stroke="white" strokeOpacity="0.1" strokeWidth="1" strokeDasharray="3 4" />
+
+      {/* Stage labels */}
+      <text x="65" y="32" textAnchor="middle" fill="white" fillOpacity="0.25" fontSize="7" fontFamily="monospace" letterSpacing="1.5">ACT. I</text>
+      <text x="150" y="32" textAnchor="middle" fill="white" fillOpacity="0.25" fontSize="7" fontFamily="monospace" letterSpacing="1.5">ACT. II</text>
+      <text x="235" y="32" textAnchor="middle" fill="white" fillOpacity="0.25" fontSize="7" fontFamily="monospace" letterSpacing="1.5">ACT. III</text>
+
+      {/* Connecting paths — Green */}
+      <path d="M65,82 C107,82 107,62 150,62" stroke="#3DD68C" strokeOpacity="0.4" strokeWidth="1.5" fill="none" />
+      <path d="M150,62 C193,62 193,78 235,78" stroke="#3DD68C" strokeOpacity="0.4" strokeWidth="1.5" fill="none" />
+
+      {/* Connecting paths — Blue (dramatic shift in Act III) */}
+      <path d="M65,112 C107,112 107,97 150,97" stroke="#60A5FA" strokeOpacity="0.4" strokeWidth="1.5" fill="none" />
+      <path d="M150,97 C193,97 193,55 235,55" stroke="#60A5FA" strokeOpacity="0.65" strokeWidth="2" fill="none" />
+
+      {/* Connecting paths — Purple (joins Act II) */}
+      <path d="M150,133 C193,133 193,127 235,127" stroke="#A78BFA" strokeOpacity="0.4" strokeWidth="1.5" fill="none" />
+
+      {/* Connecting paths — Red */}
+      <path d="M65,155 C107,155 107,174 150,174" stroke="#F87171" strokeOpacity="0.4" strokeWidth="1.5" fill="none" />
+      <path d="M150,174 C193,174 193,158 235,158" stroke="#F87171" strokeOpacity="0.4" strokeWidth="1.5" fill="none" />
+
+      {/* Connecting paths — Orange */}
+      <path d="M65,185 C107,185 107,200 150,200" stroke="#FB923C" strokeOpacity="0.4" strokeWidth="1.5" fill="none" />
+      <path d="M150,200 C193,200 193,195 235,195" stroke="#FB923C" strokeOpacity="0.4" strokeWidth="1.5" fill="none" />
+
+      {/* Stage 1 nodes */}
+      <circle cx="65" cy="82" r="5" fill="#3DD68C" fillOpacity="0.85" />
+      <circle cx="65" cy="112" r="5" fill="#60A5FA" fillOpacity="0.85" />
+      <circle cx="65" cy="155" r="5" fill="#F87171" fillOpacity="0.85" />
+      <circle cx="65" cy="185" r="5" fill="#FB923C" fillOpacity="0.85" />
+
+      {/* Stage 2 nodes */}
+      <circle cx="150" cy="62" r="4.5" fill="#3DD68C" fillOpacity="0.75" />
+      <circle cx="150" cy="97" r="4.5" fill="#60A5FA" fillOpacity="0.75" />
+      <circle cx="150" cy="133" r="5" fill="#A78BFA" fillOpacity="0.85" />
+      <circle cx="150" cy="174" r="4.5" fill="#F87171" fillOpacity="0.75" />
+      <circle cx="150" cy="200" r="4.5" fill="#FB923C" fillOpacity="0.75" />
+
+      {/* Stage 3 nodes */}
+      <circle cx="235" cy="78" r="4.5" fill="#3DD68C" fillOpacity="0.75" />
+      {/* Blue: highlighted perspective shift */}
+      <circle cx="235" cy="55" r="14" fill="#60A5FA" fillOpacity="0.08" />
+      <circle cx="235" cy="55" r="10" fill="#60A5FA" fillOpacity="0.9" />
+      <circle cx="235" cy="127" r="4.5" fill="#A78BFA" fillOpacity="0.75" />
+      <circle cx="235" cy="158" r="4.5" fill="#F87171" fillOpacity="0.75" />
+      <circle cx="235" cy="195" r="4.5" fill="#FB923C" fillOpacity="0.75" />
+    </svg>
+  );
+}
+
 export default function HomePage() {
   const scrollTo = useCallback((id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -95,23 +233,23 @@ export default function HomePage() {
     <div className={styles.page}>
       <div className={styles.grain} />
 
-      {/* Fixed UserMenu */}
       <div className={styles.userMenuWrapper}>
         <UserMenu />
       </div>
 
       <main className={styles.container}>
+
         {/* ---- Hero ---- */}
         <section className={styles.hero}>
           <p className={styles.heroEyebrow}>
-            Open experiments in collective intelligence
+            Experiments in collective intelligence
           </p>
           <h1 className={styles.heroTitle}>
             <span className={styles.word1}>Holo</span>
             <span className={styles.word2}>scopic</span>
           </h1>
           <p className={styles.heroSub}>
-            Games for understanding how we work.
+            Games for understanding how we work, together.
           </p>
           <a
             href="#idea"
@@ -151,98 +289,122 @@ export default function HomePage() {
 
         <div className={styles.divider} />
 
-        {/* ---- The Problem ---- */}
-        <RevealSection id="problem" className={styles.section}>
-          <p className={styles.sectionLabel}>The Problem/Opportunity</p>
+        {/* ---- Our Leverage ---- */}
+        <RevealSection id="leverage" className={styles.section}>
+          <p className={styles.sectionLabel}>Our Leverage</p>
           <h2 className={styles.sectionHeadline}>
-            Polarization, Distraction, 
-            <br />Domination, <em>Transformation</em>
-          </h2>
-
-          <div className={styles.expandGroup}>
-            <ExpandItem title="Society is coming unhinged.">
-              Our internal conflicts are the world&apos;s problems. Polarized
-              cultural dynamics are the result of shared blindness. If one
-              person can see themselves and transform, so can the collective.
-              <br />Our solutions will heal the world.
-            </ExpandItem>
-
-            <ExpandItem title="We are connected but can't see each other.">
-              The world has been connected in real time and yet the tools we use
-              to do that connecting build walls around what we do not know or like.
-            </ExpandItem>
-
-            <ExpandItem title="Our world is controlled by a powerful few.">
-              Another way to say this is society is guided by algorithms. Some exist
-              in the head of powerful figures; some are the systems that guide our society.
-              Humans can design algorithms. Like the programming of computers, we
-              just need a language that everyone can use to connect our different experiences.
-            </ExpandItem>
-          </div>
-        </RevealSection>
-
-        <div className={styles.divider} />
-
-        {/* ---- What We're Building ---- */}
-        <RevealSection id="game" className={styles.section}>
-          <p className={styles.sectionLabel}>What We&apos;re Building</p>
-          <h2 className={styles.sectionHeadline}>
-            Algorithms For
+            Light Enters
             <br />
-            Human <em>Prosperity</em>
+            Through the Cracks
           </h2>
 
           <div className={styles.expandGroup}>
-            <ExpandItem title="Map Culture">
-              If we want to graduate from systems that reinforce separation,
-              we must learn to see, think and act as collectives.
-              Maps help us transfer knowledge from one to another, compare and expand 
-              knowledge across time, unify layers of intersecting knowledge, and 
-              see the whole.
+            <ExpandItem
+              title={
+                <>
+                  True change comes through{' '}
+                  <s className={styles.strike}>Domination</s>{' '}
+                  Mutual Insight
+                </>
+              }
+            >
+              For ages the tension of difference was solved by domination. War,
+              politics, gender — each side fighting for a partial truth, not
+              seeing a path for co-creation.
             </ExpandItem>
 
-            <ExpandItem title="Study Collective Transformation">
-              Collectives &apos;see&apos; through ideas.<br/> Mapping sequences create
-              feedback loops that allows us to witness how we change in relation to the world. 
-              By visualizing this processes we create paths for others to follow, i.e. 
-              lower the ladder. By doing it as collectives we build models of the world that serve the whole.
+            <ExpandItem title="Polarization = Potential Energy">
+              Science provided a framework for mutual examination of the physical
+              world. We still get caught in the battles but it fueled an era of
+              innovation. Our social world is primed for discovery.
             </ExpandItem>
 
-            <ExpandItem title="Programming Humanity">
-              The insights that transform individuals and communities can be turned
-              into repeatable processes. Those processes can be shared, forked —
-              like open source code, but for how humans find alignment with the world.
-              Human readable algorithms backed by 
+            <ExpandItem title="Ideas Transform Reality">
+              Science gave us a simple discipline: write down your thinking
+              before you run your experiment. Share your results. Let others try
+              it. That process unlocked centuries of compounding discovery — not
+              by identifying the <strong>TRUTH</strong> but by creating useful
+              explanations.
+              <br /><br />
+              George Box: &ldquo;All models are wrong, but some are useful&rdquo;
+              <br /><br />
+              The social and spiritual realms remain largely untapped, and the
+              source of our deepest rifts. But as with science there are
+              processes that allow us to craft useful ideas not in spite of
+              divergent perspectives but using them as fuel.
             </ExpandItem>
           </div>
         </RevealSection>
 
         <div className={styles.divider} />
 
-        {/* ---- Invitation ---- */}
+        {/* ---- The Practice ---- */}
+        <RevealSection id="practice" className={styles.section}>
+          <p className={styles.sectionLabel}>The Practice</p>
+          <h2 className={styles.sectionHeadline}>
+            Conversations that&hellip;
+          </h2>
+
+          <div className={styles.expandGroup}>
+            <ExpandItem title="Allow us to See Wholes">
+              <div className={styles.visualPanel}>
+                <MappingVisual />
+              </div>
+              Most of what shapes us is invisible — the assumptions inside our
+              agreements, the values embedded in our systems. Mapping collective
+              perception makes the implicit explicit, so we can finally see the
+              full terrain we&apos;re navigating together.
+            </ExpandItem>
+
+            <ExpandItem title="Visualize Emergence">
+              <div className={styles.visualPanel}>
+                <SequenceVisual />
+              </div>
+              Change doesn&apos;t announce itself. But when you can watch a
+              group&apos;s ideas shift in real time — converging, diverging, finding
+              unexpected common ground — you start to see how transformation
+              actually moves through a culture.
+            </ExpandItem>
+
+            <ExpandItem title="Leave a trail for others to follow">
+              Every insight that transforms a group is a path someone else
+              could walk. We document what works, make it repeatable, and share
+              it openly — so good social technology compounds the way scientific
+              discovery does.
+            </ExpandItem>
+          </div>
+        </RevealSection>
+
+        <div className={styles.divider} />
+
+        {/* ---- An Invitation ---- */}
         <RevealSection id="join" className={styles.invitation}>
-          <h2 className={styles.invitationHeadline}>
-            If you find that
-            <br />
-            <em>exciting —</em>
-            <br />
-            welcome.
+          <p className={styles.sectionLabel}>An Invitation</p>
+          <h2 className={styles.sectionHeadline}>
+            <em>Play</em> the Game
           </h2>
-          <div className={styles.invitationLinks}>
-            <a href="#" className={styles.invLink}>
-              Follow the experiments on TikTok
-            </a>
-            <Link href="/activities" className={styles.invLink}>
-              Participate in an activity
+
+          <p className={styles.invSubLabel}>Open activities</p>
+
+          <div className={styles.activityList}>
+            <Link href="/activities" className={styles.activityCard}>
+              <span className={styles.activityTitle}>
+                Artificial Intelligence // Earth Intelligence
+              </span>
+              <span className={styles.activityMeta}>Progress &rarr;</span>
             </Link>
+          </div>
+
+          <div className={styles.invitationLinks}>
             <a
               href="https://wiki.holoscopic.io/index.php?title=Special:Contact"
               className={styles.invLink}
             >
-              Reach out directly
+              Create a map
             </a>
           </div>
         </RevealSection>
+
       </main>
 
       {/* ---- Footer ---- */}

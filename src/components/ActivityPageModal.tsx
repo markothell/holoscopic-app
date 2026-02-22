@@ -26,6 +26,9 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
   const [error, setError] = useState<string | null>(null);
   const [username, setUsername] = useState<string>('');
 
+  // Tab state for resolve activity type
+  const [resolveTab, setResolveTab] = useState<'map' | 'comments'>('map');
+
   // Modal state
   const [showPreamble, setShowPreamble] = useState(false);
   const [showEntryModal, setShowEntryModal] = useState(false);
@@ -192,9 +195,9 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
       <div className="fixed top-4 left-4 z-20">
         <Link href="/">
           <Image
-            src="/holoLogo_dark.svg"
-            alt="Holoscopic Logo"
-            width={40}
+            src="/HS.svg"
+            alt="Holoscopic"
+            width={29}
             height={40}
             className="hover:opacity-80 transition-opacity"
           />
@@ -259,15 +262,64 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
             </div>
           )}
         </div>
-        <div className="flex-1 min-h-0 px-4">
-          {normalizeActivityType(activity.activityType) === 'resolve' ? (
-            <ResultsViewSimple
-              activity={activity}
-              isVisible={true}
-              onToggle={() => {}}
-              currentUserId={userId || ''}
-            />
-          ) : (
+        {normalizeActivityType(activity.activityType) === 'resolve' ? (
+          <div className="flex-1 min-h-0 flex flex-col px-4">
+            {/* Tab bar */}
+            <div className="flex-shrink-0 flex justify-center mb-2">
+              <div className="flex bg-[#111827] rounded-lg p-1 border border-white/10">
+                <button
+                  onClick={() => setResolveTab('map')}
+                  className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'map' ? 'bg-[#C83B50] text-white' : 'text-[#A89F96] hover:text-white'}`}
+                  style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
+                >
+                  Map View
+                </button>
+                <button
+                  onClick={() => setResolveTab('comments')}
+                  className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'comments' ? 'bg-[#C83B50] text-white' : 'text-[#A89F96] hover:text-white'}`}
+                  style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
+                >
+                  Comments
+                </button>
+              </div>
+            </div>
+            {/* Tab content */}
+            <div className="flex-1 min-h-0">
+              {resolveTab === 'map' ? (
+                <ResultsViewSimple
+                  activity={activity}
+                  isVisible={true}
+                  onToggle={() => {}}
+                  currentUserId={userId || ''}
+                />
+              ) : (
+                <div className="h-full flex flex-col overflow-y-auto">
+                  <p className="text-center text-white font-bold mb-3 px-2" style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: 'clamp(0.9rem, 3.5vw, 1.1rem)', textTransform: 'uppercase', letterSpacing: '0.01em', lineHeight: '1.2' }}>
+                    {activity.commentQuestion}
+                  </p>
+                  <CommentSection
+                    activity={activity}
+                    onCommentSubmit={() => {}}
+                    onCommentVote={activity.status === 'completed' ? undefined : async (commentId) => {
+                      try {
+                        await ActivityService.voteComment(activityId, commentId, userId!);
+                        const updated = await ActivityService.getActivity(activityId);
+                        setActivity(updated);
+                      } catch (err) {
+                        console.error('Error voting:', err);
+                      }
+                    }}
+                    showAllComments={true}
+                    readOnly={true}
+                    currentUserId={userId || ''}
+                    sequenceId={sequenceId}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0 px-4">
             <ResultsView
               activity={activity}
               isVisible={true}
@@ -285,8 +337,8 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               hoveredSlotNumber={hoveredSlot}
               sequenceId={sequenceId}
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Desktop Layout - Split into columns */}
@@ -349,14 +401,65 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
           </div>
 
           {/* Map - Use ResultsView for tablet (sm-lg), custom for desktop lg+ */}
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 flex flex-col">
             {normalizeActivityType(activity.activityType) === 'resolve' ? (
-              <ResultsViewSimple
-                activity={activity}
-                isVisible={true}
-                onToggle={() => {}}
-                currentUserId={userId || ''}
-              />
+              <>
+                {/* Tab bar for sm-lg range */}
+                <div className="lg:hidden flex-shrink-0 flex justify-center mb-3">
+                  <div className="flex bg-[#111827] rounded-lg p-1 border border-white/10">
+                    <button
+                      onClick={() => setResolveTab('map')}
+                      className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'map' ? 'bg-[#C83B50] text-white' : 'text-[#A89F96] hover:text-white'}`}
+                      style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
+                    >
+                      Map View
+                    </button>
+                    <button
+                      onClick={() => setResolveTab('comments')}
+                      className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'comments' ? 'bg-[#C83B50] text-white' : 'text-[#A89F96] hover:text-white'}`}
+                      style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
+                    >
+                      Comments
+                    </button>
+                  </div>
+                </div>
+                {/* Map tab (always visible at lg+, conditional at sm-lg) */}
+                <div className={`flex-1 min-h-0 ${resolveTab === 'comments' ? 'lg:flex hidden' : 'flex'} flex-col`}>
+                  <ResultsViewSimple
+                    activity={activity}
+                    isVisible={true}
+                    onToggle={() => {}}
+                    currentUserId={userId || ''}
+                  />
+                </div>
+                {/* Comments tab for sm-lg range */}
+                {resolveTab === 'comments' && (
+                  <div className="lg:hidden flex-1 flex flex-col overflow-hidden">
+                    <p className="text-center text-white font-bold mb-3 px-2" style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: 'clamp(0.9rem, 3.5vw, 1.1rem)', textTransform: 'uppercase', letterSpacing: '0.01em', lineHeight: '1.2' }}>
+                      {activity.commentQuestion}
+                    </p>
+                    <div className="flex-1 overflow-hidden">
+                      <CommentSection
+                        activity={activity}
+                        onCommentSubmit={() => {}}
+                        onCommentVote={activity.status === 'completed' ? undefined : async (commentId) => {
+                          try {
+                            await ActivityService.voteComment(activityId, commentId, userId!);
+                            const updated = await ActivityService.getActivity(activityId);
+                            setActivity(updated);
+                          } catch (err) {
+                            console.error('Error voting:', err);
+                          }
+                        }}
+                        showAllComments={true}
+                        readOnly={true}
+                        currentUserId={userId || ''}
+                        sequenceId={sequenceId}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <ResultsView
                 activity={activity}

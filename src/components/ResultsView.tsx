@@ -73,21 +73,19 @@ export default function ResultsView({
               <div className="flex bg-[#111827] rounded-lg p-1 border border-white/10">
                 <button
                   onClick={() => setActiveTab('map')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    activeTab === 'map'
-                      ? 'bg-sky-600 text-white'
-                      : 'text-gray-400 hover:text-white'
+                  className={`px-4 py-2 rounded-md transition-colors ${
+                    activeTab === 'map' ? 'bg-[#C83B50] text-white' : 'text-[#A89F96] hover:text-white'
                   }`}
+                  style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                 >
                   Map View
                 </button>
                 <button
                   onClick={() => setActiveTab('comments')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    activeTab === 'comments'
-                      ? 'bg-sky-600 text-white'
-                      : 'text-gray-400 hover:text-white'
+                  className={`px-4 py-2 rounded-md transition-colors ${
+                    activeTab === 'comments' ? 'bg-[#C83B50] text-white' : 'text-[#A89F96] hover:text-white'
                   }`}
+                  style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                 >
                   Comments
                 </button>
@@ -142,13 +140,9 @@ export default function ResultsView({
               {activeTab === 'comments' && (
                 <div>
                   {/* Mobile Comments Title */}
-                  <div className="flex justify-center mb-2">
-                    <div className="bg-[#111827] px-3 py-2 rounded-lg max-w-xs border border-white/10">
-                      <h3 className="text-sm font-semibold text-white text-center" style={{ fontSize: 'clamp(0.8rem, 3vw, 0.9rem)', lineHeight: '1.2' }}>
-                        {activity.commentQuestion}
-                      </h3>
-                    </div>
-                  </div>
+                  <p className="text-center text-white font-bold mb-3 px-2" style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: 'clamp(0.9rem, 3.5vw, 1.1rem)', textTransform: 'uppercase', letterSpacing: '0.01em', lineHeight: '1.2' }}>
+                    {activity.commentQuestion}
+                  </p>
                   
                   <CommentSection
                     activity={activity}

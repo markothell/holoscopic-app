@@ -22,24 +22,24 @@ function ActivityNode({ data }: ActivityNodeProps) {
   const isOpen = openedAt && (!closedAt || now <= closedAt);
   const isClosed = closedAt && now > closedAt;
 
-  const borderColor = isOpen
-    ? 'border-emerald-500'
+  const borderStyle = isOpen
+    ? { borderColor: '#1A4FD4' }
     : isClosed
-      ? 'border-gray-600'
-      : 'border-gray-700';
+      ? { borderColor: '#D9D4CC' }
+      : { borderColor: 'rgba(215, 205, 195, 0.3)' };
 
-  const bgColor = isOpen
-    ? 'bg-emerald-900/30'
+  const bgStyle = isOpen
+    ? { background: 'rgba(26, 79, 212, 0.08)' }
     : isClosed
-      ? 'bg-gray-800/50'
-      : 'bg-gray-900/50';
+      ? { background: 'rgba(0, 0, 0, 0.03)' }
+      : { background: 'rgba(255, 255, 255, 0.5)' };
 
   const statusText = isOpen ? 'Open' : isClosed ? 'Closed' : 'Not Started';
-  const statusColor = isOpen
-    ? 'text-emerald-400'
+  const statusStyle = isOpen
+    ? { color: '#1A4FD4' }
     : isClosed
-      ? 'text-gray-500'
-      : 'text-gray-600';
+      ? { color: '#6B6560' }
+      : { color: '#D9D4CC' };
 
   const hasParents = (activity.parentActivityIds || []).length > 0;
 
@@ -49,31 +49,38 @@ function ActivityNode({ data }: ActivityNodeProps) {
         <Handle
           type="target"
           position={Position.Top}
-          className="!bg-sky-500 !w-2 !h-2 !border-0"
+          style={{ background: '#C83B50', width: 8, height: 8, border: 'none' }}
         />
       )}
       <div
-        className={`w-[120px] h-[120px] rounded-full ${borderColor} ${bgColor} border-2
-          flex flex-col items-center justify-center cursor-pointer
-          hover:border-sky-400 hover:bg-sky-900/20 transition-colors`}
+        className="w-[120px] h-[120px] rounded-full border-2 flex flex-col items-center justify-center cursor-pointer transition-colors"
+        style={{ ...borderStyle, ...bgStyle }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = '#C83B50';
+          e.currentTarget.style.background = 'rgba(200, 59, 80, 0.06)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = borderStyle.borderColor;
+          e.currentTarget.style.background = bgStyle.background;
+        }}
       >
         {act?.activityType && (
-          <ActivityTypeIcon type={act.activityType as ActivityType} size={16} className="text-gray-400 mb-0.5" />
+          <ActivityTypeIcon type={act.activityType as ActivityType} size={16} className="mb-0.5 text-[#6B6560]" />
         )}
-        <span className="text-white text-xs font-medium text-center px-3 leading-tight line-clamp-2">
+        <span className="text-xs font-medium text-center px-3 leading-tight line-clamp-2" style={{ color: '#0F0D0B' }}>
           {act?.title || 'Unknown'}
         </span>
-        <span className="text-[10px] text-gray-400 mt-0.5">
+        <span className="text-[10px] mt-0.5" style={{ color: '#6B6560' }}>
           {act?.participants || 0} users
         </span>
-        <span className={`text-[10px] mt-0.5 ${statusColor}`}>
+        <span className="text-[10px] mt-0.5" style={statusStyle}>
           {statusText}
         </span>
       </div>
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!bg-sky-500 !w-2 !h-2 !border-0"
+        style={{ background: '#C83B50', width: 8, height: 8, border: 'none' }}
       />
     </>
   );

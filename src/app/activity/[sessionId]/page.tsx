@@ -19,11 +19,8 @@ export default function ActivityPageRoute() {
 
   if (!sessionId) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Invalid Activity</h2>
-          <p className="text-gray-600">No activity ID provided.</p>
-        </div>
+      <div className="min-h-screen bg-[#1A1714] flex items-center justify-center p-4">
+        <div className="text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Invalid activity</div>
       </div>
     );
   }

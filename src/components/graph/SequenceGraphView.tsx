@@ -54,7 +54,7 @@ export default function SequenceGraphView({
   );
 
   return (
-    <div className="w-full h-[500px] bg-[#0a0f1a] border border-white/10 rounded-lg overflow-hidden">
+    <div className="w-full h-[500px] rounded-lg overflow-hidden" style={{ background: '#F7F4EF', border: '1px solid #D9D4CC' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -71,7 +71,7 @@ export default function SequenceGraphView({
         nodesConnectable={false}
         elementsSelectable={false}
       >
-        <Background variant={BackgroundVariant.Dots} color="#1f2937" gap={20} size={1} />
+        <Background variant={BackgroundVariant.Dots} color="#D9D4CC" gap={20} size={1} />
         <Controls showInteractive={false} />
       </ReactFlow>
     </div>

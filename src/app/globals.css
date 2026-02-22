@@ -98,14 +98,14 @@ input::placeholder, textarea::placeholder {
   color: var(--text-primary);
 }
 
-/* React Flow dark theme overrides */
+/* React Flow warm-editorial overrides */
 .react-flow__controls button {
-  background: var(--bg-secondary) !important;
-  border-color: var(--border-default) !important;
-  fill: var(--text-secondary) !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+  border-color: #D9D4CC !important;
+  fill: #6B6560 !important;
 }
 
 .react-flow__controls button:hover {
-  background: var(--bg-tertiary) !important;
-  fill: var(--text-primary) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  fill: #0F0D0B !important;
 }
