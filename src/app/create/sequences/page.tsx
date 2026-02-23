@@ -154,7 +154,7 @@ function SequenceAdminContent() {
 
     setShowCreateForm(false);
     setEditingSequence(null);
-    router.push('/admin/sequences');
+    router.push('/create/sequences');
   };
 
   if (loading) {
@@ -200,10 +200,10 @@ function SequenceAdminContent() {
 
         {/* Tabs */}
         <div className={styles.tabs}>
-          <Link href="/admin" className={styles.tab}>
+          <Link href="/create" className={styles.tab}>
             Activities
           </Link>
-          <Link href="/admin/sequences" className={`${styles.tab} ${styles.tabActive}`}>
+          <Link href="/create/sequences" className={`${styles.tab} ${styles.tabActive}`}>
             Sequences
           </Link>
         </div>
@@ -216,7 +216,7 @@ function SequenceAdminContent() {
             onCancel={() => {
               setShowCreateForm(false);
               setEditingSequence(null);
-              router.push('/admin/sequences');
+              router.push('/create/sequences');
             }}
           />
         ) : (
@@ -275,7 +275,7 @@ function SequenceAdminContent() {
                         onClick={() => {
                           setEditingSequence(sequence);
                           setShowCreateForm(true);
-                          router.push(`/admin/sequences?sequence=${sequence.id}`);
+                          router.push(`/create/sequences?sequence=${sequence.id}`);
                         }}
                         className={`${styles.actionBtn} ${styles.actionEdit}`}
                       >

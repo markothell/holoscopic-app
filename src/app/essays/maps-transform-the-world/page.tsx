@@ -56,46 +56,49 @@ export default function MapsTransformTheWorldPage() {
           </p>
 
           <h3 className={styles.subTitle}>Maps transfer knowledge from one to another</h3>
-          <div className={styles.aside}>
+          <p className={styles.body}>
             Maps began as communication between individuals: &ldquo;Over the hill, through the
             pine trees, cross the stream by the big rock then go to the base of the nearby
             tree&hellip;&rdquo;
-          </div>
+          </p>
 
           <h3 className={styles.subTitle}>Maps let us compare and expand knowledge across time</h3>
-          <div className={styles.aside}>
+          <p className={styles.body}>
             Explorers venture out to discover the world and bring back maps of their route. Those
             maps are copied and taken on new journeys, each adventure expanding or refining the
             collective project of knowing and navigating the world.
-          </div>
+          </p>
 
           <h3 className={styles.subTitle}>Maps allow us to see the whole</h3>
-          <div className={styles.aside}>
+          <p className={styles.body}>
             Though first recognized through study of the night sky, at some point the idea spread
             that all the far lands of the world connected in a great loop. Maps make this real. You
             can hold the globe and identify all its parts. This was a radical shift in perception
             for humankind. The flat map with fuzzy unknown around the perimeter became a globe.
             Known.
-            <br /><br />
+          </p>
+          <p className={styles.body}>
             The project of map making entered a new phase. No longer expanding in size but filling
             in layer upon layer of useful information.
-          </div>
+          </p>
 
           <h3 className={styles.subTitle}>Maps unify layers of intersecting knowledge</h3>
-          <div className={styles.aside}>
+          <p className={styles.body}>
             The atlas was born. And Google Earth and Maps. Earth sciences, industrial planners,
             bureaucrats — everyone with information to share mapped their data onto the surface of
             the globe. New functions became possible. We can zoom in and out from a view of the
             milky way to the furniture you keep in your backyard. In place of landmarks we have
             coordinate systems that allow us to coordinate on a global scale, build navigation
             systems that automatically plan your journey on foot, road, boat and air.
-            <br /><br />
+          </p>
+          <p className={styles.body}>
             In a sense the world is unknowable and ever changing. In other ways we can see it
             completely, and these ways are functionally very empowering for us.
-            <br /><br />
+          </p>
+          <p className={styles.body}>
             So this is the potential: disconnected siloes of mismatched perspectives to unified
             project of collective learning and enabling technology.
-          </div>
+          </p>
 
           <h2 className={styles.sectionTitle}>Mapping Culture</h2>
 

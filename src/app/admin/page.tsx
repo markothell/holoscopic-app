@@ -1,45 +1,30 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { HoloscopicActivity } from '@/models/Activity';
-import { ActivityService } from '@/services/activityService';
-import { FormattingService } from '@/utils/formatting';
-import { useAllAnalytics, type AnalyticsStats } from '@/hooks/useAnalytics';
-import { useAuth } from '@/contexts/AuthContext';
-import AdminPanel from '@/components/AdminPanel';
-import UserMenu from '@/components/UserMenu';
-import ActivityTypeIcon from '@/components/icons/ActivityTypeIcon';
-import { getActivityTypeLabel } from '@/components/activities/types';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
+import UserMenu from '@/components/UserMenu';
+import { AdminService, PlatformStats, AdminUser } from '@/services/adminService';
 import styles from './page.module.css';
 
-function AdminContent() {
+type Tab = 'analytics' | 'users';
+
+export default function SuperAdminPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const editingActivityId = searchParams.get('activity');
-  const shouldShowCreate = searchParams.get('create') === 'true';
-  const returnUrl = searchParams.get('returnUrl');
-  const { userId, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { userId, userRole, isAuthenticated, isLoading: authLoading } = useAuth();
+  const [tab, setTab] = useState<Tab>('analytics');
 
-  const [activities, setActivities] = useState<HoloscopicActivity[]>([]);
-  const [editingActivity, setEditingActivity] = useState<HoloscopicActivity | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Analytics state
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const { allStats, loading: analyticsLoading } = useAllAnalytics();
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-
-  // Close dropdown on click-outside
-  useEffect(() => {
-    if (!openMenuId) return;
-    const close = () => setOpenMenuId(null);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [openMenuId]);
-
-  const hasAccess = isAuthenticated;
+  // Users state
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const original = document.body.style.background;
@@ -47,227 +32,92 @@ function AdminContent() {
     return () => { document.body.style.background = original; };
   }, []);
 
-  // Load activities and editing activity
+  const loadStats = useCallback(async () => {
+    if (!userId) return;
+    setStatsLoading(true);
+    setStatsError(null);
+    try {
+      const data = await AdminService.getPlatformStats(userId);
+      setStats(data);
+    } catch {
+      setStatsError('Failed to load platform stats.');
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [userId]);
+
+  const loadUsers = useCallback(async () => {
+    if (!userId) return;
+    setUsersLoading(true);
+    setUsersError(null);
+    try {
+      const data = await AdminService.getUsers(userId);
+      setUsers(data);
+    } catch {
+      setUsersError('Failed to load users.');
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [userId]);
+
   useEffect(() => {
-    if (!hasAccess || !userId) return;
+    if (!isAuthenticated || userRole !== 'admin') return;
+    if (tab === 'analytics') loadStats();
+    if (tab === 'users') loadUsers();
+  }, [tab, isAuthenticated, userRole, loadStats, loadUsers]);
 
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const handleRoleToggle = async (user: AdminUser) => {
+    const newRole = user.role === 'admin' ? 'user' : 'admin';
+    const action = newRole === 'admin' ? 'promote to admin' : 'demote to user';
+    if (!confirm(`${action} ${user.email}?`)) return;
+    try {
+      await AdminService.updateUserRole(userId!, user.id, newRole);
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role: newRole } : u));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Failed to update role');
+    }
+  };
 
-        const activitiesData = await ActivityService.getAdminActivities(userId);
-        setActivities(activitiesData);
+  const handleStatusToggle = async (user: AdminUser) => {
+    const newStatus = !user.isActive;
+    const action = newStatus ? 'activate' : 'deactivate';
+    if (!confirm(`${action} ${user.email}?`)) return;
+    try {
+      await AdminService.updateUserStatus(userId!, user.id, newStatus);
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, isActive: newStatus } : u));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Failed to update status');
+    }
+  };
 
-        if (editingActivityId) {
-          const activity = activitiesData.find(a => a.id === editingActivityId);
-          if (activity) {
-            setEditingActivity(activity);
-            setShowCreateForm(true);
-          }
-        } else if (shouldShowCreate) {
-          setShowCreateForm(true);
-        }
-      } catch (err) {
-        setError('Failed to load activities. The backend server may not be running.');
-        console.error('Error loading activities:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
-    loadData();
-  }, [editingActivityId, shouldShowCreate, hasAccess, userId]);
+  const filteredUsers = search
+    ? users.filter(u =>
+        u.name?.toLowerCase().includes(search.toLowerCase()) ||
+        u.email.toLowerCase().includes(search.toLowerCase())
+      )
+    : users;
 
-  // Show loading while checking auth
   if (authLoading) {
-    return <div className={styles.loading}>Loading...</div>;
+    return <div className={styles.loading}>Loading…</div>;
   }
 
-  // Redirect unauthenticated users
-  if (!hasAccess) {
+  if (!isAuthenticated) {
+    router.replace('/login');
+    return null;
+  }
+
+  if (userRole !== 'admin') {
     return (
       <div className={styles.denied}>
         <div className={styles.deniedCard}>
-          <h1 className={styles.deniedTitle}>Sign in to create</h1>
-          <p className={styles.deniedText}>
-            You need to be signed in to access the Create panel.
-          </p>
-          <Link href="/login" className={styles.deniedLink}>
-            Sign in &rarr;
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // Handle activity deletion
-  const handleDeleteActivity = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this activity?')) {
-      return;
-    }
-
-    try {
-      await ActivityService.deleteActivity(id);
-      setActivities(activities.filter(a => a.id !== id));
-    } catch (err) {
-      console.error('Error deleting activity:', err);
-      alert('Failed to delete activity');
-    }
-  };
-
-  // Handle activity duplication
-  const handleDuplicateActivity = (activity: HoloscopicActivity) => {
-    const duplicatedActivity: Partial<HoloscopicActivity> = {
-      ...activity,
-      id: '',
-      urlName: `${activity.urlName}-copy-${Date.now()}`,
-      title: `${activity.title} (Copy)`,
-      isDraft: true,
-      participants: [],
-      ratings: [],
-      comments: []
-    };
-
-    delete duplicatedActivity.createdAt;
-    delete duplicatedActivity.updatedAt;
-
-    setEditingActivity(duplicatedActivity as HoloscopicActivity);
-    setShowCreateForm(true);
-  };
-
-  // Handle draft toggle
-  const handleToggleDraft = async (id: string, currentlyDraft: boolean) => {
-    try {
-      const updatedActivity = await ActivityService.toggleDraftStatus(id, !currentlyDraft);
-      setActivities(activities.map(a =>
-        a.id === id ? updatedActivity : a
-      ));
-    } catch (err) {
-      console.error('Error toggling draft status:', err);
-      alert('Failed to toggle draft status');
-    }
-  };
-
-  // Handle complete toggle
-  const handleToggleComplete = async (id: string) => {
-    if (!confirm('Are you sure you want to mark this activity as completed? This cannot be undone.')) {
-      return;
-    }
-
-    try {
-      const updatedActivity = await ActivityService.completeActivity(id);
-      setActivities(activities.map(a =>
-        a.id === id ? updatedActivity : a
-      ));
-    } catch (err) {
-      console.error('Error completing activity:', err);
-      alert('Failed to complete activity');
-    }
-  };
-
-  // Handle create/update activity
-  const handleSaveActivity = async (updatedActivity: HoloscopicActivity) => {
-    try {
-      const activitiesData = await ActivityService.getAdminActivities(userId || undefined);
-      setActivities(activitiesData);
-    } catch (err) {
-      console.error('Error reloading activities:', err);
-      if (editingActivity && editingActivity.id) {
-        setActivities(activities.map(a =>
-          a.id === updatedActivity.id ? updatedActivity : a
-        ));
-      } else {
-        setActivities([...activities, updatedActivity]);
-      }
-    }
-
-    setShowCreateForm(false);
-    setEditingActivity(null);
-
-    if (returnUrl) {
-      alert('Activity saved! You can now close this tab and return to the sequence editor.');
-      if (window.opener) {
-        window.close();
-      }
-    } else {
-      router.push('/admin');
-    }
-  };
-
-  // Get statistics for an activity
-  const getActivityStats = (activityId: string): AnalyticsStats | null => {
-    if (analyticsLoading || !allStats) return null;
-    return allStats[activityId] || null;
-  };
-
-  // Handle full JSON download
-  const handleDownloadFullJSON = (activity: HoloscopicActivity) => {
-    const sortedActivity = {
-      ...activity,
-      comments: [...(activity.comments || [])].sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0))
-    };
-
-    const dataStr = JSON.stringify(sortedActivity, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${activity.urlName}-full-data.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setOpenMenuId(null);
-  };
-
-  // Handle starter data JSON download
-  const handleDownloadStarterData = (activity: HoloscopicActivity) => {
-    const sortedComments = [...(activity.comments || [])].sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
-
-    const starterEntries = sortedComments.map(comment => {
-      const rating = activity.ratings?.find(r =>
-        r.userId === comment.userId && r.slotNumber === comment.slotNumber
-      );
-
-      return {
-        objectName: comment.objectName || 'Unnamed',
-        position: rating ? { x: rating.position.x, y: rating.position.y } : { x: 0.5, y: 0.5 },
-        comment: comment.text,
-        votes: comment.voteCount || 0
-      };
-    });
-
-    const dataStr = JSON.stringify(starterEntries, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${activity.urlName}-starter-data.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setOpenMenuId(null);
-  };
-
-  if (loading) {
-    return <div className={styles.loading}>Loading...</div>;
-  }
-
-  if (error) {
-    return (
-      <div className={styles.loading}>
-        <div style={{ textAlign: 'center' }}>
-          <div className={styles.errorText}>{error}</div>
-          <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center' }}>
-            <button onClick={() => window.location.reload()} className={styles.secondaryBtn}>
-              Retry
-            </button>
-            <button onClick={() => setShowCreateForm(true)} className={styles.primaryBtn}>
-              Create First Activity
-            </button>
-          </div>
+          <h1 className={styles.deniedTitle}>Access Denied</h1>
+          <p className={styles.deniedText}>This area is restricted to platform administrators.</p>
+          <Link href="/dashboard" className={styles.deniedLink}>Back to Dashboard</Link>
         </div>
       </div>
     );
@@ -275,304 +125,202 @@ function AdminContent() {
 
   return (
     <div className={styles.page}>
-      {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <Link href="/" className={styles.wordmark}>
-            Holo<span className={styles.wordmarkAccent}>scopic</span>
-          </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <span className={styles.pageLabel}>create</span>
-            <UserMenu />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <Link href="/" className={styles.wordmark}>
+              Holo<span className={styles.wordmarkAccent}>scopic</span>
+            </Link>
+            <span className={styles.pageLabel}>/ Admin</span>
           </div>
+          <UserMenu />
         </div>
       </header>
 
       <main className={styles.main}>
-        {/* Page Title */}
-        <h1 className={styles.pageTitle}>Create</h1>
+        <h1 className={styles.pageTitle}>Platform Admin</h1>
 
-        {/* Tabs */}
-        <div className={styles.tabs}>
-          <Link href="/admin" className={`${styles.tab} ${styles.tabActive}`}>
-            Activities
-          </Link>
-          <Link href="/admin/sequences" className={styles.tab}>
-            Sequences
-          </Link>
-        </div>
+        <nav className={styles.tabs}>
+          <button
+            className={`${styles.tab} ${tab === 'analytics' ? styles.tabActive : ''}`}
+            onClick={() => setTab('analytics')}
+          >
+            Analytics
+          </button>
+          <button
+            className={`${styles.tab} ${tab === 'users' ? styles.tabActive : ''}`}
+            onClick={() => setTab('users')}
+          >
+            Users
+          </button>
+        </nav>
 
-        {showCreateForm ? (
-          <AdminPanel
-            editingActivity={editingActivity || undefined}
-            onActivityCreated={handleSaveActivity}
-            onActivityUpdated={handleSaveActivity}
-            onCancel={() => {
-              setShowCreateForm(false);
-              setEditingActivity(null);
-              if (returnUrl) {
-                if (window.opener) {
-                  window.close();
-                } else {
-                  router.push('/admin');
-                }
-              } else {
-                router.push('/admin');
-              }
-            }}
-          />
-        ) : (
-          <div>
+        {tab === 'analytics' && (
+          <section>
             <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>Activities</h2>
-              <button onClick={() => setShowCreateForm(true)} className={styles.primaryBtn}>
-                New Activity
-              </button>
+              <h2 className={styles.sectionTitle}>Platform Stats</h2>
+              <button className={styles.secondaryBtn} onClick={loadStats}>Refresh</button>
             </div>
 
-            {activities.length === 0 ? (
-              <div className={styles.empty}>
-                No activities yet. Create your first one!
+            {statsLoading && <p className={styles.loading} style={{ minHeight: 'auto', padding: '2rem 0' }}>Loading…</p>}
+            {statsError && <p className={styles.errorText}>{statsError}</p>}
+
+            {stats && !statsLoading && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(10rem, 1fr))', gap: '1rem' }}>
+                {[
+                  { label: 'Users', value: stats.users },
+                  { label: 'Activities', value: stats.activities },
+                  { label: 'Sequences', value: stats.sequences },
+                  { label: 'Participants', value: stats.participants },
+                  { label: 'Comments', value: stats.comments },
+                  { label: 'Votes', value: stats.votes },
+                ].map(({ label, value }) => (
+                  <div key={label} className={styles.card} style={{ textAlign: 'center', padding: '1.5rem 1rem' }}>
+                    <div style={{
+                      fontFamily: 'var(--font-barlow), sans-serif',
+                      fontSize: '2.2rem',
+                      fontWeight: 700,
+                      color: 'var(--ink)',
+                      lineHeight: 1,
+                    }}>
+                      {value.toLocaleString()}
+                    </div>
+                    <div style={{
+                      fontFamily: 'var(--font-dm-mono), monospace',
+                      fontSize: '0.58rem',
+                      fontWeight: 300,
+                      letterSpacing: '0.15em',
+                      textTransform: 'uppercase' as const,
+                      color: 'var(--ink-light)',
+                      marginTop: '0.5rem',
+                    }}>
+                      {label}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ) : (
-              <>
-                {/* Mobile View - Cards */}
-                <div className="lg:hidden">
-                  <div className={styles.cardList}>
-                    {activities.map(activity => {
-                      const stats = getActivityStats(activity.id);
+            )}
+          </section>
+        )}
+
+        {tab === 'users' && (
+          <section>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Users</h2>
+              <button className={styles.secondaryBtn} onClick={loadUsers}>Refresh</button>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <input
+                type="text"
+                placeholder="Search by name or email…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{
+                  width: '100%',
+                  maxWidth: '24rem',
+                  padding: '0.5rem 0.75rem',
+                  fontFamily: 'var(--font-dm-mono), monospace',
+                  fontSize: '0.68rem',
+                  letterSpacing: '0.05em',
+                  border: '1px solid var(--rule)',
+                  borderRadius: '4px',
+                  background: '#fff',
+                  color: 'var(--ink)',
+                  outline: 'none',
+                }}
+              />
+            </div>
+
+            {usersLoading && <p className={styles.loading} style={{ minHeight: 'auto', padding: '2rem 0' }}>Loading…</p>}
+            {usersError && <p className={styles.errorText}>{usersError}</p>}
+
+            {!usersLoading && !usersError && (
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead className={styles.tableHead}>
+                    <tr>
+                      <th className={styles.th}>Name / Email</th>
+                      <th className={styles.th}>Role</th>
+                      <th className={styles.th}>Status</th>
+                      <th className={styles.th}>Last Login</th>
+                      <th className={styles.th}>Joined</th>
+                      <th className={styles.th}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.length === 0 && (
+                      <tr className={styles.tr}>
+                        <td className={styles.td} colSpan={6} style={{ textAlign: 'center' }}>
+                          <span className={styles.empty} style={{ padding: '1.5rem 0', display: 'block' }}>
+                            No users found
+                          </span>
+                        </td>
+                      </tr>
+                    )}
+                    {filteredUsers.map(user => {
+                      const isSelf = user.id === userId;
                       return (
-                        <div key={activity.id} className={styles.card}>
-                          <div className={styles.cardTop}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div className={styles.cardTitle}>{activity.title}</div>
-                              <div className={styles.cardSubtitle}>
-                                <span className={styles.typeLabel}>
-                                  <ActivityTypeIcon type={activity.activityType} size={14} />
-                                  {getActivityTypeLabel(activity.activityType)}
-                                </span>
-                                <Link
-                                  href={`/${activity.urlName}`}
-                                  target="_blank"
-                                  className={styles.cardLink}
-                                >
-                                  /{activity.urlName} ↗
-                                </Link>
-                              </div>
+                        <tr key={user.id} className={styles.tr}>
+                          <td className={styles.td}>
+                            <div className={styles.tdTitle} style={{ fontSize: '0.9rem' }}>
+                              {user.name || <span style={{ color: 'var(--ink-light)', fontStyle: 'italic', fontFamily: 'var(--font-cormorant), Georgia, serif' }}>No name</span>}
                             </div>
-                            <span className={`${styles.badge} ${
-                              activity.isDraft
-                                ? styles.badgeDraft
-                                : activity.status === 'completed'
-                                ? styles.badgeCompleted
-                                : styles.badgeActive
-                            }`}>
-                              {activity.isDraft ? 'Draft' : activity.status === 'completed' ? 'Completed' : 'Active'}
+                            <div className={styles.tdSub}>{user.email}</div>
+                          </td>
+                          <td className={styles.td}>
+                            <span className={`${styles.badge} ${user.role === 'admin' ? styles.badgeActive : styles.badgeDraft}`}>
+                              {user.role}
                             </span>
-                          </div>
-
-                          <div className={styles.cardMeta}>
-                            <span>{stats?.participants || 0} participants</span>
-                            <span>{stats?.completedMappings || 0} mappings</span>
-                            <span>{stats?.comments || 0} comments</span>
-                          </div>
-
-                          <div className={styles.actions}>
-                            <button
-                              onClick={() => {
-                                setEditingActivity(activity);
-                                setShowCreateForm(true);
-                                router.push(`/admin?activity=${activity.id}`);
-                              }}
-                              className={`${styles.actionBtn} ${styles.actionEdit}`}
-                            >
-                              Edit
-                            </button>
-                            <span className={styles.actionDot}>&middot;</span>
-                            <button
-                              onClick={() => handleToggleDraft(activity.id, activity.isDraft || false)}
-                              className={`${styles.actionBtn} ${styles.actionPublish}`}
-                            >
-                              {activity.isDraft ? 'Publish' : 'Unpublish'}
-                            </button>
-                            <span className={styles.actionDot}>&middot;</span>
-                            <button
-                              onClick={() => handleDuplicateActivity(activity)}
-                              className={`${styles.actionBtn} ${styles.actionDuplicate}`}
-                            >
-                              Duplicate
-                            </button>
-                            <span className={styles.actionDot}>&middot;</span>
-                            <div className={styles.dropdown}>
+                          </td>
+                          <td className={styles.td}>
+                            <span className={`${styles.badge} ${user.isActive ? styles.badgeActive : styles.badgeCompleted}`}>
+                              {user.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td className={styles.td}>
+                            <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', color: 'var(--ink-light)' }}>
+                              {formatDate(user.lastLoginAt)}
+                            </span>
+                          </td>
+                          <td className={styles.td}>
+                            <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', color: 'var(--ink-light)' }}>
+                              {formatDate(user.createdAt)}
+                            </span>
+                          </td>
+                          <td className={styles.td}>
+                            <div className={styles.actions}>
                               <button
-                                onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === activity.id ? null : activity.id); }}
-                                className={`${styles.actionBtn} ${styles.actionJson}`}
+                                className={`${styles.actionBtn} ${user.role === 'admin' ? styles.actionDelete : styles.actionEdit}`}
+                                onClick={() => handleRoleToggle(user)}
+                                disabled={isSelf}
+                                title={isSelf ? 'Cannot change your own role' : ''}
+                                style={{ opacity: isSelf ? 0.3 : 1, cursor: isSelf ? 'not-allowed' : 'pointer' }}
                               >
-                                JSON &#x25BE;
+                                {user.role === 'admin' ? 'Demote' : 'Promote'}
                               </button>
-                              {openMenuId === activity.id && (
-                                <div className={styles.dropdownMenu}>
-                                  <button onClick={() => handleDownloadFullJSON(activity)} className={styles.dropdownItem}>
-                                    Full Activity Data
-                                  </button>
-                                  <button onClick={() => handleDownloadStarterData(activity)} className={styles.dropdownItem}>
-                                    Starter Data
-                                  </button>
-                                </div>
-                              )}
+                              <span className={styles.actionDot}>·</span>
+                              <button
+                                className={`${styles.actionBtn} ${user.isActive ? styles.actionDelete : styles.actionComplete}`}
+                                onClick={() => handleStatusToggle(user)}
+                                disabled={isSelf}
+                                title={isSelf ? 'Cannot change your own status' : ''}
+                                style={{ opacity: isSelf ? 0.3 : 1, cursor: isSelf ? 'not-allowed' : 'pointer' }}
+                              >
+                                {user.isActive ? 'Deactivate' : 'Activate'}
+                              </button>
                             </div>
-                            <span className={styles.actionDot}>&middot;</span>
-                            <button
-                              onClick={() => handleDeleteActivity(activity.id)}
-                              className={`${styles.actionBtn} ${styles.actionDelete}`}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
+                          </td>
+                        </tr>
                       );
                     })}
-                  </div>
-                </div>
-
-                {/* Desktop View - Table */}
-                <div className="hidden lg:block">
-                  <div className={styles.tableWrap}>
-                    <table className={styles.table}>
-                      <thead className={styles.tableHead}>
-                        <tr>
-                          <th className={styles.th}>Title</th>
-                          <th className={styles.th}>URL</th>
-                          <th className={styles.th}>Stats</th>
-                          <th className={styles.th}>Status</th>
-                          <th className={styles.th}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {activities.map(activity => {
-                          const stats = getActivityStats(activity.id);
-
-                          return (
-                            <tr key={activity.id} className={styles.tr}>
-                              <td className={styles.td}>
-                                <div className={styles.tdTitle}>{activity.title}</div>
-                                <div className={styles.tdSub}>
-                                  <span className={styles.typeLabel}>
-                                    <ActivityTypeIcon type={activity.activityType} size={12} />
-                                    {getActivityTypeLabel(activity.activityType)}
-                                  </span>
-                                  <span>&middot;</span>
-                                  <span>{FormattingService.formatTimestamp(activity.createdAt)}</span>
-                                </div>
-                              </td>
-                              <td className={styles.td}>
-                                <Link
-                                  href={`/${activity.urlName}`}
-                                  target="_blank"
-                                  className={styles.cardLink}
-                                >
-                                  /{activity.urlName} ↗
-                                </Link>
-                              </td>
-                              <td className={styles.td}>
-                                <div className={styles.tdStats}>
-                                  <div>{stats?.participants || 0} participants</div>
-                                  <div>{stats?.completedMappings || 0} mappings</div>
-                                  <div>{stats?.comments || 0} comments</div>
-                                </div>
-                              </td>
-                              <td className={styles.td}>
-                                <span className={`${styles.badge} ${
-                                  activity.isDraft
-                                    ? styles.badgeDraft
-                                    : activity.status === 'completed'
-                                    ? styles.badgeCompleted
-                                    : styles.badgeActive
-                                }`}>
-                                  {activity.isDraft ? 'Draft' : activity.status === 'completed' ? 'Completed' : 'Active'}
-                                </span>
-                              </td>
-                              <td className={styles.td}>
-                                <div className={styles.actions}>
-                                  <button
-                                    onClick={() => {
-                                      setEditingActivity(activity);
-                                      setShowCreateForm(true);
-                                      router.push(`/admin?activity=${activity.id}`);
-                                    }}
-                                    className={`${styles.actionBtn} ${styles.actionEdit}`}
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={() => handleToggleDraft(activity.id, activity.isDraft || false)}
-                                    className={`${styles.actionBtn} ${styles.actionPublish}`}
-                                  >
-                                    {activity.isDraft ? 'Publish' : 'Unpublish'}
-                                  </button>
-                                  {activity.status !== 'completed' && (
-                                    <button
-                                      onClick={() => handleToggleComplete(activity.id)}
-                                      className={`${styles.actionBtn} ${styles.actionComplete}`}
-                                    >
-                                      Complete
-                                    </button>
-                                  )}
-                                  <button
-                                    onClick={() => handleDuplicateActivity(activity)}
-                                    className={`${styles.actionBtn} ${styles.actionDuplicate}`}
-                                  >
-                                    Duplicate
-                                  </button>
-                                  <div className={styles.dropdown}>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === `desktop-${activity.id}` ? null : `desktop-${activity.id}`); }}
-                                      className={`${styles.actionBtn} ${styles.actionJson}`}
-                                    >
-                                      JSON &#x25BE;
-                                    </button>
-                                    {openMenuId === `desktop-${activity.id}` && (
-                                      <div className={styles.dropdownMenu} style={{ right: 0 }}>
-                                        <button onClick={() => handleDownloadFullJSON(activity)} className={styles.dropdownItem}>
-                                          Full Activity Data
-                                        </button>
-                                        <button onClick={() => handleDownloadStarterData(activity)} className={styles.dropdownItem}>
-                                          Starter Data
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <button
-                                    onClick={() => handleDeleteActivity(activity.id)}
-                                    className={`${styles.actionBtn} ${styles.actionDelete}`}
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
+                  </tbody>
+                </table>
+              </div>
             )}
-          </div>
+          </section>
         )}
       </main>
     </div>
-  );
-}
-
-// Main component with Suspense wrapper
-export default function AdminPage() {
-  return (
-    <Suspense fallback={
-      <div className={styles.loading}>Loading...</div>
-    }>
-      <AdminContent />
-    </Suspense>
   );
 }

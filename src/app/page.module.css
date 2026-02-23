@@ -497,6 +497,53 @@
   flex-shrink: 0;
 }
 
+/* ---- BIG ACTIVITY LIST ---- */
+
+.activityBigList {
+  margin-bottom: 3rem;
+  border-top: 1px solid var(--rule);
+}
+
+.activityBigCard {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--rule);
+  text-decoration: none !important;
+  transition: opacity 0.2s;
+}
+
+.activityBigCard:hover {
+  opacity: 0.6;
+}
+
+.activityBigTitle {
+  font-family: var(--font-barlow), sans-serif;
+  font-size: clamp(3rem, 8vw, 5rem);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1.0;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+.activityBigCard:nth-child(odd) .activityBigTitle {
+  color: var(--accent);
+}
+
+.activityBigSub {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-barlow), sans-serif;
+  font-size: clamp(1.05rem, 2.8vw, 1.8rem);
+  font-weight: 800;
+  font-style: italic;
+  line-height: 1.0;
+  color: var(--ink);
+}
+
 /* ---- ESSAY READ LINK (within expand items) ---- */
 
 .readLink {

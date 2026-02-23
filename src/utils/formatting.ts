@@ -103,7 +103,7 @@ export class FormattingService {
   // Generate admin URL
   static generateAdminUrl(activityId?: string): string {
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    return activityId ? `${baseUrl}/admin?activity=${activityId}` : `${baseUrl}/admin`;
+    return activityId ? `${baseUrl}/create?activity=${activityId}` : `${baseUrl}/create`;
   }
 
   // Validate and format URL

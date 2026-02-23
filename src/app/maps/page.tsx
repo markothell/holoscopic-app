@@ -92,7 +92,7 @@ export default function MapsPage() {
               No public activities available yet
             </div>
             <Link
-              href="/admin"
+              href="/create"
               className={styles.createButton}
             >
               Create First Map
@@ -146,7 +146,7 @@ export default function MapsPage() {
         <footer className={styles.footer}>
           <div className={styles.footerLinks}>
             <Link href="/" className={styles.footerLink}>Home</Link>
-            <Link href="/admin" className={styles.footerLink}>Admin</Link>
+            <Link href="/create" className={styles.footerLink}>Create</Link>
             <Link href="/dashboard" className={styles.footerLink}>Dashboard</Link>
           </div>
         </footer>

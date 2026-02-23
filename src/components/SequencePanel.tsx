@@ -280,7 +280,7 @@ export default function SequencePanel({
       }]);
     } else if (mode === 'create') {
       const returnUrl = window.location.href;
-      window.open(`/admin?create=true&returnUrl=${encodeURIComponent(returnUrl)}`, '_blank');
+      window.open(`/create?create=true&returnUrl=${encodeURIComponent(returnUrl)}`, '_blank');
     } else if (mode === 'clone') {
       setActivityMode('clone');
     }
@@ -769,7 +769,7 @@ export default function SequencePanel({
                               type="button"
                               onClick={() => {
                                 const returnUrl = window.location.href;
-                                window.open(`/admin?activity=${activity.activityId}&returnUrl=${encodeURIComponent(returnUrl)}`, '_blank');
+                                window.open(`/create?activity=${activity.activityId}&returnUrl=${encodeURIComponent(returnUrl)}`, '_blank');
                               }}
                               style={sx.smallLink}
                             >

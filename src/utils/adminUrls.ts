@@ -1,4 +1,4 @@
-export function getAdminUrl(path: string = '/admin'): string {
+export function getAdminUrl(path: string = '/create'): string {
   if (typeof window === 'undefined') {
     return path;
   }

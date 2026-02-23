@@ -189,8 +189,8 @@ export default function UserMenu() {
 
           {[
             { label: 'Dashboard', path: '/dashboard' },
-            ...(userRole === 'admin' ? [{ label: 'Admin', path: '/superadmin' }] : []),
-            { label: 'Create', path: '/admin' },
+            ...(userRole === 'admin' ? [{ label: 'Admin', path: '/admin' }] : []),
+            { label: 'Create', path: '/create' },
             { label: 'Settings', path: '/settings' },
           ].map((item) => (
             <button
