@@ -20,7 +20,7 @@ function AdminContent() {
   const editingActivityId = searchParams.get('activity');
   const shouldShowCreate = searchParams.get('create') === 'true';
   const returnUrl = searchParams.get('returnUrl');
-  const { userRole, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { userId, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [activities, setActivities] = useState<HoloscopicActivity[]>([]);
   const [editingActivity, setEditingActivity] = useState<HoloscopicActivity | null>(null);
@@ -39,8 +39,7 @@ function AdminContent() {
     return () => document.removeEventListener('click', close);
   }, [openMenuId]);
 
-  // Check if user has admin role
-  const hasAdminAccess = isAuthenticated && userRole === 'admin';
+  const hasAccess = isAuthenticated;
 
   useEffect(() => {
     const original = document.body.style.background;
@@ -50,14 +49,14 @@ function AdminContent() {
 
   // Load activities and editing activity
   useEffect(() => {
-    if (!hasAdminAccess) return;
+    if (!hasAccess || !userId) return;
 
     const loadData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const activitiesData = await ActivityService.getAdminActivities();
+        const activitiesData = await ActivityService.getAdminActivities(userId);
         setActivities(activitiesData);
 
         if (editingActivityId) {
@@ -78,24 +77,24 @@ function AdminContent() {
     };
 
     loadData();
-  }, [editingActivityId, shouldShowCreate, hasAdminAccess]);
+  }, [editingActivityId, shouldShowCreate, hasAccess, userId]);
 
   // Show loading while checking auth
   if (authLoading) {
     return <div className={styles.loading}>Loading...</div>;
   }
 
-  // Access denied screen
-  if (!hasAdminAccess) {
+  // Redirect unauthenticated users
+  if (!hasAccess) {
     return (
       <div className={styles.denied}>
         <div className={styles.deniedCard}>
-          <h1 className={styles.deniedTitle}>Admin Access Required</h1>
+          <h1 className={styles.deniedTitle}>Sign in to create</h1>
           <p className={styles.deniedText}>
-            You need administrator privileges to access this page.
+            You need to be signed in to access the Create panel.
           </p>
-          <Link href="/" className={styles.deniedLink}>
-            &larr; Back to home
+          <Link href="/login" className={styles.deniedLink}>
+            Sign in &rarr;
           </Link>
         </div>
       </div>
@@ -170,7 +169,7 @@ function AdminContent() {
   // Handle create/update activity
   const handleSaveActivity = async (updatedActivity: HoloscopicActivity) => {
     try {
-      const activitiesData = await ActivityService.getAdminActivities();
+      const activitiesData = await ActivityService.getAdminActivities(userId || undefined);
       setActivities(activitiesData);
     } catch (err) {
       console.error('Error reloading activities:', err);
@@ -283,7 +282,7 @@ function AdminContent() {
             Holo<span className={styles.wordmarkAccent}>scopic</span>
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <span className={styles.pageLabel}>admin</span>
+            <span className={styles.pageLabel}>create</span>
             <UserMenu />
           </div>
         </div>
@@ -291,7 +290,7 @@ function AdminContent() {
 
       <main className={styles.main}>
         {/* Page Title */}
-        <h1 className={styles.pageTitle}>Admin</h1>
+        <h1 className={styles.pageTitle}>Create</h1>
 
         {/* Tabs */}
         <div className={styles.tabs}>

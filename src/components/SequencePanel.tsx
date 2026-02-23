@@ -5,6 +5,7 @@ import { Sequence, CreateSequenceData, UpdateSequenceData, SequenceActivity, Wel
 import { HoloscopicActivity } from '@/models/Activity';
 import { SequenceService } from '@/services/sequenceService';
 import { ActivityService } from '@/services/activityService';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SequencePanelProps {
   editingSequence?: Sequence;
@@ -130,6 +131,7 @@ export default function SequencePanel({
   onSequenceUpdated,
   onCancel
 }: SequencePanelProps) {
+  const { userId } = useAuth();
   const [title, setTitle] = useState('');
   const [urlName, setUrlName] = useState('');
   const [description, setDescription] = useState('');
@@ -248,7 +250,10 @@ export default function SequencePanel({
         const updated = await SequenceService.updateSequence(editingSequence.id, data);
         onSequenceUpdated(updated);
       } else {
-        const created = await SequenceService.createSequence(data as CreateSequenceData);
+        const created = await SequenceService.createSequence({
+          ...data as CreateSequenceData,
+          createdBy: userId || undefined
+        });
         onSequenceCreated(created);
       }
     } catch (err) {

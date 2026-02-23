@@ -34,6 +34,12 @@ const SequenceSchema = new mongoose.Schema({
     default: ''
   },
 
+  // Creator (user who created this sequence)
+  createdBy: {
+    type: String,
+    required: false
+  },
+
   // Welcome page settings
   welcomePage: {
     type: {

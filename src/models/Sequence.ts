@@ -44,6 +44,7 @@ export interface Sequence {
   title: string;
   urlName: string;
   description: string;
+  createdBy?: string;
   welcomePage?: WelcomePage;
   activities: SequenceActivity[];
   members: SequenceMember[];
@@ -69,6 +70,7 @@ export interface CreateSequenceData {
   title: string;
   urlName: string;
   description?: string;
+  createdBy?: string;
   welcomePage?: WelcomePage;
   activities?: Array<{
     activityId: string;

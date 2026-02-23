@@ -14,9 +14,14 @@ module.exports = function(io) {
   };
 
 // Get all activities (admin endpoint - includes drafts)
+// Optional ?createdBy=userId to scope to a specific creator
 router.get('/admin', async (req, res) => {
   try {
-    const activities = await Activity.find({})
+    const query = {};
+    if (req.query.createdBy) {
+      query['author.userId'] = req.query.createdBy;
+    }
+    const activities = await Activity.find(query)
       .sort({ createdAt: -1 })
       .select('-__v');
 

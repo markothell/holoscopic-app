@@ -24,20 +24,23 @@ export class ActivityService {
     }
   }
 
-  // Get all activities including drafts (admin only)
-  static async getAdminActivities(): Promise<HoloscopicActivity[]> {
+  // Get all activities including drafts, optionally scoped to a creator
+  static async getAdminActivities(userId?: string): Promise<HoloscopicActivity[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/activities/admin`);
+      const url = userId
+        ? `${API_BASE_URL}/activities/admin?createdBy=${encodeURIComponent(userId)}`
+        : `${API_BASE_URL}/activities/admin`;
+      const response = await fetch(url);
       if (!response.ok) {
         if (response.status === 429) {
           throw new Error('⏱️ Server is busy right now. Please wait a minute and try again.');
         }
-        throw new Error('Failed to fetch admin activities');
+        throw new Error('Failed to fetch activities');
       }
       const result = await response.json();
       return result.data.activities;
     } catch (error) {
-      console.error('Error fetching admin activities:', error);
+      console.error('Error fetching activities:', error);
       throw error;
     }
   }

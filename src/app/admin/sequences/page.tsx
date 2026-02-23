@@ -15,7 +15,7 @@ function SequenceAdminContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editingSequenceId = searchParams.get('sequence');
-  const { userRole, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { userId, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [sequences, setSequences] = useState<Sequence[]>([]);
   const [editingSequence, setEditingSequence] = useState<Sequence | null>(null);
@@ -23,8 +23,7 @@ function SequenceAdminContent() {
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  // Check if user has admin role
-  const hasAdminAccess = isAuthenticated && userRole === 'admin';
+  const hasAccess = isAuthenticated;
 
   useEffect(() => {
     const original = document.body.style.background;
@@ -34,14 +33,14 @@ function SequenceAdminContent() {
 
   // Load sequences and editing sequence
   useEffect(() => {
-    if (!hasAdminAccess) return;
+    if (!hasAccess || !userId) return;
 
     const loadData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const sequencesData = await SequenceService.getAdminSequences();
+        const sequencesData = await SequenceService.getAdminSequences(userId);
         setSequences(sequencesData);
 
         if (editingSequenceId) {
@@ -60,24 +59,24 @@ function SequenceAdminContent() {
     };
 
     loadData();
-  }, [editingSequenceId, hasAdminAccess]);
+  }, [editingSequenceId, hasAccess, userId]);
 
   // Show loading while checking auth
   if (authLoading) {
     return <div className={styles.loading}>Loading...</div>;
   }
 
-  // Access denied screen
-  if (!hasAdminAccess) {
+  // Redirect unauthenticated users
+  if (!hasAccess) {
     return (
       <div className={styles.denied}>
         <div className={styles.deniedCard}>
-          <h1 className={styles.deniedTitle}>Admin Access Required</h1>
+          <h1 className={styles.deniedTitle}>Sign in to create</h1>
           <p className={styles.deniedText}>
-            You need administrator privileges to access this page.
+            You need to be signed in to access the Create panel.
           </p>
-          <Link href="/admin" className={styles.deniedLink}>
-            &larr; Back to Admin
+          <Link href="/login" className={styles.deniedLink}>
+            Sign in &rarr;
           </Link>
         </div>
       </div>
@@ -142,7 +141,7 @@ function SequenceAdminContent() {
 
   const handleSaveSequence = async (updatedSequence: Sequence) => {
     try {
-      const sequencesData = await SequenceService.getAdminSequences();
+      const sequencesData = await SequenceService.getAdminSequences(userId || undefined);
       setSequences(sequencesData);
     } catch (err) {
       console.error('Error reloading sequences:', err);
@@ -189,7 +188,7 @@ function SequenceAdminContent() {
             Holo<span className={styles.wordmarkAccent}>scopic</span>
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <span className={styles.pageLabel}>admin</span>
+            <span className={styles.pageLabel}>create</span>
             <UserMenu />
           </div>
         </div>
@@ -197,7 +196,7 @@ function SequenceAdminContent() {
 
       <main className={styles.main}>
         {/* Page Title */}
-        <h1 className={styles.pageTitle}>Admin</h1>
+        <h1 className={styles.pageTitle}>Create</h1>
 
         {/* Tabs */}
         <div className={styles.tabs}>

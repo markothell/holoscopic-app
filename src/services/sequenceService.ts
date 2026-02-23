@@ -5,10 +5,13 @@ import { Sequence, CreateSequenceData, UpdateSequenceData } from '@/models/Seque
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 export class SequenceService {
-  // Get all sequences (admin)
-  static async getAdminSequences(): Promise<Sequence[]> {
+  // Get all sequences, optionally scoped to a creator
+  static async getAdminSequences(userId?: string): Promise<Sequence[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/sequences/admin`);
+      const url = userId
+        ? `${API_BASE_URL}/sequences/admin?createdBy=${encodeURIComponent(userId)}`
+        : `${API_BASE_URL}/sequences/admin`;
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch sequences');
       }
