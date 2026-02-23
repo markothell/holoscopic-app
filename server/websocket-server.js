@@ -55,7 +55,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-User-Id"]
 }));
 
 app.use(bodyParser.json());
@@ -184,11 +184,13 @@ function loadAPIRoutes() {
       const sequenceRoutes = require('./routes/sequences');
       const authRoutes = require('./routes/auth');
       const userRoutes = require('./routes/users');
+      const adminRoutes = require('./routes/admin');
       app.use('/api/activities', activityRoutes);
       app.use('/api/analytics', analyticsRoutes);
       app.use('/api/sequences', sequenceRoutes);
       app.use('/api/auth', authRoutes);
       app.use('/api/users', userRoutes);
+      app.use('/api/admin', adminRoutes);
       apiRoutesLoaded = true;
       console.log('✅ API routes loaded successfully');
     } catch (error) {

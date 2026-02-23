@@ -354,6 +354,11 @@ export default function HomePage() {
               agreements, the values embedded in our systems. Mapping collective
               perception makes the implicit explicit, so we can finally see the
               full terrain we&apos;re navigating together.
+              <div>
+                <Link href="/essays/maps-transform-the-world" className={styles.readLink}>
+                  Maps Transform the World
+                </Link>
+              </div>
             </ExpandItem>
 
             <ExpandItem title="Visualize Emergence">
@@ -364,6 +369,11 @@ export default function HomePage() {
               group&apos;s ideas shift in real time — converging, diverging, finding
               unexpected common ground — you start to see how transformation
               actually moves through a culture.
+              <div>
+                <Link href="/essays/studying-collective-identity" className={styles.readLink}>
+                  Studying Collective Identity
+                </Link>
+              </div>
             </ExpandItem>
 
             <ExpandItem title="Leave a trail for others to follow">
@@ -371,6 +381,11 @@ export default function HomePage() {
               could walk. We document what works, make it repeatable, and share
               it openly — so good social technology compounds the way scientific
               discovery does.
+              <div>
+                <Link href="/essays/open-source-social-algorithms" className={styles.readLink}>
+                  Open Source Social Algorithms
+                </Link>
+              </div>
             </ExpandItem>
           </div>
         </RevealSection>
