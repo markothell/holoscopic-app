@@ -251,6 +251,34 @@
   max-width: 560px;
 }
 
+/* ---- KINDA LIKE ---- */
+
+.kindaLikeList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.kindaLikeTitle {
+  font-family: var(--font-barlow), sans-serif;
+  font-size: clamp(1.4rem, 3.5vw, 2rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.kindaLikeSub {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 300;
+  font-style: italic;
+  color: var(--ink-light);
+}
+
 /* ---- INVITATION ---- */
 
 .invitation {

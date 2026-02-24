@@ -230,7 +230,6 @@ export default function ProfilePage() {
         <footer className={styles.footer}>
           <Link href="/" className={styles.footerLink}>Home</Link>
           <Link href="/dashboard" className={styles.footerLink}>Dashboard</Link>
-          <a href="https://wiki.holoscopic.io" className={styles.footerLink}>Wiki</a>
         </footer>
       </div>
     </div>

@@ -31,8 +31,7 @@ const dmMono = DM_Mono({
 const barlowCondensed = Barlow_Condensed({
   variable: "--font-barlow",
   subsets: ["latin"],
-  weight: ["400", "600", "700", "800", "900"],
-  style: ["normal", "italic"],
+  weight: ["400", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {

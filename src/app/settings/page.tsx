@@ -243,7 +243,6 @@ export default function SettingsPage() {
         <div className={styles.footer}>
           <Link href="/" className={styles.footerLink}>Home</Link>
           <Link href="/dashboard" className={styles.footerLink}>Dashboard</Link>
-          <a href="https://wiki.holoscopic.io" className={styles.footerLink}>Wiki</a>
         </div>
       </main>
     </div>

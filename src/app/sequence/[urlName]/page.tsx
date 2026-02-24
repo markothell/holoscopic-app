@@ -368,7 +368,6 @@ export default function SequenceDetailPage() {
           <div className={styles.footerInner}>
             <Link href="/" className={styles.footerLink}>Home</Link>
             <Link href="/dashboard" className={styles.footerLink}>Dashboard</Link>
-            <a href="https://wiki.holoscopic.io" className={styles.footerLink}>Wiki</a>
           </div>
         </footer>
       </div>

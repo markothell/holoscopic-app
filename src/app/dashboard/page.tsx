@@ -338,7 +338,6 @@ export default function DashboardPage() {
           <div className={styles.footerInner}>
             <Link href="/" className={styles.footerLink}>Home</Link>
             <Link href="/activities" className={styles.footerLink}>Explore</Link>
-            <a href="https://wiki.holoscopic.io" className={styles.footerLink}>Wiki</a>
           </div>
         </footer>
       </div>
