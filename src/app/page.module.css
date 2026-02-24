@@ -256,10 +256,16 @@
 .kindaLikeList {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 2rem 0 0;
   display: flex;
   flex-direction: column;
-  gap: 1.4rem;
+  gap: 2.5rem;
+}
+
+.kindaLikeItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .kindaLikeTitle {
@@ -268,15 +274,18 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: -0.01em;
+  line-height: 1.1;
   color: var(--ink);
 }
 
 .kindaLikeSub {
   font-family: var(--font-cormorant), Georgia, serif;
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   font-weight: 300;
   font-style: italic;
   color: var(--ink-light);
+  line-height: 1.7;
+  max-width: 480px;
 }
 
 /* ---- INVITATION ---- */

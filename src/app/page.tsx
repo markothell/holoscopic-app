@@ -267,34 +267,32 @@ export default function HomePage() {
         <RevealSection id="kindaLike" className={styles.section}>
           <p className={styles.sectionLabel}>Kinda Like&hellip;</p>
           <ul className={styles.kindaLikeList}>
-            <li>
+            <li className={styles.kindaLikeItem}>
               <span className={styles.kindaLikeTitle}>
-                Sharing circle meets Reddit thread 
+                Sharing circle meets Reddit thread —
               </span>
               <span className={styles.kindaLikeSub}>
-                — but instead of upvotes, you place your response on a map of shared meaning.
+                but instead of upvotes, you place your response on a map of shared meaning.
               </span>
             </li>
-            <li>
+            <li className={styles.kindaLikeItem}>
               <span className={styles.kindaLikeTitle}>
-                A culture design workshop 
+                A culture design workshop —
               </span>
               <span className={styles.kindaLikeSub}>
-                — where the conversation itself is the material being shaped.
+                where the conversation itself is the material being shaped.
               </span>
             </li>
-            <li>
+            <li className={styles.kindaLikeItem}>
               <span className={styles.kindaLikeTitle}>
-                A social media lab 
+                A social media lab —
               </span>
               <span className={styles.kindaLikeSub}>
-                — where users can change the rules and watch what happens.
+                where users can change the rules and watch what happens.
               </span>
             </li>
           </ul>
         </RevealSection>
-
-        <div className={styles.divider} />
 
         {/* ── The Opportunity ──────────────────────────────────────────────── */}
         <RevealSection id="opportunity" className={styles.section}>
