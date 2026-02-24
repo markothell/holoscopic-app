@@ -294,6 +294,8 @@ export default function HomePage() {
           </ul>
         </RevealSection>
 
+        <div className={styles.divider} />
+
         {/* ── The Opportunity ──────────────────────────────────────────────── */}
         <RevealSection id="opportunity" className={styles.section}>
           <h2 className={styles.sectionHeadline}>
