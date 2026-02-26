@@ -1,5 +1,20 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
+export interface WaitlistEntry {
+  email: string;
+  joinedAt: string;
+}
+
+export interface WaitlistTopic {
+  count: number;
+  emails: WaitlistEntry[];
+}
+
+export interface WaitlistData {
+  topics: Record<string, WaitlistTopic>;
+  total: number;
+}
+
 export interface PlatformStats {
   users: number;
   activities: number;
@@ -68,5 +83,13 @@ export class AdminService {
       const data = await response.json().catch(() => ({}));
       throw new Error(data.error || 'Failed to update status');
     }
+  }
+
+  static async getWaitlist(userId: string): Promise<WaitlistData> {
+    const response = await fetch(`${API_BASE_URL}/admin/waitlist`, {
+      headers: { 'x-user-id': userId }
+    });
+    if (!response.ok) throw new Error('Failed to fetch waitlist');
+    return response.json();
   }
 }

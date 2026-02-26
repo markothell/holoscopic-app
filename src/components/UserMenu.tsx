@@ -53,7 +53,7 @@ export default function UserMenu() {
           Login
         </button>
         <button
-          onClick={() => router.push('/signup')}
+          onClick={() => router.push('/waitlist')}
           style={{
             fontFamily: 'var(--font-dm-mono), monospace',
             fontSize: '0.62rem',

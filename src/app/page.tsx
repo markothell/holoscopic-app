@@ -373,19 +373,14 @@ export default function HomePage() {
           <h2 className={styles.sectionHeadline}>
             <em>Play</em> the Game
           </h2>
-
-          <p className={styles.invSubLabel}>Put yourself on a map</p>
-
           <div className={styles.activityBigList}>
             {[
-              { title: 'Relationship', sub: ['Conflict', 'Resolution'] },
-              { title: 'Intuition',    sub: ['Impulse', 'Action'] },
-              { title: 'Parenting',    sub: null },
-              { title: 'Work',         sub: ['Passion', 'Duty'] },
-              { title: 'Sexuality',    sub: ['Arousal', 'Intentionality'] },
-              { title: 'Relationship', sub: ['Thoughts About', 'Your Partner'] },
+              { title: 'Relationship', sub: ['Conflict +', 'Resolution'] },
+              { title: 'Intuition',    sub: ['Impulse +', 'Action'] },
+              { title: 'Work',         sub: ['Duty ->', 'Purpose'] },
+              { title: 'Sexuality',    sub: ['Arousal +', 'Intentionality'] },
             ].map(({ title, sub }, i) => (
-              <Link key={i} href="/activities" className={styles.activityBigCard}>
+              <Link key={i} href="/waitlist" className={styles.activityBigCard}>
                 <span className={styles.activityBigTitle}>{title}</span>
                 {sub && (
                   <span className={styles.activityBigSub}>
@@ -398,7 +393,7 @@ export default function HomePage() {
           </div>
 
           <div className={styles.invitationLinks}>
-            <Link href="/create" className={styles.invLink}>
+            <Link href="/waitlist" className={styles.invLink}>
               Create a map
             </Link>
           </div>

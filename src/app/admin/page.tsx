@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import UserMenu from '@/components/UserMenu';
-import { AdminService, PlatformStats, AdminUser } from '@/services/adminService';
+import { AdminService, PlatformStats, AdminUser, WaitlistData } from '@/services/adminService';
 import styles from './page.module.css';
 
-type Tab = 'analytics' | 'users';
+type Tab = 'analytics' | 'users' | 'waitlist';
 
 export default function SuperAdminPage() {
   const router = useRouter();
@@ -25,6 +25,12 @@ export default function SuperAdminPage() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+
+  // Waitlist state
+  const [waitlist, setWaitlist] = useState<WaitlistData | null>(null);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [waitlistError, setWaitlistError] = useState<string | null>(null);
+  const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
 
   useEffect(() => {
     const original = document.body.style.background;
@@ -60,11 +66,26 @@ export default function SuperAdminPage() {
     }
   }, [userId]);
 
+  const loadWaitlist = useCallback(async () => {
+    if (!userId) return;
+    setWaitlistLoading(true);
+    setWaitlistError(null);
+    try {
+      const data = await AdminService.getWaitlist(userId);
+      setWaitlist(data);
+    } catch {
+      setWaitlistError('Failed to load waitlist.');
+    } finally {
+      setWaitlistLoading(false);
+    }
+  }, [userId]);
+
   useEffect(() => {
     if (!isAuthenticated || userRole !== 'admin') return;
     if (tab === 'analytics') loadStats();
     if (tab === 'users') loadUsers();
-  }, [tab, isAuthenticated, userRole, loadStats, loadUsers]);
+    if (tab === 'waitlist') loadWaitlist();
+  }, [tab, isAuthenticated, userRole, loadStats, loadUsers, loadWaitlist]);
 
   const handleRoleToggle = async (user: AdminUser) => {
     const newRole = user.role === 'admin' ? 'user' : 'admin';
@@ -152,6 +173,12 @@ export default function SuperAdminPage() {
             onClick={() => setTab('users')}
           >
             Users
+          </button>
+          <button
+            className={`${styles.tab} ${tab === 'waitlist' ? styles.tabActive : ''}`}
+            onClick={() => setTab('waitlist')}
+          >
+            Waitlist
           </button>
         </nav>
 
@@ -316,6 +343,103 @@ export default function SuperAdminPage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </section>
+        )}
+        {tab === 'waitlist' && (
+          <section>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>
+                Waitlist
+                {waitlist && (
+                  <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', fontWeight: 300, letterSpacing: '0.1em', color: 'var(--ink-light)', marginLeft: '0.75rem', textTransform: 'none' }}>
+                    {waitlist.total} total
+                  </span>
+                )}
+              </h2>
+              <button className={styles.secondaryBtn} onClick={loadWaitlist}>Refresh</button>
+            </div>
+
+            {waitlistLoading && <p className={styles.loading} style={{ minHeight: 'auto', padding: '2rem 0' }}>Loading…</p>}
+            {waitlistError && <p className={styles.errorText}>{waitlistError}</p>}
+
+            {waitlist && !waitlistLoading && (
+              <div className={styles.cardList}>
+                {Object.entries(waitlist.topics).map(([topic, data]) => {
+                  const isExpanded = expandedTopic === topic;
+                  return (
+                    <div key={topic} className={styles.card}>
+                      <div className={styles.cardTop}>
+                        <div>
+                          <div className={styles.cardTitle}>{topic}</div>
+                          <div className={styles.cardMeta}>
+                            <span>{data.count} / 25 signups</span>
+                          </div>
+                        </div>
+                        <button
+                          className={styles.secondaryBtn}
+                          onClick={() => setExpandedTopic(isExpanded ? null : topic)}
+                          style={{ flexShrink: 0 }}
+                        >
+                          {isExpanded ? 'Hide emails' : 'View emails'}
+                        </button>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div style={{
+                        height: '3px',
+                        background: 'var(--rule)',
+                        borderRadius: '2px',
+                        overflow: 'hidden',
+                        marginBottom: isExpanded ? '1rem' : 0,
+                      }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${Math.min((data.count / 25) * 100, 100)}%`,
+                          background: 'var(--accent)',
+                          borderRadius: '2px',
+                          transition: 'width 0.3s ease',
+                        }} />
+                      </div>
+
+                      {isExpanded && (
+                        <div>
+                          {data.emails.length === 0 ? (
+                            <p className={styles.empty} style={{ padding: '0.5rem 0', textAlign: 'left' }}>No signups yet</p>
+                          ) : (
+                            <div className={styles.tableWrap} style={{ marginTop: '0.5rem' }}>
+                              <table className={styles.table}>
+                                <thead className={styles.tableHead}>
+                                  <tr>
+                                    <th className={styles.th}>Email</th>
+                                    <th className={styles.th}>Joined</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {data.emails.map((entry, i) => (
+                                    <tr key={i} className={styles.tr}>
+                                      <td className={styles.td}>
+                                        <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', letterSpacing: '0.03em' }}>
+                                          {entry.email}
+                                        </span>
+                                      </td>
+                                      <td className={styles.td}>
+                                        <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', color: 'var(--ink-light)' }}>
+                                          {formatDate(entry.joinedAt)}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>
