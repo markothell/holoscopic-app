@@ -123,15 +123,9 @@ export default function DashboardPage() {
   const getFilteredActivities = () => {
     switch (activityFilter) {
       case 'open':
-        return standaloneActivities.filter(activity => {
-          const userRating = activity.ratings?.find(r => r.userId === userId);
-          return !userRating;
-        });
+        return standaloneActivities.filter(activity => activity.status !== 'completed');
       case 'completed':
-        return standaloneActivities.filter(activity => {
-          const userRating = activity.ratings?.find(r => r.userId === userId);
-          return !!userRating;
-        });
+        return standaloneActivities.filter(activity => activity.status === 'completed');
       default: return [];
     }
   };
@@ -210,13 +204,13 @@ export default function DashboardPage() {
                 onClick={() => setActivityFilter('open')}
                 className={`${styles.pill} ${activityFilter === 'open' ? styles.pillActive : ''}`}
               >
-                Open ({standaloneActivities.filter(a => !a.ratings?.find(r => r.userId === userId)).length})
+                Open ({standaloneActivities.filter(a => a.status !== 'completed').length})
               </button>
               <button
                 onClick={() => setActivityFilter('completed')}
                 className={`${styles.pill} ${activityFilter === 'completed' ? styles.pillActive : ''}`}
               >
-                Completed ({standaloneActivities.filter(a => !!a.ratings?.find(r => r.userId === userId)).length})
+                Completed ({standaloneActivities.filter(a => a.status === 'completed').length})
               </button>
             </>
           )}
@@ -308,8 +302,8 @@ export default function DashboardPage() {
                             {getActivityTypeLabel(activity.activityType)}
                           </span>
                         </div>
-                        <span className={`${styles.badge} ${hasSubmitted ? styles.badgeActive : styles.badgeOpen}`}>
-                          {hasSubmitted ? 'Completed' : 'In Progress'}
+                        <span className={`${styles.badge} ${activity.status === 'completed' ? styles.badgeCompleted : styles.badgeActive}`}>
+                          {activity.status === 'completed' ? 'Completed' : 'Active'}
                         </span>
                       </div>
                       <div className={styles.listMeta}>
