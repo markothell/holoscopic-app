@@ -286,6 +286,11 @@ export default function DashboardPage() {
             {activeTab === 'activities' && filteredActivities.map((activity, index) => {
               const userRating = activity.ratings?.find(r => r.userId === userId);
               const hasSubmitted = !!userRating;
+              const isSoloTracker = activity.maxEntries === 0;
+              const allSlotsSubmitted = !isSoloTracker &&
+                Array.from({ length: activity.maxEntries || 1 }, (_, i) => i + 1)
+                  .every(slot => activity.ratings?.find(r => r.userId === userId && (r.slotNumber || 1) === slot));
+              const showResults = activity.status === 'completed' || allSlotsSubmitted;
 
               return (
                 <div key={activity.id} className={styles.listItem}>
@@ -318,7 +323,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <Link href={`/${activity.urlName}`} className={styles.viewLink}>
-                      {hasSubmitted ? 'Results \u2192' : 'Continue \u2192'}
+                      {showResults ? 'Results \u2192' : 'Continue \u2192'}
                     </Link>
                   </div>
                 </div>
