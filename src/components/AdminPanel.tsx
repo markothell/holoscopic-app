@@ -489,19 +489,19 @@ export default function AdminPanel({
               {validationErrors.preamble && <p style={s.error}>{validationErrors.preamble}</p>}
             </div>
 
-            {/* Wiki Link */}
+            {/* Reference Link */}
             <div>
-              <label htmlFor="wikiLink" style={s.label}>Wiki Page Link (Optional)</label>
+              <label htmlFor="wikiLink" style={s.label}>Reference Link (Optional)</label>
               <input
                 type="text"
                 id="wikiLink"
                 value={formData.wikiLink || ''}
                 onChange={(e) => handleFieldChange('wikiLink', e.target.value)}
                 style={s.input}
-                placeholder="e.g., http://holoscopic.io/wiki/gratitude"
+                placeholder="e.g., https://example.com/reference"
                 maxLength={200}
               />
-              <p style={s.hint}>Link to the wiki page for more information about this activity</p>
+              <p style={s.hint}>Link to reference material for this activity</p>
               {validationErrors.wikiLink && <p style={s.error}>{validationErrors.wikiLink}</p>}
             </div>
           </CollapsibleSection>

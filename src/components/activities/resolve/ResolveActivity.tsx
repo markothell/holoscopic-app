@@ -522,7 +522,7 @@ export default function ResolveActivity({ activity: initialActivity, sequenceId 
                 {activity.wikiLink && (
                   <p className="text-center">
                     <a href={activity.wikiLink} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">
-                      Source and discussion on wiki →
+                      Reference →
                     </a>
                   </p>
                 )}

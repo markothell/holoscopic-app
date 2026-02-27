@@ -613,10 +613,10 @@ export default function SequencePanel({
                       value={welcomePage.referenceLink}
                       onChange={(e) => setWelcomePage({ ...welcomePage, referenceLink: e.target.value })}
                       style={sx.input}
-                      placeholder="https://holoscopic.io/wiki/..."
+                      placeholder="https://example.com/reference"
                       maxLength={500}
                     />
-                    <p style={sx.hint}>Link to wiki page or other reference material</p>
+                    <p style={sx.hint}>Link to reference material for this activity</p>
                   </div>
                 </>
               )}

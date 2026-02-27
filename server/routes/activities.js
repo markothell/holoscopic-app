@@ -185,7 +185,7 @@ router.get('/:id', async (req, res) => {
     };
 
     console.log('Fetched activity by ID - preamble:', transformedActivity.preamble);
-    console.log('Fetched activity by ID - wikiLink:', transformedActivity.wikiLink);
+    console.log('Fetched activity by ID - referenceLink:', transformedActivity.wikiLink);
 
     res.json({
       success: true,
@@ -227,7 +227,7 @@ router.post('/', async (req, res) => {
 
     console.log('Create activity - activityType:', activityType);
     console.log('Create activity - preamble:', preamble);
-    console.log('Create activity - wikiLink:', wikiLink);
+    console.log('Create activity - referenceLink:', wikiLink);
 
     // Validate required fields
     if (!title || !urlName || !mapQuestion || !commentQuestion) {
@@ -378,7 +378,7 @@ router.patch('/:id', async (req, res) => {
     console.log('Update request body:', req.body);
     console.log('Updates to apply:', updates);
     console.log('Preamble in request:', req.body.preamble);
-    console.log('WikiLink in request:', req.body.wikiLink);
+    console.log('ReferenceLink in request:', req.body.wikiLink);
     console.log('Activity before update:', activity.toObject());
     
     // Apply updates

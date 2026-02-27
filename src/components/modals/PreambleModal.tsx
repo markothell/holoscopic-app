@@ -7,9 +7,10 @@ interface PreambleModalProps {
   isOpen: boolean;
   onClose: () => void;
   onBegin: () => void;
+  hasJoined: boolean;
 }
 
-export default function PreambleModal({ activity, isOpen, onClose, onBegin }: PreambleModalProps) {
+export default function PreambleModal({ activity, isOpen, onClose, onBegin, hasJoined }: PreambleModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -53,7 +54,7 @@ export default function PreambleModal({ activity, isOpen, onClose, onBegin }: Pr
                 className="text-[#C83B50] hover:text-[#e04d63] underline text-sm transition-colors"
                 style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', fontWeight: 300, letterSpacing: '0.1em' }}
               >
-                Source and discussion on wiki &rarr;
+                Reference &rarr;
               </a>
             </div>
           )}
@@ -128,7 +129,7 @@ export default function PreambleModal({ activity, isOpen, onClose, onBegin }: Pr
               className="flex-1 px-6 py-3 bg-[#C83B50] hover:bg-[#B03248] text-white font-medium rounded-lg transition-colors"
               style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.7rem', fontWeight: 300, letterSpacing: '0.12em', textTransform: 'uppercase' }}
             >
-              Begin
+              {hasJoined ? 'Add New Entry' : 'Join'}
             </button>
           )}
         </div>

@@ -122,7 +122,7 @@ const ActivitySchema = new mongoose.Schema({
     default: ''
   },
 
-  // Activity description and wiki link
+  // Activity description and reference link
   preamble: {
     type: String,
     required: false,

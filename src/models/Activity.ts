@@ -34,9 +34,9 @@ export interface HoloscopicActivity {
   // Comment configuration
   commentQuestion: string;
 
-  // Activity description and wiki link
+  // Activity description and reference link
   preamble?: string; // Optional paragraph description for the activity
-  wikiLink?: string; // Optional link to wiki page
+  wikiLink?: string; // Optional reference link for the activity
 
   // Starter data for seeding the activity
   starterData?: string; // JSON string of initial ratings/comments
@@ -152,7 +152,7 @@ export interface ActivityFormData {
   yAxisMax: string;
   commentQuestion: string;
   preamble?: string; // Optional paragraph description
-  wikiLink?: string; // Optional link to wiki page
+  wikiLink?: string; // Optional reference link for the activity
   starterData?: string; // JSON string of initial data
   votesPerUser?: number | null; // Vote limit configuration
   maxEntries?: number; // 0 = unlimited/solo tracker, 1/2/4 = standard entry slots

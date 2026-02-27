@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { HoloscopicActivity, Rating, Comment } from '@/models/Activity';
 import { ActivityService } from '@/services/activityService';
 import { webSocketService } from '@/services/websocketService';
@@ -34,6 +34,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
   const [showEntryModal, setShowEntryModal] = useState(false);
   const [currentSlot, setCurrentSlot] = useState<number>(1);
   const [hoveredSlot, setHoveredSlot] = useState<number | null>(null);
+  const [hasJoined, setHasJoined] = useState(false);
 
   // Initialize username
   useEffect(() => {
@@ -57,10 +58,9 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
         const data = await ActivityService.getActivity(activityId);
         setActivity(data);
 
-        // Show preamble modal on first load if there's content
-        if (data.preamble || data.wikiLink) {
-          setShowPreamble(true);
-        }
+        const joined = data.participants.some((p: { id: string }) => p.id === userId);
+        setHasJoined(joined);
+        setShowPreamble(true);
       } catch (err) {
         setError('Failed to load activity');
         console.error('Error loading activity:', err);
@@ -163,8 +163,25 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
 
   const handleEntryClick = (slot: number) => {
     setCurrentSlot(slot);
-    setShowEntryModal(true);
+    if (!hasJoined) {
+      setShowPreamble(true);
+    } else {
+      setShowEntryModal(true);
+    }
   };
+
+  const handleBegin = useCallback(async () => {
+    if (!hasJoined && userId && username && activityId) {
+      try {
+        await ActivityService.joinActivity(activityId, userId, username);
+        setHasJoined(true);
+      } catch (err) {
+        console.error('Failed to join activity:', err);
+      }
+    }
+    setShowPreamble(false);
+    setShowEntryModal(true);
+  }, [hasJoined, userId, username, activityId]);
 
   if (loading || authLoading) {
     return (
@@ -520,10 +537,8 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
         activity={activity}
         isOpen={showPreamble}
         onClose={() => setShowPreamble(false)}
-        onBegin={() => {
-          setShowPreamble(false);
-          setShowEntryModal(true);
-        }}
+        onBegin={handleBegin}
+        hasJoined={hasJoined}
       />
 
       <EntryModal
