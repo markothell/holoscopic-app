@@ -60,7 +60,8 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
 
         const joined = data.participants.some((p: { id: string }) => p.id === userId);
         setHasJoined(joined);
-        setShowPreamble(true);
+        const hasEntries = data.ratings.some((r: { userId: string }) => r.userId === userId);
+        if (!joined || !hasEntries) setShowPreamble(true);
       } catch (err) {
         setError('Failed to load activity');
         console.error('Error loading activity:', err);
@@ -180,8 +181,12 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
       }
     }
     setShowPreamble(false);
+    // For returning users opening "Add New Entry", advance to the next empty slot
+    if (hasJoined) {
+      setCurrentSlot(userEntryCount + 1);
+    }
     setShowEntryModal(true);
-  }, [hasJoined, userId, username, activityId]);
+  }, [hasJoined, userId, username, activityId, userEntryCount]);
 
   if (loading || authLoading) {
     return (
@@ -546,6 +551,17 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
         isOpen={showEntryModal}
         onClose={() => setShowEntryModal(false)}
         onSubmit={handleEntrySubmit}
+        onDelete={async () => {
+          if (!userId) return;
+          try {
+            await ActivityService.clearSlot(activityId, userId, currentSlot);
+            setShowEntryModal(false);
+            const updated = await ActivityService.getActivity(activityId);
+            setActivity(updated);
+          } catch (err) {
+            console.error('Error deleting entry:', err);
+          }
+        }}
         slotNumber={currentSlot}
         existingData={getSlotData(currentSlot)}
       />

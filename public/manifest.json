@@ -2,7 +2,7 @@
   "name": "Holoscopic",
   "short_name": "Holoscopic",
   "description": "Collaborative perspective mapping through interactive 2D visualization",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3d5577",

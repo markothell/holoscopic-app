@@ -30,6 +30,15 @@ const quadrantToNumber = (q: 'q1' | 'q2' | 'q3' | 'q4'): 1 | 2 | 3 | 4 => {
 export default function DotGrid({ activity, currentUserId, onDotClick }: DotGridProps) {
   const [gridPositions, setGridPositions] = useState<GridPosition[]>([]);
   const [hoveredDot, setHoveredDot] = useState<string | null>(null);
+  const [isSmallViewport, setIsSmallViewport] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 600 : false
+  );
+
+  useEffect(() => {
+    const handler = () => setIsSmallViewport(window.innerWidth < 600);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
 
   // Generate square-filling order: fills 1x1, then 2x2, then 3x3, etc.
   // Returns array of [row, col] pairs in the order they should be filled
@@ -85,7 +94,10 @@ export default function DotGrid({ activity, currentUserId, onDotClick }: DotGrid
     [1, 2, 3, 4].forEach(quadrant => {
       const ratingsInQuadrant = ratingsByQuadrant[quadrant];
       const GRID_SIZE = 5; // Always 5x5 grid
-      const DOT_SPACING = 32 / (GRID_SIZE + 1); // Tighter spacing for 5x5
+      const CHANNEL = 53; // % where channel edge is
+      const START_OFFSET = 3; // Start 3% from axis edge
+      // Responsive: tighter at desktop (5.3), fills quadrant at mobile (8)
+      const DOT_SPACING = isSmallViewport ? 8 : 5.3;
 
       // Create a mapping from [row,col] to rating index
       const positionToRating = new Map<string, typeof ratingsInQuadrant[0]>();
@@ -102,25 +114,22 @@ export default function DotGrid({ activity, currentUserId, onDotClick }: DotGrid
           // Calculate position based on quadrant
           let x: number, y: number;
 
-          const CHANNEL = 53; // % where channel edge is
-          const START_OFFSET = 3; // Start 3% from axis edge
-
           switch(quadrant) {
-            case 1: // Top-right
+            case 1: // Top-right (high x, high y → upper-right of screen)
               x = CHANNEL + START_OFFSET + (col * DOT_SPACING);
-              y = CHANNEL + START_OFFSET + (row * DOT_SPACING);
+              y = (100 - CHANNEL - START_OFFSET) - (row * DOT_SPACING);
               break;
-            case 2: // Top-left
-              x = (100 - CHANNEL - START_OFFSET) - (col * DOT_SPACING);
-              y = CHANNEL + START_OFFSET + (row * DOT_SPACING);
-              break;
-            case 3: // Bottom-left
+            case 2: // Top-left (low x, high y → upper-left of screen)
               x = (100 - CHANNEL - START_OFFSET) - (col * DOT_SPACING);
               y = (100 - CHANNEL - START_OFFSET) - (row * DOT_SPACING);
               break;
-            case 4: // Bottom-right
+            case 3: // Bottom-left (low x, low y → lower-left of screen)
+              x = (100 - CHANNEL - START_OFFSET) - (col * DOT_SPACING);
+              y = CHANNEL + START_OFFSET + (row * DOT_SPACING);
+              break;
+            case 4: // Bottom-right (high x, low y → lower-right of screen)
               x = CHANNEL + START_OFFSET + (col * DOT_SPACING);
-              y = (100 - CHANNEL - START_OFFSET) - (row * DOT_SPACING);
+              y = CHANNEL + START_OFFSET + (row * DOT_SPACING);
               break;
             default:
               x = 50;
@@ -142,7 +151,7 @@ export default function DotGrid({ activity, currentUserId, onDotClick }: DotGrid
     });
 
     setGridPositions(positions);
-  }, [activity.ratings, activity.comments]);
+  }, [activity.ratings, activity.comments, isSmallViewport]);
 
   // Calculate max votes across all comments
   const maxVotes = Math.max(1, ...activity.comments.map(c => c.voteCount || 0));

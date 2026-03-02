@@ -1,187 +1,101 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { HoloscopicActivity, Rating } from '@/models/Activity';
+import { QUADRANT_POSITIONS, getQuadrantFromPosition } from '@/components/activities/types';
 
 interface QuadrantSelectorProps {
   activity: HoloscopicActivity;
-  onQuadrantSelect: (position: { x: number; y: number; quadrant: number }) => void;
+  onQuadrantSelect: (position: { x: number; y: number }) => void;
   userRating?: Rating;
-  stepLabel?: string;
 }
 
-export default function QuadrantSelector({
-  activity,
-  onQuadrantSelect,
-  userRating,
-  stepLabel
-}: QuadrantSelectorProps) {
-  const [selectedQuadrant, setSelectedQuadrant] = useState<number | null>(null);
+export default function QuadrantSelector({ activity, onQuadrantSelect, userRating }: QuadrantSelectorProps) {
+  const initialQuadrant = userRating
+    ? getQuadrantFromPosition(userRating.position.x, userRating.position.y)
+    : null;
 
-  // Update state when userRating changes
-  useEffect(() => {
-    if (userRating) {
-      // Determine quadrant from x,y position
-      // Q1: top-right (x > 0.5, y > 0.5)
-      // Q2: top-left (x < 0.5, y > 0.5)
-      // Q3: bottom-left (x < 0.5, y < 0.5)
-      // Q4: bottom-right (x > 0.5, y < 0.5)
-      const x = userRating.position.x;
-      const y = userRating.position.y;
+  const [selectedQuadrant, setSelectedQuadrant] = useState<number | null>(initialQuadrant);
 
-      if (x > 0.5 && y > 0.5) setSelectedQuadrant(1);
-      else if (x < 0.5 && y > 0.5) setSelectedQuadrant(2);
-      else if (x < 0.5 && y < 0.5) setSelectedQuadrant(3);
-      else if (x > 0.5 && y < 0.5) setSelectedQuadrant(4);
-    }
-  }, [userRating]);
-
-  const handleQuadrantClick = (quadrant: number) => {
+  const handleSelect = (quadrant: number) => {
     setSelectedQuadrant(quadrant);
-
-    // Map quadrant to x,y position (0-1 normalized)
-    // Place in the center of each quadrant for consistent positioning
-    let x: number, y: number;
-
-    switch(quadrant) {
-      case 1: // Top-right
-        x = 0.75;
-        y = 0.75;
-        break;
-      case 2: // Top-left
-        x = 0.25;
-        y = 0.75;
-        break;
-      case 3: // Bottom-left
-        x = 0.25;
-        y = 0.25;
-        break;
-      case 4: // Bottom-right
-        x = 0.75;
-        y = 0.25;
-        break;
-      default:
-        x = 0.5;
-        y = 0.5;
-    }
-
-    onQuadrantSelect({ x, y, quadrant });
+    onQuadrantSelect(QUADRANT_POSITIONS[quadrant as keyof typeof QUADRANT_POSITIONS]);
   };
 
+  // Quadrant layout: [q2 top-left, q1 top-right, q3 bottom-left, q4 bottom-right]
+  const quadrants = [
+    { id: 2, label: `${activity.xAxis.min} + ${activity.yAxis.max}`, corner: 'top-left' },
+    { id: 1, label: `${activity.xAxis.max} + ${activity.yAxis.max}`, corner: 'top-right' },
+    { id: 3, label: `${activity.xAxis.min} + ${activity.yAxis.min}`, corner: 'bottom-left' },
+    { id: 4, label: `${activity.xAxis.max} + ${activity.yAxis.min}`, corner: 'bottom-right' },
+  ];
+
   return (
-    <div className="w-full max-w-3xl mx-auto px-4">
-      <div className="space-y-4">
-        {/* Question Title */}
-        <h3 className="text-white text-2xl sm:text-3xl font-bold text-center leading-tight">
-          {activity.mapQuestion}
-        </h3>
+    <div className="space-y-3">
+      <h3 className="text-2xl font-bold text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>
+        {activity.mapQuestion}
+      </h3>
 
-        {/* Quadrant Grid */}
-        <div className="relative w-full max-w-md mx-auto aspect-square">
-          {/* SVG for the cross lines with gaps and center circle */}
-          <svg
-            viewBox="0 0 400 400"
-            className="absolute inset-0 w-full h-full pointer-events-none"
-            style={{ zIndex: 1 }}
-          >
-            {/* Vertical line segments (with gap in middle) */}
-            <line x1="200" y1="0" x2="200" y2="160" stroke="white" strokeWidth="2" />
-            <line x1="200" y1="240" x2="200" y2="400" stroke="white" strokeWidth="2" />
+      {/* Axis labels + grid */}
+      <div className="flex flex-col items-center gap-1">
+        {/* Y-max label */}
+        <span className="text-xs text-[#A89F96] font-semibold" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          {activity.yAxis.max}
+        </span>
 
-            {/* Horizontal line segments (with gap in middle) */}
-            <line x1="0" y1="200" x2="160" y2="200" stroke="white" strokeWidth="2" />
-            <line x1="240" y1="200" x2="400" y2="200" stroke="white" strokeWidth="2" />
-
-            {/* Center circle */}
-            <circle cx="200" cy="200" r="30" fill="none" stroke="white" strokeWidth="2" />
-          </svg>
-
-          {/* Axis Labels */}
-          <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2 }}>
-            {/* X-axis labels (horizontal, offset further from axis) */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 text-white text-xs sm:text-sm font-medium" style={{ left: '-20px' }}>
+        <div className="flex items-center gap-1 w-full">
+          {/* Y-min label (left side, rotated) */}
+          <div className="flex-shrink-0 w-6 flex items-center justify-center">
+            <span
+              className="text-[#A89F96] font-semibold whitespace-nowrap"
+              style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', writingMode: 'vertical-lr', transform: 'rotate(180deg)' }}
+            >
               {activity.xAxis.min}
-            </div>
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 text-white text-xs sm:text-sm font-medium" style={{ right: '-20px' }}>
-              {activity.xAxis.max}
-            </div>
-
-            {/* Y-axis labels (rotated vertical) */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-6 text-white text-xs sm:text-sm font-medium">
-              <div className="transform -rotate-90 whitespace-nowrap">{activity.yAxis.max}</div>
-            </div>
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-6 text-white text-xs sm:text-sm font-medium">
-              <div className="transform -rotate-90 whitespace-nowrap">{activity.yAxis.min}</div>
-            </div>
+            </span>
           </div>
 
-          {/* Quadrant buttons - Full square clickable areas */}
-          <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-0" style={{ zIndex: 3 }}>
-            {/* Quadrant 3 - Bottom Left (now top-left in visual grid) */}
-            <button
-              onClick={() => handleQuadrantClick(3)}
-              className={`relative transition-all duration-200 ${
-                selectedQuadrant === 3
-                  ? 'bg-sky-600/30'
-                  : 'bg-transparent hover:bg-white/10'
-              }`}
-            >
-              {selectedQuadrant === 3 && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-6 h-6 rounded-full bg-sky-500 border-2 border-white" />
-                </div>
-              )}
-            </button>
+          {/* 2×2 quadrant grid */}
+          <div className="flex-1 grid grid-cols-2 gap-1">
+            {quadrants.map((q) => {
+              const isSelected = selectedQuadrant === q.id;
+              return (
+                <button
+                  key={q.id}
+                  onClick={() => handleSelect(q.id)}
+                  className={`
+                    aspect-square rounded-lg border-2 transition-all duration-150 flex items-center justify-center p-2
+                    ${isSelected
+                      ? 'bg-[#C83B50] border-[#C83B50] text-white'
+                      : 'bg-[#1A1714] border-[rgba(215,205,195,0.15)] text-[#7A7068] hover:border-[rgba(215,205,195,0.4)] hover:text-[#A89F96]'
+                    }
+                  `}
+                >
+                  <span
+                    className="text-center leading-tight"
+                    style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}
+                  >
+                    {q.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-            {/* Quadrant 4 - Bottom Right (now top-right in visual grid) */}
-            <button
-              onClick={() => handleQuadrantClick(4)}
-              className={`relative transition-all duration-200 ${
-                selectedQuadrant === 4
-                  ? 'bg-sky-600/30'
-                  : 'bg-transparent hover:bg-white/10'
-              }`}
+          {/* X-max label (right side) */}
+          <div className="flex-shrink-0 w-6 flex items-center justify-center">
+            <span
+              className="text-[#A89F96] font-semibold whitespace-nowrap"
+              style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', writingMode: 'vertical-rl' }}
             >
-              {selectedQuadrant === 4 && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-6 h-6 rounded-full bg-sky-500 border-2 border-white" />
-                </div>
-              )}
-            </button>
-
-            {/* Quadrant 2 - Top Left (now bottom-left in visual grid) */}
-            <button
-              onClick={() => handleQuadrantClick(2)}
-              className={`relative transition-all duration-200 ${
-                selectedQuadrant === 2
-                  ? 'bg-sky-600/30'
-                  : 'bg-transparent hover:bg-white/10'
-              }`}
-            >
-              {selectedQuadrant === 2 && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-6 h-6 rounded-full bg-sky-500 border-2 border-white" />
-                </div>
-              )}
-            </button>
-
-            {/* Quadrant 1 - Top Right (now bottom-right in visual grid) */}
-            <button
-              onClick={() => handleQuadrantClick(1)}
-              className={`relative transition-all duration-200 ${
-                selectedQuadrant === 1
-                  ? 'bg-sky-600/30'
-                  : 'bg-transparent hover:bg-white/10'
-              }`}
-            >
-              {selectedQuadrant === 1 && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-6 h-6 rounded-full bg-sky-500 border-2 border-white" />
-                </div>
-              )}
-            </button>
+              {activity.xAxis.max}
+            </span>
           </div>
         </div>
+
+        {/* Y-min label */}
+        <span className="text-xs text-[#A89F96] font-semibold" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          {activity.yAxis.min}
+        </span>
       </div>
     </div>
   );

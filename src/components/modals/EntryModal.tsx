@@ -14,6 +14,7 @@ interface EntryModalProps {
     position: { x: number; y: number };
     comment: string;
   }) => void;
+  onDelete?: () => void;
   slotNumber: number;
   existingData?: {
     objectName?: string;
@@ -27,6 +28,7 @@ export default function EntryModal({
   isOpen,
   onClose,
   onSubmit,
+  onDelete,
   slotNumber,
   existingData
 }: EntryModalProps) {
@@ -254,7 +256,18 @@ export default function EntryModal({
         </div>
 
         {/* Footer with Navigation */}
-        <div className="border-t border-[rgba(215,205,195,0.12)] p-4 flex gap-3">
+        <div className="border-t border-[rgba(215,205,195,0.12)] p-4 flex items-center gap-3">
+          {onDelete && (existingData?.rating || existingData?.comment) && (
+            <button
+              onClick={() => {
+                if (window.confirm('Delete this entry?')) onDelete();
+              }}
+              className="text-[#4a4440] hover:text-[#7A7068] transition-colors mr-auto"
+              style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em' }}
+            >
+              delete
+            </button>
+          )}
           <button
             onClick={handlePrevious}
             disabled={step === 1}

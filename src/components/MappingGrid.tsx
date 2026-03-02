@@ -119,7 +119,7 @@ export default function MappingGrid({
       */}
       <div className="flex flex-col items-center justify-center mx-auto px-4">
         {/* Top label */}
-        <div className="text-white text-sm font-semibold text-center p-2" style={{ width: 'min(500px, 90vw)' }}>{activity.yAxis.max}</div>
+        <div className="text-white text-sm font-semibold text-center p-2" style={{ width: 'min(500px, calc(90vw - 56px))' }}>{activity.yAxis.max}</div>
         
         <div className="flex items-center justify-center gap-2">
           {/* Left label */}
@@ -133,7 +133,7 @@ export default function MappingGrid({
             ref={gridRef}
             className="relative bg-[#111827] border-2 border-white/20 rounded-lg cursor-crosshair select-none aspect-square"
             onClick={handleGridClick}
-            style={{ width: 'min(500px, 90vw)', height: 'min(500px, 90vw)' }}
+            style={{ width: 'min(500px, calc(90vw - 56px))', height: 'min(500px, calc(90vw - 56px))' }}
           >
           {/* Grid Lines */}
           <div className="absolute inset-0 opacity-20">
@@ -236,7 +236,7 @@ export default function MappingGrid({
         </div>
         
         {/* Bottom label */}
-        <div className="text-white text-sm font-semibold text-center p-2" style={{ width: 'min(500px, 90vw)' }}>{activity.yAxis.min}</div>
+        <div className="text-white text-sm font-semibold text-center p-2" style={{ width: 'min(500px, calc(90vw - 56px))' }}>{activity.yAxis.min}</div>
       </div>
 
     </div>
