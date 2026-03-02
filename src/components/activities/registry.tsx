@@ -1,3 +1,5 @@
+'use client';
+
 import DissolvePositioningSteps from './dissolve/DissolvePositioningSteps';
 import ResolvePositioningSteps from './resolve/ResolvePositioningSteps';
 import ResultsView from '@/components/ResultsView';
