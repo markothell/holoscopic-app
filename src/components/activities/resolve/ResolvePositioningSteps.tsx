@@ -1,6 +1,6 @@
 'use client';
 
-import { TypePositioningStepsProps } from '@/components/activities/registry';
+import { TypePositioningStepsProps } from '@/components/activities/registry-types';
 import QuadrantSelector from './QuadrantSelector';
 
 export default function ResolvePositioningSteps({

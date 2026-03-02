@@ -1,27 +1,10 @@
-import { ComponentType } from 'react';
-import { HoloscopicActivity, Rating, ResultsViewProps } from '@/models/Activity';
 import DissolvePositioningSteps from './dissolve/DissolvePositioningSteps';
 import ResolvePositioningSteps from './resolve/ResolvePositioningSteps';
 import ResultsView from '@/components/ResultsView';
 import ResultsViewSimple from '@/components/ResultsViewSimple';
+import type { ActivityTypeRegistration } from './registry-types';
 
-export interface TypePositioningStepsProps {
-  activity: HoloscopicActivity;
-  step: number;
-  xValue: number;
-  yValue: number;
-  onXChange: (v: number) => void;
-  onYChange: (v: number) => void;
-  objectName: string;
-  existingRating?: Rating;
-}
-
-export interface ActivityTypeRegistration {
-  totalSteps: number;
-  commentMaxLength?: number;
-  PositioningSteps: ComponentType<TypePositioningStepsProps>;
-  Results: ComponentType<ResultsViewProps>;
-}
+export type { TypePositioningStepsProps, ActivityTypeRegistration } from './registry-types';
 
 export const REGISTRY: Record<'dissolve' | 'resolve', ActivityTypeRegistration> = {
   dissolve: {

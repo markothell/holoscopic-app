@@ -349,7 +349,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               activity={activity}
               isVisible={true}
               onToggle={() => {}}
-              onCommentVote={activity.status === 'completed' ? undefined : async (commentId) => {
+              onCommentVote={activity.status === 'completed' ? undefined : async (commentId: string) => {
                 try {
                   await ActivityService.voteComment(activityId, commentId, userId!);
                   const updated = await ActivityService.getActivity(activityId);
@@ -490,7 +490,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                 activity={activity}
                 isVisible={true}
                 onToggle={() => {}}
-                onCommentVote={activity.status === 'completed' ? undefined : async (commentId) => {
+                onCommentVote={activity.status === 'completed' ? undefined : async (commentId: string) => {
                   try {
                     await ActivityService.voteComment(activityId, commentId, userId!);
                     const updated = await ActivityService.getActivity(activityId);

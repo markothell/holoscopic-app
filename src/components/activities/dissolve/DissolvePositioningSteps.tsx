@@ -1,6 +1,6 @@
 'use client';
 
-import { TypePositioningStepsProps } from '@/components/activities/registry';
+import { TypePositioningStepsProps } from '@/components/activities/registry-types';
 
 export default function DissolvePositioningSteps({
   activity,
