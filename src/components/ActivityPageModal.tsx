@@ -7,12 +7,11 @@ import { webSocketService } from '@/services/websocketService';
 import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
 import Link from 'next/link';
-import ResultsView from './ResultsView';
-import ResultsViewSimple from './ResultsViewSimple';
 import CommentSection from './CommentSection';
 import PreambleModal from './modals/PreambleModal';
 import EntryModal from './modals/EntryModal';
-import { normalizeActivityType } from './activities/types';
+import { normalizeActivityType, getActivityTypeConfig } from './activities/types';
+import { REGISTRY } from './activities/registry';
 
 interface ActivityPageModalProps {
   activityId: string;
@@ -211,6 +210,10 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
 
   const maxEntries = isSoloTracker ? slotsToShow : (activity.maxEntries || 1);
 
+  const actType = normalizeActivityType(activity.activityType);
+  const { Results: TypeResults } = REGISTRY[actType];
+  const config = getActivityTypeConfig(activity.activityType);
+
   return (
     <div className="min-h-screen lg:h-screen bg-[#1A1714]">
       {/* Fixed Logo in top-left */}
@@ -284,7 +287,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
             </div>
           )}
         </div>
-        {normalizeActivityType(activity.activityType) === 'resolve' ? (
+        {config.hasCommentTab ? (
           <div className="flex-1 min-h-0 flex flex-col px-4">
             {/* Tab bar */}
             <div className="flex-shrink-0 flex justify-center mb-2">
@@ -308,7 +311,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
             {/* Tab content */}
             <div className="flex-1 min-h-0">
               {resolveTab === 'map' ? (
-                <ResultsViewSimple
+                <TypeResults
                   activity={activity}
                   isVisible={true}
                   onToggle={() => {}}
@@ -342,7 +345,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
           </div>
         ) : (
           <div className="flex-1 min-h-0 px-4">
-            <ResultsView
+            <TypeResults
               activity={activity}
               isVisible={true}
               onToggle={() => {}}
@@ -422,9 +425,9 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
             )}
           </div>
 
-          {/* Map - Use ResultsView for tablet (sm-lg), custom for desktop lg+ */}
+          {/* Map - Use TypeResults for tablet (sm-lg), custom for desktop lg+ */}
           <div className="flex-1 min-h-0 flex flex-col">
-            {normalizeActivityType(activity.activityType) === 'resolve' ? (
+            {config.hasCommentTab ? (
               <>
                 {/* Tab bar for sm-lg range */}
                 <div className="lg:hidden flex-shrink-0 flex justify-center mb-3">
@@ -447,7 +450,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                 </div>
                 {/* Map tab (always visible at lg+, conditional at sm-lg) */}
                 <div className={`flex-1 min-h-0 ${resolveTab === 'comments' ? 'lg:flex hidden' : 'flex'} flex-col`}>
-                  <ResultsViewSimple
+                  <TypeResults
                     activity={activity}
                     isVisible={true}
                     onToggle={() => {}}
@@ -483,7 +486,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                 )}
               </>
             ) : (
-              <ResultsView
+              <TypeResults
                 activity={activity}
                 isVisible={true}
                 onToggle={() => {}}

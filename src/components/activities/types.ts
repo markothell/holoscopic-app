@@ -17,6 +17,9 @@ export interface ActivityTypeConfig {
 
   // Positioning method
   positioningMethod: 'sliders' | 'quadrant';
+
+  // Whether results shows a separate comments tab (vs integrated comments panel)
+  hasCommentTab: boolean;
 }
 
 // Normalize legacy activity type names from existing DB documents
@@ -35,6 +38,7 @@ const ACTIVITY_TYPE_CONFIGS: Record<'dissolve' | 'resolve', ActivityTypeConfig> 
     screens: ['intro', 'objectName', 'xSlider', 'ySlider', 'comment', 'results'],
     requiresMapQuestion2: true,
     positioningMethod: 'sliders',
+    hasCommentTab: false,
   },
   resolve: {
     id: 'resolve',
@@ -44,6 +48,7 @@ const ACTIVITY_TYPE_CONFIGS: Record<'dissolve' | 'resolve', ActivityTypeConfig> 
     screens: ['intro', 'objectName', 'quadrant', 'comment', 'results'],
     requiresMapQuestion2: false,
     positioningMethod: 'quadrant',
+    hasCommentTab: true,
   },
 };
 

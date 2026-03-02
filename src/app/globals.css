@@ -109,3 +109,29 @@ input::placeholder, textarea::placeholder {
   background: rgba(255, 255, 255, 0.9) !important;
   fill: #0F0D0B !important;
 }
+
+/* Slider thumb styling (entry modal — dissolve activity) */
+input[type="range"].slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #C83B50;
+  border: 2px solid #F5F0EB;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+input[type="range"].slider::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #C83B50;
+  border: 2px solid #F5F0EB;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+input[type="range"].slider:focus {
+  outline: none;
+}
