@@ -110,6 +110,17 @@ function SequenceAdminContent() {
     }
   };
 
+  const handleUnsetWaitlist = async (id: string) => {
+    if (!confirm('Remove from waitlist and return to draft?')) return;
+    try {
+      const updated = await SequenceService.setDraftStatus(id);
+      setSequences(sequences.map(s => s.id === id ? updated : s));
+    } catch (err) {
+      console.error('Error removing waitlist:', err);
+      alert('Failed to remove waitlist status');
+    }
+  };
+
   const handleStartSequence = async (id: string) => {
     if (!confirm('Start this sequence? This will open the first activity.')) {
       return;
@@ -316,6 +327,13 @@ function SequenceAdminContent() {
                       )}
                       {sequence.status === 'waitlist' && (
                         <>
+                          <span className={styles.actionDot}>&middot;</span>
+                          <button
+                            onClick={() => handleUnsetWaitlist(sequence.id)}
+                            className={`${styles.actionBtn}`}
+                          >
+                            Draft
+                          </button>
                           <span className={styles.actionDot}>&middot;</span>
                           <button
                             onClick={() => handleStartSequence(sequence.id)}

@@ -240,6 +240,22 @@ export class SequenceService {
     }
   }
 
+  // Remove from waitlist (back to draft)
+  static async setDraftStatus(sequenceId: string): Promise<Sequence> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/sequences/${sequenceId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'draft' }),
+      });
+      if (!response.ok) throw new Error('Failed to set draft status');
+      return await response.json();
+    } catch (error) {
+      console.error('Error setting draft status:', error);
+      throw error;
+    }
+  }
+
   // Start sequence (opens first activity)
   static async startSequence(sequenceId: string): Promise<Sequence> {
     try {
