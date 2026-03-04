@@ -16,8 +16,6 @@
 /* ---- HEADER ---- */
 
 .header {
-  border-bottom: 1px solid var(--rule);
-  background: rgba(255, 255, 255, 0.4);
 }
 
 .headerInner {

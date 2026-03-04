@@ -85,20 +85,31 @@ export default function PreambleModal({ activity, isOpen, onClose, onBegin, hasJ
                   />
                 </div>
 
-                {/* X-axis label */}
-                <div className="absolute transform -translate-y-1/2" style={{ top: '50%', left: '55%' }}>
-                  <span className="text-[#F5F0EB]/90 text-xs font-semibold bg-[#252120] px-2 py-1 rounded shadow-sm">
-                    {activity.xAxis.label}
+                {/* Y-axis max (top) */}
+                <div className="absolute left-1/2 -translate-x-1/2 text-center" style={{ top: '4%' }}>
+                  <span className="text-[#F5F0EB]/90 bg-[#252120] px-1 py-0.5 rounded shadow-sm whitespace-nowrap" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', letterSpacing: '0.06em' }}>
+                    {activity.yAxis.max}
                   </span>
                 </div>
 
-                {/* Y-axis label */}
-                <div
-                  className="absolute transform -translate-x-1/2 -translate-y-1/2 -rotate-90"
-                  style={{ left: '50%', top: '25%', transformOrigin: 'center' }}
-                >
-                  <span className="text-[#F5F0EB]/90 text-xs font-semibold bg-[#252120] px-2 py-1 rounded whitespace-nowrap shadow-sm">
-                    {activity.yAxis.label}
+                {/* Y-axis min (bottom) */}
+                <div className="absolute left-1/2 -translate-x-1/2 text-center" style={{ bottom: '4%' }}>
+                  <span className="text-[#F5F0EB]/90 bg-[#252120] px-1 py-0.5 rounded shadow-sm whitespace-nowrap" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', letterSpacing: '0.06em' }}>
+                    {activity.yAxis.min}
+                  </span>
+                </div>
+
+                {/* X-axis min (left) */}
+                <div className="absolute top-1/2 -translate-y-1/2" style={{ left: '2%' }}>
+                  <span className="text-[#F5F0EB]/90 bg-[#252120] px-1 py-0.5 rounded shadow-sm whitespace-nowrap" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', letterSpacing: '0.06em' }}>
+                    {activity.xAxis.min}
+                  </span>
+                </div>
+
+                {/* X-axis max (right) */}
+                <div className="absolute top-1/2 -translate-y-1/2" style={{ right: '2%' }}>
+                  <span className="text-[#F5F0EB]/90 bg-[#252120] px-1 py-0.5 rounded shadow-sm whitespace-nowrap" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', letterSpacing: '0.06em' }}>
+                    {activity.xAxis.max}
                   </span>
                 </div>
               </div>

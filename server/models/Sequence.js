@@ -146,7 +146,7 @@ const SequenceSchema = new mongoose.Schema({
   // Sequence status
   status: {
     type: String,
-    enum: ['draft', 'active', 'completed'],
+    enum: ['draft', 'waitlist', 'active', 'completed'],
     default: 'draft'
   },
 

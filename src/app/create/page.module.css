@@ -16,8 +16,6 @@
 /* ---- HEADER ---- */
 
 .header {
-  border-bottom: 1px solid var(--rule);
-  background: rgba(255, 255, 255, 0.4);
 }
 
 .headerInner {
@@ -343,6 +341,11 @@
 .badgeDraft {
   background: rgba(0, 0, 0, 0.05);
   color: var(--ink-light);
+}
+
+.badgeWaitlist {
+  background: rgba(26, 79, 212, 0.1);
+  color: #1A4FD4;
 }
 
 /* ---- ACTION LINKS ---- */

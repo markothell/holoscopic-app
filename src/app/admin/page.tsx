@@ -366,80 +366,68 @@ export default function SuperAdminPage() {
 
             {waitlist && !waitlistLoading && (
               <div className={styles.cardList}>
-                {Object.entries(waitlist.topics).map(([topic, data]) => {
-                  const isExpanded = expandedTopic === topic;
-                  return (
-                    <div key={topic} className={styles.card}>
-                      <div className={styles.cardTop}>
-                        <div>
-                          <div className={styles.cardTitle}>{topic}</div>
-                          <div className={styles.cardMeta}>
-                            <span>{data.count} / 25 signups</span>
-                          </div>
-                        </div>
-                        <button
-                          className={styles.secondaryBtn}
-                          onClick={() => setExpandedTopic(isExpanded ? null : topic)}
-                          style={{ flexShrink: 0 }}
-                        >
-                          {isExpanded ? 'Hide emails' : 'View emails'}
-                        </button>
-                      </div>
-
-                      {/* Progress bar */}
-                      <div style={{
-                        height: '3px',
-                        background: 'var(--rule)',
-                        borderRadius: '2px',
-                        overflow: 'hidden',
-                        marginBottom: isExpanded ? '1rem' : 0,
-                      }}>
-                        <div style={{
-                          height: '100%',
-                          width: `${Math.min((data.count / 25) * 100, 100)}%`,
-                          background: 'var(--accent)',
-                          borderRadius: '2px',
-                          transition: 'width 0.3s ease',
-                        }} />
-                      </div>
-
-                      {isExpanded && (
-                        <div>
-                          {data.emails.length === 0 ? (
-                            <p className={styles.empty} style={{ padding: '0.5rem 0', textAlign: 'left' }}>No signups yet</p>
-                          ) : (
-                            <div className={styles.tableWrap} style={{ marginTop: '0.5rem' }}>
-                              <table className={styles.table}>
-                                <thead className={styles.tableHead}>
-                                  <tr>
-                                    <th className={styles.th}>Email</th>
-                                    <th className={styles.th}>Joined</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {data.emails.map((entry, i) => (
-                                    <tr key={i} className={styles.tr}>
-                                      <td className={styles.td}>
-                                        <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', letterSpacing: '0.03em' }}>
-                                          {entry.email}
-                                        </span>
-                                      </td>
-                                      <td className={styles.td}>
-                                        <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', color: 'var(--ink-light)' }}>
-                                          {formatDate(entry.joinedAt)}
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                {waitlist.sequences.length === 0 ? (
+                  <p className={styles.empty}>No waitlist signups yet.</p>
+                ) : (
+                  waitlist.sequences.map((seq) => {
+                    const isExpanded = expandedTopic === seq.sequenceId;
+                    return (
+                      <div key={seq.sequenceId} className={styles.card}>
+                        <div className={styles.cardTop}>
+                          <div>
+                            <div className={styles.cardTitle}>{seq.title}</div>
+                            <div className={styles.cardMeta}>
+                              <span>{seq.count} signup{seq.count !== 1 ? 's' : ''}</span>
+                              {seq.urlName && <span>/{seq.urlName}</span>}
                             </div>
-                          )}
+                          </div>
+                          <button
+                            className={styles.secondaryBtn}
+                            onClick={() => setExpandedTopic(isExpanded ? null : seq.sequenceId)}
+                            style={{ flexShrink: 0 }}
+                          >
+                            {isExpanded ? 'Hide emails' : 'View emails'}
+                          </button>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+
+                        {isExpanded && (
+                          <div>
+                            {seq.emails.length === 0 ? (
+                              <p className={styles.empty} style={{ padding: '0.5rem 0', textAlign: 'left' }}>No signups yet</p>
+                            ) : (
+                              <div className={styles.tableWrap} style={{ marginTop: '0.5rem' }}>
+                                <table className={styles.table}>
+                                  <thead className={styles.tableHead}>
+                                    <tr>
+                                      <th className={styles.th}>Email</th>
+                                      <th className={styles.th}>Joined</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {seq.emails.map((entry, i) => (
+                                      <tr key={i} className={styles.tr}>
+                                        <td className={styles.td}>
+                                          <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', letterSpacing: '0.03em' }}>
+                                            {entry.email}
+                                          </span>
+                                        </td>
+                                        <td className={styles.td}>
+                                          <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', color: 'var(--ink-light)' }}>
+                                            {formatDate(entry.joinedAt)}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             )}
           </section>

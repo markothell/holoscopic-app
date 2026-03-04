@@ -465,7 +465,7 @@ export default function SequencePanel({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               style={sx.input}
-              placeholder="e.g., Spring 2024 Cohort"
+              placeholder="Sequence title"
               required
             />
           </div>
@@ -477,7 +477,7 @@ export default function SequencePanel({
               value={urlName}
               onChange={(e) => setUrlName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
               style={sx.input}
-              placeholder="e.g., spring-2024-cohort"
+              placeholder="url-slug"
               pattern="[a-z0-9\-]+"
               required
             />
@@ -490,7 +490,7 @@ export default function SequencePanel({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               style={{ ...sx.input, resize: 'vertical' as const }}
-              placeholder="Brief description of this sequence..."
+              placeholder="Description..."
               rows={3}
             />
           </div>
@@ -521,7 +521,7 @@ export default function SequencePanel({
                     value={newEmailInput}
                     onChange={(e) => setNewEmailInput(e.target.value)}
                     style={{ ...sx.input, fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.85rem', resize: 'vertical' as const }}
-                    placeholder={"Enter emails (one per line, or comma/semicolon separated)\nexample@domain.com\nanother@domain.com"}
+                    placeholder={"One per line, or comma/semicolon separated"}
                     rows={4}
                   />
                   <div style={{ marginTop: '0.5rem' }}>
@@ -599,7 +599,7 @@ export default function SequencePanel({
                       value={welcomePage.welcomeText}
                       onChange={(e) => setWelcomePage({ ...welcomePage, welcomeText: e.target.value })}
                       style={{ ...sx.input, resize: 'vertical' as const }}
-                      placeholder="Enter welcome text for participants..."
+                      placeholder="Welcome text..."
                       rows={4}
                       maxLength={2000}
                     />
@@ -613,7 +613,7 @@ export default function SequencePanel({
                       value={welcomePage.referenceLink}
                       onChange={(e) => setWelcomePage({ ...welcomePage, referenceLink: e.target.value })}
                       style={sx.input}
-                      placeholder="https://example.com/reference"
+                      placeholder="https://..."
                       maxLength={500}
                     />
                     <p style={sx.hint}>Link to reference material for this activity</p>

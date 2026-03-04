@@ -846,8 +846,13 @@ router.post('/:id/comment/:commentId/vote', async (req, res) => {
   } catch (error) {
     console.error('Error voting on comment:', error);
 
-    // Check if it's a vote limit error
-    if (error.message && error.message.includes('Vote limit reached')) {
+    // Return 400 for all known business logic errors
+    const businessLogicErrors = [
+      'Vote limit reached',
+      'Cannot vote on your own comment',
+      'Comment not found',
+    ];
+    if (error.message && businessLogicErrors.some(msg => error.message.includes(msg))) {
       return res.status(400).json({
         success: false,
         error: error.message

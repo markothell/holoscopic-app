@@ -3,7 +3,6 @@
 import { useState, useCallback } from 'react';
 import { ResultsViewProps } from '@/models/Activity';
 import { FormattingService } from '@/utils/formatting';
-import { ValidationService } from '@/utils/validation';
 import MappingGrid from './MappingGrid';
 import CommentSection from './CommentSection';
 
@@ -14,7 +13,9 @@ export default function ResultsView({
   currentUserId,
   hoveredSlotNumber,
   sequenceId,
-  hideCommentsPanel = false
+  hideCommentsPanel = false,
+  onDotClick,
+  externalHoveredCommentId,
 }: ResultsViewProps) {
   const [activeTab, setActiveTab] = useState<'map' | 'comments'>('map');
   const [hoveredCommentId, setHoveredCommentId] = useState<string | null>(null);
@@ -22,19 +23,21 @@ export default function ResultsView({
   const [visibleCommentIds, setVisibleCommentIds] = useState<string[]>([]);
   const [mobilePopupComment, setMobilePopupComment] = useState<string | null>(null);
 
-  // Handle comment hover
+  // Effective hovered comment: prefer external state (when panel is hidden) over internal
+  const effectiveHoveredCommentId = externalHoveredCommentId !== undefined
+    ? externalHoveredCommentId
+    : hoveredCommentId;
+
+  // Handle comment hover (internal panel)
   const handleCommentHover = useCallback((commentId: string | null) => {
     setHoveredCommentId(commentId);
   }, []);
 
-  // Handle map dot click
+  // Handle map dot click — works whether or not the internal panel is visible
   const handleMapDotClick = useCallback((commentId: string) => {
-    // Use the commentId directly (now passed from MappingGrid)
-    if (visibleCommentIds.includes(commentId)) {
-      setSelectedCommentId(commentId);
-      // Scroll to comment will be handled by CommentSection
-    }
-  }, [visibleCommentIds]);
+    setSelectedCommentId(commentId);
+    onDotClick?.(commentId);
+  }, [onDotClick]);
 
   // Handle mobile map dot tap
   const handleMobileMapDotTap = useCallback((commentId: string) => {
@@ -110,7 +113,7 @@ export default function ResultsView({
                       activity={activity}
                       onRatingSubmit={() => {}} // No submission in results view
                       showAllRatings={true}
-                      hoveredCommentId={hoveredCommentId}
+                      hoveredCommentId={effectiveHoveredCommentId}
                       onDotClick={handleMobileMapDotTap}
                       visibleCommentIds={visibleCommentIds}
                       hoveredSlotNumber={hoveredSlotNumber}
@@ -164,75 +167,72 @@ export default function ResultsView({
 
           {/* Mobile Comment Popup */}
           {mobilePopupComment && (
-            <div className="lg:hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-              <div className="bg-[#111827] rounded-lg p-6 max-w-sm w-full max-h-[70vh] overflow-y-auto shadow-xl border border-white/10">
+            <div
+              className="lg:hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+              onClick={() => setMobilePopupComment(null)}
+            >
+              <div
+                className="bg-[#252120] border border-[rgba(215,205,195,0.12)] rounded-lg p-6 max-w-md w-full shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {(() => {
                   const comment = activity.comments.find(c => c.id === mobilePopupComment);
                   if (!comment) return null;
 
-                  // Get the associated rating to get objectName and quadrant color
                   const rating = activity.ratings.find(r =>
                     r.userId === comment.userId && (r.slotNumber || 1) === (comment.slotNumber || 1)
                   );
-
-                  // Get display name (prefer objectName, fallback to username)
                   const displayName = comment.objectName || rating?.objectName || comment.username;
-
-                  // Get color based on quadrant position
-                  const dotColor = rating
-                    ? ValidationService.getQuadrantColor(ValidationService.getQuadrant(rating.position))
-                    : FormattingService.generateColorFromString(comment.username);
+                  const isOwnComment = comment.userId === currentUserId;
+                  const hasVoted = comment.votes?.some(v => v.userId === currentUserId) || false;
+                  const canVote = onCommentVote && currentUserId && (activity.maxEntries === 0 || !isOwnComment);
 
                   return (
                     <div>
+                      {/* Header */}
                       <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center space-x-2">
-                          <div
-                            className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: dotColor }}
-                          />
-                          <h3 className="text-lg font-semibold text-white">{displayName}</h3>
+                        <div>
+                          <h3 className="text-[#F5F0EB] font-bold text-lg" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>{displayName}</h3>
+                          {isOwnComment && (
+                            <span className="text-[#C83B50]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>(Your response)</span>
+                          )}
                         </div>
                         <button
                           onClick={() => setMobilePopupComment(null)}
-                          className="text-gray-400 hover:text-white"
+                          className="text-[#7A7068] hover:text-[#F5F0EB] transition text-2xl leading-none"
                         >
-                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
+                          &#x2715;
                         </button>
                       </div>
 
-                      <div className="space-y-3">
-                        <p className="text-gray-200 text-sm whitespace-pre-wrap">
-                          {comment.text}
-                        </p>
+                      {/* Comment text */}
+                      <div className="bg-[#1A1714] border border-[rgba(215,205,195,0.12)] rounded-lg p-4 mb-4">
+                        <p className="text-[#F5F0EB] text-base leading-relaxed whitespace-pre-wrap" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>{comment.text}</p>
+                      </div>
 
-                        <div className="flex justify-between items-center pt-2 border-t border-white/10">
-                          <span className="text-xs text-gray-500">
-                            {FormattingService.formatTimestamp(comment.timestamp)}
-                          </span>
-                          {onCommentVote && currentUserId ? (
-                            <button
-                              onClick={async () => {
-                                try {
-                                  await onCommentVote(comment.id);
-                                } catch (error) {
-                                  console.error('Vote failed:', error);
-                                }
-                              }}
-                              className="flex items-center space-x-1 px-2 py-1 rounded text-xs transition-colors bg-white/10 text-gray-300 hover:bg-white/20"
-                            >
-                              <span>▲</span>
-                              <span>{comment.voteCount || 0}</span>
-                            </button>
-                          ) : (
-                            <div className="flex items-center space-x-1 text-xs text-gray-400">
-                              <span>▲</span>
-                              <span>{comment.voteCount || 0}</span>
-                            </div>
-                          )}
+                      {/* Vote + timestamp */}
+                      <div className="flex items-center justify-between">
+                        <div className="text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em' }}>
+                          <span className="font-semibold">{comment.voteCount || 0}</span> {comment.voteCount === 1 ? 'vote' : 'votes'}
                         </div>
+                        {canVote ? (
+                          <button
+                            onClick={async () => {
+                              try { await onCommentVote!(comment.id); } catch (e) { console.error('Vote failed:', e); }
+                            }}
+                            className={`px-4 py-2 rounded-lg font-medium transition ${hasVoted ? 'bg-emerald-600 text-white hover:bg-red-600' : 'bg-[#C83B50] hover:bg-[#B03248] text-white'}`}
+                            style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', fontWeight: 300, letterSpacing: '0.1em', textTransform: 'uppercase' }}
+                          >
+                            {hasVoted ? '\u2713 Voted' : 'Vote'}
+                          </button>
+                        ) : null}
+                      </div>
+
+                      {/* Timestamp */}
+                      <div className="mt-4 pt-4 border-t border-[rgba(215,205,195,0.12)]">
+                        <p className="text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>
+                          {FormattingService.formatTimestamp(comment.timestamp)}
+                        </p>
                       </div>
                     </div>
                   );
@@ -260,7 +260,7 @@ export default function ResultsView({
                     activity={activity}
                     onRatingSubmit={() => {}} // No submission in results view
                     showAllRatings={true}
-                    hoveredCommentId={hoveredCommentId}
+                    hoveredCommentId={effectiveHoveredCommentId}
                     onDotClick={handleMapDotClick}
                     visibleCommentIds={visibleCommentIds}
                     hoveredSlotNumber={hoveredSlotNumber}

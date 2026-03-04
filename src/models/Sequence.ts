@@ -50,7 +50,7 @@ export interface Sequence {
   members: SequenceMember[];
   invitedEmails?: string[];
   requireInvitation?: boolean;
-  status: 'draft' | 'active' | 'completed';
+  status: 'draft' | 'waitlist' | 'active' | 'completed';
   startedAt: Date | null;
   completedAt: Date | null;
   createdAt: Date;
@@ -99,5 +99,5 @@ export interface UpdateSequenceData {
   }>;
   invitedEmails?: string[];
   requireInvitation?: boolean;
-  status?: 'draft' | 'active' | 'completed';
+  status?: 'draft' | 'waitlist' | 'active' | 'completed';
 }

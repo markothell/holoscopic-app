@@ -12,23 +12,24 @@ const WaitlistSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
       index: true,
     },
-    topics: [
-      {
-        type: String,
-        enum: ['Relationship', 'Intuition', 'Work', 'Sexuality'],
-      },
-    ],
+    sequenceId: {
+      type: String,
+      required: true,
+      index: true,
+    },
   },
   { timestamps: true }
 );
 
+// Compound index: one entry per email per sequence
+WaitlistSchema.index({ email: 1, sequenceId: 1 }, { unique: true });
+
 WaitlistSchema.statics.findByEmail = function (email) {
-  return this.findOne({ email: email.toLowerCase().trim() });
+  return this.find({ email: email.toLowerCase().trim() });
 };
 
 module.exports = mongoose.model('Waitlist', WaitlistSchema);

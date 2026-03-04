@@ -1,16 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const Waitlist = require('../models/Waitlist');
+const Sequence = require('../models/Sequence');
 
-const VALID_TOPICS = ['Relationship', 'Intuition', 'Work', 'Sexuality'];
-const MAX_PER_TOPIC = 25;
-
-// GET /api/waitlist/counts — public topic counts (no emails)
+// GET /api/waitlist/counts?sequenceIds=id1,id2 — signupcount per sequence
 router.get('/counts', async (req, res) => {
   try {
+    const { sequenceIds } = req.query;
+    const ids = sequenceIds ? sequenceIds.split(',').filter(Boolean) : [];
+
     const counts = {};
-    for (const topic of VALID_TOPICS) {
-      counts[topic] = await Waitlist.countDocuments({ topics: topic });
+    for (const sequenceId of ids) {
+      counts[sequenceId] = await Waitlist.countDocuments({ sequenceId });
     }
     res.json({ counts });
   } catch (error) {
@@ -19,53 +20,34 @@ router.get('/counts', async (req, res) => {
   }
 });
 
-// POST /api/waitlist — submit signup
+// POST /api/waitlist — submit signup for a specific sequence
 router.post('/', async (req, res) => {
   try {
-    const { email, topics } = req.body;
+    const { email, sequenceId } = req.body;
 
-    // Validate email
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return res.status(400).json({ error: 'A valid email address is required.' });
     }
 
-    // Validate topics
-    if (!topics || !Array.isArray(topics) || topics.length === 0) {
-      return res.status(400).json({ error: 'Select at least one topic.' });
+    if (!sequenceId) {
+      return res.status(400).json({ error: 'A sequence is required.' });
     }
 
-    const validTopics = topics.filter(t => VALID_TOPICS.includes(t));
-    if (validTopics.length === 0) {
-      return res.status(400).json({ error: 'Invalid topic selection.' });
+    // Verify sequence exists and is in waitlist status
+    const sequence = await Sequence.findOne({ id: sequenceId, status: 'waitlist' });
+    if (!sequence) {
+      return res.status(404).json({ error: 'Sequence not found or not accepting signups.' });
     }
 
-    // Check capacity for selected topics
-    for (const topic of validTopics) {
-      const count = await Waitlist.countDocuments({ topics: topic });
-      if (count >= MAX_PER_TOPIC) {
-        return res.status(400).json({
-          error: `The ${topic} cohort is full. Select a different topic or check back later.`,
-        });
-      }
-    }
+    // Upsert: ignore if already signed up for this sequence
+    await Waitlist.findOneAndUpdate(
+      { email: email.trim().toLowerCase(), sequenceId },
+      { email: email.trim().toLowerCase(), sequenceId },
+      { upsert: true, new: true }
+    );
 
-    // Upsert: merge topics if email already exists
-    const existing = await Waitlist.findByEmail(email.trim());
-    if (existing) {
-      const merged = [...new Set([...existing.topics, ...validTopics])];
-      existing.topics = merged;
-      await existing.save();
-    } else {
-      await Waitlist.create({ email: email.trim(), topics: validTopics });
-    }
-
-    // Return updated counts
-    const counts = {};
-    for (const topic of VALID_TOPICS) {
-      counts[topic] = await Waitlist.countDocuments({ topics: topic });
-    }
-
-    res.json({ success: true, counts });
+    const count = await Waitlist.countDocuments({ sequenceId });
+    res.json({ success: true, count });
   } catch (error) {
     console.error('Waitlist signup error:', error);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });

@@ -481,7 +481,8 @@ export class ActivityService {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to vote on comment');
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to vote on comment');
       }
 
       const data: ApiResponse<Comment> = await response.json();

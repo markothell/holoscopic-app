@@ -211,4 +211,6 @@ export interface ResultsViewProps {
   hoveredSlotNumber?: number | null;
   sequenceId?: string;
   hideCommentsPanel?: boolean; // Hide the internal comments panel on lg screens
+  onDotClick?: (commentId: string) => void; // External dot-click handler (for when panel is hidden)
+  externalHoveredCommentId?: string | null; // External hover state (for when panel is hidden)
 }

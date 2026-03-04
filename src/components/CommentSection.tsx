@@ -374,8 +374,8 @@ export default function CommentSection({
                             />
                           </a>
                         )}
-                        {/* Upvote Button (hidden for own comments) */}
-                        {showAllComments && onCommentVote && comment.userId !== currentUserId && (
+                        {/* Upvote Button — visible for all comments in solo tracker mode, hidden for own comments otherwise */}
+                        {showAllComments && onCommentVote && (activity.maxEntries === 0 || comment.userId !== currentUserId) && (
                           <button
                             onClick={() => handleVote(comment.id)}
                             className={`flex items-center space-x-1 px-2 py-1 rounded text-xs transition-colors ${
@@ -389,8 +389,8 @@ export default function CommentSection({
                             <span>{comment.voteCount || 0}</span>
                           </button>
                         )}
-                        {/* Vote count display for own comments */}
-                        {showAllComments && onCommentVote && comment.userId === currentUserId && (
+                        {/* Vote count display for own comments (standard mode only) */}
+                        {showAllComments && onCommentVote && activity.maxEntries !== 0 && comment.userId === currentUserId && (
                           <div className="flex items-center space-x-1 px-2 py-1 rounded text-xs bg-[rgba(215,205,195,0.1)] text-[#7A7068]">
                             <span className="text-base">&#x25B2;</span>
                             <span>{comment.voteCount || 0}</span>

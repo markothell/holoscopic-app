@@ -7,6 +7,7 @@ import { webSocketService } from '@/services/websocketService';
 import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
 import Link from 'next/link';
+import UserMenu from '@/components/UserMenu';
 import CommentSection from './CommentSection';
 import PreambleModal from './modals/PreambleModal';
 import EntryModal from './modals/EntryModal';
@@ -27,6 +28,10 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
 
   // Tab state for resolve activity type
   const [resolveTab, setResolveTab] = useState<'map' | 'comments'>('map');
+
+  // Desktop dot-click → comment highlight (for dissolve where the panel lives outside ResultsView)
+  const [externalSelectedComment, setExternalSelectedComment] = useState<string | null>(null);
+  const [externalHoveredComment, setExternalHoveredComment] = useState<string | null>(null);
 
   // Modal state
   const [showPreamble, setShowPreamble] = useState(false);
@@ -82,10 +87,22 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
       setActivity(data.activity);
     };
 
+    const handleCommentVoted = (data: { comment: Comment }) => {
+      setActivity(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          comments: prev.comments.map(c => c.id === data.comment.id ? data.comment : c),
+        };
+      });
+    };
+
     const unsubscribe = webSocketService.on('activity_updated', handleActivityUpdate);
+    const unsubscribeVoted = webSocketService.on('comment_voted', handleCommentVoted);
 
     return () => {
       unsubscribe();
+      unsubscribeVoted();
       webSocketService.disconnect();
     };
   }, [activity, activityId, userId, username]);
@@ -114,13 +131,16 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
   const isCreator = activity?.author?.userId === userId;
   const canAddEntries = !isSoloTracker || isCreator;
 
-  // Count user's existing entries for solo tracker mode
-  const userEntryCount = activity?.ratings.filter(r => r.userId === userId).length || 0;
+  // User's actual filled slot numbers (sorted) — source of truth for circle rendering
+  const userFilledSlots = (activity && userId)
+    ? [...new Set(activity.ratings.filter(r => r.userId === userId).map(r => r.slotNumber || 1))].sort((a, b) => a - b)
+    : [];
 
-  // Determine slots to show
-  const slotsToShow = isSoloTracker
-    ? Math.max(1, userEntryCount + (canAddEntries ? 1 : 0))
-    : (activity?.maxEntries || 1);
+  // Next slot number avoids gaps/collisions after deletions
+  const nextSlotNumber = userFilledSlots.length > 0 ? Math.max(...userFilledSlots) + 1 : 1;
+
+  // Can the user add another entry?
+  const canAddMore = canAddEntries && (isSoloTracker || userFilledSlots.length < (activity?.maxEntries || 1));
 
   // Handle entry submission
   const handleEntrySubmit = async (data: {
@@ -180,12 +200,11 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
       }
     }
     setShowPreamble(false);
-    // For returning users opening "Add New Entry", advance to the next empty slot
     if (hasJoined) {
-      setCurrentSlot(userEntryCount + 1);
+      setCurrentSlot(nextSlotNumber);
     }
     setShowEntryModal(true);
-  }, [hasJoined, userId, username, activityId, userEntryCount]);
+  }, [hasJoined, userId, username, activityId, nextSlotNumber]);
 
   if (loading || authLoading) {
     return (
@@ -208,8 +227,6 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
     );
   }
 
-  const maxEntries = isSoloTracker ? slotsToShow : (activity.maxEntries || 1);
-
   const actType = normalizeActivityType(activity.activityType);
   const { Results: TypeResults } = REGISTRY[actType];
   const config = getActivityTypeConfig(activity.activityType);
@@ -217,48 +234,51 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
   return (
     <div className="min-h-screen lg:h-screen bg-[#1A1714]">
       {/* Fixed Logo in top-left */}
-      <div className="fixed top-4 left-4 z-20">
+      <div className="fixed top-3 left-4 z-20">
         <Link href="/">
           <Image
-            src="/HS.svg"
+            src="/icon-192.png"
             alt="Holoscopic"
-            width={29}
-            height={40}
+            width={36}
+            height={36}
             className="hover:opacity-80 transition-opacity"
           />
         </Link>
+      </div>
+
+      {/* Fixed UserMenu in top-right */}
+      <div className="fixed top-3 right-4 z-20">
+        <UserMenu />
       </div>
 
       {/* Mobile Layout */}
       <div className="sm:hidden flex-1 flex flex-col pt-4 pb-4">
         <div className="flex-shrink-0 px-4 mb-4">
           {/* Title with Info Icon */}
-          <div className="ml-16 flex items-center gap-2">
+          <div className="ml-24 flex items-center gap-2">
             <h2 className="text-2xl font-bold text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
               {activity.title}
             </h2>
-            {(activity.preamble || activity.wikiLink) && (
-              <button
-                onClick={() => setShowPreamble(true)}
-                className="w-6 h-6 rounded-full bg-[rgba(215,205,195,0.1)] hover:bg-[rgba(215,205,195,0.18)] text-[#F5F0EB] text-xs font-bold flex items-center justify-center transition-colors flex-shrink-0"
-                aria-label="View information"
-                title="View activity information"
-              >
-                i
-              </button>
-            )}
+            <button
+              onClick={() => setShowPreamble(true)}
+              className="w-6 h-6 rounded-full bg-[rgba(215,205,195,0.1)] hover:bg-[rgba(215,205,195,0.18)] text-[#F5F0EB] text-xs font-bold flex items-center justify-center transition-colors flex-shrink-0"
+              aria-label="View information"
+              title="View activity information"
+            >
+              i
+            </button>
           </div>
 
           {/* Entry Circles */}
           {activity.status !== 'completed' && canAddEntries && (
-            <div className="flex flex-col items-start ml-16 mt-3">
+            <div className="flex flex-col items-start ml-24 mt-3">
               <span className="text-xs text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                {isSoloTracker ? `Your entries (${userEntryCount}):` : 'Click to add mapping:'}
+                {`Your entries (${userFilledSlots.length}):`}
               </span>
               <div className="flex gap-2 flex-wrap mt-2">
-                {Array.from({ length: maxEntries }, (_, i) => i + 1).map((slot) => {
+                {[...userFilledSlots, ...(canAddMore ? [nextSlotNumber] : [])].map((slot, displayIndex) => {
+                  const isAddNewSlot = slot === nextSlotNumber && canAddMore && !userFilledSlots.includes(slot);
                   const slotData = getSlotData(slot);
-                  const isAddNewSlot = isSoloTracker && slot > userEntryCount;
 
                   return (
                     <button
@@ -267,18 +287,14 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                       onMouseEnter={() => setHoveredSlot(slot)}
                       onMouseLeave={() => setHoveredSlot(null)}
                       className={`w-8 h-8 rounded-full border-2 transition-all ${
-                        slotData.hasData
-                          ? 'bg-[#F5F0EB] border-[#F5F0EB] hover:bg-[#F5F0EB]/90'
-                          : isAddNewSlot
-                            ? 'bg-green-500/30 border-green-500/50 hover:bg-green-500/40'
-                            : 'bg-transparent border-[rgba(215,205,195,0.3)] hover:border-[rgba(215,205,195,0.5)]'
+                        isAddNewSlot
+                          ? 'bg-green-500/30 border-green-500/50 hover:bg-green-500/40'
+                          : 'bg-[#F5F0EB] border-[#F5F0EB] hover:bg-[#F5F0EB]/90'
                       }`}
-                      aria-label={isAddNewSlot ? 'Add new entry' : `Entry ${slot}`}
+                      aria-label={isAddNewSlot ? 'Add new entry' : `Entry ${displayIndex + 1}`}
                     >
-                      <span className={`text-xs font-semibold ${
-                        slotData.hasData ? 'text-[#1A1714]' : isAddNewSlot ? 'text-green-300' : 'text-[#A89F96]'
-                      }`}>
-                        {isAddNewSlot ? '+' : slot}
+                      <span className={`text-xs font-semibold ${isAddNewSlot ? 'text-green-300' : 'text-[#1A1714]'}`}>
+                        {isAddNewSlot ? '+' : displayIndex + 1}
                       </span>
                     </button>
                   );
@@ -316,6 +332,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                   isVisible={true}
                   onToggle={() => {}}
                   currentUserId={userId || ''}
+                  onDotClick={setExternalSelectedComment}
                 />
               ) : (
                 <div className="h-full flex flex-col overflow-y-auto">
@@ -374,28 +391,26 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
             {/* Title with Info Icon */}
             <div className="mb-3 flex items-center gap-3">
               <h2 className="text-3xl font-bold text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>{activity.title}</h2>
-              {(activity.preamble || activity.wikiLink) && (
-                <button
-                  onClick={() => setShowPreamble(true)}
-                  className="w-8 h-8 rounded-full bg-[rgba(215,205,195,0.1)] hover:bg-[rgba(215,205,195,0.18)] text-[#F5F0EB] text-sm font-bold flex items-center justify-center transition-colors"
-                  aria-label="View information"
-                  title="View activity information"
-                >
-                  i
-                </button>
-              )}
+              <button
+                onClick={() => setShowPreamble(true)}
+                className="w-8 h-8 rounded-full bg-[rgba(215,205,195,0.1)] hover:bg-[rgba(215,205,195,0.18)] text-[#F5F0EB] text-sm font-bold flex items-center justify-center transition-colors"
+                aria-label="View information"
+                title="View activity information"
+              >
+                i
+              </button>
             </div>
 
             {/* Entry Circles */}
             {activity.status !== 'completed' && canAddEntries && (
               <div className="flex flex-col items-start">
                 <span className="text-sm text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  {isSoloTracker ? `Your entries (${userEntryCount}):` : 'Click to add mapping:'}
+                  {`Your entries (${userFilledSlots.length}):`}
                 </span>
                 <div className="flex gap-3 flex-wrap mt-2">
-                  {Array.from({ length: maxEntries }, (_, i) => i + 1).map((slot) => {
+                  {[...userFilledSlots, ...(canAddMore ? [nextSlotNumber] : [])].map((slot, displayIndex) => {
+                    const isAddNewSlot = slot === nextSlotNumber && canAddMore && !userFilledSlots.includes(slot);
                     const slotData = getSlotData(slot);
-                    const isAddNewSlot = isSoloTracker && slot > userEntryCount;
 
                     return (
                       <button
@@ -404,18 +419,14 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                         onMouseEnter={() => setHoveredSlot(slot)}
                         onMouseLeave={() => setHoveredSlot(null)}
                         className={`w-10 h-10 rounded-full border-2 transition-all ${
-                          slotData.hasData
-                            ? 'bg-[#F5F0EB] border-[#F5F0EB] hover:bg-[#F5F0EB]/90'
-                            : isAddNewSlot
-                              ? 'bg-green-500/30 border-green-500/50 hover:bg-green-500/40'
-                              : 'bg-transparent border-[rgba(215,205,195,0.3)] hover:border-[rgba(215,205,195,0.5)]'
+                          isAddNewSlot
+                            ? 'bg-green-500/30 border-green-500/50 hover:bg-green-500/40'
+                            : 'bg-[#F5F0EB] border-[#F5F0EB] hover:bg-[#F5F0EB]/90'
                         }`}
-                        aria-label={isAddNewSlot ? 'Add new entry' : `Entry ${slot}`}
+                        aria-label={isAddNewSlot ? 'Add new entry' : `Entry ${displayIndex + 1}`}
                       >
-                        <span className={`text-sm font-semibold ${
-                          slotData.hasData ? 'text-[#1A1714]' : isAddNewSlot ? 'text-green-300' : 'text-[#A89F96]'
-                        }`}>
-                          {isAddNewSlot ? '+' : slot}
+                        <span className={`text-sm font-semibold ${isAddNewSlot ? 'text-green-300' : 'text-[#1A1714]'}`}>
+                          {isAddNewSlot ? '+' : displayIndex + 1}
                         </span>
                       </button>
                     );
@@ -455,6 +466,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                     isVisible={true}
                     onToggle={() => {}}
                     currentUserId={userId || ''}
+                    onDotClick={setExternalSelectedComment}
                   />
                 </div>
                 {/* Comments tab for sm-lg range */}
@@ -503,6 +515,8 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                 hoveredSlotNumber={hoveredSlot}
                 sequenceId={sequenceId}
                 hideCommentsPanel={true}
+                onDotClick={setExternalSelectedComment}
+                externalHoveredCommentId={externalHoveredComment}
               />
             )}
           </div>
@@ -535,6 +549,9 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               readOnly={true}
               currentUserId={userId || ''}
               sequenceId={sequenceId}
+              selectedCommentId={externalSelectedComment}
+              onSelectedCommentChange={setExternalSelectedComment}
+              onCommentHover={setExternalHoveredComment}
             />
           </div>
         </div>

@@ -20,6 +20,42 @@ router.get('/admin', async (req, res) => {
   }
 });
 
+// Get waitlist sequences — publicly visible, status = 'waitlist'
+router.get('/waitlist', async (req, res) => {
+  try {
+    const sequences = await Sequence.find({ status: 'waitlist' }).sort({ createdAt: -1 });
+
+    const sequencesWithActivities = await Promise.all(
+      sequences.map(async (sequence) => {
+        const activitiesWithDetails = await Promise.all(
+          sequence.activities.map(async (seqActivity) => {
+            const activity = await Activity.findOne({ id: seqActivity.activityId });
+            return {
+              ...seqActivity.toObject(),
+              activity: activity ? {
+                id: activity.id,
+                title: activity.title,
+                urlName: activity.urlName,
+                activityType: activity.activityType,
+                status: activity.status,
+              } : null,
+            };
+          })
+        );
+        return {
+          ...sequence.toObject(),
+          activities: activitiesWithDetails,
+        };
+      })
+    );
+
+    res.json(sequencesWithActivities);
+  } catch (error) {
+    console.error('Error fetching waitlist sequences:', error);
+    res.status(500).json({ error: 'Failed to fetch waitlist sequences' });
+  }
+});
+
 // Get public sequences (excludes invitation-only sequences)
 router.get('/public', async (req, res) => {
   try {

@@ -11,6 +11,7 @@ interface CommentPopupProps {
   currentUserId?: string;
   onClose: () => void;
   onVote?: () => void;
+  allowSelfVote?: boolean; // Allow voting on own entries (solo tracker mode)
 }
 
 export default function CommentPopup({
@@ -19,7 +20,8 @@ export default function CommentPopup({
   activityId,
   currentUserId,
   onClose,
-  onVote
+  onVote,
+  allowSelfVote = false,
 }: CommentPopupProps) {
   const [isVoting, setIsVoting] = useState(false);
   const [hasVoted, setHasVoted] = useState(
@@ -97,7 +99,7 @@ export default function CommentPopup({
             <span className="font-semibold">{comment.voteCount || 0}</span> {comment.voteCount === 1 ? 'vote' : 'votes'}
           </div>
 
-          {currentUserId && rating.userId !== currentUserId && (
+          {currentUserId && (allowSelfVote || rating.userId !== currentUserId) && (
             <button
               onClick={handleVote}
               disabled={isVoting}
@@ -111,10 +113,6 @@ export default function CommentPopup({
             >
               {hasVoted ? '\u2713 Voted' : 'Vote'}
             </button>
-          )}
-
-          {rating.userId === currentUserId && (
-            <span className="text-sm text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>Can&apos;t vote for yourself</span>
           )}
         </div>
 

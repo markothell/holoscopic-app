@@ -532,8 +532,9 @@ ActivitySchema.methods.voteComment = function(commentId, userId, username) {
     throw new Error('Comment not found');
   }
 
-  // Prevent self-voting
-  if (comment.userId === userId) {
+  // Prevent self-voting except in solo tracker mode (unlimited entries)
+  const isSoloTracker = this.maxEntries === 0;
+  if (comment.userId === userId && !isSoloTracker) {
     throw new Error('Cannot vote on your own comment');
   }
 
@@ -545,7 +546,6 @@ ActivitySchema.methods.voteComment = function(commentId, userId, username) {
     comment.voteCount = Math.max(0, comment.voteCount - 1);
   } else {
     // Check vote limit if configured (skip for solo tracker mode - maxEntries === 0)
-    const isSoloTracker = this.maxEntries === 0;
     if (!isSoloTracker && this.votesPerUser !== null && this.votesPerUser !== undefined) {
       const userVoteCount = this.getUserVoteCount(userId);
       if (userVoteCount >= this.votesPerUser) {

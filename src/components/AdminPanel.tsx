@@ -423,7 +423,7 @@ export default function AdminPanel({
                 value={formData.title}
                 onChange={(e) => handleFieldChange('title', e.target.value)}
                 style={s.input}
-                placeholder="e.g., Gratitude Mapping"
+                placeholder="Title"
                 maxLength={100}
               />
               {validationErrors.title && <p style={s.error}>{validationErrors.title}</p>}
@@ -440,7 +440,7 @@ export default function AdminPanel({
                   value={formData.urlName || ''}
                   onChange={(e) => handleFieldChange('urlName', e.target.value)}
                   style={{ ...s.input, flex: 1 }}
-                  placeholder="e.g., gratitude"
+                  placeholder="url-slug"
                   maxLength={50}
                 />
               </div>
@@ -481,7 +481,7 @@ export default function AdminPanel({
                 value={formData.preamble || ''}
                 onChange={(e) => handleFieldChange('preamble', e.target.value)}
                 style={{ ...s.input, resize: 'vertical' as const }}
-                placeholder="e.g., This activity explores our relationship with gratitude..."
+                placeholder="Short description..."
                 maxLength={500}
                 rows={3}
               />
@@ -498,7 +498,7 @@ export default function AdminPanel({
                 value={formData.wikiLink || ''}
                 onChange={(e) => handleFieldChange('wikiLink', e.target.value)}
                 style={s.input}
-                placeholder="e.g., https://example.com/reference"
+                placeholder="https://..."
                 maxLength={200}
               />
               <p style={s.hint}>Link to reference material for this activity</p>
@@ -513,18 +513,18 @@ export default function AdminPanel({
                 <h4 style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', color: '#0F0D0B' }}>X-Axis Configuration</h4>
                 <div>
                   <label htmlFor="xAxisLabel" style={s.label}>X-Axis Label</label>
-                  <input type="text" id="xAxisLabel" value={formData.xAxisLabel} onChange={(e) => handleFieldChange('xAxisLabel', e.target.value)} style={s.input} placeholder="e.g., ...do you have now?" maxLength={50} />
+                  <input type="text" id="xAxisLabel" value={formData.xAxisLabel} onChange={(e) => handleFieldChange('xAxisLabel', e.target.value)} style={s.input} placeholder="Question label" maxLength={50} />
                   {validationErrors.xAxisLabel && <p style={s.error}>{validationErrors.xAxisLabel}</p>}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label htmlFor="xAxisMin" style={s.label}>X-Axis Minimum</label>
-                    <input type="text" id="xAxisMin" value={formData.xAxisMin} onChange={(e) => handleFieldChange('xAxisMin', e.target.value)} style={s.input} placeholder="e.g., None" maxLength={30} />
+                    <input type="text" id="xAxisMin" value={formData.xAxisMin} onChange={(e) => handleFieldChange('xAxisMin', e.target.value)} style={s.input} placeholder="Low" maxLength={30} />
                     {validationErrors.xAxisMin && <p style={s.error}>{validationErrors.xAxisMin}</p>}
                   </div>
                   <div>
                     <label htmlFor="xAxisMax" style={s.label}>X-Axis Maximum</label>
-                    <input type="text" id="xAxisMax" value={formData.xAxisMax} onChange={(e) => handleFieldChange('xAxisMax', e.target.value)} style={s.input} placeholder="e.g., So much" maxLength={30} />
+                    <input type="text" id="xAxisMax" value={formData.xAxisMax} onChange={(e) => handleFieldChange('xAxisMax', e.target.value)} style={s.input} placeholder="High" maxLength={30} />
                     {validationErrors.xAxisMax && <p style={s.error}>{validationErrors.xAxisMax}</p>}
                   </div>
                 </div>
@@ -534,18 +534,18 @@ export default function AdminPanel({
                 <h4 style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', color: '#0F0D0B' }}>Y-Axis Configuration</h4>
                 <div>
                   <label htmlFor="yAxisLabel" style={s.label}>Y-Axis Label</label>
-                  <input type="text" id="yAxisLabel" value={formData.yAxisLabel} onChange={(e) => handleFieldChange('yAxisLabel', e.target.value)} style={s.input} placeholder="e.g., ...did you have as a kid?" maxLength={50} />
+                  <input type="text" id="yAxisLabel" value={formData.yAxisLabel} onChange={(e) => handleFieldChange('yAxisLabel', e.target.value)} style={s.input} placeholder="Question label" maxLength={50} />
                   {validationErrors.yAxisLabel && <p style={s.error}>{validationErrors.yAxisLabel}</p>}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label htmlFor="yAxisMin" style={s.label}>Y-Axis Minimum</label>
-                    <input type="text" id="yAxisMin" value={formData.yAxisMin} onChange={(e) => handleFieldChange('yAxisMin', e.target.value)} style={s.input} placeholder="e.g., None" maxLength={30} />
+                    <input type="text" id="yAxisMin" value={formData.yAxisMin} onChange={(e) => handleFieldChange('yAxisMin', e.target.value)} style={s.input} placeholder="Low" maxLength={30} />
                     {validationErrors.yAxisMin && <p style={s.error}>{validationErrors.yAxisMin}</p>}
                   </div>
                   <div>
                     <label htmlFor="yAxisMax" style={s.label}>Y-Axis Maximum</label>
-                    <input type="text" id="yAxisMax" value={formData.yAxisMax} onChange={(e) => handleFieldChange('yAxisMax', e.target.value)} style={s.input} placeholder="e.g., So much" maxLength={30} />
+                    <input type="text" id="yAxisMax" value={formData.yAxisMax} onChange={(e) => handleFieldChange('yAxisMax', e.target.value)} style={s.input} placeholder="High" maxLength={30} />
                     {validationErrors.yAxisMax && <p style={s.error}>{validationErrors.yAxisMax}</p>}
                   </div>
                 </div>
@@ -565,12 +565,12 @@ export default function AdminPanel({
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label htmlFor="xAxisMin" style={s.label}>Left Label</label>
-                    <input type="text" id="xAxisMin" value={formData.xAxisMin} onChange={(e) => handleFieldChange('xAxisMin', e.target.value)} style={s.input} placeholder="e.g., Left" maxLength={30} />
+                    <input type="text" id="xAxisMin" value={formData.xAxisMin} onChange={(e) => handleFieldChange('xAxisMin', e.target.value)} style={s.input} placeholder="Left end" maxLength={30} />
                     {validationErrors.xAxisMin && <p style={s.error}>{validationErrors.xAxisMin}</p>}
                   </div>
                   <div>
                     <label htmlFor="xAxisMax" style={s.label}>Right Label</label>
-                    <input type="text" id="xAxisMax" value={formData.xAxisMax} onChange={(e) => handleFieldChange('xAxisMax', e.target.value)} style={s.input} placeholder="e.g., Right" maxLength={30} />
+                    <input type="text" id="xAxisMax" value={formData.xAxisMax} onChange={(e) => handleFieldChange('xAxisMax', e.target.value)} style={s.input} placeholder="Right end" maxLength={30} />
                     {validationErrors.xAxisMax && <p style={s.error}>{validationErrors.xAxisMax}</p>}
                   </div>
                 </div>
@@ -581,12 +581,12 @@ export default function AdminPanel({
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
                     <label htmlFor="yAxisMin" style={s.label}>Bottom Label</label>
-                    <input type="text" id="yAxisMin" value={formData.yAxisMin} onChange={(e) => handleFieldChange('yAxisMin', e.target.value)} style={s.input} placeholder="e.g., Bottom" maxLength={30} />
+                    <input type="text" id="yAxisMin" value={formData.yAxisMin} onChange={(e) => handleFieldChange('yAxisMin', e.target.value)} style={s.input} placeholder="Bottom end" maxLength={30} />
                     {validationErrors.yAxisMin && <p style={s.error}>{validationErrors.yAxisMin}</p>}
                   </div>
                   <div>
                     <label htmlFor="yAxisMax" style={s.label}>Top Label</label>
-                    <input type="text" id="yAxisMax" value={formData.yAxisMax} onChange={(e) => handleFieldChange('yAxisMax', e.target.value)} style={s.input} placeholder="e.g., Top" maxLength={30} />
+                    <input type="text" id="yAxisMax" value={formData.yAxisMax} onChange={(e) => handleFieldChange('yAxisMax', e.target.value)} style={s.input} placeholder="Top end" maxLength={30} />
                     {validationErrors.yAxisMax && <p style={s.error}>{validationErrors.yAxisMax}</p>}
                   </div>
                 </div>
@@ -604,7 +604,7 @@ export default function AdminPanel({
                 value={formData.objectNameQuestion}
                 onChange={(e) => handleFieldChange('objectNameQuestion', e.target.value)}
                 style={s.input}
-                placeholder="e.g., Name something that represents your perspective"
+                placeholder="Prompt for naming..."
                 maxLength={200}
               />
               {validationErrors.objectNameQuestion && <p style={s.error}>{validationErrors.objectNameQuestion}</p>}
@@ -652,9 +652,7 @@ export default function AdminPanel({
                 value={formData.mapQuestion}
                 onChange={(e) => handleFieldChange('mapQuestion', e.target.value)}
                 style={s.input}
-                placeholder={formData.activityType === 'dissolve'
-                  ? "e.g., How much money did you have as a kid?"
-                  : "e.g., Which quadrant best represents your perspective?"}
+                placeholder="Map question..."
                 maxLength={200}
               />
               {validationErrors.mapQuestion && <p style={s.error}>{validationErrors.mapQuestion}</p>}
@@ -669,7 +667,7 @@ export default function AdminPanel({
                   value={formData.mapQuestion2}
                   onChange={(e) => handleFieldChange('mapQuestion2', e.target.value)}
                   style={s.input}
-                  placeholder="e.g., How much money do you have now?"
+                  placeholder="Question..."
                   maxLength={200}
                 />
                 {validationErrors.mapQuestion2 && <p style={s.error}>{validationErrors.mapQuestion2}</p>}
@@ -687,7 +685,7 @@ export default function AdminPanel({
                 value={formData.commentQuestion}
                 onChange={(e) => handleFieldChange('commentQuestion', e.target.value)}
                 style={s.input}
-                placeholder="e.g., How do you express gratitude?"
+                placeholder="Comment question..."
                 maxLength={200}
               />
               {validationErrors.commentQuestion && <p style={s.error}>{validationErrors.commentQuestion}</p>}

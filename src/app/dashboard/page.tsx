@@ -7,7 +7,6 @@ import { Sequence } from '@/models/Sequence';
 import { HoloscopicActivity } from '@/models/Activity';
 import { SequenceService } from '@/services/sequenceService';
 import { ActivityService } from '@/services/activityService';
-import { FormattingService } from '@/utils/formatting';
 import { useAuth } from '@/contexts/AuthContext';
 import UserMenu from '@/components/UserMenu';
 import ActivityTypeIcon from '@/components/icons/ActivityTypeIcon';
@@ -284,8 +283,7 @@ export default function DashboardPage() {
 
             {/* Activities List */}
             {activeTab === 'activities' && filteredActivities.map((activity, index) => {
-              const userRating = activity.ratings?.find(r => r.userId === userId);
-              const hasSubmitted = !!userRating;
+              const userEntryCount = activity.ratings?.filter(r => r.userId === userId).length || 0;
               const isSoloTracker = activity.maxEntries === 0;
               const allSlotsSubmitted = !isSoloTracker &&
                 Array.from({ length: activity.maxEntries || 1 }, (_, i) => i + 1)
@@ -314,12 +312,7 @@ export default function DashboardPage() {
                       <div className={styles.listMeta}>
                         <span>{activity.participants?.length || 0} participants</span>
                         <span>{activity.comments?.length || 0} comments</span>
-                        <span>
-                          {hasSubmitted
-                            ? `Completed ${FormattingService.formatTimestamp(userRating.timestamp || activity.createdAt)}`
-                            : `Joined ${FormattingService.formatTimestamp(activity.createdAt)}`
-                          }
-                        </span>
+                        <span>Your entries: {userEntryCount}</span>
                       </div>
                     </div>
                     <Link href={`/${activity.urlName}`} className={styles.viewLink}>

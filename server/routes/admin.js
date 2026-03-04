@@ -132,26 +132,34 @@ router.patch('/users/:userId/status', async (req, res) => {
   }
 });
 
-// GET /api/admin/waitlist — full waitlist data grouped by topic
+// GET /api/admin/waitlist — full waitlist data grouped by sequence
 router.get('/waitlist', async (req, res) => {
   try {
     const Waitlist = require('../models/Waitlist');
-    const VALID_TOPICS = ['Relationship', 'Intuition', 'Work', 'Sexuality'];
 
     const entries = await Waitlist.find({})
-      .select('email topics createdAt')
+      .select('email sequenceId createdAt')
       .sort({ createdAt: -1 });
 
-    const topics = {};
-    for (const topic of VALID_TOPICS) {
-      const topicEntries = entries.filter(e => e.topics.includes(topic));
-      topics[topic] = {
-        count: topicEntries.length,
-        emails: topicEntries.map(e => ({ email: e.email, joinedAt: e.createdAt })),
-      };
+    // Group by sequenceId
+    const sequenceMap = {};
+    for (const entry of entries) {
+      if (!sequenceMap[entry.sequenceId]) {
+        // Fetch sequence title
+        const seq = await Sequence.findOne({ id: entry.sequenceId }).select('id title urlName');
+        sequenceMap[entry.sequenceId] = {
+          sequenceId: entry.sequenceId,
+          title: seq ? seq.title : entry.sequenceId,
+          urlName: seq ? seq.urlName : '',
+          count: 0,
+          emails: [],
+        };
+      }
+      sequenceMap[entry.sequenceId].count++;
+      sequenceMap[entry.sequenceId].emails.push({ email: entry.email, joinedAt: entry.createdAt });
     }
 
-    res.json({ topics, total: entries.length });
+    res.json({ sequences: Object.values(sequenceMap), total: entries.length });
   } catch (error) {
     console.error('Error fetching waitlist:', error);
     res.status(500).json({ error: 'Failed to fetch waitlist' });

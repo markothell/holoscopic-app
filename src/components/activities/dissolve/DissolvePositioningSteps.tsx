@@ -42,7 +42,23 @@ export default function DissolvePositioningSteps({
           inputMode="none"
           className="w-full h-2 bg-[rgba(215,205,195,0.15)] rounded-lg appearance-none cursor-pointer slider"
         />
-        <div className="flex justify-between text-sm font-semibold text-[#A89F96] mt-4" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem' }}>
+        {/* Tick marks at 25%, 50%, 75% */}
+        <div className="relative h-2 mt-1">
+          {[25, 50, 75].map(pct => (
+            <div
+              key={pct}
+              className="absolute top-0"
+              style={{
+                left: `${pct}%`,
+                transform: 'translateX(-50%)',
+                width: '1px',
+                height: pct === 50 ? '8px' : '5px',
+                background: pct === 50 ? 'rgba(215,205,195,0.5)' : 'rgba(215,205,195,0.3)',
+              }}
+            />
+          ))}
+        </div>
+        <div className="flex justify-between text-sm font-semibold text-[#A89F96] mt-2" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem' }}>
           <span>{minLabel}</span>
           <span>{maxLabel}</span>
         </div>

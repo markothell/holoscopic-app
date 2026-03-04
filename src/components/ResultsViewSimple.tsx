@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ResultsViewProps, Rating, Comment } from '@/models/Activity';
 import DotGrid from './DotGrid';
 import CommentPopup from './CommentPopup';
@@ -9,24 +9,30 @@ export default function ResultsViewSimple({
   activity,
   isVisible,
   currentUserId,
+  onDotClick,
 }: ResultsViewProps) {
   const [selectedRating, setSelectedRating] = useState<{ rating: Rating; comment: Comment | undefined } | null>(null);
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : false
+  );
 
-  // Handle dot click
+  useEffect(() => {
+    const handler = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
+  // Handle dot click: highlight in panel on desktop, popup on mobile
   const handleDotClick = (rating: Rating, comment: Comment | undefined) => {
-    setSelectedRating({ rating, comment });
+    if (isDesktop && onDotClick && comment) {
+      onDotClick(comment.id);
+    } else {
+      setSelectedRating({ rating, comment });
+    }
   };
 
-  // Handle popup close
   const handleClosePopup = () => {
     setSelectedRating(null);
-  };
-
-  // Calculate basic statistics
-  const stats = {
-    totalParticipants: activity.participants.length,
-    totalRatings: activity.ratings.length,
-    totalComments: activity.comments.length,
   };
 
   if (!isVisible) return null;
@@ -42,14 +48,15 @@ export default function ResultsViewSimple({
         />
       </div>
 
-      {/* Comment Popup */}
+      {/* Comment Popup (mobile / when no external panel) */}
       {selectedRating && (
         <CommentPopup
-          comment={selectedRating.comment}
+          comment={activity.comments.find(c => c.id === selectedRating.comment?.id) ?? selectedRating.comment}
           rating={selectedRating.rating}
           activityId={activity.id}
           currentUserId={currentUserId}
           onClose={handleClosePopup}
+          allowSelfVote={activity.maxEntries === 0}
           onVote={() => {
             // Reload activity data would happen via WebSocket in parent component
           }}

@@ -41,6 +41,10 @@ export default function EntryModal({
   const [yValue, setYValue] = useState(0.5);
   const [comment, setComment] = useState('');
 
+  // Only initialise form fields when the modal opens or the slot changes.
+  // Deliberately omitting existingData from deps: we don't want a mid-session
+  // WebSocket activity update (e.g. after joinActivity) to reset what the user typed.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isOpen) {
       setStep(1);
@@ -49,7 +53,7 @@ export default function EntryModal({
       setYValue(existingData?.rating?.position.y ?? 0.5);
       setComment(existingData?.comment?.text || '');
     }
-  }, [isOpen, slotNumber, existingData]);
+  }, [isOpen, slotNumber]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!isOpen) return null;
 
@@ -74,9 +78,7 @@ export default function EntryModal({
   };
 
   const handleCancel = () => {
-    if (window.confirm('Close without saving? Your changes will be lost.')) {
-      onClose();
-    }
+    onClose();
   };
 
   return (

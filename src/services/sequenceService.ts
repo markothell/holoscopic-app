@@ -224,6 +224,22 @@ export class SequenceService {
     }
   }
 
+  // Set sequence to waitlist status
+  static async setWaitlistStatus(sequenceId: string): Promise<Sequence> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/sequences/${sequenceId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'waitlist' }),
+      });
+      if (!response.ok) throw new Error('Failed to set waitlist status');
+      return await response.json();
+    } catch (error) {
+      console.error('Error setting waitlist status:', error);
+      throw error;
+    }
+  }
+
   // Start sequence (opens first activity)
   static async startSequence(sequenceId: string): Promise<Sequence> {
     try {

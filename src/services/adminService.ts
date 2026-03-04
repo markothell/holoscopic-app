@@ -5,13 +5,16 @@ export interface WaitlistEntry {
   joinedAt: string;
 }
 
-export interface WaitlistTopic {
+export interface WaitlistSequence {
+  sequenceId: string;
+  title: string;
+  urlName: string;
   count: number;
   emails: WaitlistEntry[];
 }
 
 export interface WaitlistData {
-  topics: Record<string, WaitlistTopic>;
+  sequences: WaitlistSequence[];
   total: number;
 }
 

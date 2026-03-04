@@ -22,6 +22,11 @@
 
 `EntryModal` and `ActivityPageModal` require no changes.
 
+## Server directories
+- **`holoscopic-app/server/`** — source of truth for all backend code; runs locally at localhost:3001
+- **`holoscopic-socket-server/`** — production server on Render; populated via sync script, never edited directly
+- **Workflow**: edit `holoscopic-app/server/` → run `node sync-server-holoscopic.js` from repo root → commit & push `holoscopic-socket-server/`
+
 ## Retiring an activity type
 
 Remove the entry from `REGISTRY` and `ACTIVITY_TYPE_CONFIGS`. The shared modal and page components adapt automatically.

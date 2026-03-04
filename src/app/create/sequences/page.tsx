@@ -97,6 +97,19 @@ function SequenceAdminContent() {
     }
   };
 
+  const handleSetWaitlist = async (id: string) => {
+    if (!confirm('Set this sequence to waitlist status? It will appear on the waitlist page.')) {
+      return;
+    }
+    try {
+      const updated = await SequenceService.setWaitlistStatus(id);
+      setSequences(sequences.map(s => s.id === id ? updated : s));
+    } catch (err) {
+      console.error('Error setting waitlist:', err);
+      alert('Failed to set waitlist status');
+    }
+  };
+
   const handleStartSequence = async (id: string) => {
     if (!confirm('Start this sequence? This will open the first activity.')) {
       return;
@@ -257,6 +270,8 @@ function SequenceAdminContent() {
                           ? styles.badgeDraft
                           : sequence.status === 'completed'
                           ? styles.badgeCompleted
+                          : sequence.status === 'waitlist'
+                          ? styles.badgeWaitlist
                           : styles.badgeActive
                       }`}>
                         {sequence.status}
@@ -282,6 +297,24 @@ function SequenceAdminContent() {
                         Edit
                       </button>
                       {sequence.status === 'draft' && (
+                        <>
+                          <span className={styles.actionDot}>&middot;</span>
+                          <button
+                            onClick={() => handleSetWaitlist(sequence.id)}
+                            className={`${styles.actionBtn} ${styles.actionPublish}`}
+                          >
+                            Waitlist
+                          </button>
+                          <span className={styles.actionDot}>&middot;</span>
+                          <button
+                            onClick={() => handleStartSequence(sequence.id)}
+                            className={`${styles.actionBtn} ${styles.actionStart}`}
+                          >
+                            Start
+                          </button>
+                        </>
+                      )}
+                      {sequence.status === 'waitlist' && (
                         <>
                           <span className={styles.actionDot}>&middot;</span>
                           <button

@@ -367,11 +367,11 @@ export default function HomePage() {
 
         <div className={styles.divider} />
 
-        {/* ── An Invitation ────────────────────────────────────────────────── */}
+        {/* ── Examples ─────────────────────────────────────────────────── */}
         <RevealSection id="join" className={styles.invitation}>
-          <p className={styles.sectionLabel}>An Invitation</p>
+          <p className={styles.sectionLabel}>Examples</p>
           <h2 className={styles.sectionHeadline}>
-            <em>Play</em> the Game
+            On our <em>mind:</em>
           </h2>
           <div className={styles.activityBigList}>
             {[
@@ -394,7 +394,7 @@ export default function HomePage() {
 
           <div className={styles.invitationLinks}>
             <Link href="/waitlist" className={styles.invLink}>
-              Create a map
+              Upcoming Activities
             </Link>
           </div>
         </RevealSection>
@@ -406,8 +406,16 @@ export default function HomePage() {
         <div className={styles.container}>
           <div className={styles.footerInner}>
             <span className={styles.footerText}>
-              Made by Mo &nbsp;&middot;&nbsp; Open source &nbsp;&middot;&nbsp;
-              Evolving
+              Made by Mo &nbsp;&middot;&nbsp;{' '}
+              <a
+                href="https://github.com/markothell/holoscopic-app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.footerLink}
+              >
+                Open source
+              </a>
+              &nbsp;&middot;&nbsp; Evolving
             </span>
             <Link
               href="/manifesto"
