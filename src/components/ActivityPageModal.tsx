@@ -20,7 +20,7 @@ interface ActivityPageModalProps {
 }
 
 export default function ActivityPageModal({ activityId, sequenceId }: ActivityPageModalProps) {
-  const { userId, isLoading: authLoading } = useAuth();
+  const { userId, userName, isAuthenticated, isLoading: authLoading } = useAuth();
   const [activity, setActivity] = useState<HoloscopicActivity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,17 +40,22 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
   const [hoveredSlot, setHoveredSlot] = useState<number | null>(null);
   const [hasJoined, setHasJoined] = useState(false);
 
-  // Initialize username
+  // Initialize username: authenticated users use their account name, anon users use localStorage
   useEffect(() => {
-    const storedUsername = localStorage.getItem('username');
-    if (storedUsername) {
-      setUsername(storedUsername);
+    if (authLoading) return;
+    if (isAuthenticated && userName) {
+      setUsername(userName);
     } else {
-      const newUsername = `User${Math.floor(Math.random() * 10000)}`;
-      localStorage.setItem('username', newUsername);
-      setUsername(newUsername);
+      const storedUsername = localStorage.getItem('username');
+      if (storedUsername) {
+        setUsername(storedUsername);
+      } else {
+        const newUsername = `User${Math.floor(Math.random() * 10000)}`;
+        localStorage.setItem('username', newUsername);
+        setUsername(newUsername);
+      }
     }
-  }, []);
+  }, [authLoading, isAuthenticated, userName]);
 
   // Load activity
   useEffect(() => {
@@ -193,7 +198,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
   const handleBegin = useCallback(async () => {
     if (!hasJoined && userId && username && activityId) {
       try {
-        await ActivityService.joinActivity(activityId, userId, username);
+        await ActivityService.joinActivity(activityId, userId, username, sequenceId);
         setHasJoined(true);
       } catch (err) {
         console.error('Failed to join activity:', err);
@@ -204,7 +209,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
       setCurrentSlot(nextSlotNumber);
     }
     setShowEntryModal(true);
-  }, [hasJoined, userId, username, activityId, nextSlotNumber]);
+  }, [hasJoined, userId, username, activityId, sequenceId, nextSlotNumber]);
 
   if (loading || authLoading) {
     return (

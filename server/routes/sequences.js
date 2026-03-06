@@ -371,7 +371,7 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/members', async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId, email } = req.body;
+    const { userId, email, username } = req.body;
 
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
@@ -389,7 +389,7 @@ router.post('/:id/members', async (req, res) => {
       }
     }
 
-    await sequence.addMember(userId, email);
+    await sequence.addMember(userId, email, username);
     res.json(sequence);
   } catch (error) {
     console.error('Error adding member:', error);
@@ -422,7 +422,7 @@ router.post('/:id/enroll', async (req, res) => {
       }
     }
 
-    await sequence.addMember(userId, email);
+    await sequence.addMember(userId, email, displayName);
     res.json({ success: true, sequence });
   } catch (error) {
     console.error('Error enrolling in sequence:', error);

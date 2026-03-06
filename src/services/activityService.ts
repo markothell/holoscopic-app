@@ -441,10 +441,10 @@ export class ActivityService {
   }
 
   // Join activity as participant
-  static async joinActivity(activityId: string, userId: string, username: string): Promise<void> {
+  static async joinActivity(activityId: string, userId: string, username: string, sequenceId?: string): Promise<void> {
     // Add delay to prevent rapid successive calls
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     try {
       const response = await fetch(`${API_BASE_URL}/activities/${activityId}/participants`, {
         method: 'POST',
@@ -454,6 +454,7 @@ export class ActivityService {
         body: JSON.stringify({
           userId,
           username,
+          sequenceId,
         }),
       });
 

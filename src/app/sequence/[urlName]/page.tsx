@@ -23,7 +23,7 @@ export default function SequenceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const urlName = params.urlName as string;
-  const { userId, userEmail, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { userId, userEmail, userName, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [sequence, setSequence] = useState<Sequence | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ export default function SequenceDetailPage() {
 
     try {
       setEnrolling(true);
-      await SequenceService.addMember(sequence.id, userId, userEmail || undefined);
+      await SequenceService.addMember(sequence.id, userId, userEmail || undefined, userName || undefined);
       setIsEnrolled(true);
       const updated = await SequenceService.getSequenceByUrlName(urlName, userId);
       setSequence(updated);

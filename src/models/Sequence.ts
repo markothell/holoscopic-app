@@ -29,6 +29,7 @@ export interface SequenceActivity {
 export interface SequenceMember {
   userId: string;
   email?: string;
+  username?: string;
   joinedAt: Date;
 }
 

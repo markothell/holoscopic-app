@@ -1,6 +1,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const Activity = require('../models/Activity');
+const Sequence = require('../models/Sequence');
 
 module.exports = function(io) {
   const router = express.Router();
@@ -538,25 +539,41 @@ router.patch('/:id/draft', async (req, res) => {
 // Add participant to activity
 router.post('/:id/participants', async (req, res) => {
   try {
-    const { userId, username } = req.body;
-    
+    const { userId, username, sequenceId } = req.body;
+
     if (!userId || !username) {
       return res.status(400).json({
         success: false,
         error: 'User ID and username are required'
       });
     }
-    
+
     const activity = await Activity.findOne({ id: req.params.id });
-    
+
     if (!activity) {
       return res.status(404).json({
         success: false,
         error: 'Activity not found'
       });
     }
-    
-    await activity.addParticipant(userId, username);
+
+    let resolvedUsername = username;
+
+    if (sequenceId) {
+      const sequence = await Sequence.findOne({ id: sequenceId });
+      if (sequence && sequence.requireInvitation) {
+        const member = sequence.members.find(m => m.userId === userId);
+        if (!member) {
+          return res.status(403).json({
+            success: false,
+            error: 'You must be enrolled in this sequence to participate'
+          });
+        }
+        if (member.username) resolvedUsername = member.username;
+      }
+    }
+
+    await activity.addParticipant(userId, resolvedUsername);
     
     res.json({
       success: true,

@@ -123,6 +123,11 @@ const SequenceSchema = new mongoose.Schema({
       lowercase: true,
       maxlength: 100
     },
+    username: {
+      type: String,
+      trim: true,
+      maxlength: 50
+    },
     joinedAt: {
       type: Date,
       default: Date.now
@@ -170,7 +175,7 @@ SequenceSchema.index({ status: 1, createdAt: -1 });
 SequenceSchema.index({ 'members.userId': 1 });
 
 // Helper methods
-SequenceSchema.methods.addMember = async function(userId, email) {
+SequenceSchema.methods.addMember = async function(userId, email, username) {
   try {
     // Check if member already exists
     const existingMember = this.members.find(m => m.userId === userId);
@@ -186,9 +191,24 @@ SequenceSchema.methods.addMember = async function(userId, email) {
         }
       }
 
+      // Resolve unique username within this sequence
+      let resolvedUsername = username || null;
+      if (resolvedUsername) {
+        const taken = this.members
+          .filter(m => m.userId !== userId)
+          .map(m => (m.username || '').toLowerCase());
+        let candidate = resolvedUsername.toLowerCase();
+        let counter = 2;
+        while (taken.includes(candidate)) {
+          candidate = `${resolvedUsername.toLowerCase()}_${counter++}`;
+        }
+        resolvedUsername = candidate;
+      }
+
       this.members.push({
         userId: userId,
         email: email || '',
+        username: resolvedUsername || '',
         joinedAt: new Date()
       });
     } else {
