@@ -260,7 +260,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
       <div className="sm:hidden flex-1 flex flex-col pt-4 pb-4">
         <div className="flex-shrink-0 px-4 mb-4">
           {/* Title with Info Icon */}
-          <div className="ml-24 flex items-center gap-2">
+          <div className="ml-24 mr-16 flex items-center gap-2">
             <h2 className="text-2xl font-bold text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
               {activity.title}
             </h2>
