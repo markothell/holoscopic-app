@@ -338,6 +338,8 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                   onToggle={() => {}}
                   currentUserId={userId || ''}
                   onDotClick={setExternalSelectedComment}
+                  hoveredSlotNumber={hoveredSlot}
+                  externalHoveredCommentId={externalHoveredComment}
                 />
               ) : (
                 <div className="h-full flex flex-col overflow-y-auto">
@@ -472,6 +474,8 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                     onToggle={() => {}}
                     currentUserId={userId || ''}
                     onDotClick={setExternalSelectedComment}
+                    hoveredSlotNumber={hoveredSlot}
+                    externalHoveredCommentId={externalHoveredComment}
                   />
                 </div>
                 {/* Comments tab for sm-lg range */}

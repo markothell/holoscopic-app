@@ -8,6 +8,8 @@ interface DotGridProps {
   activity: HoloscopicActivity;
   currentUserId?: string;
   onDotClick?: (rating: Rating, comment: Comment | undefined) => void;
+  hoveredCommentId?: string | null;
+  hoveredSlotNumber?: number | null;
 }
 
 interface GridPosition {
@@ -27,7 +29,7 @@ const quadrantToNumber = (q: 'q1' | 'q2' | 'q3' | 'q4'): 1 | 2 | 3 | 4 => {
   return map[q];
 };
 
-export default function DotGrid({ activity, currentUserId, onDotClick }: DotGridProps) {
+export default function DotGrid({ activity, currentUserId, onDotClick, hoveredCommentId, hoveredSlotNumber }: DotGridProps) {
   const [gridPositions, setGridPositions] = useState<GridPosition[]>([]);
   const [hoveredDot, setHoveredDot] = useState<string | null>(null);
   const [isSmallViewport, setIsSmallViewport] = useState(
@@ -240,7 +242,11 @@ export default function DotGrid({ activity, currentUserId, onDotClick }: DotGrid
       {/* Render all grid positions */}
       {gridPositions.map((pos, index) => {
         const isUserDot = pos.filled && pos.rating?.userId === currentUserId;
-        const isHovered = hoveredDot === `${pos.quadrant}-${pos.row}-${pos.col}`;
+        const key = `${pos.quadrant}-${pos.row}-${pos.col}`;
+        const isHighlighted =
+          hoveredDot === key ||
+          (!!hoveredCommentId && pos.comment?.id === hoveredCommentId) ||
+          (!!hoveredSlotNumber && pos.rating?.userId === currentUserId && (pos.rating?.slotNumber || 1) === hoveredSlotNumber);
 
         if (pos.filled && pos.rating) {
           // Filled dot
@@ -262,7 +268,7 @@ export default function DotGrid({ activity, currentUserId, onDotClick }: DotGrid
                 className="w-6 h-6 rounded-full transition-all duration-200 border border-white/30"
                 style={{
                   backgroundColor: getDotColor(pos.quadrant, voteCount),
-                  outline: isHovered ? '2px solid white' : 'none',
+                  outline: isHighlighted ? '2px solid white' : 'none',
                   outlineOffset: '2px'
                 }}
               />

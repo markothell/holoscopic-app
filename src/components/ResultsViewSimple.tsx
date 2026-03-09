@@ -10,6 +10,8 @@ export default function ResultsViewSimple({
   isVisible,
   currentUserId,
   onDotClick,
+  externalHoveredCommentId,
+  hoveredSlotNumber,
 }: ResultsViewProps) {
   const [selectedRating, setSelectedRating] = useState<{ rating: Rating; comment: Comment | undefined } | null>(null);
   const [isDesktop, setIsDesktop] = useState(
@@ -45,6 +47,8 @@ export default function ResultsViewSimple({
           activity={activity}
           currentUserId={currentUserId}
           onDotClick={handleDotClick}
+          hoveredCommentId={externalHoveredCommentId}
+          hoveredSlotNumber={hoveredSlotNumber}
         />
       </div>
 

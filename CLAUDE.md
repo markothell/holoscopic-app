@@ -14,6 +14,7 @@
 3. **Create a `Results` component** (or reuse an existing one)
    - Must implement `ResultsViewProps` from `src/models/Activity.ts`
    - If `hasCommentTab: false`, include an integrated comments panel; hide it at lg+ when `hideCommentsPanel={true}` is passed
+   - `ActivityPageModal` always passes `hoveredSlotNumber` and `externalHoveredCommentId` to all TypeResults — forward both to your map sub-component to get bidirectional hover behavior (comment hover highlights dot, entry circle hover highlights dot) automatically
 
 4. **Register in `src/components/activities/registry.tsx`**
    - Add an entry to `REGISTRY` with `totalSteps`, optional `commentMaxLength`, `PositioningSteps`, and `Results`
