@@ -92,6 +92,7 @@ const getDefaultFormData = (activityType: ActivityType): ActivityFormData => {
       votesPerUser: null,
       maxEntries: 1,
       showProfileLinks: true,
+      showAxisLabels: true,
     };
   }
 
@@ -116,6 +117,7 @@ const getDefaultFormData = (activityType: ActivityType): ActivityFormData => {
     votesPerUser: null,
     maxEntries: 1,
     showProfileLinks: true,
+    showAxisLabels: true,
   };
 };
 
@@ -165,6 +167,7 @@ export default function AdminPanel({
         maxEntries: editingActivity.maxEntries ?? 1,
         isPublic: editingActivity.isPublic ?? false,
         showProfileLinks: editingActivity.showProfileLinks ?? true,
+        showAxisLabels: editingActivity.showAxisLabels ?? true,
       };
 
       setFormData(formValues);
@@ -711,6 +714,26 @@ export default function AdminPanel({
               </label>
               <p style={{ ...s.hint, marginLeft: '1.5rem' }}>
                 When enabled, authenticated users will see clickable profile icons next to comments.
+              </p>
+            </div>
+
+            {/* Axis Labels Toggle */}
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.showAxisLabels ?? true}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, showAxisLabels: e.target.checked }));
+                  }}
+                  style={s.checkbox}
+                />
+                <span style={{ marginLeft: '0.5rem', fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.95rem', color: '#0F0D0B' }}>
+                  Show axis labels on map
+                </span>
+              </label>
+              <p style={{ ...s.hint, marginLeft: '1.5rem' }}>
+                When enabled, the X and Y axis labels appear on the center of the map grid.
               </p>
             </div>
 

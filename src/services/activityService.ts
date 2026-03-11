@@ -137,6 +137,7 @@ export class ActivityService {
         maxEntries: formData.maxEntries,
         isPublic: formData.isPublic,
         showProfileLinks: formData.showProfileLinks,
+        showAxisLabels: formData.showAxisLabels,
         status: 'active',
         participants: [],
         ratings: [],
@@ -218,6 +219,7 @@ export class ActivityService {
       if (formData.maxEntries !== undefined) activityData.maxEntries = formData.maxEntries;
       if (formData.isPublic !== undefined) activityData.isPublic = formData.isPublic;
       if (formData.showProfileLinks !== undefined) activityData.showProfileLinks = formData.showProfileLinks;
+      if (formData.showAxisLabels !== undefined) activityData.showAxisLabels = formData.showAxisLabels;
       if (urlName) activityData.urlName = urlName;
 
       // Only include author if provided (for the special case of setting author after creation)

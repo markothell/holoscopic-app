@@ -177,6 +177,12 @@ const ActivitySchema = new mongoose.Schema({
     default: true // Show profile icons by default
   },
 
+  // Axis labels setting
+  showAxisLabels: {
+    type: Boolean,
+    default: true // Show center axis labels on map by default
+  },
+
   // Activity state
   status: {
     type: String,

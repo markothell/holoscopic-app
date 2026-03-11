@@ -55,6 +55,9 @@ export interface HoloscopicActivity {
   // Profile links
   showProfileLinks?: boolean; // If true, show profile icons in results
 
+  // Axis labels
+  showAxisLabels?: boolean; // If true, show center axis labels on the map
+
   // Activity state
   status: 'active' | 'completed';
   isDraft: boolean;
@@ -158,6 +161,7 @@ export interface ActivityFormData {
   maxEntries?: number; // 0 = unlimited/solo tracker, 1/2/4 = standard entry slots
   isPublic?: boolean; // Public/Private access
   showProfileLinks?: boolean; // Show profile icons in results
+  showAxisLabels?: boolean; // Show center axis labels on the map
 }
 
 // API response types

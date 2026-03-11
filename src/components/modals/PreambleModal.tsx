@@ -64,10 +64,12 @@ export default function PreambleModal({ activity, isOpen, onClose, onBegin, hasJ
             {/* Entries Box */}
             <div className="bg-[#1A1714] border border-[rgba(215,205,195,0.12)] rounded-lg p-6 w-full sm:w-[220px]">
               <h3 className="text-lg font-semibold mb-2 text-center text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif' }}>
-                {activity.maxEntries || 1} {activity.maxEntries === 1 ? 'Entry' : 'Entries'}
+                {activity.maxEntries === 0 ? 'Unlimited' : `${activity.maxEntries ?? 1} ${(activity.maxEntries ?? 1) === 1 ? 'Entry' : 'Entries'}`}
               </h3>
               <p className="text-sm text-[#7A7068] text-center" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', fontWeight: 300 }}>
-                You can submit {activity.maxEntries || 1} response{activity.maxEntries !== 1 ? 's' : ''} for this activity
+                {activity.maxEntries === 0
+                  ? 'This activity supports unlimited entries'
+                  : `You can submit ${activity.maxEntries ?? 1} response${(activity.maxEntries ?? 1) !== 1 ? 's' : ''} for this activity`}
               </p>
             </div>
 

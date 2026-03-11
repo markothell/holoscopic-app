@@ -207,6 +207,8 @@
 /* ---- ACCESS DENIED ---- */
 
 .denied {
+  --ink: #0F0D0B;
+  --ink-light: #6B6560;
   min-height: 100vh;
   background: #F7F4EF;
   display: flex;
@@ -226,6 +228,7 @@
   font-size: 1.3rem;
   font-weight: 700;
   text-transform: uppercase;
+  color: var(--ink);
   margin-bottom: 1rem;
 }
 

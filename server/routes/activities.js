@@ -223,6 +223,7 @@ router.post('/', async (req, res) => {
       votesPerUser,
       maxEntries,
       showProfileLinks,
+      showAxisLabels,
       author
     } = req.body;
 
@@ -279,6 +280,7 @@ router.post('/', async (req, res) => {
       // maxEntries: 0 = unlimited (solo tracker mode), 1/2/4 = standard entry slots
       maxEntries: maxEntries !== undefined && [0, 1, 2, 4].includes(Number(maxEntries)) ? Number(maxEntries) : 1,
       showProfileLinks: showProfileLinks !== undefined ? showProfileLinks : true,
+      showAxisLabels: showAxisLabels !== undefined ? showAxisLabels : true,
       // Auto-set author if provided (for solo tracker mode especially)
       author: author ? {
         userId: author.userId,
@@ -359,7 +361,7 @@ router.patch('/:id', async (req, res) => {
     }
     
     // Update allowed fields
-    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'objectNameQuestion', 'preamble', 'wikiLink', 'starterData', 'votesPerUser', 'maxEntries', 'status', 'isPublic', 'showProfileLinks', 'author'];
+    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'objectNameQuestion', 'preamble', 'wikiLink', 'starterData', 'votesPerUser', 'maxEntries', 'status', 'isPublic', 'showProfileLinks', 'showAxisLabels', 'author'];
     const updates = {};
 
     for (const key of allowedUpdates) {
