@@ -406,7 +406,11 @@ export default function HomePage() {
         <div className={styles.container}>
           <div className={styles.footerInner}>
             <span className={styles.footerText}>
-              Made by Mo &nbsp;&middot;&nbsp;{' '}
+              Made by{' '}
+              <Link href="/essays/a-personal-story" className={styles.footerLink}>
+                Mo
+              </Link>
+              &nbsp;&middot;&nbsp;{' '}
               <a
                 href="https://github.com/markothell/holoscopic-app"
                 target="_blank"
