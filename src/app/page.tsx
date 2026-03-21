@@ -298,8 +298,9 @@ export default function HomePage() {
 
         {/* ── The Opportunity ──────────────────────────────────────────────── */}
         <RevealSection id="opportunity" className={styles.section}>
+          <p className={styles.sectionLabel}>Our Frame</p>
           <h2 className={styles.sectionHeadline}>
-            Our <em>Frame</em>
+            Friction Is <em>Fuel</em>
           </h2>
 
           <div className={styles.expandGroup}>
@@ -344,6 +345,12 @@ export default function HomePage() {
               agreements, the values embedded in our systems. Mapping collective
               perception makes the implicit explicit, so we can finally see the
               full terrain we&apos;re navigating together.
+              <p style={{ marginTop: '1em' }}>
+                More:{' '}
+                <Link href="/essays/maps-transform-the-world" style={{ textDecoration: 'none' }}>
+                  How Maps Transform The World
+                </Link>
+              </p>
             </ExpandItem>
 
             <ExpandItem title="Visualize Emergence">

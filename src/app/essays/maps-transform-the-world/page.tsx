@@ -33,204 +33,144 @@ export default function MapsTransformTheWorldPage() {
         <header className={styles.hero}>
           <p className={styles.heroEyebrow}>Part 1 of 3 — Open Source Social Algorithms</p>
           <h1 className={styles.heroTitle}>
-            <span className={styles.line1}>Maps Transform</span>
-            <span className={styles.line2}>the World</span>
+            <span className={styles.line1}>How Maps</span>
+            <span className={styles.line2}>Transform the World</span>
           </h1>
-          <p className={styles.heroLede}>
-            There exists an algorithm for prosperity. They must be communally generated,
-            human-readable living feedback loops. Open source social algorithms.
-          </p>
         </header>
+
+        <img
+          src="/worldBanner.png"
+          alt="Earth from space"
+          style={{ width: '100%', display: 'block', borderRadius: '8px', marginBottom: '2rem' }}
+        />
 
         <div className={styles.divider} />
 
         {/* Content */}
         <div className={styles.essayContent}>
 
+          <h2 className={styles.sectionTitle}>Making the World</h2>
+
           <p className={styles.body}>
-            Humans solve problems. To solve problems for ever wider and more diverse collectives
-            we need more than empathy. We need to develop the skill of seeing and thinking as{' '}
-            <strong>collectives</strong>. In this first essay I&apos;ll discuss the impact of maps
-            on transforming the mind of humanity and suggest some simple tools we can use to chart
-            the human social sphere.
+            Early maps were directions. One person reading the needs of another and sketching a
+            path: over the hill, through the pine trees, cross the stream by the big rock.
+          </p>
+          <p className={styles.body}>
+            The known world had a center — the village, the valley, the familiar — and an edge
+            past which things became dangerous or simply unknown. A map was a tool for extending
+            safe passage a little further into that unknown. It was personal, local, and built
+            from the perspective of whoever was drawing it.
+          </p>
+          <p className={styles.body}>
+            This changed as trade routes expanded across continents. Maps became assets. Explorers
+            and merchants carried them, revised them and brought them back. The next generation
+            copied those revisions and pushed further. Over time, competing versions of the same
+            territory could be compared — the errors identified, the reliable details confirmed.
+            Map-making became a collective knowledge project, cumulative across generations in a
+            way no individual journey could be.
+          </p>
+          <p className={styles.body}>
+            Then something more monumental happened. Through the study of the night sky and the
+            slow accumulation of explorers&apos; accounts, a new idea took hold: all the far lands
+            of the world connected. The edge wasn&apos;t an edge. The flat map with its fuzzy
+            unknown perimeter was actually a section of a sphere. At some point this stopped being
+            a theory and became a perception — the world &lsquo;became&rsquo; whole.
+          </p>
+          <p className={styles.body}>
+            This was a phase transition in the mind of man. The project of map-making changed in
+            kind. It was no longer about extending the boundary of the known — it was about filling
+            in a complete object. And because the object was now whole and shared, it became a
+            framework that all peoples could contribute to. Earth scientists, industrial planners,
+            navigators, governments — anyone with data to contribute could map it onto the same
+            surface. Coordinate systems replaced local landmarks. Layers of unrelated knowledge
+            became interoperable because they shared a common substrate. What had begun as personal
+            directions between individuals became the infrastructure for global coordination.
           </p>
 
-          <h3 className={styles.subTitle}>Maps transfer knowledge from one to another</h3>
-          <p className={styles.body}>
-            Maps began as communication between individuals: &ldquo;Over the hill, through the
-            pine trees, cross the stream by the big rock then go to the base of the nearby
-            tree&hellip;&rdquo;
-          </p>
-
-          <h3 className={styles.subTitle}>Maps let us compare and expand knowledge across time</h3>
-          <p className={styles.body}>
-            Explorers venture out to discover the world and bring back maps of their route. Those
-            maps are copied and taken on new journeys, each adventure expanding or refining the
-            collective project of knowing and navigating the world.
-          </p>
-
-          <h3 className={styles.subTitle}>Maps allow us to see the whole</h3>
-          <p className={styles.body}>
-            Though first recognized through study of the night sky, at some point the idea spread
-            that all the far lands of the world connected in a great loop. Maps make this real. You
-            can hold the globe and identify all its parts. This was a radical shift in perception
-            for humankind. The flat map with fuzzy unknown around the perimeter became a globe.
-            Known.
-          </p>
-          <p className={styles.body}>
-            The project of map making entered a new phase. No longer expanding in size but filling
-            in layer upon layer of useful information.
-          </p>
-
-          <h3 className={styles.subTitle}>Maps unify layers of intersecting knowledge</h3>
-          <p className={styles.body}>
-            The atlas was born. And Google Earth and Maps. Earth sciences, industrial planners,
-            bureaucrats — everyone with information to share mapped their data onto the surface of
-            the globe. New functions became possible. We can zoom in and out from a view of the
-            milky way to the furniture you keep in your backyard. In place of landmarks we have
-            coordinate systems that allow us to coordinate on a global scale, build navigation
-            systems that automatically plan your journey on foot, road, boat and air.
-          </p>
-          <p className={styles.body}>
-            In a sense the world is unknowable and ever changing. In other ways we can see it
-            completely, and these ways are functionally very empowering for us.
-          </p>
-          <p className={styles.body}>
-            So this is the potential: disconnected siloes of mismatched perspectives to unified
-            project of collective learning and enabling technology.
-          </p>
+          <div className={styles.divider} />
 
           <h2 className={styles.sectionTitle}>Mapping Culture</h2>
 
           <p className={styles.body}>
-            What would it mean to make maps of culture? And how do we do it?
-          </p>
-
-          <h2 className={styles.sectionTitle}>Why Map Culture?</h2>
-
-          <h3 className={styles.subTitle}>To See as Collectives</h3>
-          <p className={styles.body}>
-            Despite the grand promise of maps&apos; ability to reveal the whole, these culture
-            mapping activities are not global in scale. This is not so much an attempt to
-            &ldquo;see everything about everyone&rdquo; as a set of tools that allow people to
-            see more completely the communities and movements that they are a part of; the premise
-            being that we need to hone our collective ability to see before we can coordinate
-            harmoniously at greater scales.
-          </p>
-
-          <h3 className={styles.subTitle}>To See Spectrums</h3>
-          <p className={styles.body}>
-            Culture exists on a spectrum. There are the definite artifacts of culture — the
-            objects, the recipes, the ritual practices — but within society these manifest to
-            varying degrees, with some placing great meaning and others merely gesturing towards
-            past meaning. Other parts of culture are implicit, our way of describing how things
-            get done. Within and between both there are countless nuanced variations.
+            If we look at the evolution of the globe we can see it didn&apos;t begin with an
+            abstract global intention — just a simple but compelling desire. Trade, for example.
+            The realization that other, different people had something interesting and valuable that
+            &lsquo;our&rsquo; people didn&apos;t have.
           </p>
           <p className={styles.body}>
-            Maps help us place our varied relationships on spectrums so that we can develop more
-            nuanced language for coordinating across beliefs.
-          </p>
-
-          <h3 className={styles.subTitle}>To Navigate Change</h3>
-          <p className={styles.body}>
-            We witness the every-day feelings, desires and decisions of those in our life but when
-            it comes to societal change we often only note official events: a new law is passed, a
-            new technology hits the market, celebrity drama, war, IPO, launch, collapse. If we
-            want to scale a culture of collaborative innovation we need more nuanced feedback loops
-            for the ways that we are all gradually changing.
-          </p>
-
-          <h2 className={styles.sectionTitle}>What Do We Map?</h2>
-
-          <h3 className={styles.subTitle}>We map our relationship to ideas</h3>
-          <p className={styles.body}>
-            This platform is not directed at answering any particular questions. Instead it is a
-            tool that allows groups to answer their own questions as collectives. Purpose,
-            prosperity, truth, leadership, wealth — our ability to create thriving systems depends
-            on our ability to see, together, a clear vision of what we hold important.
-          </p>
-
-          <h3 className={styles.subTitle}>We map &ldquo;wholes&rdquo;</h3>
-          <p className={styles.body}>
-            What does completeness look like in individuals, in relationships, family, community?
-            How do they combine to build whole society? Much of how we view the world is through
-            the language of separation — country, religion, race. We have a rich taxonomy of
-            difference. This platform is intended to visualize and develop a language around the
-            experience of social completeness.
+            The human world is a collection of disparate cultures. There are people that live with
+            the rhythms of the plants and the earth. There are people who live in glass towers
+            insulated from these cycles. Some people view humanity as a competition to crown the
+            greatest, others to raise our collective baseline. We are divided. Or so it seems. We
+            all want something. We all start from somewhere and must take a journey to find it. In
+            this way we are primed for the project of mapping our culture.
           </p>
           <p className={styles.body}>
-            Whole group. Whole ideas. Whole cycles.
+            People are already busy creating maps for others to follow. Millions have documented
+            their journeys — in courses, workshops, therapeutic modalities, and social feeds —
+            representing genuinely different starting points, different terrains, different
+            destinations. The self-help movement, the explosion of online courses, the endless
+            stream of people narrating their experience on social media: all of it is cartography.
+            Personal maps of the human journey, more widely distributed and immediately accessible
+            than at any point in history.
+          </p>
+          <p className={styles.body}>
+            The problem is that none of it accumulates. A course reaches ten thousand people and
+            the collective insight from those ten thousand journeys mostly disappears. A thread
+            about someone&apos;s experience with grief or transformation gets millions of
+            engagements and then scrolls away. The knowledge doesn&apos;t compound the way
+            scientific knowledge compounds — each iteration building on the last, errors corrected,
+            patterns confirmed across independent observations. We are still in the stage of
+            individual explorers returning with their accounts. The infrastructure that would turn
+            those accounts into a shared, cumulative understanding of the terrain doesn&apos;t yet
+            exist.
           </p>
 
-          <h2 className={styles.sectionTitle}>How Do We Map?</h2>
+          <div className={styles.divider} />
+
+          <h2 className={styles.sectionTitle}>Seeing the Whole</h2>
 
           <p className={styles.body}>
-            Statistics is the language of collective perception. Turn it from the asymmetrical
-            measure-and-report of academic research to interactive conversation where each exchange
-            is a collaborative creation, where collective dialogs can be seen and understood in a
-            snapshot.
+            At the heart of this project is the belief that humanity is whole. Watch the news and
+            this may be difficult to believe, but then war or no, humanity has focused much of its
+            knowledge on creating taxonomies of difference. Country, religion, race, class — the
+            language of separation is precise and well-developed. We now have the challenge of
+            developing a new skillset: seeing wholes.
           </p>
-
-          <h3 className={styles.subTitle}>Social Maps</h3>
           <p className={styles.body}>
-            The basic interactive element is a group sharing activity that allows a group to
-            quickly visualize their relationship with a thing or idea. These are created by and for
-            community members as a form of group conversation. The steps:
+            There are methodologies that have worked this out at the individual scale. Internal
+            Family Systems is one. It doesn&apos;t begin by filtering out the unwanted parts of
+            the psyche — it begins by learning to hold all the parts in view at once, observing
+            the roles they play and the relationships between them. The result is not the
+            elimination of conflict but a shift in perception: from fragmentation to a self that
+            can see itself whole.
           </p>
-          <ul className={styles.essayList}>
-            <li>
-              <strong>Pick a topic:</strong> Purpose, prosperity, religion — whatever is important.
-            </li>
-            <li>
-              <strong>Identify a cultural intersection:</strong> the &lsquo;landscape&rsquo; where
-              participants map their experiences. Examples from popular culture:
-              <ul>
-                <li>Attachment Theory: relationships map connection styles on spectrums of anxiety vs. avoidance</li>
-                <li>SWOT Analysis: project teams map priorities on spectrums of internal/external vs. helpful/harmful</li>
-                <li>Thinking Ladder: political conversants map discourse on scales of liberal/conservative vs. scientific/tribal</li>
-              </ul>
-            </li>
-            <li>
-              <strong>Select Elements:</strong> Things, beliefs, behavior patterns, intentions,
-              plans. In response to a core question, each participant places a piece of their
-              personal context on the collective graph and leaves a comment describing its
-              significance.
-            </li>
-            <li>
-              <strong>Vote and discuss:</strong> Participants vote on collected elements and
-              comments that best illustrate this cultural landscape for them.
-            </li>
-            <li>
-              <strong>Repeat:</strong> Participants can repeat social maps in new crowds or propose
-              new intersections for observing the collective.
-            </li>
-          </ul>
-
-          <h3 className={styles.subTitle}>Learning Sequences</h3>
           <p className={styles.body}>
-            Where social maps could be seen as a simple feedback system similar to social media or
-            community surveys, their true value is revealed by connecting them in series as part of
-            a collective learning. In part two I&apos;ll discuss how these bits of conversation can
-            be connected to visualize collective learning and discuss a particular type of cultural
-            learning that would greatly benefit us in this moment in time.
+            Life gives us our &lsquo;compelling desires&rsquo;. We all navigate desire and loss,
+            connection and isolation, the gap between who we are and who we want to be. The
+            starting points differ. The terrain differs. But the fact of the journey is shared.
+            All we need is a framework that allows us to stitch together our varied experiences of
+            that desire into a cohesive whole.
+          </p>
+          <p className={styles.body}>
+            Holoscopic is built to do this. It asks people to place their experience and
+            perspective within a shared framework — not to flatten those perspectives into
+            consensus, but to make them spatially legible in relation to each other. Each
+            contribution is a data point in a collective map. Over time, across activities,
+            communities and topics, a knowledge graph accumulates.
+          </p>
+          <p className={styles.body}>
+            The goal is the same perceptual shift the globe produced: from a collection of
+            defended territories to a single human project that everyone is contributing to and
+            navigating within. Not a utopia of agreement, but a change in relationship — from
+            competition over scarce authority to the collective harvesting of the ways we are
+            growing, together. Our bet is that, much the way the globe has enabled an acceleration
+            of mapping technologies, so can we inspire a wave of whole human cultural technologies.
+          </p>
+          <p className={styles.body}>
+            More details about our approach in the essays that follow.
           </p>
 
-        </div>
-
-        {/* Series Nav */}
-        <div className={styles.seriesNav}>
-          <p className={styles.seriesLabel}>This series</p>
-          <div className={styles.seriesLinks}>
-            <span className={`${styles.seriesLink} ${styles.seriesLinkCurrent}`}>
-              Part 1 — Maps Transform the World
-            </span>
-            <Link href="/essays/studying-collective-identity" className={styles.seriesLink}>
-              Part 2 — Studying Collective Identity →
-            </Link>
-            <Link href="/essays/open-source-social-algorithms" className={styles.seriesLink}>
-              Part 3 — Open Source Social Algorithms →
-            </Link>
-          </div>
         </div>
 
         <Link href="/" className={styles.backLink}>

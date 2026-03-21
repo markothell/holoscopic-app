@@ -1,7 +1,7 @@
 // Holoscopic Service Worker
 // Network-first caching strategy for fresh data with offline fallback
 
-const CACHE_NAME = 'holoscopic-v1';
+const CACHE_NAME = 'holoscopic-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Files to cache immediately on install
@@ -9,7 +9,6 @@ const PRECACHE_URLS = [
   '/',
   '/offline.html',
   '/manifest.json',
-  '/holoLogo_dark.svg',
   '/icon-192.png',
   '/icon-512.png'
 ];

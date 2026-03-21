@@ -141,7 +141,7 @@ export default function APersonalStoryPage() {
           </p>
 
           <p className={styles.body}>
-            If you have anything you&apos;d like to say, please email me: mo[at]holoscopi.io
+            Thank you for reading. You can reach out here: mo[at]holoscopi.io
           </p>
 
         </div>
