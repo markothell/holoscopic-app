@@ -1,0 +1,154 @@
+'use client';
+
+import { HoloscopicActivity } from '@/models/Activity';
+
+interface PreambleModalProps {
+  activity: HoloscopicActivity;
+  isOpen: boolean;
+  onClose: () => void;
+  onBegin: () => void;
+  hasJoined: boolean;
+}
+
+export default function PreambleModal({ activity, isOpen, onClose, onBegin, hasJoined }: PreambleModalProps) {
+  if (!isOpen) return null;
+
+  const isSnapshot = activity.activityType === 'snapshot';
+  const snapshotQuestions = isSnapshot
+    ? [...(activity.snapshotQuestions || [])].sort((a, b) => a.order - b.order)
+    : [];
+  const entryCount = isSnapshot ? snapshotQuestions.length : (activity.maxEntries ?? 1);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+      <div className="bg-[#252120] border border-[rgba(215,205,195,0.12)] rounded-lg shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-[#252120] border-b border-[rgba(215,205,195,0.12)] p-6">
+          <div className="flex justify-between items-start mb-2">
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
+              {activity.title}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-[#7A7068] hover:text-[#F5F0EB] text-3xl leading-none ml-4 transition-colors"
+              aria-label="Close"
+            >
+              &times;
+            </button>
+          </div>
+          {activity.author && (
+            <p className="text-sm text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', fontWeight: 300, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              Proposed by: {activity.author.name}
+            </p>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {activity.preamble && (
+            <p className="text-[#A89F96] text-base leading-relaxed whitespace-pre-wrap" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>
+              {activity.preamble}
+            </p>
+          )}
+
+          {activity.wikiLink && (
+            <div>
+              <a
+                href={activity.wikiLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#C83B50] hover:text-[#e04d63] underline text-sm transition-colors"
+                style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', fontWeight: 300, letterSpacing: '0.1em' }}
+              >
+                Reference &rarr;
+              </a>
+            </div>
+          )}
+
+          {/* Visual Summary Section */}
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-start">
+            {/* Entries Box */}
+            <div className="bg-[#1A1714] border border-[rgba(215,205,195,0.12)] rounded-lg p-6 w-full sm:w-[220px]">
+              <h3 className="text-lg font-semibold mb-2 text-center text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif' }}>
+                {activity.maxEntries === 0 ? 'Unlimited' : `${entryCount} ${entryCount === 1 ? 'Entry' : 'Entries'}`}
+              </h3>
+              <p className="text-sm text-[#7A7068] text-center" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', fontWeight: 300 }}>
+                {activity.maxEntries === 0
+                  ? 'This activity supports unlimited entries'
+                  : isSnapshot
+                    ? `Map your perspective across ${entryCount} question${entryCount !== 1 ? 's' : ''}`
+                    : `You can submit ${entryCount} response${entryCount !== 1 ? 's' : ''} for this activity`}
+              </p>
+            </div>
+
+            {/* Snapshot: question list; others: map axes visual */}
+            {isSnapshot ? (
+              <div className="bg-[#1A1714] border border-[rgba(215,205,195,0.12)] rounded-lg p-6 w-full sm:flex-1">
+                <h3 className="text-sm font-semibold mb-3 text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Questions</h3>
+                <div className="flex flex-col gap-2">
+                  {snapshotQuestions.map(q => (
+                    <div key={q.id} className="flex items-center gap-2">
+                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: q.color, flexShrink: 0 }} />
+                      <span style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '0.95rem', color: '#A89F96' }}>
+                        {q.topic ? <><span style={{ color: '#F5F0EB', fontWeight: 600 }}>{q.topic}</span> — {q.label}</> : q.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-[#1A1714] border border-[rgba(215,205,195,0.12)] rounded-lg p-6 w-full sm:w-[220px]">
+                <h3 className="text-lg font-semibold mb-4 text-center text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif' }}>Map Axes</h3>
+                <div className="relative w-[160px] h-[160px] mx-auto">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <img src="/arrowAx.svg" alt="Axis arrows" className="w-full h-full opacity-90" style={{ filter: 'brightness(1.1)' }} />
+                  </div>
+                  <div className="absolute left-1/2 -translate-x-1/2 text-center" style={{ top: '4%' }}>
+                    <span className="text-[#F5F0EB]/90 bg-[#252120] px-1 py-0.5 rounded shadow-sm whitespace-nowrap" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', letterSpacing: '0.06em' }}>{activity.yAxis.max}</span>
+                  </div>
+                  <div className="absolute left-1/2 -translate-x-1/2 text-center" style={{ bottom: '4%' }}>
+                    <span className="text-[#F5F0EB]/90 bg-[#252120] px-1 py-0.5 rounded shadow-sm whitespace-nowrap" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', letterSpacing: '0.06em' }}>{activity.yAxis.min}</span>
+                  </div>
+                  <div className="absolute top-1/2 -translate-y-1/2" style={{ left: '2%' }}>
+                    <span className="text-[#F5F0EB]/90 bg-[#252120] px-1 py-0.5 rounded shadow-sm whitespace-nowrap" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', letterSpacing: '0.06em' }}>{activity.xAxis.min}</span>
+                  </div>
+                  <div className="absolute top-1/2 -translate-y-1/2" style={{ right: '2%' }}>
+                    <span className="text-[#F5F0EB]/90 bg-[#252120] px-1 py-0.5 rounded shadow-sm whitespace-nowrap" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', letterSpacing: '0.06em' }}>{activity.xAxis.max}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {activity.status === 'completed' && (
+            <div className="bg-[rgba(200,59,80,0.1)] border border-[rgba(200,59,80,0.2)] rounded-lg px-4 py-3">
+              <p className="text-[#C83B50] text-center text-sm">
+                This activity is closed. You can view the completed map.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="sticky bottom-0 bg-[#252120] border-t border-[rgba(215,205,195,0.12)] p-6 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-6 py-3 bg-[rgba(215,205,195,0.1)] hover:bg-[rgba(215,205,195,0.18)] text-[#F5F0EB] font-medium rounded-lg transition-colors"
+            style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.7rem', fontWeight: 300, letterSpacing: '0.12em', textTransform: 'uppercase' }}
+          >
+            View Map
+          </button>
+          {activity.status !== 'completed' && (
+            <button
+              onClick={onBegin}
+              className="flex-1 px-6 py-3 bg-[#C83B50] hover:bg-[#B03248] text-white font-medium rounded-lg transition-colors"
+              style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.7rem', fontWeight: 300, letterSpacing: '0.12em', textTransform: 'uppercase' }}
+            >
+              {hasJoined ? 'Add New Entry' : 'Join'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
