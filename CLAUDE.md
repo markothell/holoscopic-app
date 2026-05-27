@@ -4,10 +4,34 @@
 
 Cultural bridge-building game. Fully standalone Next.js app with its own backend server. No dependency on 06_holoscopic.
 
+## Repo Structure
+
+```
+07_holoscopic/
+├── src/                  # Next.js frontend (App Router)
+│   ├── app/              # Pages and routes
+│   ├── components/       # Shared UI components
+│   ├── services/         # API service classes
+│   ├── hooks/            # React hooks
+│   ├── contexts/         # AuthContext, etc.
+│   ├── models/           # TypeScript types (not Mongoose)
+│   ├── lib/              # api.ts, auth.ts, mongodb.ts
+│   └── utils/            # Formatting, validation, etc.
+├── server/               # Express + Socket.IO backend
+│   ├── models/           # Mongoose models
+│   ├── routes/           # Express route handlers
+│   ├── middleware/        # requireAdmin, etc.
+│   ├── utils/            # notify.js, holons.js
+│   └── websocket-server.js
+├── public/               # Static assets
+└── render.yaml           # Render deploy config (rootDir: server)
+```
+
 ## Server Architecture
 
-- **Backend source of truth**: `server/` in this directory — runs locally at localhost:3001
-- **Production backend**: deploy `server/` to Render (separate service from 06)
+- **Backend source of truth**: `server/` — runs locally at localhost:3001
+- **Production**: deploy via `render.yaml` at repo root; Render uses `rootDir: server`
+- **No sync script needed** — `server/` is part of this repo, deploy directly
 - **NEVER edit 06_holoscopic's server** for changes meant for this project
 
 ## Running Locally
