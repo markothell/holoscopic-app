@@ -2,7 +2,7 @@ services:
   - type: web
     name: holoscopic-socket-server
     env: node
-    rootDir: server
+    rootDir: apps/backend
     buildCommand: npm install
     startCommand: node websocket-server.js
     envVars:

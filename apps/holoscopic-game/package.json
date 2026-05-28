@@ -1,0 +1,33 @@
+{
+  "name": "holoscopic-game",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@hs/activities": "*",
+    "@types/dagre": "^0.7.54",
+    "@types/uuid": "^10.0.0",
+    "@xyflow/react": "^12.10.2",
+    "axios": "^1.16.1",
+    "dagre": "^0.8.5",
+    "mongodb": "^7.2.0",
+    "next": "16.2.6",
+    "next-auth": "^4.24.14",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "socket.io-client": "^4.8.3",
+    "uuid": "^14.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
