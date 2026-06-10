@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const Topic = require('../models/Topic');
-const User = require('../models/User');
 const { transact, spend } = require('../utils/holons');
 const { notify } = require('../utils/notify');
 
@@ -57,25 +56,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/topics/inquiry
-router.get('/inquiry', async (req, res) => {
-  try {
-    const Sequence = require('../models/Sequence');
-    const topics = await Topic.find({ instanceId: req.instanceId, status: 'confirmed', inquirySequenceId: { $ne: null } })
-      .sort({ confirmedAt: -1 })
-      .lean({ virtuals: true });
-
-    const enriched = await Promise.all(topics.map(async (t) => {
-      const seq = await Sequence.findOne({ id: t.inquirySequenceId }).select('id title urlName description status');
-      return { ...t, sequence: seq ? seq.toObject() : null };
-    }));
-
-    res.json({ inquiries: enriched });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // GET /api/topics/:id
 router.get('/:id', async (req, res) => {
   try {
@@ -100,9 +80,9 @@ router.post('/nominate', async (req, res) => {
   const userId = req.headers['x-user-id'];
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { title, description, whyItMatters, priorTopicId, priorCycleNotes } = req.body;
-  if (!title || !description || !whyItMatters) {
-    return res.status(400).json({ error: 'title, description, and whyItMatters are required' });
+  const { title, description, priorTopicId, priorCycleNotes } = req.body;
+  if (!title || !description) {
+    return res.status(400).json({ error: 'title and description are required' });
   }
 
   try {
@@ -121,7 +101,6 @@ router.post('/nominate', async (req, res) => {
       instanceId,
       title,
       description,
-      whyItMatters,
       nominatedBy: userId,
       quorumThreshold: topicSupportThreshold,
       nominatedAt: now,
@@ -171,48 +150,6 @@ router.post('/:id/support', async (req, res) => {
     res.json({ topic: topic.toJSON() });
   } catch (err) {
     res.status(err.message === 'Insufficient Holons' ? 402 : 500).json({ error: err.message });
-  }
-});
-
-// POST /api/topics/:id/link-inquiry
-router.post('/:id/link-inquiry', async (req, res) => {
-  const userId = req.headers['x-user-id'];
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-  const { sequenceId } = req.body;
-  if (!sequenceId) return res.status(400).json({ error: 'sequenceId is required' });
-
-  try {
-    const topic = await Topic.findOne({ id: req.params.id, instanceId: req.instanceId });
-    if (!topic) return res.status(404).json({ error: 'Topic not found' });
-    if (topic.nominatedBy !== userId) return res.status(403).json({ error: 'Only the nominator can set up the inquiry' });
-    if (topic.status !== 'confirmed') return res.status(400).json({ error: 'Topic must be confirmed to set up an inquiry' });
-
-    const Sequence = require('../models/Sequence');
-    const sequence = await Sequence.findOne({ id: sequenceId });
-    if (!sequence) return res.status(404).json({ error: 'Sequence not found' });
-
-    topic.inquirySequenceId = sequenceId;
-    await topic.save();
-
-    const participantIds = [...new Set([topic.nominatedBy, ...topic.supporters.map(s => s.userId)])];
-    const users = await User.find({ id: { $in: participantIds } }).select('id email name');
-    const userMap = Object.fromEntries(users.map(u => [u.id, u]));
-
-    for (const pid of participantIds) {
-      const u = userMap[pid];
-      if (u) {
-        try { await sequence.addMember(u.id, u.email, u.name); } catch { /* already enrolled */ }
-      }
-    }
-
-    for (const pid of topic.supporters.map(s => s.userId)) {
-      await notify({ userId: pid, type: 'inquiry_linked', message: `The inquiry for "${topic.title}" is now set up. You've been enrolled.`, refType: 'topic', refId: topic.id });
-    }
-
-    res.json({ topic: topic.toJSON() });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
 });
 

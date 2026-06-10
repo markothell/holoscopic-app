@@ -59,13 +59,15 @@ router.get('/waitlist', async (req, res) => {
 // Get public sequences (excludes invitation-only sequences)
 router.get('/public', async (req, res) => {
   try {
-    const sequences = await Sequence.find({
+    const filter = {
       status: { $in: ['active'] }, // Only active sequences in public listing
       $or: [
         { requireInvitation: false },
         { requireInvitation: { $exists: false } }
       ]
-    }).sort({ createdAt: -1 });
+    };
+    if (req.query.topicId) filter.topicId = req.query.topicId;
+    const sequences = await Sequence.find(filter).sort({ createdAt: -1 });
 
     // Populate activity details for each sequence
     const sequencesWithActivities = await Promise.all(

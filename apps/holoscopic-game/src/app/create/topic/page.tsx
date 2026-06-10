@@ -15,7 +15,6 @@ function NominationForm() {
   const { userId, isAuthenticated, isLoading, holonBalance, refreshBalance } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [whyItMatters, setWhyItMatters] = useState('');
   const [priorCycleNotes, setPriorCycleNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +28,6 @@ function NominationForm() {
       const topic = await TopicService.nominate(userId, {
         title,
         description,
-        whyItMatters,
         priorTopicId,
         priorCycleNotes: priorCycleNotes || undefined,
       });
@@ -100,13 +98,6 @@ function NominationForm() {
         <span style={labelTextStyle}>Description</span>
         <textarea required rows={4} value={description} onChange={e => setDescription(e.target.value)}
           placeholder="Describe the topic in depth. What's the context? What makes it worth exploring?"
-          style={fieldStyle} />
-      </label>
-
-      <label style={labelStyle}>
-        <span style={labelTextStyle}>Why It Matters</span>
-        <textarea required rows={3} value={whyItMatters} onChange={e => setWhyItMatters(e.target.value)}
-          placeholder="Make your case. Why should others give their time and Holons to this?"
           style={fieldStyle} />
       </label>
 

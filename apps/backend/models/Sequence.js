@@ -181,6 +181,12 @@ const SequenceSchema = new mongoose.Schema({
     default: false
   },
 
+  // Topic context (references Topic.id — a Pattern can be attached to a Topic)
+  topicId: { type: String, default: null },
+
+  // Frame references (FrameOfReference ids used across this Pattern's activities)
+  frameIds: [{ type: String }],
+
   // Sequence status
   status: {
     type: String,

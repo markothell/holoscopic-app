@@ -80,12 +80,10 @@ function DotCell({
   });
 
   const count = visibleRatings.length;
+  // Minimum n=5 so the grid always fills the cell visually
   const n = Math.min(10, Math.max(5, Math.ceil(Math.sqrt(count))));
-  const dotSize = Math.max(8, Math.min(16, Math.floor(60 / n)));
-  const gap = 2;
-  const cellSize = n * (dotSize + gap);
 
-  // Build grid: fill from inner corner
+  // Build grid: fill from inner corner (row 0, col 0 = inner corner)
   const grid: (Rating | null)[][] = Array.from({ length: n }, () => Array(n).fill(null));
   let placed = 0;
   outer: for (let row = 0; row < n; row++) {
@@ -98,7 +96,6 @@ function DotCell({
   return (
     <div
       onClick={onClick}
-      className="relative flex items-center justify-center cursor-pointer transition-all duration-150"
       style={{
         flex: 1,
         minHeight: 80,
@@ -106,18 +103,22 @@ function DotCell({
         border: isActive ? '1px solid rgba(200,59,80,0.5)' : '1px solid rgba(215,205,195,0.08)',
         background: isActive ? 'rgba(200,59,80,0.05)' : 'rgba(255,255,255,0.02)',
         padding: 8,
+        display: 'flex',
+        cursor: 'pointer',
+        transition: 'all 0.15s',
       }}
     >
+      {/* fr-based grid stretches to fill the cell */}
       <div
         style={{
+          flex: 1,
           display: 'grid',
-          gridTemplateColumns: `repeat(${n}, ${dotSize}px)`,
-          gridTemplateRows: `repeat(${n}, ${dotSize}px)`,
-          gap: `${gap}px`,
+          gridTemplateColumns: `repeat(${n}, 1fr)`,
+          gridTemplateRows: `repeat(${n}, 1fr)`,
+          gap: 4,
           direction: fillFromRight ? 'rtl' : 'ltr',
         }}
       >
-        {/* Render in fill order: row 0 = near x-axis */}
         {Array.from({ length: n }).map((_, rowIdx) => {
           const actualRow = fillFromBottom ? (n - 1 - rowIdx) : rowIdx;
           return Array.from({ length: n }).map((_, colIdx) => {
@@ -128,14 +129,16 @@ function DotCell({
             return (
               <div
                 key={`${actualRow}-${colIdx}`}
-                style={{
-                  width: dotSize,
-                  height: dotSize,
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <div style={{
+                  width: '72%',
+                  aspectRatio: '1',
                   borderRadius: '50%',
                   background: rating ? (question?.color || '#7A7068') : 'rgba(215,205,195,0.15)',
                   transition: 'background 0.15s',
-                }}
-              />
+                }} />
+              </div>
             );
           });
         })}
@@ -355,7 +358,7 @@ export default function SnapshotDotGrid({ activity, ratings, onCellClick, active
             visibleQuestions={visibleQuestions} xPoints={xPoints} yPoints={yPoints}
             activeSubCells={new Set([0,1,2,3].filter(sc => activeCells.has(`2-${sc}`)))}
             onCellClick={(sc) => onCellClick?.(2, sc)}
-            fillFromRight={true} fillFromBottom={false}
+            fillFromRight={true} fillFromBottom={true}
           />
         </div>
 
@@ -371,7 +374,7 @@ export default function SnapshotDotGrid({ activity, ratings, onCellClick, active
             visibleQuestions={visibleQuestions} xPoints={xPoints} yPoints={yPoints}
             activeSubCells={new Set([0,1,2,3].filter(sc => activeCells.has(`1-${sc}`)))}
             onCellClick={(sc) => onCellClick?.(1, sc)}
-            fillFromRight={false} fillFromBottom={false}
+            fillFromRight={false} fillFromBottom={true}
           />
         </div>
 
@@ -401,7 +404,7 @@ export default function SnapshotDotGrid({ activity, ratings, onCellClick, active
             visibleQuestions={visibleQuestions} xPoints={xPoints} yPoints={yPoints}
             activeSubCells={new Set([0,1,2,3].filter(sc => activeCells.has(`3-${sc}`)))}
             onCellClick={(sc) => onCellClick?.(3, sc)}
-            fillFromRight={true} fillFromBottom={true}
+            fillFromRight={true} fillFromBottom={false}
           />
         </div>
 
@@ -417,7 +420,7 @@ export default function SnapshotDotGrid({ activity, ratings, onCellClick, active
             visibleQuestions={visibleQuestions} xPoints={xPoints} yPoints={yPoints}
             activeSubCells={new Set([0,1,2,3].filter(sc => activeCells.has(`4-${sc}`)))}
             onCellClick={(sc) => onCellClick?.(4, sc)}
-            fillFromRight={false} fillFromBottom={true}
+            fillFromRight={false} fillFromBottom={false}
           />
         </div>
       </div>{/* end 3×3 grid */}

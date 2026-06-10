@@ -212,7 +212,21 @@ const ActivitySchema = new mongoose.Schema({
     default: true
   },
 
-  
+  // Frame of Reference this activity uses (references FrameOfReference.id)
+  frameId: { type: String, default: null },
+
+  // Topic context (references Topic.id)
+  topicId: { type: String, default: null },
+
+  // Stake ledger — tracks who staked holons into this activity's pool
+  stakes: [{
+    userId:     { type: String, required: true },
+    instanceId: { type: String, required: true },
+    amount:     { type: Number, required: true },
+    settled:    { type: Boolean, default: false },
+    stakedAt:   { type: Date, default: Date.now },
+  }],
+
   // Participant data (one record per user, slots tracked in ratings/comments)
   participants: [{
     id: {

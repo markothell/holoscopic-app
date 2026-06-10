@@ -196,6 +196,7 @@ function loadAPIRoutes() {
       const notificationRoutes = require('./routes/notifications');
       const algorithmRoutes = require('./routes/algorithms');
       const frameRoutes = require('./routes/frames');
+      const frameRefRoutes = require('./routes/frameRefs');
       const instanceRoutes = require('./routes/instances');
       app.use('/api/activities', activityRoutes);
       app.use('/api/analytics', analyticsRoutes);
@@ -210,6 +211,7 @@ function loadAPIRoutes() {
       app.use('/api/notifications', notificationRoutes);
       app.use('/api/algorithms', algorithmRoutes);
       app.use('/api/frames', frameRoutes);
+      app.use('/api/frame-refs', frameRefRoutes);
       app.use('/api/instances', instanceRoutes);
       apiRoutesLoaded = true;
       console.log('✅ API routes loaded successfully');

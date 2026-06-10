@@ -21,12 +21,21 @@ const holonTransactionSchema = new mongoose.Schema({
       'algorithm_frame_royalty',
       'algorithm_proposal',
       'algorithm_proposal_join',
+      // Activity stake model
+      'activity_stake',
+      'activity_stake_return',
+      'comment_attribution',
+      // Frame economy
+      'frame_use_reward',
+      // Pattern economy
+      'entry_seed_reward',
+      'pattern_activity_reward',
     ],
   },
   amount: { type: Number, required: true }, // positive = earn, negative = spend
   balanceAfter: { type: Number, required: true },
   // Reference to the entity that triggered this transaction
-  refType: { type: String, enum: ['topic', 'inquiry', 'algorithm', 'algorithmSession', null] },
+  refType: { type: String, enum: ['topic', 'inquiry', 'algorithm', 'algorithmSession', 'activity', 'sequence', 'frame', null] },
   refId: { type: String, default: null },
   createdAt: { type: Date, default: Date.now, index: true },
 });

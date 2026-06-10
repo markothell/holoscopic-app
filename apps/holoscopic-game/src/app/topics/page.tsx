@@ -189,15 +189,10 @@ export default function TopicsPage() {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-                        {topic.inquirySequenceId ? (
-                          <Link href={`/inquiry/${topic.id}`}
-                            style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.4rem 1rem', borderRadius: 999, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-muted)', textDecoration: 'none' }}>
-                            View Inquiry
-                          </Link>
-                        ) : topic.nominatedBy === userId ? (
-                          <Link href={`/inquiry/${topic.id}/setup`}
+                        {topic.status === 'confirmed' ? (
+                          <Link href={`/play?topicId=${topic.id}`}
                             style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.4rem 1rem', borderRadius: 999, border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', textDecoration: 'none' }}>
-                            Set up Inquiry →
+                            Explore →
                           </Link>
                         ) : (
                           <Link href={`/topics/${topic.id}`}

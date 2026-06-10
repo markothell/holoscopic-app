@@ -13,6 +13,11 @@ const instanceConfigSchema = new mongoose.Schema({
     algorithmRoyaltyPercent: { type: Number, default: 10 },
     forkRoyaltyDecayPercent: { type: Number, default: 50 },
     forkDepthCap:            { type: Number, default: 3 },
+    // Activity stake model
+    activityStakeAmount:     { type: Number, default: 5 },
+    frameUseReward:          { type: Number, default: 5 },
+    entrySeedReward:         { type: Number, default: 8 },
+    patternActivityReward:   { type: Number, default: 3 },
   },
   quorum: {
     topicSupportThreshold:        { type: Number, default: 5 },

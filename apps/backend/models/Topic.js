@@ -6,7 +6,6 @@ const topicSchema = new mongoose.Schema({
 
   title: { type: String, required: true, trim: true },
   description: { type: String, required: true, trim: true },
-  whyItMatters: { type: String, required: true, trim: true },
 
   nominatedBy: { type: String, required: true }, // userId
 
@@ -33,9 +32,6 @@ const topicSchema = new mongoose.Schema({
   nominatedAt: { type: Date, default: Date.now },
   expiresAt: { type: Date, required: true },   // nominatedAt + topicWindowHours
   confirmedAt: { type: Date, default: null },
-
-  // Linked inquiry sequence (set by nominator after quorum)
-  inquirySequenceId: { type: String, default: null },
 
   // Prior cycle context (if this is a re-nomination)
   priorTopicId: { type: String, default: null },

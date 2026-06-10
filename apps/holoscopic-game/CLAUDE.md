@@ -51,7 +51,25 @@ import type { HoloscopicActivity, ResultsViewProps } from '@hs/activities';
 
 `@/models/Activity`, `@/utils/formatting`, `@/utils/validation`, `@/utils/urlUtils` are thin re-exports from `@hs/activities`.
 
-## Three-Tier Structure
+## Two Activity Rendering Contexts
+
+Activities are displayed in two fundamentally different contexts. Always identify which one you're in before changing comment panels, headers, or results layout.
+
+### 1. ActivityPageModal (`components/ActivityPageModal.tsx`)
+Used for standalone activity pages and sequence activities. Entry point: `/[activityName]` and `/sequence/[urlName]`.
+- Comment panel header = **"Comments"** (not the commentQuestion — it clutters the space)
+- This is the relationship blueprint / sequence gamespace
+- Touch this file for: sequences, direct activity URLs, the resolve/snapshot/dissolve results views in that context
+
+### 2. ResultsView (`packages/activities/src/components/ResultsView.tsx`)
+Used inside the inquiry/play gamespace (topic → quorum → confirmed session flow). Entry points: `/inquiry/[topicId]`, `/play`.
+- Comment panel header = **`activity.commentQuestion`** (intentional — it's the discussion prompt for the session)
+- This is the community game / three-tier structure
+- Touch this file for: topic sessions, algorithm runs, the play gamespace
+
+**Never conflate these two.** A change to `ResultsView.tsx` does NOT affect `ActivityPageModal.tsx` and vice versa.
+
+## Three-Tier Structure (Play Gamespace)
 
 1. **Topics** (`/topics`) — nominations seeking quorum
 2. **Inquiry** (`/inquiry`) — confirmed sessions

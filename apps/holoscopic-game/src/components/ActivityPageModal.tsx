@@ -416,7 +416,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               ) : (
                 <div className="h-full flex flex-col overflow-y-auto">
                   <p className="text-center text-white font-bold mb-3 px-2" style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: 'clamp(0.9rem, 3.5vw, 1.1rem)', textTransform: 'uppercase', letterSpacing: '0.01em', lineHeight: '1.2' }}>
-                    {activity.commentQuestion}
+                    Comments
                   </p>
                   <CommentSection
                     activity={activity}
@@ -589,7 +589,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                 {resolveTab === 'comments' && (
                   <div className="lg:hidden flex-1 flex flex-col overflow-hidden">
                     <p className="text-center text-white font-bold mb-3 px-2" style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: 'clamp(0.9rem, 3.5vw, 1.1rem)', textTransform: 'uppercase', letterSpacing: '0.01em', lineHeight: '1.2' }}>
-                      {activity.commentQuestion}
+                      Comments
                     </p>
                     <div className="flex-1 overflow-hidden">
                       <CommentSection
@@ -645,7 +645,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
           {/* Comments Title */}
           <div className="flex-shrink-0 px-6 py-4 border-b border-[rgba(215,205,195,0.12)]">
             <h3 className="text-xl font-semibold text-[#F5F0EB] text-center" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-              {activity.commentQuestion}
+              Comments
             </h3>
           </div>
 

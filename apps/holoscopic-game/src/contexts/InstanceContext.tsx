@@ -13,6 +13,11 @@ interface HolonConfig {
   algorithmRoyaltyPercent: number;
   forkRoyaltyDecayPercent: number;
   forkDepthCap: number;
+  // Activity stake model
+  activityStakeAmount: number;
+  frameUseReward: number;
+  entrySeedReward: number;
+  patternActivityReward: number;
 }
 
 interface QuorumConfig {

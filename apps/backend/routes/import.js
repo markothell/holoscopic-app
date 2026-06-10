@@ -117,8 +117,7 @@ router.post('/sequence', async (req, res) => {
               // Re-fetch to get latest __v after addRating's internal save()
               current = await Activity.findOne({ id: saved.id });
               if (!item.comment || !item.comment.trim()) {
-                console.warn(`Starter data stopped for "${a.title}" at item "${item.objectName}": comment is empty`);
-                break;
+                continue;
               }
               await current.addComment(starterUserId, 'Example Data', item.comment.trim(), item.objectName);
               current = await Activity.findOne({ id: saved.id });

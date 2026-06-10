@@ -2,6 +2,63 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const Activity = require('../models/Activity');
 const Sequence = require('../models/Sequence');
+const FrameOfReference = require('../models/FrameOfReference');
+const { transact, spend } = require('../utils/holons');
+
+// Settle the stake pool when an activity closes:
+// Each staker's holons are distributed to comment authors proportional to their votes.
+// Unattributed stake (no votes cast, or leftover fraction) returns to the staker.
+async function settleActivityStakes(activity, instanceId) {
+  const unsettledStakes = (activity.stakes || []).filter(s => !s.settled);
+  if (!unsettledStakes.length) return;
+
+  // Build a map of userId → commentAuthorId for comments they voted on
+  const commentById = {};
+  for (const c of activity.comments || []) {
+    commentById[c.id] = c.userId;
+  }
+
+  for (const stake of unsettledStakes) {
+    // Find which comments this staker voted on
+    const votedCommentAuthorIds = [];
+    for (const c of activity.comments || []) {
+      if ((c.votes || []).some(v => v.userId === stake.userId)) {
+        votedCommentAuthorIds.push(c.userId);
+      }
+    }
+
+    const totalVotes = votedCommentAuthorIds.length;
+    if (totalVotes === 0) {
+      // No votes cast — full stake returned
+      await transact({ userId: stake.userId, instanceId: stake.instanceId || instanceId, type: 'activity_stake_return', amount: stake.amount, refType: 'activity', refId: activity.id });
+    } else {
+      // Attribute stake equally across voted authors
+      const perVote = stake.amount / totalVotes;
+      // Group by author to aggregate
+      const authorTotals = {};
+      for (const authorId of votedCommentAuthorIds) {
+        authorTotals[authorId] = (authorTotals[authorId] || 0) + perVote;
+      }
+
+      let distributed = 0;
+      for (const [authorId, amount] of Object.entries(authorTotals)) {
+        const rounded = Math.floor(amount);
+        if (rounded > 0) {
+          await transact({ userId: authorId, instanceId: stake.instanceId || instanceId, type: 'comment_attribution', amount: rounded, refType: 'activity', refId: activity.id });
+          distributed += rounded;
+        }
+      }
+
+      // Return rounding remainder to staker
+      const remainder = stake.amount - distributed;
+      if (remainder > 0) {
+        await transact({ userId: stake.userId, instanceId: stake.instanceId || instanceId, type: 'activity_stake_return', amount: remainder, refType: 'activity', refId: activity.id });
+      }
+    }
+
+    stake.settled = true;
+  }
+}
 
 module.exports = function(io) {
   const router = express.Router();
@@ -56,8 +113,11 @@ router.get('/admin', async (req, res) => {
 // Get all activities (public endpoint - excludes drafts)
 router.get('/', async (req, res) => {
   try {
+    const baseFilter = { $or: [{ isDraft: { $ne: true } }, { isDraft: { $exists: false } }] };
+    if (req.query.topicId) baseFilter.topicId = req.query.topicId;
+    if (req.query.frameId) baseFilter.frameId = req.query.frameId;
     // Only show non-draft activities to public (treat missing isDraft as false)
-    const activities = await Activity.find({ $or: [{ isDraft: { $ne: true } }, { isDraft: { $exists: false } }] })
+    const activities = await Activity.find(baseFilter)
       .sort({ createdAt: -1 })
       .select('-__v');
     
@@ -225,6 +285,8 @@ router.post('/', async (req, res) => {
       showProfileLinks,
       showAxisLabels,
       author,
+      frameId,
+      topicId,
       // Snapshot-specific
       snapshotQuestions,
       xAxisPoints,
@@ -300,14 +362,39 @@ router.post('/', async (req, res) => {
         userId: author.userId,
         name: author.name
       } : undefined,
+      frameId: frameId || null,
+      topicId: topicId || null,
       status: 'active',
       participants: [],
       ratings: [],
-      comments: []
+      comments: [],
+      stakes: [],
     });
     
     const savedActivity = await activity.save();
-    
+
+    // Reward frame creator when their frame is used
+    if (frameId && req.instanceId && req.instance?.config?.holons) {
+      try {
+        const frame = await FrameOfReference.findOne({ id: frameId }).lean();
+        if (frame && frame.createdBy) {
+          const rewardAmount = req.instance.config.holons.frameUseReward ?? 5;
+          if (rewardAmount > 0) {
+            await transact({
+              userId: frame.createdBy,
+              instanceId: req.instanceId,
+              type: 'frame_use_reward',
+              amount: rewardAmount,
+              refType: 'frame',
+              refId: frameId,
+            });
+          }
+        }
+      } catch (e) {
+        console.error('[activities] frame_use_reward error:', e.message);
+      }
+    }
+
     // Process starter data if provided
     if (starterData && starterData.trim()) {
       try {
@@ -375,7 +462,7 @@ router.patch('/:id', async (req, res) => {
     }
     
     // Update allowed fields
-    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'objectNameQuestion', 'preamble', 'wikiLink', 'starterData', 'votesPerUser', 'maxEntries', 'status', 'isPublic', 'showProfileLinks', 'showAxisLabels', 'author', 'snapshotQuestions', 'xAxisPoints', 'yAxisPoints', 'xAxisLabels', 'yAxisLabels'];
+    const allowedUpdates = ['title', 'urlName', 'mapQuestion', 'mapQuestion2', 'xAxis', 'yAxis', 'commentQuestion', 'objectNameQuestion', 'preamble', 'wikiLink', 'starterData', 'votesPerUser', 'maxEntries', 'status', 'isPublic', 'showProfileLinks', 'showAxisLabels', 'author', 'snapshotQuestions', 'xAxisPoints', 'yAxisPoints', 'xAxisLabels', 'yAxisLabels', 'frameId', 'topicId'];
     const updates = {};
 
     for (const key of allowedUpdates) {
@@ -401,6 +488,15 @@ router.patch('/:id', async (req, res) => {
     // Apply updates
     Object.assign(activity, updates);
     console.log('Activity after Object.assign:', activity.toObject());
+
+    // Settle activity stake pool when transitioning to completed
+    if (updates.status === 'completed' && activity.stakes?.length) {
+      try {
+        await settleActivityStakes(activity, req.instanceId);
+      } catch (e) {
+        console.error('[activities] stake settlement error:', e.message);
+      }
+    }
 
     const updatedActivity = await activity.save();
     console.log('Activity after save:', updatedActivity.toObject());
@@ -590,7 +686,23 @@ router.post('/:id/participants', async (req, res) => {
     }
 
     await activity.addParticipant(userId, resolvedUsername);
-    
+
+    // Stake holons into activity pool (skip if already staked or no instance config)
+    const alreadyStaked = (activity.stakes || []).some(s => s.userId === userId);
+    if (!alreadyStaked && req.instanceId && req.instance?.config?.holons) {
+      const stakeAmount = req.instance.config.holons.activityStakeAmount ?? 0;
+      if (stakeAmount > 0) {
+        try {
+          await spend({ userId, instanceId: req.instanceId, type: 'activity_stake', amount: stakeAmount, refType: 'activity', refId: activity.id });
+          activity.stakes.push({ userId, instanceId: req.instanceId, amount: stakeAmount });
+          await activity.save();
+        } catch (e) {
+          // Insufficient holons — allow join without stake (stake is optional participation mechanism)
+          console.warn('[activities] activity_stake skipped for', userId, ':', e.message);
+        }
+      }
+    }
+
     res.json({
       success: true,
       message: 'Participant added successfully'
