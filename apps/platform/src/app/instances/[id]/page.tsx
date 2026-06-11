@@ -10,7 +10,7 @@ interface HolonConfig { startingStake: number; nominationCost: number; supportCo
 interface QuorumConfig { topicSupportThreshold: number; topicWindowHours: number; inquiryMinParticipants: number; frameVoteThreshold: number; algorithmSessionQuorum: number; algorithmProposalWindowHours: number; }
 interface InstanceData {
   id: string; name: string; slug: string; domains: string[];
-  gameType: string; active: boolean;
+  gameType: string; gameVersion: string | null; gameNumber: number | null; active: boolean;
   access: { mode: string; inviteCodes: string[] };
   startDate: string | null; endDate: string | null;
   config: { topicsActivityId: string | null; holons: HolonConfig; quorum: QuorumConfig };
@@ -32,6 +32,7 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
   const [slug, setSlug] = useState('');
   const [domains, setDomains] = useState('');
   const [gameType, setGameType] = useState('');
+  const [gameVersion, setGameVersion] = useState('');
   const [active, setActive] = useState(true);
   const [accessMode, setAccessMode] = useState<'public' | 'invite'>('public');
   const [inviteCodes, setInviteCodes] = useState('');
@@ -61,6 +62,7 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
         setSlug(inst.slug);
         setDomains(inst.domains.join('\n'));
         setGameType(inst.gameType);
+        setGameVersion(inst.gameVersion || '1.0');
         setActive(inst.active);
         setAccessMode(inst.access.mode as 'public' | 'invite');
         setInviteCodes((inst.access.inviteCodes || []).join('\n'));
@@ -81,7 +83,7 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
     try {
       const body: Record<string, unknown> = {
         name, domains: domains.split('\n').map(d => d.trim()).filter(Boolean),
-        gameType, active,
+        gameType, gameVersion, active,
         access: { mode: accessMode, inviteCodes: inviteCodes.split('\n').map(c => c.trim()).filter(Boolean) },
         startDate: startDate || null,
         endDate: endDate || null,
@@ -146,6 +148,9 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
             </FieldGroup>
             <FieldGroup label="Game type">
               <input type="text" value={gameType} onChange={e => setGameType(e.target.value)} style={inputStyle} />
+            </FieldGroup>
+            <FieldGroup label="Game version" hint={`Game #${instance?.gameNumber ?? '—'} — version shown to players in interView`}>
+              <input type="text" value={gameVersion} onChange={e => setGameVersion(e.target.value)} style={inputStyle} placeholder="1.0" />
             </FieldGroup>
             <FieldGroup label="Domains" hint="One per line">
               <textarea rows={3} value={domains} onChange={e => setDomains(e.target.value)}

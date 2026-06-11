@@ -44,6 +44,8 @@ interface InstanceData {
   access: { mode: string; inviteCodes: string[] };
   startDate: string | null;
   endDate: string | null;
+  gameVersion: string | null;
+  gameNumber: number | null;
 }
 
 interface InstanceContextType {

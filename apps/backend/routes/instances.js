@@ -35,6 +35,7 @@ router.post('/', async (req, res) => {
     const existing = await Instance.findOne({ slug });
     if (existing) return res.status(409).json({ error: 'Slug already in use' });
 
+    const gameNumber = (await Instance.countDocuments()) + 1;
     const instance = await Instance.create({
       id: generateId(),
       name,
@@ -46,6 +47,8 @@ router.post('/', async (req, res) => {
       endDate: endDate || null,
       adminUserId: req.adminUser.id,
       config: config || {},
+      gameNumber,
+      gameVersion: req.body.gameVersion || '1.0',
     });
 
     res.status(201).json({ instance });
@@ -68,17 +71,18 @@ router.get('/:id', async (req, res) => {
 // PUT /api/instances/:id — update instance (config, domains, access, etc.)
 router.put('/:id', async (req, res) => {
   try {
-    const { name, domains, access, startDate, endDate, active, config } = req.body;
+    const { name, domains, access, startDate, endDate, active, config, gameVersion } = req.body;
     const instance = await Instance.findOne({ id: req.params.id });
     if (!instance) return res.status(404).json({ error: 'Instance not found' });
 
-    if (name      !== undefined) instance.name      = name;
-    if (domains   !== undefined) instance.domains   = domains;
-    if (access    !== undefined) instance.access    = access;
-    if (startDate !== undefined) instance.startDate = startDate;
-    if (endDate   !== undefined) instance.endDate   = endDate;
-    if (active    !== undefined) instance.active    = active;
-    if (config    !== undefined) {
+    if (name        !== undefined) instance.name        = name;
+    if (domains     !== undefined) instance.domains     = domains;
+    if (access      !== undefined) instance.access      = access;
+    if (startDate   !== undefined) instance.startDate   = startDate;
+    if (endDate     !== undefined) instance.endDate     = endDate;
+    if (active      !== undefined) instance.active      = active;
+    if (gameVersion !== undefined) instance.gameVersion = gameVersion;
+    if (config      !== undefined) {
       instance.config = { ...instance.config.toObject(), ...config };
     }
 

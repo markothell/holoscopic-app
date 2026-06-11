@@ -53,7 +53,7 @@ router.post('/sequence', async (req, res) => {
       const activity = new Activity({
         title: (a.title || 'Untitled').trim(),
         urlName,
-        activityType: a.activityType || 'holoscopic',
+        activityType: a.activityType || 'dissolve',
         mapQuestion: (a.mapQuestion || 'How present is this?').trim(),
         mapQuestion2: a.mapQuestion2 ? a.mapQuestion2.trim() : '',
         xAxis: { label: xAxis.label || 'Horizontal', min: xAxis.min || 'Low', max: xAxis.max || 'High' },

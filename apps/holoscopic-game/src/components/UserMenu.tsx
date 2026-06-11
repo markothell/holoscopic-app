@@ -7,8 +7,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications, AppNotification } from '@/hooks/useNotifications';
 
 function notificationHref(n: AppNotification): string {
-  if (n.refType === 'topic' && n.refId) {
-    if (n.type === 'topic_confirmed') return `/topics/${n.refId}`;
+  const validRef = n.refId && n.refId !== 'undefined' && n.refId !== 'null';
+  if (n.refType === 'topic' && validRef) {
+    if (n.type === 'topic_confirmed') return `/create/activity?topicId=${n.refId}`;
     if (n.type === 'inquiry_linked') return `/inquiry/${n.refId}`;
   }
   if (n.type === 'algorithm_session_ready' && n.refType === 'sequence' && n.refId) {
@@ -55,7 +56,7 @@ function BellIcon({ unreadCount, notifications, onMarkRead, onMarkAllRead }: {
       </button>
 
       {open && (
-        <div style={{ position: 'absolute', right: 0, marginTop: '0.5rem', width: '18rem', background: '#F7F4EF', borderRadius: 8, boxShadow: '0 4px 24px rgba(15,13,11,0.12)', border: '1px solid #D9D4CC', zIndex: 1200 }}>
+        <div style={{ position: 'absolute', left: 0, marginTop: '0.5rem', width: '18rem', background: '#F7F4EF', borderRadius: 8, boxShadow: '0 4px 24px rgba(15,13,11,0.12)', border: '1px solid #D9D4CC', zIndex: 1200 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 1rem', borderBottom: '1px solid #D9D4CC' }}>
             <span style={{ fontSize: '0.6rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0F0D0B' }}>Notifications</span>
             {unreadCount > 0 && (

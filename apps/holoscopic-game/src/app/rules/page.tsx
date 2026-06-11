@@ -193,7 +193,7 @@ export default function RulesPage() {
 
         {/* Footer CTA */}
         <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link href="/play" style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.55rem 1.4rem', borderRadius: 999, border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', textDecoration: 'none' }}>
+          <Link href="/interview" style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.55rem 1.4rem', borderRadius: 999, border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', textDecoration: 'none' }}>
             Start playing →
           </Link>
           <Link href="/topics" style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.55rem 1.4rem', borderRadius: 999, border: '1px solid var(--border-default)', color: 'var(--text-muted)', textDecoration: 'none' }}>

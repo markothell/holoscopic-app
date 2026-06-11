@@ -15,6 +15,7 @@ export default function NewInstancePage() {
   const [slugEdited, setSlugEdited] = useState(false);
   const [domains, setDomains] = useState('');
   const [gameType, setGameType] = useState('holoscopic-game');
+  const [gameVersion, setGameVersion] = useState('1.0');
   const [accessMode, setAccessMode] = useState<'public' | 'invite'>('public');
   const [inviteCodes, setInviteCodes] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -39,7 +40,7 @@ export default function NewInstancePage() {
       const body = {
         name, slug,
         domains: domains.split('\n').map(d => d.trim()).filter(Boolean),
-        gameType,
+        gameType, gameVersion,
         access: {
           mode: accessMode,
           inviteCodes: inviteCodes.split('\n').map(c => c.trim()).filter(Boolean),
@@ -82,6 +83,10 @@ export default function NewInstancePage() {
 
           <FieldGroup label="Game type">
             <input type="text" value={gameType} onChange={e => setGameType(e.target.value)} style={inputStyle} />
+          </FieldGroup>
+
+          <FieldGroup label="Game version" hint="e.g. 1.0 — shown to players in interView">
+            <input type="text" value={gameVersion} onChange={e => setGameVersion(e.target.value)} style={inputStyle} placeholder="1.0" />
           </FieldGroup>
 
           <FieldGroup label="Domains" hint="One per line — e.g. mycommunity.com">

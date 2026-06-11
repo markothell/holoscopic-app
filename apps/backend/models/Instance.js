@@ -46,6 +46,9 @@ const instanceSchema = new mongoose.Schema({
   endDate:     { type: Date, default: null },
   adminUserId: { type: String, default: null },
 
+  gameVersion: { type: String, default: '1.0' },
+  gameNumber:  { type: Number, default: null },
+
   config: { type: instanceConfigSchema, default: () => ({}) },
 
   createdAt: { type: Date, default: Date.now },
