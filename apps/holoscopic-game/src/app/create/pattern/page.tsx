@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstance } from '@/contexts/InstanceContext';
 import { PatternService, Pattern } from '@/services/patternService';
-import { apiFetch } from '@/lib/api';
+import { SequenceService } from '@/services/sequenceService';
 import UserMenu from '@/components/UserMenu';
 
 function PatternForm() {
@@ -33,7 +33,7 @@ function PatternForm() {
         setParent(alg);
         if (alg.sequenceId) {
           try {
-            const seq = await apiFetch(`/sequences/${alg.sequenceId}`);
+            const seq = await SequenceService.getSequence(alg.sequenceId);
             setParentSequenceTitle(seq.title || null);
           } catch { /* best-effort */ }
         }
@@ -43,8 +43,8 @@ function PatternForm() {
 
   useEffect(() => {
     if (!userId) return;
-    apiFetch(`/sequences/admin?createdBy=${userId}`, { userId })
-      .then((data: any[]) => setSequences(data.map((s: any) => ({ id: s.id, title: s.title, status: s.status }))))
+    SequenceService.getAdminSequences(userId)
+      .then(data => setSequences(data.map(s => ({ id: s.id, title: s.title, status: s.status }))))
       .catch(() => {});
   }, [userId]);
 

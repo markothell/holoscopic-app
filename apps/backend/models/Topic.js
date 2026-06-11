@@ -38,7 +38,7 @@ const topicSchema = new mongoose.Schema({
   priorCycleNotes: { type: String, default: null },
 
   createdAt: { type: Date, default: Date.now },
-});
+}, { id: false });
 
 topicSchema.virtual('supporterCount').get(function () {
   return this.supporters.length;

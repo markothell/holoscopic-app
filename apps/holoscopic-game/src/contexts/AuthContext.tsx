@@ -1,7 +1,8 @@
 'use client';
 
-import { createContext, useContext, ReactNode, useEffect, useState } from 'react';
+import { createContext, useContext, ReactNode, useEffect, useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import { io as socketIO, Socket } from 'socket.io-client';
 
 interface AuthContextType {
   userId: string | null;
@@ -12,6 +13,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   refreshBalance: () => void;
+  socket: Socket | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -23,12 +25,17 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isLoading: true,
   refreshBalance: () => {},
+  socket: null,
 });
+
+const SOCKET_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
   const [userId, setUserId] = useState<string | null>(null);
   const [holonBalance, setHolonBalance] = useState<number | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user) {
@@ -57,6 +64,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (userId && status === 'authenticated') refreshBalance();
   }, [userId, status]);
 
+  // Persistent socket for user-level events (holon updates)
+  useEffect(() => {
+    if (!userId || status !== 'authenticated') {
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+      return;
+    }
+
+    const sock = socketIO(SOCKET_URL, { transports: ['websocket'], upgrade: false });
+    socketRef.current = sock;
+
+    sock.on('connect', () => {
+      sock.emit('join_user_room', { userId });
+      setSocket(sock);
+    });
+
+    sock.on('holon_update', ({ balance }: { balance: number }) => {
+      setHolonBalance(balance);
+    });
+
+    return () => {
+      sock.disconnect();
+      socketRef.current = null;
+      setSocket(null);
+    };
+  }, [userId, status]);
+
   return (
     <AuthContext.Provider value={{
       userId,
@@ -67,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: status === 'authenticated',
       isLoading: status === 'loading',
       refreshBalance,
+      socket,
     }}>
       {children}
     </AuthContext.Provider>

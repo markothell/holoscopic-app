@@ -95,9 +95,9 @@ function BellIcon({ unreadCount, notifications, onMarkRead, onMarkAllRead }: {
 export default function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { isAuthenticated, userName, userEmail, userRole, userId, holonBalance } = useAuth();
+  const { isAuthenticated, userName, userEmail, userRole, userId, holonBalance, socket } = useAuth();
   const router = useRouter();
-  const { notifications, unreadCount, markRead, markAllRead } = useNotifications(userId);
+  const { notifications, unreadCount, markRead, markAllRead } = useNotifications(userId, socket);
 
   // Close menu when clicking outside
   useEffect(() => {

@@ -18,6 +18,6 @@ const frameNominationSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'submitted', 'declined'], default: 'pending', index: true },
   resultActivityId: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
-});
+}, { id: false });
 
 module.exports = mongoose.model('FrameNomination', frameNominationSchema);

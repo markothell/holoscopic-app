@@ -38,6 +38,6 @@ const holonTransactionSchema = new mongoose.Schema({
   refType: { type: String, enum: ['topic', 'inquiry', 'algorithm', 'algorithmSession', 'activity', 'sequence', 'frame', null] },
   refId: { type: String, default: null },
   createdAt: { type: Date, default: Date.now, index: true },
-});
+}, { id: false });
 
 module.exports = mongoose.model('HolonTransaction', holonTransactionSchema);

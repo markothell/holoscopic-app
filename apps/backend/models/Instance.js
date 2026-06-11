@@ -53,7 +53,7 @@ const instanceSchema = new mongoose.Schema({
 
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
-});
+}, { id: false });
 
 instanceSchema.pre('save', function (next) {
   this.updatedAt = new Date();

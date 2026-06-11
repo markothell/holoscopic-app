@@ -19,6 +19,6 @@ const proposalSchema = new mongoose.Schema({
   sequenceId: { type: String, default: null },
   expiresAt: { type: Date, required: true },
   createdAt: { type: Date, default: Date.now },
-});
+}, { id: false });
 
 module.exports = mongoose.model('AlgorithmProposal', proposalSchema);

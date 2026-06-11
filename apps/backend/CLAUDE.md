@@ -36,6 +36,8 @@ await Model.findOne({ id: req.params.id });
 ```
 Never `Model.findById(...)`. The `id` is generated with `crypto.randomUUID().substring(0, 8)` or `Math.random().toString(36).substring(2, 10)`.
 
+**All schemas include `{ id: false }` in their schema options.** This disables the Mongoose built-in `id` virtual (which returns `_id.toString()`) so that `doc.id` unambiguously refers to the custom schema field. Without this, Mongoose 8's virtual shadows the schema path and `doc.id` returns the wrong value in code and in `toJSON()` output. Never remove this option when adding a new model.
+
 ## Instance Scoping
 
 Routes that handle instance-scoped data always read `req.instanceId` (set by `resolveInstance` middleware). Pattern:
@@ -63,8 +65,22 @@ Do not mix these patterns within a route file.
 
 ## WebSocket Events (Socket.IO)
 
+There are two socket room types: **activity rooms** (existing) and **user rooms** (added for live balance/notification push).
+
+### User rooms
+Each authenticated user joins a personal room named `user:<userId>` by emitting `join_user_room`. The frontend `AuthContext` maintains a persistent socket connection for this purpose.
+
+`utils/holons.js` and `utils/notify.js` each expose `setIO(io)` and emit to user rooms after mutations:
+- `holon_update { balance }` — emitted after every `transact()` call
+- `notification_new { ...notification }` — emitted after every `notify()` call
+
+Call `setIO(io)` for both utilities in `websocket-server.js` right after `io` is created.
+
+### Activity rooms
+
 | Event (client→server) | Purpose |
 |---|---|
+| `join_user_room` | Join personal room for live balance/notification push |
 | `join_activity` | Register presence; adds participant to DB |
 | `leave_activity` | Remove presence; marks `isConnected: false` in DB |
 | `submit_rating` | Persist position; broadcasts `rating_added` to room |
@@ -72,6 +88,8 @@ Do not mix these patterns within a route file.
 
 | Event (server→client) | Trigger |
 |---|---|
+| `holon_update` | After any `transact()` or `spend()` call |
+| `notification_new` | After any `notify()` call |
 | `participant_joined` | New join |
 | `participant_left` | Disconnect or leave |
 | `rating_added` | Via WebSocket or REST |

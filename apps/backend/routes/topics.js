@@ -13,13 +13,12 @@ async function sweepQuorum(instanceId, config) {
   const topics = await Topic.find({ instanceId, status: 'nominated' });
   for (const topic of topics) {
     if (topic.supporters.length >= threshold) {
-      const topicCustomId = topic._doc.id;
       topic.status = 'confirmed';
       topic.confirmedAt = new Date();
       topic.holonPool = config.holons.nominationCost + topic.supporters.reduce((sum, s) => sum + s.holonsWagered, 0);
       await topic.save();
-      await transact({ userId: topic.nominatedBy, instanceId, type: 'session_host_reward', amount: config.holons.topicQuorumReward, refType: 'topic', refId: topicCustomId });
-      await notify({ userId: topic.nominatedBy, type: 'topic_confirmed', message: `Your topic "${topic.title}" reached quorum. Create an activity to start mapping.`, refType: 'topic', refId: topicCustomId });
+      await transact({ userId: topic.nominatedBy, instanceId, type: 'session_host_reward', amount: config.holons.topicQuorumReward, refType: 'topic', refId: topic.id });
+      await notify({ userId: topic.nominatedBy, type: 'topic_confirmed', message: `Your topic "${topic.title}" reached quorum. Create an activity to start mapping.`, refType: 'topic', refId: topic.id });
     }
   }
 }
@@ -27,12 +26,11 @@ async function sweepQuorum(instanceId, config) {
 async function sweepExpired(instanceId, config) {
   const expired = await Topic.find({ instanceId, status: 'nominated', expiresAt: { $lte: new Date() } });
   for (const topic of expired) {
-    const topicCustomId = topic._doc.id;
     topic.status = 'expired';
     await topic.save();
-    await transact({ userId: topic.nominatedBy, instanceId, type: 'nomination_return', amount: config.holons.nominationCost, refType: 'topic', refId: topicCustomId });
+    await transact({ userId: topic.nominatedBy, instanceId, type: 'nomination_return', amount: config.holons.nominationCost, refType: 'topic', refId: topic.id });
     for (const s of topic.supporters) {
-      await transact({ userId: s.userId, instanceId, type: 'support_return', amount: s.holonsWagered, refType: 'topic', refId: topicCustomId });
+      await transact({ userId: s.userId, instanceId, type: 'support_return', amount: s.holonsWagered, refType: 'topic', refId: topic.id });
     }
   }
   return expired.length;
@@ -135,8 +133,7 @@ router.post('/:id/support', async (req, res) => {
     if (topic.supporters.some(s => s.userId === userId)) return res.status(400).json({ error: 'Already supporting this topic' });
 
     const { supportCost } = config.holons;
-    const topicCustomId = topic._doc.id;
-    await spend({ userId, instanceId, type: 'support_cost', amount: supportCost, refType: 'topic', refId: topicCustomId });
+    await spend({ userId, instanceId, type: 'support_cost', amount: supportCost, refType: 'topic', refId: topic.id });
 
     topic.supporters.push({ userId, holonsWagered: supportCost });
     await topic.save();
@@ -146,8 +143,8 @@ router.post('/:id/support', async (req, res) => {
       topic.confirmedAt = new Date();
       topic.holonPool = config.holons.nominationCost + (supportCost * topic.supporters.length);
       await topic.save();
-      await transact({ userId: topic.nominatedBy, instanceId, type: 'session_host_reward', amount: config.holons.topicQuorumReward, refType: 'topic', refId: topicCustomId });
-      await notify({ userId: topic.nominatedBy, type: 'topic_confirmed', message: `Your topic "${topic.title}" reached quorum. Create an activity to start mapping.`, refType: 'topic', refId: topicCustomId });
+      await transact({ userId: topic.nominatedBy, instanceId, type: 'session_host_reward', amount: config.holons.topicQuorumReward, refType: 'topic', refId: topic.id });
+      await notify({ userId: topic.nominatedBy, type: 'topic_confirmed', message: `Your topic "${topic.title}" reached quorum. Create an activity to start mapping.`, refType: 'topic', refId: topic.id });
     }
 
     res.json({ topic: topic.toJSON() });
@@ -172,7 +169,7 @@ router.post('/:id/unsupport', async (req, res) => {
     topic.supporters = topic.supporters.filter(s => s.userId !== userId);
     await topic.save();
 
-    await transact({ userId, instanceId: req.instanceId, type: 'support_return', amount: supporter.holonsWagered, refType: 'topic', refId: topic._doc.id });
+    await transact({ userId, instanceId: req.instanceId, type: 'support_return', amount: supporter.holonsWagered, refType: 'topic', refId: topic.id });
     res.json({ topic: topic.toJSON() });
   } catch (err) {
     res.status(500).json({ error: err.message });

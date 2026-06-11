@@ -22,6 +22,6 @@ const algorithmSchema = new mongoose.Schema({
 
   publishedAt: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },
-});
+}, { id: false });
 
 module.exports = mongoose.model('Algorithm', algorithmSchema);

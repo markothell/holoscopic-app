@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiFetch } from '@/lib/api';
+import type { Socket } from 'socket.io-client';
+import { NotificationService } from '@/services/notificationService';
 
 export interface AppNotification {
   id: string;
@@ -11,35 +12,46 @@ export interface AppNotification {
   createdAt: string;
 }
 
-export function useNotifications(userId: string | null) {
+export function useNotifications(userId: string | null, socket: Socket | null = null) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const fetch = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     if (!userId) return;
     try {
-      const data = await apiFetch('/notifications', { userId });
+      const data = await NotificationService.list(userId);
       setNotifications(data.notifications);
       setUnreadCount(data.unreadCount);
     } catch { /* silent */ }
   }, [userId]);
 
   useEffect(() => {
-    fetch();
-    const interval = setInterval(fetch, 30000);
+    fetchAll();
+    const interval = setInterval(fetchAll, 30000);
     return () => clearInterval(interval);
-  }, [fetch]);
+  }, [fetchAll]);
+
+  // Live push: prepend new notification when server emits one
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (n: AppNotification) => {
+      setNotifications(prev => [n, ...prev]);
+      setUnreadCount(prev => prev + 1);
+    };
+    socket.on('notification_new', handler);
+    return () => { socket.off('notification_new', handler); };
+  }, [socket]);
 
   async function markRead(notificationId: string) {
     if (!userId) return;
-    await apiFetch(`/notifications/${notificationId}/read`, { method: 'POST', userId });
+    await NotificationService.markRead(userId, notificationId);
     setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, read: true } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
   }
 
   async function markAllRead() {
     if (!userId) return;
-    await apiFetch('/notifications/read-all', { method: 'POST', userId });
+    await NotificationService.markAllRead(userId);
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     setUnreadCount(0);
   }

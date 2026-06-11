@@ -2,11 +2,9 @@ const { v4: uuidv4 } = require('uuid');
 const InstanceMembership = require('../models/InstanceMembership');
 const HolonTransaction = require('../models/HolonTransaction');
 
-/**
- * Record a Holon transaction and update the membership balance atomically.
- * amount: positive = earn, negative = spend
- * Returns the updated balance.
- */
+let _io = null;
+function setIO(io) { _io = io; }
+
 async function transact({ userId, instanceId, type, amount, refType = null, refId = null }) {
   if (!instanceId) throw new Error('instanceId is required for holon transactions');
 
@@ -29,6 +27,8 @@ async function transact({ userId, instanceId, type, amount, refType = null, refI
     refId,
   });
 
+  if (_io) _io.to(`user:${userId}`).emit('holon_update', { balance: membership.holonBalance });
+
   return membership.holonBalance;
 }
 
@@ -43,4 +43,4 @@ async function spend({ userId, instanceId, type, amount, refType, refId }) {
   return transact({ userId, instanceId, type, amount: -amount, refType, refId });
 }
 
-module.exports = { transact, spend };
+module.exports = { transact, spend, setIO };

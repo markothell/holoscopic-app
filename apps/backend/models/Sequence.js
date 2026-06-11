@@ -206,7 +206,8 @@ const SequenceSchema = new mongoose.Schema({
     default: null
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  id: false,
 });
 
 // Indexes for performance

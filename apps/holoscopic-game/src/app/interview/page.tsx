@@ -19,8 +19,9 @@ import '@xyflow/react/dist/style.css';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstance } from '@/contexts/InstanceContext';
 import { apiFetch } from '@/lib/api';
-import type { Topic } from '@/services/topicService';
-import type { FrameRef } from '@/services/frameRefService';
+import { TopicService, type Topic } from '@/services/topicService';
+import { FrameRefService, type FrameRef } from '@/services/frameRefService';
+import { SequenceService } from '@/services/sequenceService';
 import UserMenu from '@/components/UserMenu';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -175,10 +176,10 @@ function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig
   const canAffordSupport = holonsConfig ? bal >= holonsConfig.supportCost : true;
   const canAffordStake   = holonsConfig ? bal >= holonsConfig.activityStakeAmount : true;
 
-  async function act(path: string, method = 'POST') {
+  async function act(fn: () => Promise<unknown>) {
     if (!userId) return;
-    try { await apiFetch(path, { method, userId }); onAction(); }
-    catch (e: any) { alert(e.message); }
+    try { await fn(); onAction(); }
+    catch (e: any) { alert((e as Error).message); }
   }
 
   return (
@@ -241,9 +242,9 @@ function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' as const }}>
         {d.nodeType === 'topic' && userId && meta.status === 'nominated' && !meta.isNominator && (
           meta.isSupporter
-            ? <button onClick={() => act(`/topics/${meta.topicId}/unsupport`)} style={btn('outline')}>Unsupport</button>
+            ? <button onClick={() => act(() => TopicService.unsupport(userId!, meta.topicId))} style={btn('outline')}>Unsupport</button>
             : canAffordSupport
-              ? <button onClick={() => act(`/topics/${meta.topicId}/support`)} style={btn('fill')}>Support</button>
+              ? <button onClick={() => act(() => TopicService.support(userId!, meta.topicId))} style={btn('fill')}>Support</button>
               : <span style={{ ...btn('outline'), opacity: 0.45, cursor: 'not-allowed' }} title={`Need ${holonsConfig?.supportCost ?? '?'} ◈`}>Support</span>
         )}
         {d.nodeType === 'topic' && userId && meta.status === 'confirmed' && (
@@ -301,10 +302,10 @@ function CreationForm({ view, userId, onCreated, onClose }: {
     try {
       if (view === 'topics') {
         if (!fields.title.trim() || !fields.description.trim()) throw new Error('Title and description required');
-        await apiFetch('/topics/nominate', { method: 'POST', userId, body: JSON.stringify({ title: fields.title.trim(), description: fields.description.trim() }) });
+        await TopicService.nominate(userId, { title: fields.title.trim(), description: fields.description.trim() });
       } else {
         if (!fields.xLabel.trim() || !fields.yLabel.trim()) throw new Error('Both axis labels required');
-        await apiFetch('/frame-refs', { method: 'POST', userId, body: JSON.stringify({ xLabel: fields.xLabel.trim(), xMin: fields.xMin.trim(), xMax: fields.xMax.trim(), yLabel: fields.yLabel.trim(), yMin: fields.yMin.trim(), yMax: fields.yMax.trim() }) });
+        await FrameRefService.create(userId, { xLabel: fields.xLabel.trim(), xMin: fields.xMin.trim(), xMax: fields.xMax.trim(), yLabel: fields.yLabel.trim(), yMin: fields.yMin.trim(), yMax: fields.yMax.trim() });
       }
       onCreated(); onClose();
     } catch (e: any) { setError(e.message); setSubmitting(false); }
@@ -446,14 +447,14 @@ function InterViewPageInner() {
     setPopupNode(null);
     try {
       if (activeView === 'topics') {
-        const d = await apiFetch('/topics?status=nominated');
-        setItems(d.topics ?? []);
+        const topics = await TopicService.list('nominated');
+        setItems(topics);
       } else if (activeView === 'frames') {
-        const d = await apiFetch('/frame-refs?limit=100');
-        setItems(d.frames ?? []);
+        const { frames } = await FrameRefService.list(undefined, 100);
+        setItems(frames);
       } else {
-        const d = await apiFetch('/sequences/public');
-        setItems(d.sequences ?? []);
+        const sequences = await SequenceService.getPublicSequences();
+        setItems(sequences);
       }
     } catch { setItems([]); }
     finally { setLoadingItems(false); }
@@ -549,7 +550,7 @@ function InterViewPageInner() {
           };
           const [actR, seqR] = await Promise.allSettled([
             apiFetch(`/activities?topicId=${selectedId}`).then(d => d.data?.activities ?? []),
-            apiFetch(`/sequences/public?topicId=${selectedId}`).then(d => d.sequences ?? []),
+            apiFetch(`/sequences/public?topicId=${selectedId}`).then((d: any) => d ?? []),
           ]);
           const acts = actR.status === 'fulfilled' ? actR.value : [];
           const seqs = seqR.status === 'fulfilled' ? seqR.value : [];
@@ -570,7 +571,7 @@ function InterViewPageInner() {
             id: 'center', type: 'center', position: { x: -45, y: -45 },
             data: { label: `${item.xLabel} / ${item.yLabel}`, nodeType: 'frame', meta: { frameId: item.id, xLabel: item.xLabel, yLabel: item.yLabel } },
           };
-          const usage = await apiFetch(`/frame-refs/${selectedId}/usage`).catch(() => ({ activities: [], topics: [] }));
+          const usage = await FrameRefService.getUsage(selectedId).catch(() => ({ frame: null, activities: [], topics: [] }));
           const all = [...(usage.topics ?? []), ...(usage.activities ?? [])];
           centerNode.data.meta.usageCount = (usage.activities ?? []).length;
           radialNodes = all.map((n: any, i: number) => {
@@ -584,8 +585,8 @@ function InterViewPageInner() {
             id: 'center', type: 'center', position: { x: -45, y: -45 },
             data: { label: item.title, nodeType: 'pattern', meta: { urlName: item.urlName, id: item.id, memberCount: item.members?.length ?? 0, status: item.status, description: item.description } },
           };
-          const seqData = await apiFetch(`/sequences/${selectedId}`).catch(() => null);
-          const seqActs = seqData?.sequence?.activities ?? seqData?.activities ?? [];
+          const seqData = await SequenceService.getSequence(selectedId).catch(() => null);
+          const seqActs = seqData?.activities ?? [];
           radialNodes = seqActs.map((sa: any, i: number) => {
             const { x, y } = radialPos(i, seqActs.length || 1, 260);
             return { id: sa.activityId || `act-${i}`, type: 'radial' as const, position: { x: x - 65, y: y - 25 }, data: { label: sa.activity?.title ?? sa.activityId, nodeType: 'activity' as const, meta: { urlName: sa.activity?.urlName, activityType: sa.activity?.activityType } } };

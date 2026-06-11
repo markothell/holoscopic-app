@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import UserMenu from '@/components/UserMenu';
 import { AdminService, PlatformStats, AdminUser, WaitlistData } from '@/services/adminService';
-import { apiFetch } from '@/lib/api';
 import styles from './page.module.css';
 
 type Tab = 'analytics' | 'users' | 'waitlist' | 'config';
@@ -99,7 +98,7 @@ export default function SuperAdminPage() {
 
   const loadConfig = useCallback(async () => {
     if (!userId) return;
-    const data = await apiFetch('/admin/config', { userId });
+    const data = await AdminService.getConfig(userId);
     setHolonConfig(data.holons);
     setQuorumConfig(data.quorum);
     setTopicsActivityId(data.topicsActivityId || '');
@@ -110,12 +109,8 @@ export default function SuperAdminPage() {
     setAwarding(true);
     setAwardResult(null);
     try {
-      const data = await apiFetch('/admin/holons/award', {
-        method: 'POST',
-        userId,
-        body: JSON.stringify({ email: awardEmail, amount: awardAmount }),
-      });
-      setAwardResult(`✓ ${data.name || data.userId} now has ${data.balance} H`);
+      const data = await AdminService.awardHolons(userId, { targetUserId: awardEmail, amount: awardAmount });
+      setAwardResult(`✓ ${(data as any).name || (data as any).userId} now has ${(data as any).balance} H`);
       setAwardEmail('');
     } catch (err: any) {
       setAwardResult(`Error: ${err.message}`);
@@ -128,7 +123,7 @@ export default function SuperAdminPage() {
     if (!userId || !holonConfig || !quorumConfig) return;
     setConfigSaving(true);
     try {
-      await apiFetch('/admin/config', { method: 'PUT', userId, body: JSON.stringify({ holons: holonConfig, quorum: quorumConfig, topicsActivityId }) });
+      await AdminService.updateConfig(userId, { holons: holonConfig, quorum: quorumConfig, topicsActivityId });
       setConfigSaved(true);
       setTimeout(() => setConfigSaved(false), 2000);
     } finally {

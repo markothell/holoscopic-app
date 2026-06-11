@@ -13,6 +13,6 @@ const notificationSchema = new mongoose.Schema({
   refId: { type: String, default: null },   // topic id
   read: { type: Boolean, default: false, index: true },
   createdAt: { type: Date, default: Date.now },
-});
+}, { id: false });
 
 module.exports = mongoose.model('Notification', notificationSchema);

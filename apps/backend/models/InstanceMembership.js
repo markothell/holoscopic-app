@@ -7,7 +7,7 @@ const membershipSchema = new mongoose.Schema({
   role:         { type: String, enum: ['member', 'admin'], default: 'member' },
   holonBalance: { type: Number, default: 0 },
   joinedAt:     { type: Date, default: Date.now },
-});
+}, { id: false });
 
 membershipSchema.index({ userId: 1, instanceId: 1 }, { unique: true });
 

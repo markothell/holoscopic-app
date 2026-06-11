@@ -22,7 +22,7 @@ const frameOfReferenceSchema = new mongoose.Schema({
 
   createdBy: { type: String, required: true },
   createdAt: { type: Date, default: Date.now, index: true },
-});
+}, { id: false });
 
 // Text index for searching by either axis label
 frameOfReferenceSchema.index({ xLabel: 'text', yLabel: 'text', xMin: 'text', xMax: 'text', yMin: 'text', yMax: 'text' });

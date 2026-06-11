@@ -106,7 +106,7 @@ const userSchema = new mongoose.Schema({
   lastLoginAt: {
     type: Date
   }
-});
+}, { id: false });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {

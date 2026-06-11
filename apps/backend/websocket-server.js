@@ -117,6 +117,9 @@ const io = new Server(server, {
   }
 });
 
+require('./utils/holons').setIO(io);
+require('./utils/notify').setIO(io);
+
 // Store active connections and activity participants
 const connections = new Map(); // socketId -> { userId, activityIds }
 const activities = new Map(); // activityId -> Set of userIds
@@ -359,6 +362,11 @@ io.on('connection', (socket) => {
       message: 'High traffic detected - performance may be slower.'
     });
   }
+
+  // Join user room for personal events (holon updates, notifications)
+  socket.on('join_user_room', ({ userId }) => {
+    if (userId) socket.join(`user:${userId}`);
+  });
 
   // Join activity
   socket.on('join_activity', async ({ activityId, userId, username }) => {

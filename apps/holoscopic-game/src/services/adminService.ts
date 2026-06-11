@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+import { apiFetch } from '@/lib/api';
 
 export interface WaitlistEntry {
   email: string;
@@ -37,62 +37,42 @@ export interface AdminUser {
   createdAt: string;
 }
 
-export class AdminService {
-  static async getPlatformStats(userId: string): Promise<PlatformStats> {
-    const response = await fetch(`${API_BASE_URL}/admin/stats`, {
-      headers: { 'x-user-id': userId }
-    });
-    if (!response.ok) throw new Error('Failed to fetch platform stats');
-    return response.json();
-  }
+// Admin routes use requireAdmin middleware which reads the x-user-id header,
+// so all methods pass userId via the apiFetch { userId } option.
+export const AdminService = {
+  getPlatformStats: (userId: string): Promise<PlatformStats> =>
+    apiFetch('/admin/stats', { userId }),
 
-  static async getUsers(userId: string, search?: string): Promise<AdminUser[]> {
-    const url = search
-      ? `${API_BASE_URL}/admin/users?search=${encodeURIComponent(search)}`
-      : `${API_BASE_URL}/admin/users`;
-    const response = await fetch(url, {
-      headers: { 'x-user-id': userId }
-    });
-    if (!response.ok) throw new Error('Failed to fetch users');
-    const data = await response.json();
-    return data.users;
-  }
+  getUsers: (userId: string, search?: string): Promise<AdminUser[]> =>
+    apiFetch(search
+      ? `/admin/users?search=${encodeURIComponent(search)}`
+      : '/admin/users',
+      { userId }
+    ).then(d => d.users as AdminUser[]),
 
-  static async updateUserRole(userId: string, targetId: string, role: 'user' | 'admin'): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/admin/users/${targetId}/role`, {
+  updateUserRole: (userId: string, targetId: string, role: 'user' | 'admin'): Promise<void> =>
+    apiFetch(`/admin/users/${targetId}/role`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-id': userId
-      },
-      body: JSON.stringify({ role })
-    });
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || 'Failed to update role');
-    }
-  }
+      userId,
+      body: JSON.stringify({ role }),
+    }),
 
-  static async updateUserStatus(userId: string, targetId: string, isActive: boolean): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/admin/users/${targetId}/status`, {
+  updateUserStatus: (userId: string, targetId: string, isActive: boolean): Promise<void> =>
+    apiFetch(`/admin/users/${targetId}/status`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-id': userId
-      },
-      body: JSON.stringify({ isActive })
-    });
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || 'Failed to update status');
-    }
-  }
+      userId,
+      body: JSON.stringify({ isActive }),
+    }),
 
-  static async getWaitlist(userId: string): Promise<WaitlistData> {
-    const response = await fetch(`${API_BASE_URL}/admin/waitlist`, {
-      headers: { 'x-user-id': userId }
-    });
-    if (!response.ok) throw new Error('Failed to fetch waitlist');
-    return response.json();
-  }
-}
+  getWaitlist: (userId: string): Promise<WaitlistData> =>
+    apiFetch('/admin/waitlist', { userId }),
+
+  getConfig: (userId: string) =>
+    apiFetch('/admin/config', { userId }),
+
+  updateConfig: (userId: string, config: { holons?: object; quorum?: object; topicsActivityId?: string | null }) =>
+    apiFetch('/admin/config', { method: 'PUT', userId, body: JSON.stringify(config) }),
+
+  awardHolons: (userId: string, payload: { targetUserId: string; amount: number; reason?: string }) =>
+    apiFetch('/admin/holons/award', { method: 'POST', userId, body: JSON.stringify(payload) }),
+};

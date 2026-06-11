@@ -30,6 +30,9 @@ NextAuth credentials provider. `useAuth()` from `@/contexts/AuthContext`:
 - `userId`, `userEmail`, `userName`, `userRole`
 - `holonBalance`, `refreshBalance()` — call after any Holon transaction
 - `isAuthenticated`, `isLoading`
+- `socket` — persistent Socket.IO connection for the logged-in user; `null` when unauthenticated
+
+The `AuthContext` opens a Socket.IO connection per authenticated user and joins `user:<userId>` room. It listens for `holon_update` events to keep `holonBalance` current without polling. Pass `socket` to hooks that need live push (e.g., `useNotifications`).
 
 ## Instance Context
 
@@ -75,9 +78,27 @@ Used inside the inquiry/play gamespace (topic → quorum → confirmed session f
 2. **Inquiry** (`/inquiry`) — confirmed sessions
 3. **Algorithms** (`/algorithms`) — published patterns with sessions
 
+## Services
+
+All API calls go through typed service objects in `src/services/`. Never call `apiFetch` directly in pages or hooks — services handle the response envelope and expose typed values.
+
+| Service | Notes |
+|---|---|
+| `ActivityService` | Class-based; leave as-is (large, working) |
+| `PatternService` | Object literal; uses `apiFetch` |
+| `SequenceService` | Object literal; userId in request body (not header) for most routes |
+| `TopicService` | Object literal; `get` returns `Topic` directly (not `{ topic }`) |
+| `FrameRefService` | Object literal; `get` returns `FrameRef` directly |
+| `UserService` | Object literal; method names: `getSettings`, `updateSettings` |
+| `AdminService` | Object literal; userId via header (x-user-id), not body |
+| `NotificationService` | Object literal; `list`, `markRead`, `markAllRead` |
+
+Admin routes pass `userId` via `apiFetch({ userId })` which sets the `x-user-id` header. Sequence routes pass `userId` in the request body. All other routes also use the header.
+
 ## Key Patterns
 
 - All models use a custom `id` field (8-char random string), not `_id`
 - Tailwind v4 — CSS vars in globals.css, `@source` directive scans `packages/activities/src`
 - Warm dark theme: bg `#1A1714`, cards `#252120`, accent `#C83B50`
 - Use CSS vars for colors (`var(--accent)` etc.), not Tailwind color utilities
+- `NEXT_PUBLIC_SERVER_URL` must be set in production `.env` for Socket.IO to connect (defaults to `http://localhost:3001`)

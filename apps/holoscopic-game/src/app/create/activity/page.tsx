@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch } from '@/lib/api';
+import { TopicService } from '@/services/topicService';
+import { FrameRefService } from '@/services/frameRefService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -124,19 +126,19 @@ function CreateActivityContent() {
     const load = async () => {
       try {
         if (frameId) {
-          const d = await apiFetch(`/frame-refs/${frameId}`);
-          if (d.frame) {
-            setFrame(d.frame);
-            setXLabel(d.frame.xLabel || '');
-            setXMin(d.frame.xMin || '');
-            setXMax(d.frame.xMax || '');
-            setYLabel(d.frame.yLabel || '');
-            setYMin(d.frame.yMin || '');
-            setYMax(d.frame.yMax || '');
+          const frame = await FrameRefService.get(frameId);
+          if (frame) {
+            setFrame(frame);
+            setXLabel(frame.xLabel || '');
+            setXMin(frame.xMin || '');
+            setXMax(frame.xMax || '');
+            setYLabel(frame.yLabel || '');
+            setYMin(frame.yMin || '');
+            setYMax(frame.yMax || '');
           }
         } else if (topicId) {
-          const d = await apiFetch(`/topics/${topicId}`);
-          if (d.topic) setTopic(d.topic);
+          const topic = await TopicService.get(topicId);
+          if (topic) setTopic(topic);
         }
       } catch { /* context load failure is non-fatal */ }
       finally { setLoadingCtx(false); }

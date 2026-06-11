@@ -396,7 +396,8 @@ const ActivitySchema = new mongoose.Schema({
     }
   }]
 }, {
-  timestamps: true
+  timestamps: true,
+  id: false,
 });
 
 // Indexes for performance
