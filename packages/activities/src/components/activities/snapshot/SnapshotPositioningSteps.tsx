@@ -120,7 +120,7 @@ export default function SnapshotPositioningSteps({
   if (!currentQuestion) {
     return (
       <div className="flex items-center justify-center h-32">
-        <p style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '1rem', color: '#7A7068', textAlign: 'center' }}>
+        <p style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>
           This activity has no questions configured. Edit it in the create panel to add questions.
         </p>
       </div>
@@ -131,7 +131,7 @@ export default function SnapshotPositioningSteps({
   const questionHeader = (
     <div className="flex items-center gap-2 mb-1">
       <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: currentQuestion.color, flexShrink: 0 }} />
-      <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7A7068' }}>
+      <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
         {currentQuestion.topic || currentQuestion.label}{questions.length > 1 ? ` \u2014 ${questionIndex + 1} of ${questions.length}` : ''}
       </span>
     </div>
@@ -142,7 +142,7 @@ export default function SnapshotPositioningSteps({
     return (
       <div className="space-y-5">
         {questionHeader}
-        <h3 className="text-2xl font-bold text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>
+        <h3 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>
           {currentQuestion.label || currentQuestion.topic}
         </h3>
         <input
@@ -153,13 +153,13 @@ export default function SnapshotPositioningSteps({
             updated[questionIndex] = e.target.value.slice(0, 25);
             setObjectNames(updated);
           }}
-          className="w-full px-4 py-3 bg-[#1A1714] border border-[rgba(215,205,195,0.12)] text-[#F5F0EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C83B50] text-lg"
+          className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border-default)] text-[var(--text-primary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C83B50] text-lg"
           style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}
           placeholder="Enter name..."
           maxLength={25}
           autoFocus
         />
-        <p className="text-right" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', color: '#7A7068' }}>
+        <p className="text-right" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', color: 'var(--text-muted)' }}>
           {objectNames[questionIndex].length}/25 characters
         </p>
       </div>
@@ -175,14 +175,14 @@ export default function SnapshotPositioningSteps({
       <div className="space-y-5">
         {questionHeader}
         <div className="mb-1">
-          <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7A7068' }}>
+          <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
             Your perspective:
           </span>
           <p style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '1.1rem', fontWeight: 600, color: '#C83B50' }}>
             {objectNames[questionIndex] || '—'}
           </p>
         </div>
-        <h3 className="text-2xl font-bold text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>
+        <h3 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>
           {activity.mapQuestion}
         </h3>
         <AxisSelector
@@ -209,14 +209,14 @@ export default function SnapshotPositioningSteps({
       <div className="space-y-5">
         {questionHeader}
         <div className="mb-1">
-          <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7A7068' }}>
+          <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
             Your perspective:
           </span>
           <p style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '1.1rem', fontWeight: 600, color: '#C83B50' }}>
             {objectNames[questionIndex] || '—'}
           </p>
         </div>
-        <h3 className="text-2xl font-bold text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>
+        <h3 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>
           {activity.mapQuestion2 || activity.mapQuestion}
         </h3>
         <AxisSelector
@@ -239,14 +239,14 @@ export default function SnapshotPositioningSteps({
     <div className="space-y-5">
       {questionHeader}
       <div className="mb-1">
-        <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7A7068' }}>
+        <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
           Your perspective:
         </span>
         <p style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', fontSize: '1.1rem', fontWeight: 600, color: '#C83B50' }}>
           {objectNames[questionIndex] || '—'}
         </p>
       </div>
-      <h3 className="text-2xl font-bold text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>
+      <h3 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>
         {activity.commentQuestion}
       </h3>
       <textarea
@@ -256,13 +256,13 @@ export default function SnapshotPositioningSteps({
           updated[questionIndex] = e.target.value.slice(0, 500);
           setComments(updated);
         }}
-        className="w-full px-4 py-3 bg-[#1A1714] border border-[rgba(215,205,195,0.12)] text-[#F5F0EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C83B50] min-h-[120px] resize-none"
+        className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border-default)] text-[var(--text-primary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C83B50] min-h-[120px] resize-none"
         style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}
         placeholder="Share your thoughts..."
         maxLength={500}
         autoFocus
       />
-      <p className="text-right" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', color: '#7A7068' }}>
+      <p className="text-right" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', color: 'var(--text-muted)' }}>
         {comments[questionIndex].length}/500
       </p>
     </div>

@@ -32,14 +32,14 @@ export default function QuadrantSelector({ activity, onQuadrantSelect, userRatin
 
   return (
     <div className="space-y-3">
-      <h3 className="text-2xl font-bold text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>
+      <h3 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>
         {activity.mapQuestion}
       </h3>
 
       {/* Axis labels + grid */}
       <div className="flex flex-col items-center gap-1">
         {/* Y-max label */}
-        <span className="text-xs text-[#A89F96] font-semibold" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <span className="text-xs text-[var(--text-secondary)] font-semibold" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           {activity.yAxis.max}
         </span>
 
@@ -47,7 +47,7 @@ export default function QuadrantSelector({ activity, onQuadrantSelect, userRatin
           {/* Y-min label (left side, rotated) */}
           <div className="flex-shrink-0 w-6 flex items-center justify-center">
             <span
-              className="text-[#A89F96] font-semibold whitespace-nowrap"
+              className="text-[var(--text-secondary)] font-semibold whitespace-nowrap"
               style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', writingMode: 'vertical-lr', transform: 'rotate(180deg)' }}
             >
               {activity.xAxis.min}
@@ -66,7 +66,7 @@ export default function QuadrantSelector({ activity, onQuadrantSelect, userRatin
                     aspect-square rounded-lg border-2 transition-all duration-150 flex items-center justify-center p-2
                     ${isSelected
                       ? 'bg-[#C83B50] border-[#C83B50] text-white'
-                      : 'bg-[#1A1714] border-[rgba(215,205,195,0.15)] text-[#7A7068] hover:border-[rgba(215,205,195,0.4)] hover:text-[#A89F96]'
+                      : 'bg-[var(--bg-primary)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-[rgba(15,13,11,0.3)] hover:text-[var(--text-secondary)]'
                     }
                   `}
                 >
@@ -84,7 +84,7 @@ export default function QuadrantSelector({ activity, onQuadrantSelect, userRatin
           {/* X-max label (right side) */}
           <div className="flex-shrink-0 w-6 flex items-center justify-center">
             <span
-              className="text-[#A89F96] font-semibold whitespace-nowrap"
+              className="text-[var(--text-secondary)] font-semibold whitespace-nowrap"
               style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', writingMode: 'vertical-rl' }}
             >
               {activity.xAxis.max}
@@ -93,7 +93,7 @@ export default function QuadrantSelector({ activity, onQuadrantSelect, userRatin
         </div>
 
         {/* Y-min label */}
-        <span className="text-xs text-[#A89F96] font-semibold" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <span className="text-xs text-[var(--text-secondary)] font-semibold" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           {activity.yAxis.min}
         </span>
       </div>

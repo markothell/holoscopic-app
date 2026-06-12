@@ -13,7 +13,7 @@ export default function ResolvePositioningSteps({
   return (
     <div className="space-y-4">
       <div className="mb-2">
-        <span className="text-sm text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <span className="text-sm text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           Your perspective:
         </span>
         <p className="text-lg font-semibold text-[#C83B50]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>

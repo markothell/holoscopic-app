@@ -101,7 +101,7 @@ export default function SnapshotResults({
         {activeCells.size > 0 && entryCount !== null && (
           <p
             className="text-center mt-2"
-            style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', color: 'rgba(215,205,195,0.4)', textTransform: 'uppercase' }}
+            style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', color: 'rgba(15,13,11,0.3)', textTransform: 'uppercase' }}
           >
             {entryCount} {entryCount === 1 ? 'entry' : 'entries'} across {activeCells.size} selected {activeCells.size === 1 ? 'cell' : 'cells'}
           </p>

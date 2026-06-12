@@ -250,15 +250,15 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
 
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen bg-[#1A1714] flex items-center justify-center">
-        <div className="text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Loading...</div>
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
+        <div className="text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Loading...</div>
       </div>
     );
   }
 
   if (error || !activity) {
     return (
-      <div className="min-h-screen bg-[#1A1714] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center p-4">
         <div className="text-center">
           <p className="text-[#C83B50] mb-4">{error || 'Activity not found'}</p>
           <Link href="/" className="text-[#C83B50] hover:text-[#e04d63] transition-colors" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
@@ -274,7 +274,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
   const config = getActivityTypeConfig(activity.activityType);
 
   return (
-    <div className="min-h-screen lg:h-screen bg-[#1A1714]">
+    <div className="min-h-screen lg:h-screen bg-[var(--bg-primary)]">
       {/* Fixed Logo in top-left */}
       <div className="fixed top-3 left-4 z-20">
         <Link href="/">
@@ -298,12 +298,12 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
         <div className="flex-shrink-0 px-4 mb-4">
           {/* Title with Info Icon */}
           <div className="ml-24 mr-16 flex items-center gap-2">
-            <h2 className="text-2xl font-bold text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
+            <h2 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
               {activity.title}
             </h2>
             <button
               onClick={() => setShowPreamble(true)}
-              className="w-6 h-6 rounded-full bg-[rgba(215,205,195,0.1)] hover:bg-[rgba(215,205,195,0.18)] text-[#F5F0EB] text-xs font-bold flex items-center justify-center transition-colors flex-shrink-0"
+              className="w-6 h-6 rounded-full bg-[var(--border-subtle)] hover:bg-[var(--border-strong)] text-[var(--text-primary)] text-xs font-bold flex items-center justify-center transition-colors flex-shrink-0"
               aria-label="View information"
               title="View activity information"
             >
@@ -317,7 +317,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               {actType === 'snapshot' ? (
                 // Snapshot: one circle per question, styled with question color
                 <>
-                  <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7A7068' }}>
+                  <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                     Your entries:
                   </span>
                   <div className="flex gap-3 flex-wrap mt-2">
@@ -334,7 +334,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                             className="w-8 h-8 rounded-full border-2 transition-all"
                             style={{
                               borderColor: q.color,
-                              background: qData.hasData ? '#F5F0EB' : '#1A1714',
+                              background: qData.hasData ? 'var(--text-primary)' : 'var(--bg-primary)',
                             }}
                           />
                           <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: q.color, maxWidth: 48, textAlign: 'center', lineHeight: 1.2 }}>
@@ -348,7 +348,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               ) : (
                 // Standard types: slot-based circles
                 <>
-                  <span className="text-xs text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  <span className="text-xs text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                     {`Your entries (${userFilledSlots.length}):`}
                   </span>
                   <div className="flex gap-2 flex-wrap mt-2">
@@ -363,11 +363,11 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                           className={`w-8 h-8 rounded-full border-2 transition-all ${
                             isAddNewSlot
                               ? 'bg-green-500/30 border-green-500/50 hover:bg-green-500/40'
-                              : 'bg-[#F5F0EB] border-[#F5F0EB] hover:bg-[#F5F0EB]/90'
+                              : 'bg-[var(--text-primary)] border-[var(--text-primary)] hover:bg-[var(--text-primary)]/90'
                           }`}
                           aria-label={isAddNewSlot ? 'Add new entry' : `Entry ${displayIndex + 1}`}
                         >
-                          <span className={`text-xs font-semibold ${isAddNewSlot ? 'text-green-300' : 'text-[#1A1714]'}`}>
+                          <span className={`text-xs font-semibold ${isAddNewSlot ? 'text-green-700' : 'text-[var(--bg-primary)]'}`}>
                             {isAddNewSlot ? '+' : displayIndex + 1}
                           </span>
                         </button>
@@ -386,14 +386,14 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               <div className="flex bg-[#111827] rounded-lg p-1 border border-white/10">
                 <button
                   onClick={() => setResolveTab('map')}
-                  className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'map' ? 'bg-[#C83B50] text-white' : 'text-[#A89F96] hover:text-white'}`}
+                  className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'map' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
                   style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                 >
                   Map View
                 </button>
                 <button
                   onClick={() => setResolveTab('comments')}
-                  className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'comments' ? 'bg-[#C83B50] text-white' : 'text-[#A89F96] hover:text-white'}`}
+                  className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'comments' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
                   style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                 >
                   Comments
@@ -470,10 +470,10 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
           <div className="flex-shrink-0 mb-6 ml-24 xl:ml-32">
             {/* Title with Info Icon */}
             <div className="mb-3 flex items-center gap-3">
-              <h2 className="text-3xl font-bold text-[#F5F0EB]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>{activity.title}</h2>
+              <h2 className="text-3xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>{activity.title}</h2>
               <button
                 onClick={() => setShowPreamble(true)}
-                className="w-8 h-8 rounded-full bg-[rgba(215,205,195,0.1)] hover:bg-[rgba(215,205,195,0.18)] text-[#F5F0EB] text-sm font-bold flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-full bg-[var(--border-subtle)] hover:bg-[var(--border-strong)] text-[var(--text-primary)] text-sm font-bold flex items-center justify-center transition-colors"
                 aria-label="View information"
                 title="View activity information"
               >
@@ -486,7 +486,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               <div className="flex flex-col items-start">
                 {actType === 'snapshot' ? (
                   <>
-                    <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7A7068' }}>
+                    <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                       Your entries:
                     </span>
                     <div className="flex gap-3 flex-wrap mt-2">
@@ -503,7 +503,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                               className="w-10 h-10 rounded-full border-2 transition-all"
                               style={{
                                 borderColor: q.color,
-                                background: qData.hasData ? '#F5F0EB' : '#1A1714',
+                                background: qData.hasData ? 'var(--text-primary)' : 'var(--bg-primary)',
                               }}
                             />
                             <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: q.color, maxWidth: 56, textAlign: 'center', lineHeight: 1.2 }}>
@@ -516,7 +516,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                   </>
                 ) : (
                   <>
-                    <span className="text-sm text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    <span className="text-sm text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                       {`Your entries (${userFilledSlots.length}):`}
                     </span>
                     <div className="flex gap-3 flex-wrap mt-2">
@@ -531,11 +531,11 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                             className={`w-10 h-10 rounded-full border-2 transition-all ${
                               isAddNewSlot
                                 ? 'bg-green-500/30 border-green-500/50 hover:bg-green-500/40'
-                                : 'bg-[#F5F0EB] border-[#F5F0EB] hover:bg-[#F5F0EB]/90'
+                                : 'bg-[var(--text-primary)] border-[var(--text-primary)] hover:bg-[var(--text-primary)]/90'
                             }`}
                             aria-label={isAddNewSlot ? 'Add new entry' : `Entry ${displayIndex + 1}`}
                           >
-                            <span className={`text-sm font-semibold ${isAddNewSlot ? 'text-green-300' : 'text-[#1A1714]'}`}>
+                            <span className={`text-sm font-semibold ${isAddNewSlot ? 'text-green-700' : 'text-[var(--bg-primary)]'}`}>
                               {isAddNewSlot ? '+' : displayIndex + 1}
                             </span>
                           </button>
@@ -557,14 +557,14 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                   <div className="flex bg-[#111827] rounded-lg p-1 border border-white/10">
                     <button
                       onClick={() => setResolveTab('map')}
-                      className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'map' ? 'bg-[#C83B50] text-white' : 'text-[#A89F96] hover:text-white'}`}
+                      className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'map' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
                       style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                     >
                       Map View
                     </button>
                     <button
                       onClick={() => setResolveTab('comments')}
-                      className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'comments' ? 'bg-[#C83B50] text-white' : 'text-[#A89F96] hover:text-white'}`}
+                      className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'comments' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
                       style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                     >
                       Comments
@@ -641,10 +641,10 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
         </div>
 
         {/* Right Column: Comments Panel - Only show on lg+ screens (1024px+) */}
-        <div className="hidden lg:flex w-[400px] flex-shrink-0 bg-[#252120] border-l border-[rgba(215,205,195,0.12)] flex-col">
+        <div className="hidden lg:flex w-[400px] flex-shrink-0 bg-[var(--bg-secondary)] border-l border-[var(--border-default)] flex-col">
           {/* Comments Title */}
-          <div className="flex-shrink-0 px-6 py-4 border-b border-[rgba(215,205,195,0.12)]">
-            <h3 className="text-xl font-semibold text-[#F5F0EB] text-center" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+          <div className="flex-shrink-0 px-6 py-4 border-b border-[var(--border-default)]">
+            <h3 className="text-xl font-semibold text-[var(--text-primary)] text-center" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
               Comments
             </h3>
           </div>

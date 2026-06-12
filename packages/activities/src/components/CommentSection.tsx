@@ -266,7 +266,7 @@ export default function CommentSection({
               value={commentText}
               onChange={handleTextChange}
               placeholder="Share your thoughts..."
-              className="w-full p-3 border border-[rgba(215,205,195,0.12)] rounded-lg focus:ring-2 focus:ring-[#C83B50] focus:border-transparent resize-none text-[#F5F0EB] bg-[#1A1714]"
+              className="w-full p-3 border border-[var(--border-default)] rounded-lg focus:ring-2 focus:ring-[#C83B50] focus:border-transparent resize-none text-[var(--text-primary)] bg-[var(--bg-primary)]"
               style={{
                 height: isKeyboardVisible ? '120px' : '150px', // Smaller when keyboard is visible
                 fontSize: '16px', // Prevents zoom on iOS
@@ -275,7 +275,7 @@ export default function CommentSection({
               maxLength={280}
               disabled={isSubmitting}
             />
-            <div className="absolute bottom-2 right-2 text-xs text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem' }}>
+            <div className="absolute bottom-2 right-2 text-xs text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem' }}>
               {commentText.length}/280
             </div>
           </div>
@@ -290,7 +290,7 @@ export default function CommentSection({
             <button
               type="submit"
               disabled={isSubmitting || !commentText.trim()}
-              className="px-6 py-2 bg-[#C83B50] text-white rounded-lg hover:bg-[#B03248] disabled:bg-[#302B28] disabled:text-[#7A7068] disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-2 bg-[#C83B50] text-white rounded-lg hover:bg-[#B03248] disabled:bg-[var(--bg-tertiary)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed transition-colors"
               style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', fontWeight: 300, letterSpacing: '0.1em', textTransform: 'uppercase' }}
             >
               {isSubmitting ? 'Submitting...' : userComment ? 'Update Comment' : 'Submit Comment'}
@@ -313,7 +313,7 @@ export default function CommentSection({
               return (
                 <div
                   className={`px-3 py-1 rounded text-sm font-medium ${
-                    remainingVotes > 0 ? 'bg-[#C83B50] text-white' : 'bg-[#302B28] text-[#7A7068]'
+                    remainingVotes > 0 ? 'bg-[#C83B50] text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
                   }`}
                   style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em' }}
                 >
@@ -325,20 +325,20 @@ export default function CommentSection({
             })()}
 
             {!readOnly && (
-              <h4 className="font-semibold text-[#A89F96]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              <h4 className="font-semibold text-[var(--text-secondary)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 {FormattingService.formatCommentCount(activity.comments.length)}
               </h4>
             )}
 
             {/* Sort Dropdown - Right side */}
             <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-[#A89F96]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              <label className="text-sm font-medium text-[var(--text-secondary)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 Order:
               </label>
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as CommentSortOrder)}
-                className="px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-[#C83B50] bg-[#1A1714] border-[rgba(215,205,195,0.12)] text-[#A89F96]"
+                className="px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-[#C83B50] bg-[var(--bg-primary)] border-[var(--border-default)] text-[var(--text-secondary)]"
                 style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem' }}
               >
                 <option value="newest">Newest</option>
@@ -391,7 +391,7 @@ export default function CommentSection({
                             className={`flex items-center space-x-1 px-2 py-1 rounded text-xs transition-colors ${
                               hasUserVoted(comment)
                                 ? "bg-[rgba(200,59,80,0.2)] text-[#C83B50] hover:bg-[rgba(200,59,80,0.3)]"
-                                : "bg-[rgba(215,205,195,0.1)] text-[#A89F96] hover:bg-[rgba(215,205,195,0.18)]"
+                                : "bg-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--border-strong)]"
                             }`}
                             disabled={!currentUserId}
                           >
@@ -401,26 +401,26 @@ export default function CommentSection({
                         )}
                         {/* Vote count display for own comments (standard mode only) */}
                         {showAllComments && onCommentVote && activity.maxEntries !== 0 && comment.userId === currentUserId && (
-                          <div className="flex items-center space-x-1 px-2 py-1 rounded text-xs bg-[rgba(215,205,195,0.1)] text-[#7A7068]">
+                          <div className="flex items-center space-x-1 px-2 py-1 rounded text-xs bg-[var(--border-subtle)] text-[var(--text-muted)]">
                             <span className="text-base">&#x25B2;</span>
                             <span>{comment.voteCount || 0}</span>
                           </div>
                         )}
                         {/* Vote count for when no vote handler */}
                         {showAllComments && !onCommentVote && (
-                          <div className="flex items-center space-x-1 px-2 py-1 rounded text-xs bg-[rgba(215,205,195,0.1)] text-[#A89F96]">
+                          <div className="flex items-center space-x-1 px-2 py-1 rounded text-xs bg-[var(--border-subtle)] text-[var(--text-secondary)]">
                             <span className="text-base">&#x25B2;</span>
                             <span>{comment.voteCount || 0}</span>
                           </div>
                         )}
                       </div>
                     </div>
-                    <p className="text-sm whitespace-pre-wrap mb-2 text-[#F5F0EB]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>
+                    <p className="text-sm whitespace-pre-wrap mb-2 text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>
                       {comment.text}
                     </p>
                     {/* Timestamp moved to bottom */}
                     <div className="flex justify-end">
-                      <span className="text-xs text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', letterSpacing: '0.06em' }}>
+                      <span className="text-xs text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', letterSpacing: '0.06em' }}>
                         {FormattingService.formatTimestamp(comment.timestamp)}
                       </span>
                     </div>
@@ -429,7 +429,7 @@ export default function CommentSection({
               })}
             </div>
           ) : (
-            <div className={`text-center py-8 ${readOnly ? "text-[#A89F96] flex-1 flex items-center justify-center" : "text-[#7A7068]"}`} style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', fontStyle: 'italic' }}>
+            <div className={`text-center py-8 ${readOnly ? "text-[var(--text-secondary)] flex-1 flex items-center justify-center" : "text-[var(--text-muted)]"}`} style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', fontStyle: 'italic' }}>
               <p>No comments yet. Be the first to share your thoughts!</p>
             </div>
           )}

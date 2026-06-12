@@ -48,17 +48,17 @@ export default function CommentPopup({
   if (!comment) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-        <div className="bg-[#252120] border border-[rgba(215,205,195,0.12)] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
           <div className="flex justify-between items-start mb-4">
-            <h3 className="text-[#F5F0EB] font-bold text-lg" style={{ fontFamily: 'var(--font-barlow), sans-serif' }}>No Comment</h3>
+            <h3 className="text-[var(--text-primary)] font-bold text-lg" style={{ fontFamily: 'var(--font-barlow), sans-serif' }}>No Comment</h3>
             <button
               onClick={onClose}
-              className="text-[#7A7068] hover:text-[#F5F0EB] transition"
+              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
             >
               &#x2715;
             </button>
           </div>
-          <p className="text-[#7A7068]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>This participant hasn&apos;t added a comment yet.</p>
+          <p className="text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>This participant hasn&apos;t added a comment yet.</p>
         </div>
       </div>
     );
@@ -70,33 +70,33 @@ export default function CommentPopup({
       onClick={onClose}
     >
       <div
-        className="bg-[#252120] rounded-lg p-6 max-w-md w-full shadow-xl border border-[rgba(215,205,195,0.12)]"
+        className="bg-[var(--bg-secondary)] rounded-lg p-6 max-w-md w-full shadow-xl border border-[var(--border-default)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with object name */}
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h3 className="text-[#F5F0EB] font-bold text-lg" style={{ fontFamily: 'var(--font-barlow), sans-serif' }}>{rating.objectName}</h3>
+            <h3 className="text-[var(--text-primary)] font-bold text-lg" style={{ fontFamily: 'var(--font-barlow), sans-serif' }}>{rating.objectName}</h3>
             {rating.userId === currentUserId && (
               <span className="text-xs text-[#C83B50]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>(Your response)</span>
             )}
           </div>
           <button
             onClick={onClose}
-            className="text-[#7A7068] hover:text-[#F5F0EB] transition text-2xl leading-none"
+            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition text-2xl leading-none"
           >
             &#x2715;
           </button>
         </div>
 
         {/* Comment text */}
-        <div className="bg-[#1A1714] border border-[rgba(215,205,195,0.12)] rounded-lg p-4 mb-4">
-          <p className="text-[#F5F0EB] text-base leading-relaxed" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>{comment.text}</p>
+        <div className="bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-lg p-4 mb-4">
+          <p className="text-[var(--text-primary)] text-base leading-relaxed" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>{comment.text}</p>
         </div>
 
         {/* Vote section */}
         <div className="flex items-center justify-between">
-          <div className="text-[#7A7068] text-sm" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em' }}>
+          <div className="text-[var(--text-muted)] text-sm" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em' }}>
             <span className="font-semibold">{comment.voteCount || 0}</span> {comment.voteCount === 1 ? 'vote' : 'votes'}
           </div>
 
@@ -118,8 +118,8 @@ export default function CommentPopup({
         </div>
 
         {/* Timestamp */}
-        <div className="mt-4 pt-4 border-t border-[rgba(215,205,195,0.12)]">
-          <p className="text-xs text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>
+        <div className="mt-4 pt-4 border-t border-[var(--border-default)]">
+          <p className="text-xs text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>
             Posted {new Date(comment.timestamp).toLocaleDateString()}
           </p>
         </div>

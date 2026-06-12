@@ -77,7 +77,7 @@ export default function ResultsView({
                 <button
                   onClick={() => setActiveTab('map')}
                   className={`px-4 py-2 rounded-md transition-colors ${
-                    activeTab === 'map' ? 'bg-[#C83B50] text-white' : 'text-[#A89F96] hover:text-white'
+                    activeTab === 'map' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-white'
                   }`}
                   style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                 >
@@ -86,7 +86,7 @@ export default function ResultsView({
                 <button
                   onClick={() => setActiveTab('comments')}
                   className={`px-4 py-2 rounded-md transition-colors ${
-                    activeTab === 'comments' ? 'bg-[#C83B50] text-white' : 'text-[#A89F96] hover:text-white'
+                    activeTab === 'comments' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-white'
                   }`}
                   style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                 >
@@ -172,7 +172,7 @@ export default function ResultsView({
               onClick={() => setMobilePopupComment(null)}
             >
               <div
-                className="bg-[#252120] border border-[rgba(215,205,195,0.12)] rounded-lg p-6 max-w-md w-full shadow-xl"
+                className="bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-lg p-6 max-w-md w-full shadow-xl"
                 onClick={(e) => e.stopPropagation()}
               >
                 {(() => {
@@ -192,27 +192,27 @@ export default function ResultsView({
                       {/* Header */}
                       <div className="flex justify-between items-start mb-4">
                         <div>
-                          <h3 className="text-[#F5F0EB] font-bold text-lg" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>{displayName}</h3>
+                          <h3 className="text-[var(--text-primary)] font-bold text-lg" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>{displayName}</h3>
                           {isOwnComment && (
                             <span className="text-[#C83B50]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>(Your response)</span>
                           )}
                         </div>
                         <button
                           onClick={() => setMobilePopupComment(null)}
-                          className="text-[#7A7068] hover:text-[#F5F0EB] transition text-2xl leading-none"
+                          className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition text-2xl leading-none"
                         >
                           &#x2715;
                         </button>
                       </div>
 
                       {/* Comment text */}
-                      <div className="bg-[#1A1714] border border-[rgba(215,205,195,0.12)] rounded-lg p-4 mb-4">
-                        <p className="text-[#F5F0EB] text-base leading-relaxed whitespace-pre-wrap" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>{comment.text}</p>
+                      <div className="bg-[var(--bg-primary)] border border-[var(--border-default)] rounded-lg p-4 mb-4">
+                        <p className="text-[var(--text-primary)] text-base leading-relaxed whitespace-pre-wrap" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>{comment.text}</p>
                       </div>
 
                       {/* Vote + timestamp */}
                       <div className="flex items-center justify-between">
-                        <div className="text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em' }}>
+                        <div className="text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em' }}>
                           <span className="font-semibold">{comment.voteCount || 0}</span> {comment.voteCount === 1 ? 'vote' : 'votes'}
                         </div>
                         {canVote ? (
@@ -229,8 +229,8 @@ export default function ResultsView({
                       </div>
 
                       {/* Timestamp */}
-                      <div className="mt-4 pt-4 border-t border-[rgba(215,205,195,0.12)]">
-                        <p className="text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>
+                      <div className="mt-4 pt-4 border-t border-[var(--border-default)]">
+                        <p className="text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>
                           {FormattingService.formatTimestamp(comment.timestamp)}
                         </p>
                       </div>

@@ -55,7 +55,7 @@ function QuadrantCell({
       style={{
         flex: 1,
         borderRadius: 12,
-        border: isActive ? `1.5px solid ${color}` : '1.5px solid rgba(215,205,195,0.12)',
+        border: isActive ? `1.5px solid ${color}` : '1.5px solid var(--border-default)',
         background: isActive ? `${color}12` : '#0d1220',
         cursor: 'pointer',
         padding: 8,
@@ -91,7 +91,7 @@ function QuadrantCell({
                   width: '72%',
                   aspectRatio: '1',
                   borderRadius: '50%',
-                  background: filled ? color : 'rgba(215,205,195,0.15)',
+                  background: filled ? color : 'var(--border-default)',
                 }} />
               </div>
             );
@@ -117,7 +117,7 @@ export default function ResolveGrid({ activity, ratings, onCellClick, activeCell
     fontSize: '0.65rem',
     letterSpacing: '0.1em',
     textTransform: 'uppercase',
-    color: 'rgba(215,205,195,0.6)',
+    color: 'rgba(15,13,11,0.5)',
     whiteSpace: 'nowrap',
   };
 
@@ -140,8 +140,8 @@ export default function ResolveGrid({ activity, ratings, onCellClick, activeCell
     }}>
       {/* Dashed axis lines */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
-        <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', borderTop: '1px dashed rgba(215,205,195,0.15)' }} />
-        <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', borderLeft: '1px dashed rgba(215,205,195,0.15)' }} />
+        <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', borderTop: '1px dashed var(--border-default)' }} />
+        <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', borderLeft: '1px dashed var(--border-default)' }} />
       </div>
 
       {/* Q2 — top-left */}
@@ -161,7 +161,7 @@ export default function ResolveGrid({ activity, ratings, onCellClick, activeCell
       </div>
       {/* Center circle */}
       <div style={{ gridColumn: 2, gridRow: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
-        <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid rgba(215,205,195,0.4)', background: '#0a0f1a' }} />
+        <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid rgba(15,13,11,0.3)', background: '#0a0f1a' }} />
       </div>
       <div style={{ gridColumn: 3, gridRow: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
         {xRightLabel && <span style={labelStyle}>{xRightLabel}</span>}

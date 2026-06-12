@@ -100,7 +100,7 @@ function DotCell({
         flex: 1,
         minHeight: 80,
         borderRadius: 8,
-        border: isActive ? '1px solid rgba(200,59,80,0.5)' : '1px solid rgba(215,205,195,0.08)',
+        border: isActive ? '1px solid rgba(200,59,80,0.5)' : '1px solid var(--border-subtle)',
         background: isActive ? 'rgba(200,59,80,0.05)' : 'rgba(255,255,255,0.02)',
         padding: 8,
         display: 'flex',
@@ -135,7 +135,7 @@ function DotCell({
                   width: '72%',
                   aspectRatio: '1',
                   borderRadius: '50%',
-                  background: rating ? (question?.color || '#7A7068') : 'rgba(215,205,195,0.15)',
+                  background: rating ? (question?.color || 'var(--text-muted)') : 'var(--border-default)',
                   transition: 'background 0.15s',
                 }} />
               </div>
@@ -181,7 +181,7 @@ function QuadrantCard({
         style={{
           flex: 1,
           borderRadius: 12,
-          border: activeSubCells.has(0) ? '1.5px solid rgba(200,59,80,0.5)' : '1.5px solid rgba(215,205,195,0.12)',
+          border: activeSubCells.has(0) ? '1.5px solid rgba(200,59,80,0.5)' : '1.5px solid var(--border-default)',
           background: '#0d1220',
           padding: 8,
           display: 'flex',
@@ -228,7 +228,7 @@ function QuadrantCard({
       style={{
         flex: 1,
         borderRadius: 12,
-        border: '1.5px solid rgba(215,205,195,0.12)',
+        border: '1.5px solid var(--border-default)',
         background: '#0d1220',
         padding: 6,
         display: 'grid',
@@ -284,13 +284,13 @@ export default function SnapshotDotGrid({ activity, ratings, onCellClick, active
     fontSize: '0.65rem',
     letterSpacing: '0.1em',
     textTransform: 'uppercase',
-    color: 'rgba(215,205,195,0.6)',
+    color: 'rgba(15,13,11,0.5)',
     whiteSpace: 'nowrap',
   };
 
   const outerLabelStyle: React.CSSProperties = {
     ...labelStyle,
-    color: 'rgba(215,205,195,0.55)',
+    color: 'rgba(15,13,11,0.45)',
     fontSize: '0.58rem',
   };
 
@@ -346,9 +346,9 @@ export default function SnapshotDotGrid({ activity, ratings, onCellClick, active
         {/* Dashed axis lines — behind everything */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
           {/* Horizontal */}
-          <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', borderTop: '1px dashed rgba(215,205,195,0.15)' }} />
+          <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', borderTop: '1px dashed var(--border-default)' }} />
           {/* Vertical */}
-          <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', borderLeft: '1px dashed rgba(215,205,195,0.15)' }} />
+          <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', borderLeft: '1px dashed var(--border-default)' }} />
         </div>
 
         {/* Q2 — top-left */}
@@ -387,7 +387,7 @@ export default function SnapshotDotGrid({ activity, ratings, onCellClick, active
         <div style={{ gridColumn: 2, gridRow: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
           <div style={{
             width: 18, height: 18, borderRadius: '50%',
-            border: '2px solid rgba(215,205,195,0.4)',
+            border: '2px solid rgba(15,13,11,0.3)',
             background: '#0a0f1a',
           }} />
         </div>

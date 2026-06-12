@@ -12,7 +12,7 @@ export default function AxisSelector({ label, options, value, onChange, axisDire
   return (
     <div className="flex flex-col gap-2">
       <span
-        className="text-[#7A7068]"
+        className="text-[var(--text-muted)]"
         style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}
       >
         {label}
@@ -32,7 +32,7 @@ export default function AxisSelector({ label, options, value, onChange, axisDire
                 fontWeight: selected ? 600 : 400,
                 background: selected ? 'rgba(200, 59, 80, 0.12)' : 'rgba(215, 205, 195, 0.06)',
                 border: selected ? '1px solid #C83B50' : '1px solid rgba(215, 205, 195, 0.15)',
-                color: selected ? '#F5F0EB' : '#7A7068',
+                color: selected ? 'var(--text-primary)' : 'var(--text-muted)',
                 cursor: 'pointer',
               }}
             >

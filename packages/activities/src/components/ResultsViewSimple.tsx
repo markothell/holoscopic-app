@@ -67,7 +67,7 @@ export default function ResultsViewSimple({
               fontFamily: 'var(--font-dm-mono), monospace',
               fontSize: '0.6rem',
               letterSpacing: '0.08em',
-              color: 'rgba(215,205,195,0.4)',
+              color: 'rgba(15,13,11,0.3)',
               textTransform: 'uppercase',
             }}
           >

@@ -1,7 +1,5 @@
 'use client';
 
-'use client';
-
 import { useState, useEffect } from 'react';
 import { HoloscopicActivity, Rating, Comment, SnapshotAnswer, SnapshotQuestion } from '@/models/Activity';
 import { normalizeActivityType, REGISTRY } from '@hs/activities';
@@ -26,6 +24,11 @@ interface EntryModalProps {
   // Snapshot single-question mode: when set, the modal handles only this question
   snapshotQuestion?: SnapshotQuestion;
 }
+
+const monoLabel: React.CSSProperties = {
+  fontFamily: 'var(--font-dm-mono), monospace', fontSize: 'var(--text-2xs)',
+  letterSpacing: '0.08em', color: 'var(--text-muted)',
+};
 
 export default function EntryModal({
   activity,
@@ -99,13 +102,18 @@ export default function EntryModal({
     onClose();
   };
 
+  const fieldCss: React.CSSProperties = {
+    background: 'var(--bg-primary)', border: '1px solid var(--border-default)',
+    color: 'var(--text-primary)', fontFamily: 'var(--font-cormorant), Georgia, serif',
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-      <div className="bg-[#252120] border border-[rgba(215,205,195,0.12)] rounded-lg shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(15,13,11,0.35)' }}>
+      <div className="rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)' }}>
         {/* Header with Progress */}
-        <div className="border-b border-[rgba(215,205,195,0.12)] p-4">
+        <div className="p-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-semibold text-[#F5F0EB] flex items-center gap-2" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+            <h2 className="text-base font-semibold flex items-center gap-2" style={{ ...monoLabel, fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
               {snapshotQuestion ? (
                 <>
                   <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: snapshotQuestion.color, flexShrink: 0 }} />
@@ -117,16 +125,17 @@ export default function EntryModal({
             </h2>
             <button
               onClick={handleCancel}
-              className="text-[#7A7068] hover:text-[#F5F0EB] text-2xl leading-none transition-colors"
+              className="text-2xl leading-none transition-colors"
+              style={{ color: 'var(--text-muted)' }}
               aria-label="Close"
             >
               &times;
             </button>
           </div>
-          <div className="w-full bg-[rgba(215,205,195,0.1)] rounded-full h-2">
+          <div className="w-full rounded-full h-1.5" style={{ background: 'var(--bg-tertiary)' }}>
             <div
-              className="bg-[#C83B50] h-2 rounded-full transition-all duration-300"
-              style={{ width: `${progressPercent}%` }}
+              className="h-1.5 rounded-full transition-all duration-300"
+              style={{ width: `${progressPercent}%`, background: 'var(--accent)' }}
             />
           </div>
         </div>
@@ -136,23 +145,23 @@ export default function EntryModal({
           {/* Step 1: Object Name (non-snapshot types only; snapshot uses question labels as names) */}
           {step === 1 && !isSnapshotType && (
             <div className="space-y-4">
-              <h3 className="text-2xl font-bold text-[#F5F0EB] mb-2" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>
+              <h3 className="text-2xl font-bold mb-2" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', color: 'var(--text-primary)' }}>
                 {activity.objectNameQuestion || 'Name something that represents your perspective'}
               </h3>
-              <p className="text-[#7A7068] text-sm mb-4" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', fontWeight: 300, letterSpacing: '0.08em' }}>
+              <p className="mb-4" style={monoLabel}>
                 Choose a name that will appear with your responses (max 25 characters)
               </p>
               <input
                 type="text"
                 value={objectName}
                 onChange={(e) => setObjectName(e.target.value.slice(0, 25))}
-                className="w-full px-4 py-3 bg-[#1A1714] border border-[rgba(215,205,195,0.12)] text-[#F5F0EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C83B50] text-lg"
-                style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}
+                className="w-full px-4 py-3 rounded-lg focus:outline-none text-lg"
+                style={fieldCss}
                 placeholder="Enter name..."
                 maxLength={25}
                 autoFocus
               />
-              <p className="text-xs text-[#7A7068] text-right" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem' }}>
+              <p className="text-right" style={{ ...monoLabel, fontSize: '0.6rem' }}>
                 {objectName.length}/25 characters
               </p>
             </div>
@@ -179,27 +188,27 @@ export default function EntryModal({
           {isLastStep && !isSnapshotType && (
             <div className="space-y-4">
               <div className="mb-2">
-                <span className="text-sm text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                <span style={{ ...monoLabel, textTransform: 'uppercase' }}>
                   Your perspective:
                 </span>
-                <p className="text-lg font-semibold text-[#C83B50]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>
+                <p className="text-lg font-semibold" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', color: 'var(--accent)' }}>
                   {objectName}
                 </p>
               </div>
-              <h3 className="text-2xl font-bold text-[#F5F0EB] mb-2" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>
+              <h3 className="text-2xl font-bold mb-2" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', color: 'var(--text-primary)' }}>
                 {activity.commentQuestion}
               </h3>
               <textarea
                 value={comment}
                 onChange={(e) => setComment(commentMaxLength ? e.target.value.slice(0, commentMaxLength) : e.target.value)}
-                className="w-full px-4 py-3 bg-[#1A1714] border border-[rgba(215,205,195,0.12)] text-[#F5F0EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C83B50] min-h-[150px] resize-none"
-                style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}
+                className="w-full px-4 py-3 rounded-lg focus:outline-none min-h-[150px] resize-none"
+                style={fieldCss}
                 placeholder="Share your thoughts..."
                 maxLength={commentMaxLength}
                 autoFocus
               />
               {commentMaxLength && (
-                <p className="text-xs text-[#7A7068] text-right" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem' }}>
+                <p className="text-right" style={{ ...monoLabel, fontSize: '0.6rem' }}>
                   {comment.length}/{commentMaxLength} characters
                 </p>
               )}
@@ -208,12 +217,12 @@ export default function EntryModal({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-[rgba(215,205,195,0.12)] p-4 flex items-center gap-3">
+        <div className="p-4 flex items-center gap-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
           {onDelete && (existingData?.rating || existingData?.comment) && (
             <button
               onClick={() => { if (window.confirm('Delete this entry?')) onDelete!(); }}
-              className="text-[#4a4440] hover:text-[#7A7068] transition-colors mr-auto"
-              style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em' }}
+              className="transition-colors mr-auto"
+              style={{ ...monoLabel, fontSize: '0.6rem' }}
             >
               delete
             </button>
@@ -221,15 +230,15 @@ export default function EntryModal({
           <button
             onClick={handlePrevious}
             disabled={step === 1}
-            className="px-6 py-3 bg-[rgba(215,205,195,0.1)] hover:bg-[rgba(215,205,195,0.18)] text-[#F5F0EB] font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.7rem', fontWeight: 300, letterSpacing: '0.12em', textTransform: 'uppercase' }}
+            className="px-6 py-3 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: 'var(--text-2xs)', letterSpacing: '0.12em', textTransform: 'uppercase', background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}
           >
             Previous
           </button>
           <button
             onClick={handleNext}
-            className="flex-1 px-6 py-3 bg-[#C83B50] hover:bg-[#B03248] text-white font-medium rounded-lg transition-colors"
-            style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.7rem', fontWeight: 300, letterSpacing: '0.12em', textTransform: 'uppercase' }}
+            className="flex-1 px-6 py-3 font-medium rounded-lg transition-colors"
+            style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: 'var(--text-2xs)', letterSpacing: '0.12em', textTransform: 'uppercase', background: 'var(--accent)', color: '#FFFFFF', border: 'none' }}
           >
             {isLastStep ? 'Submit' : 'Next'}
           </button>
