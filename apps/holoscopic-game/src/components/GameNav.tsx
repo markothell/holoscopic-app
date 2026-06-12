@@ -7,7 +7,7 @@ import UserMenu from '@/components/UserMenu';
 import { GAME_NAME, HOLON_SYMBOL, STR, gamePath } from '@/lib/strings';
 import { mono } from '@/lib/ui';
 
-export type GameView = 'topics' | 'frames' | 'patterns' | 'rules';
+export type GameView = 'topics' | 'frames' | 'patterns' | 'rules' | 'leaderboard';
 
 /**
  * The one game header. Wordmark → landing; view links; How to play;
@@ -51,6 +51,7 @@ export default function GameNav({ active }: { active?: GameView }) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.1rem', flexShrink: 0 }}>
+        <Link href={gamePath(g, 'leaderboard')} style={navLink(active === 'leaderboard')}>Standings</Link>
         <Link href={gamePath(g, 'rules')} style={navLink(active === 'rules')}>{STR.rules}</Link>
         {isAuthenticated && (
           <span style={{ fontSize: 'var(--text-sm)', fontFamily: mono, color: 'var(--accent)', fontWeight: 600 }}

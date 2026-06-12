@@ -38,6 +38,44 @@ router.get('/balance', async (req, res) => {
   }
 });
 
+// Reputation ≠ currency: standing is lifetime CONNECTION earnings, not balance.
+// Participation mints (join/daily bonus, signup reward) and escrow refunds
+// don't count — farming rewards never buys rank.
+const REPUTATION_TYPES = [
+  'comment_attribution',
+  'frame_use_reward',
+  'entry_seed_reward',
+  'pattern_activity_reward',
+  'algorithm_royalty',
+  'session_host_reward',
+];
+
+// GET /api/holons/leaderboard — public standings for this instance
+router.get('/leaderboard', async (req, res) => {
+  try {
+    const rows = await HolonTransaction.aggregate([
+      { $match: { instanceId: req.instanceId, type: { $in: REPUTATION_TYPES }, amount: { $gt: 0 } } },
+      { $group: { _id: '$userId', earned: { $sum: '$amount' }, events: { $sum: 1 } } },
+      { $sort: { earned: -1 } },
+      { $limit: 50 },
+    ]);
+    const User = require('../models/User');
+    const users = await User.find({ id: { $in: rows.map(r => r._id) } }).select('id name').lean();
+    const nameMap = Object.fromEntries(users.map(u => [u.id, u.name]));
+    res.json({
+      leaderboard: rows.map((r, i) => ({
+        rank: i + 1,
+        userId: r._id,
+        name: nameMap[r._id] || 'Unknown',
+        earned: r.earned,
+        events: r.events,
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch leaderboard' });
+  }
+});
+
 // GET /api/holons/transactions — current user's transaction history for this instance
 router.get('/transactions', async (req, res) => {
   const userId = req.headers['x-user-id'];
