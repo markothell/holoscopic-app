@@ -289,7 +289,7 @@ export default function ResultsView({
 
             {/* Right: Full-height Comments Panel - Only show if not hidden */}
             {!hideCommentsPanel && (
-              <div className="w-[400px] flex-shrink-0 bg-[var(--bg-secondary)] border-l border-[var(--border-default)] flex flex-col h-full">
+              <div className="w-[400px] flex-shrink-0 bg-[var(--bg-primary)] border-l border-[var(--border-default)] flex flex-col h-full">
                 {/* Comments Title - Inside panel at top */}
                 <div className="flex-shrink-0 px-6 py-4 border-b border-[var(--border-default)]">
                   <h3 className="text-xl font-semibold text-[var(--text-primary)] text-center">

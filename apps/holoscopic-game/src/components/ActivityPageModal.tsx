@@ -641,7 +641,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
         </div>
 
         {/* Right Column: Comments Panel - Only show on lg+ screens (1024px+) */}
-        <div className="hidden lg:flex w-[400px] flex-shrink-0 bg-[var(--bg-secondary)] border-l border-[var(--border-default)] flex-col">
+        <div className="hidden lg:flex w-[400px] flex-shrink-0 bg-[var(--bg-primary)] border-l border-[var(--border-default)] flex-col">
           {/* Comments Title */}
           <div className="flex-shrink-0 px-6 py-4 border-b border-[var(--border-default)]">
             <h3 className="text-xl font-semibold text-[var(--text-primary)] text-center" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
