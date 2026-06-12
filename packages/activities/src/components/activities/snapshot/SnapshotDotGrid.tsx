@@ -101,7 +101,7 @@ function DotCell({
         minHeight: 80,
         borderRadius: 8,
         border: isActive ? '1px solid rgba(200,59,80,0.5)' : '1px solid var(--border-subtle)',
-        background: isActive ? 'rgba(200,59,80,0.05)' : 'rgba(255,255,255,0.02)',
+        background: isActive ? 'rgba(200,59,80,0.05)' : 'rgba(15,13,11,0.03)',
         padding: 8,
         display: 'flex',
         cursor: 'pointer',
@@ -182,7 +182,7 @@ function QuadrantCard({
           flex: 1,
           borderRadius: 12,
           border: activeSubCells.has(0) ? '1.5px solid rgba(200,59,80,0.5)' : '1.5px solid var(--border-default)',
-          background: '#0d1220',
+          background: 'var(--bg-primary)',
           padding: 8,
           display: 'flex',
           flexDirection: 'column',
@@ -229,7 +229,7 @@ function QuadrantCard({
         flex: 1,
         borderRadius: 12,
         border: '1.5px solid var(--border-default)',
-        background: '#0d1220',
+        background: 'var(--bg-primary)',
         padding: 6,
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
@@ -388,7 +388,7 @@ export default function SnapshotDotGrid({ activity, ratings, onCellClick, active
           <div style={{
             width: 18, height: 18, borderRadius: '50%',
             border: '2px solid rgba(15,13,11,0.3)',
-            background: '#0a0f1a',
+            background: 'var(--bg-primary)',
           }} />
         </div>
 

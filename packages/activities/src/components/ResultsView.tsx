@@ -73,11 +73,11 @@ export default function ResultsView({
           <div className="lg:hidden">
             {/* Mobile Tab Navigation */}
             <div className="flex justify-center mb-2">
-              <div className="flex bg-[#111827] rounded-lg p-1 border border-white/10">
+              <div className="flex bg-[var(--bg-secondary)] rounded-lg p-1 border border-[var(--border-default)]">
                 <button
                   onClick={() => setActiveTab('map')}
                   className={`px-4 py-2 rounded-md transition-colors ${
-                    activeTab === 'map' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-white'
+                    activeTab === 'map' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                   style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                 >
@@ -86,7 +86,7 @@ export default function ResultsView({
                 <button
                   onClick={() => setActiveTab('comments')}
                   className={`px-4 py-2 rounded-md transition-colors ${
-                    activeTab === 'comments' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-white'
+                    activeTab === 'comments' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                   style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                 >
@@ -101,8 +101,8 @@ export default function ResultsView({
                 <div>
                   {/* Mobile Map Title */}
                   <div className="flex justify-center mb-2">
-                    <div className="bg-[#111827] px-3 py-2 rounded-lg border border-white/10">
-                      <h3 className="text-sm font-semibold text-white text-center" style={{ fontSize: 'clamp(0.8rem, 3vw, 0.9rem)', lineHeight: '1.2' }}>
+                    <div className="bg-[var(--bg-secondary)] px-3 py-2 rounded-lg border border-[var(--border-default)]">
+                      <h3 className="text-sm font-semibold text-[var(--text-primary)] text-center" style={{ fontSize: 'clamp(0.8rem, 3vw, 0.9rem)', lineHeight: '1.2' }}>
                         {activity.xAxis.label} vs {activity.yAxis.label}
                       </h3>
                     </div>
@@ -120,9 +120,9 @@ export default function ResultsView({
                       currentUserId={currentUserId}
                     />
                   ) : (
-                    <div className="text-center py-12 text-gray-300">
+                    <div className="text-center py-12 text-[var(--text-secondary)]">
                       <svg
-                        className="w-12 h-12 mx-auto mb-4 text-gray-300"
+                        className="w-12 h-12 mx-auto mb-4 text-[var(--text-secondary)]"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -143,7 +143,7 @@ export default function ResultsView({
               {activeTab === 'comments' && (
                 <div>
                   {/* Mobile Comments Title */}
-                  <p className="text-center text-white font-bold mb-3 px-2" style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: 'clamp(0.9rem, 3.5vw, 1.1rem)', textTransform: 'uppercase', letterSpacing: '0.01em', lineHeight: '1.2' }}>
+                  <p className="text-center text-[var(--text-primary)] font-bold mb-3 px-2" style={{ fontFamily: 'var(--font-barlow), sans-serif', fontSize: 'clamp(0.9rem, 3.5vw, 1.1rem)', textTransform: 'uppercase', letterSpacing: '0.01em', lineHeight: '1.2' }}>
                     {activity.commentQuestion}
                   </p>
                   
@@ -248,8 +248,8 @@ export default function ResultsView({
               <div className="flex flex-col items-center">
                 {/* Map Title */}
                 <div className="mb-4">
-                  <div className="bg-[#111827] px-6 py-3 rounded-lg border border-white/10">
-                    <h3 className="text-xl font-semibold text-white text-center">
+                  <div className="bg-[var(--bg-secondary)] px-6 py-3 rounded-lg border border-[var(--border-default)]">
+                    <h3 className="text-xl font-semibold text-[var(--text-primary)] text-center">
                       {activity.xAxis.label} vs {activity.yAxis.label}
                     </h3>
                   </div>
@@ -267,9 +267,9 @@ export default function ResultsView({
                     currentUserId={currentUserId}
                   />
                 ) : (
-                  <div className="text-center py-12 text-gray-300" style={{ width: 'min(500px, 90vw)', height: 'min(500px, 90vw)' }}>
+                  <div className="text-center py-12 text-[var(--text-secondary)]" style={{ width: 'min(500px, 90vw)', height: 'min(500px, 90vw)' }}>
                     <svg
-                      className="w-12 h-12 mx-auto mb-4 text-gray-300"
+                      className="w-12 h-12 mx-auto mb-4 text-[var(--text-secondary)]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -289,10 +289,10 @@ export default function ResultsView({
 
             {/* Right: Full-height Comments Panel - Only show if not hidden */}
             {!hideCommentsPanel && (
-              <div className="w-[400px] flex-shrink-0 bg-[#111827] border-l border-white/10 flex flex-col h-full">
+              <div className="w-[400px] flex-shrink-0 bg-[var(--bg-secondary)] border-l border-[var(--border-default)] flex flex-col h-full">
                 {/* Comments Title - Inside panel at top */}
-                <div className="flex-shrink-0 px-6 py-4 border-b border-white/10">
-                  <h3 className="text-xl font-semibold text-white text-center">
+                <div className="flex-shrink-0 px-6 py-4 border-b border-[var(--border-default)]">
+                  <h3 className="text-xl font-semibold text-[var(--text-primary)] text-center">
                     {activity.commentQuestion}
                   </h3>
                 </div>

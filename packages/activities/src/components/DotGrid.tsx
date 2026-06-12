@@ -190,13 +190,13 @@ export default function DotGrid({ activity, currentUserId, onDotClick, hoveredCo
   };
 
   return (
-    <div className="relative w-full h-full bg-[#111827]">
+    <div className="relative w-full h-full bg-[var(--bg-secondary)]">
       {/* Axis channel background with border lines and arrows */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
         {/* Vertical channel */}
-        <rect x="47" y="0" width="6" height="100" fill="rgba(255,255,255,0.04)" />
+        <rect x="47" y="0" width="6" height="100" fill="rgba(15,13,11,0.05)" />
         {/* Horizontal channel */}
-        <rect x="0" y="47" width="100" height="6" fill="rgba(255,255,255,0.04)" />
+        <rect x="0" y="47" width="100" height="6" fill="rgba(15,13,11,0.05)" />
 
         {/* Border lines on edges of channels */}
         {/* Vertical channel borders */}
@@ -219,7 +219,7 @@ export default function DotGrid({ activity, currentUserId, onDotClick, hoveredCo
       </svg>
 
       {/* Axis labels */}
-      <div className="absolute inset-0 pointer-events-none text-white text-sm font-medium">
+      <div className="absolute inset-0 pointer-events-none text-[var(--text-primary)] text-sm font-medium">
         {/* Y-axis labels (vertical - rotated) */}
         <div className="absolute left-1/2 -translate-x-1/2" style={{ top: '15%' }}>
           <div className="transform -rotate-90 whitespace-nowrap">{activity.yAxis.max}</div>
@@ -237,7 +237,7 @@ export default function DotGrid({ activity, currentUserId, onDotClick, hoveredCo
       </div>
 
       {/* Center circle - sized to fit inside channel */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white/80 bg-transparent" />
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-[var(--border-strong)] bg-transparent" />
 
       {/* Render all grid positions */}
       {gridPositions.map((pos, index) => {
@@ -265,7 +265,7 @@ export default function DotGrid({ activity, currentUserId, onDotClick, hoveredCo
               onMouseLeave={() => setHoveredDot(null)}
             >
               <div
-                className="w-6 h-6 rounded-full transition-all duration-200 border border-white/30"
+                className="w-6 h-6 rounded-full transition-all duration-200 border border-[var(--border-strong)]"
                 style={{
                   backgroundColor: getDotColor(pos.quadrant, voteCount),
                   outline: isHighlighted ? '2px solid white' : 'none',
@@ -286,7 +286,7 @@ export default function DotGrid({ activity, currentUserId, onDotClick, hoveredCo
                 transform: 'translate(-50%, -50%)',
               }}
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
+              <div className="w-1.5 h-1.5 rounded-full bg-[rgba(15,13,11,0.2)]" />
             </div>
           );
         }

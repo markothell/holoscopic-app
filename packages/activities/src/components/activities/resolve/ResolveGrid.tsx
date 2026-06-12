@@ -56,7 +56,7 @@ function QuadrantCell({
         flex: 1,
         borderRadius: 12,
         border: isActive ? `1.5px solid ${color}` : '1.5px solid var(--border-default)',
-        background: isActive ? `${color}12` : '#0d1220',
+        background: isActive ? `${color}12` : 'var(--bg-primary)',
         cursor: 'pointer',
         padding: 8,
         minHeight: 80,
@@ -161,7 +161,7 @@ export default function ResolveGrid({ activity, ratings, onCellClick, activeCell
       </div>
       {/* Center circle */}
       <div style={{ gridColumn: 2, gridRow: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
-        <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid rgba(15,13,11,0.3)', background: '#0a0f1a' }} />
+        <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid rgba(15,13,11,0.3)', background: 'var(--bg-primary)' }} />
       </div>
       <div style={{ gridColumn: 3, gridRow: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
         {xRightLabel && <span style={labelStyle}>{xRightLabel}</span>}

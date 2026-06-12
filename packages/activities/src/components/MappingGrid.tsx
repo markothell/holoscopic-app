@@ -119,11 +119,11 @@ export default function MappingGrid({
       */}
       <div className="flex flex-col items-center justify-center mx-auto px-4">
         {/* Top label */}
-        <div className="text-white text-sm font-semibold text-center p-2" style={{ width: 'min(500px, calc(90vw - 56px))' }}>{activity.yAxis.max}</div>
+        <div className="text-[var(--text-primary)] text-sm font-semibold text-center p-2" style={{ width: 'min(500px, calc(90vw - 56px))' }}>{activity.yAxis.max}</div>
         
         <div className="flex items-center justify-center gap-2">
           {/* Left label */}
-          <div className="text-white text-sm font-semibold text-center p-2 w-5 flex items-center justify-center flex-shrink-0" 
+          <div className="text-[var(--text-primary)] text-sm font-semibold text-center p-2 w-5 flex items-center justify-center flex-shrink-0" 
                style={{ writingMode: 'vertical-lr', textOrientation: 'mixed', transform: 'rotate(180deg)' }}>
             {activity.xAxis.min}
           </div>
@@ -131,7 +131,7 @@ export default function MappingGrid({
           {/* Grid Container */}
           <div
             ref={gridRef}
-            className="relative bg-[#111827] border-2 border-white/20 rounded-lg cursor-crosshair select-none aspect-square"
+            className="relative bg-[var(--bg-secondary)] border-2 border-[var(--border-default)] rounded-lg cursor-crosshair select-none aspect-square"
             onClick={handleGridClick}
             style={{ width: 'min(500px, calc(90vw - 56px))', height: 'min(500px, calc(90vw - 56px))' }}
           >
@@ -141,7 +141,7 @@ export default function MappingGrid({
             {[...Array(5)].map((_, i) => (
               <div
                 key={`v-${i}`}
-                className="absolute top-0 bottom-0 w-px bg-white/40"
+                className="absolute top-0 bottom-0 w-px bg-[rgba(15,13,11,0.3)]"
                 style={{ left: `${(i + 1) * 16.666}%` }}
               />
             ))}
@@ -149,7 +149,7 @@ export default function MappingGrid({
             {[...Array(5)].map((_, i) => (
               <div
                 key={`h-${i}`}
-                className="absolute left-0 right-0 h-px bg-white/40"
+                className="absolute left-0 right-0 h-px bg-[rgba(15,13,11,0.3)]"
                 style={{ top: `${(i + 1) * 16.666}%` }}
               />
             ))}
@@ -159,12 +159,12 @@ export default function MappingGrid({
           <div className="absolute inset-0">
             {/* Vertical center line */}
             <div
-              className="absolute top-0 bottom-0 w-0.5 bg-white/50"
+              className="absolute top-0 bottom-0 w-0.5 bg-[rgba(15,13,11,0.35)]"
               style={{ left: '50%', transform: 'translateX(-50%)' }}
             />
             {/* Horizontal center line */}
             <div
-              className="absolute left-0 right-0 h-0.5 bg-white/50"
+              className="absolute left-0 right-0 h-0.5 bg-[rgba(15,13,11,0.35)]"
               style={{ top: '50%', transform: 'translateY(-50%)' }}
             />
           </div>
@@ -174,7 +174,7 @@ export default function MappingGrid({
             <>
               {/* X-axis label (horizontal, positioned to the right of the horizontal axis line) */}
               <div className="absolute transform -translate-y-1/2" style={{ top: '50%', left: '55%' }}>
-                <span className="text-gray-200 text-sm font-semibold bg-[#0a0f1a] px-2 py-1 rounded shadow-sm">
+                <span className="text-[var(--text-secondary)] text-sm font-semibold bg-[var(--bg-primary)] px-2 py-1 rounded shadow-sm">
                   {activity.xAxis.label}
                 </span>
               </div>
@@ -184,7 +184,7 @@ export default function MappingGrid({
                 className="absolute transform -translate-x-1/2 -translate-y-1/2 -rotate-90"
                 style={{ left: '50%', top: '25%', transformOrigin: 'center' }}
               >
-                <span className="text-gray-200 text-sm font-semibold bg-[#0a0f1a] px-2 py-1 rounded whitespace-nowrap shadow-sm">
+                <span className="text-[var(--text-secondary)] text-sm font-semibold bg-[var(--bg-primary)] px-2 py-1 rounded whitespace-nowrap shadow-sm">
                   {activity.yAxis.label}
                 </span>
               </div>
@@ -233,14 +233,14 @@ export default function MappingGrid({
           </div>
           
           {/* Right label */}
-          <div className="text-white text-sm font-semibold text-center p-2 w-5 flex items-center justify-center flex-shrink-0"
+          <div className="text-[var(--text-primary)] text-sm font-semibold text-center p-2 w-5 flex items-center justify-center flex-shrink-0"
                style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>
             {activity.xAxis.max}
           </div>
         </div>
         
         {/* Bottom label */}
-        <div className="text-white text-sm font-semibold text-center p-2" style={{ width: 'min(500px, calc(90vw - 56px))' }}>{activity.yAxis.min}</div>
+        <div className="text-[var(--text-primary)] text-sm font-semibold text-center p-2" style={{ width: 'min(500px, calc(90vw - 56px))' }}>{activity.yAxis.min}</div>
       </div>
 
     </div>

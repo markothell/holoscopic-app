@@ -62,7 +62,7 @@ export default function PauseOverlay({
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={onResume}
-            className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+            className="flex-1 bg-blue-600 text-[var(--text-primary)] py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
           >
             Continue Now
           </button>

@@ -67,22 +67,24 @@ function BellIcon({ unreadCount, notifications, onMarkRead, onMarkAllRead }: {
             )}
           </div>
 
-          {notifications.length === 0 ? (
-            <p style={{ padding: '1.25rem 1rem', fontSize: '0.75rem', color: '#6B6560', margin: 0, textAlign: 'center' }}>No notifications yet</p>
+          {/* Inbox model: only unread shows; reading (click) or Mark-all-read
+              clears the list. History stays in the DB. */}
+          {notifications.filter(n => !n.read).length === 0 ? (
+            <p style={{ padding: '1.25rem 1rem', fontSize: '0.75rem', color: '#6B6560', margin: 0, textAlign: 'center' }}>You&apos;re all caught up</p>
           ) : (
             <div style={{ maxHeight: '20rem', overflowY: 'auto' }}>
-              {notifications.map(n => (
+              {notifications.filter(n => !n.read).map(n => (
                 <button
                   key={n.id}
                   onClick={() => {
-                    if (!n.read) onMarkRead(n.id);
+                    onMarkRead(n.id);
                     setOpen(false);
                     router.push(notificationHref(n));
                   }}
-                  style={{ width: '100%', textAlign: 'left', padding: '0.75rem 1rem', background: n.read ? 'none' : 'rgba(200,59,80,0.04)', border: 'none', borderBottom: '1px solid #D9D4CC', cursor: 'pointer', display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}
+                  style={{ width: '100%', textAlign: 'left', padding: '0.75rem 1rem', background: 'rgba(200,59,80,0.04)', border: 'none', borderBottom: '1px solid #D9D4CC', cursor: 'pointer', display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}
                 >
-                  {!n.read && <span style={{ marginTop: 6, width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
-                  <span style={{ fontSize: '0.78rem', color: '#0F0D0B', lineHeight: 1.45, paddingLeft: n.read ? '0.9rem' : 0 }}>{n.message}</span>
+                  <span style={{ marginTop: 6, width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
+                  <span style={{ fontSize: '0.78rem', color: '#0F0D0B', lineHeight: 1.45 }}>{n.message}</span>
                 </button>
               ))}
             </div>
