@@ -25,7 +25,13 @@ router.get('/', async (req, res) => {
       .limit(Number(limit))
       .lean();
     const total = await FrameOfReference.countDocuments(query);
-    res.json({ frames, total });
+    // Usage counts (maps built on each frame) — lets the UI show graph scale
+    const counts = await Activity.aggregate([
+      { $match: { frameId: { $in: frames.map(f => f.id) }, isDraft: { $ne: true } } },
+      { $group: { _id: '$frameId', n: { $sum: 1 } } },
+    ]);
+    const countMap = Object.fromEntries(counts.map(c => [c._id, c.n]));
+    res.json({ frames: frames.map(f => ({ ...f, usageCount: countMap[f.id] ?? 0 })), total });
   } catch (err) {
     console.error('[frame-refs] list error:', err.message);
     res.status(500).json({ error: 'Failed to fetch frames' });

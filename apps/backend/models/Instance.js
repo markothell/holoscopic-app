@@ -16,6 +16,10 @@ const instanceConfigSchema = new mongoose.Schema({
     // Activity stake model
     activityStakeAmount:     { type: Number, default: 5 },
     frameUseReward:          { type: Number, default: 5 },
+    // UBI-style recurring faucet: minted once per UTC day on the player's
+    // first touch (daily-login style). 0 = off. An inflationary dial that
+    // rewards showing up rather than box-filling.
+    dailyBonus:              { type: Number, default: 0 },
     entrySeedReward:         { type: Number, default: 8 },
     patternActivityReward:   { type: Number, default: 3 },
   },
@@ -26,6 +30,10 @@ const instanceConfigSchema = new mongoose.Schema({
     frameVoteThreshold:           { type: Number, default: 3 },
     algorithmSessionQuorum:       { type: Number, default: 3 },
     algorithmProposalWindowHours: { type: Number, default: 48 },
+    // Map lifetime: settles at the earliest of (a) complete — full + everyone
+    // entered & voted, (b) this window from creation, (c) edition end.
+    // Festival editions: 24. Ongoing async: 168.
+    activityWindowHours:          { type: Number, default: 168 },
   },
 }, { _id: false });
 

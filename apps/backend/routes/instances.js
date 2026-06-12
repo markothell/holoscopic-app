@@ -71,7 +71,7 @@ router.get('/:id', async (req, res) => {
 // PUT /api/instances/:id — update instance (config, domains, access, etc.)
 router.put('/:id', async (req, res) => {
   try {
-    const { name, domains, access, startDate, endDate, active, config, gameVersion } = req.body;
+    const { name, domains, access, startDate, endDate, active, config, gameVersion, gameNumber } = req.body;
     const instance = await Instance.findOne({ id: req.params.id });
     if (!instance) return res.status(404).json({ error: 'Instance not found' });
 
@@ -82,6 +82,7 @@ router.put('/:id', async (req, res) => {
     if (endDate     !== undefined) instance.endDate     = endDate;
     if (active      !== undefined) instance.active      = active;
     if (gameVersion !== undefined) instance.gameVersion = gameVersion;
+    if (gameNumber  !== undefined) instance.gameNumber  = (gameNumber === null || gameNumber === '') ? null : Number(gameNumber);
     if (config      !== undefined) {
       instance.config = { ...instance.config.toObject(), ...config };
     }

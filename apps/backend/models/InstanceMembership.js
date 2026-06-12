@@ -7,6 +7,8 @@ const membershipSchema = new mongoose.Schema({
   role:         { type: String, enum: ['member', 'admin'], default: 'member' },
   holonBalance: { type: Number, default: 0 },
   joinedAt:     { type: Date, default: Date.now },
+  // Daily/UBI faucet bookkeeping — last day the recurring bonus was claimed
+  lastDailyBonusAt: { type: Date, default: null },
 }, { id: false });
 
 membershipSchema.index({ userId: 1, instanceId: 1 }, { unique: true });

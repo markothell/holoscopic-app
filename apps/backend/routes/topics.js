@@ -1,8 +1,35 @@
 const express = require('express');
 const router = express.Router();
 const Topic = require('../models/Topic');
+const Activity = require('../models/Activity');
 const { transact, spend } = require('../utils/holons');
 const { notify } = require('../utils/notify');
+
+// Per-topic activity rollup: breadth (maps) and depth (entries + comments).
+// Score = 5×maps + 2×participants + 1×(ratings + comments).
+async function activityRollup(topicIds) {
+  if (topicIds.length === 0) return {};
+  const rows = await Activity.aggregate([
+    { $match: { topicId: { $in: topicIds }, isDraft: { $ne: true } } },
+    { $project: {
+      topicId: 1,
+      participants: { $size: { $ifNull: ['$participants', []] } },
+      ratings: { $size: { $ifNull: ['$ratings', []] } },
+      comments: { $size: { $ifNull: ['$comments', []] } },
+    } },
+    { $group: {
+      _id: '$topicId',
+      maps: { $sum: 1 },
+      participants: { $sum: '$participants' },
+      ratings: { $sum: '$ratings' },
+      comments: { $sum: '$comments' },
+    } },
+  ]);
+  return Object.fromEntries(rows.map(r => [r._id, {
+    activityCount: r.maps,
+    activityScore: r.maps * 5 + r.participants * 2 + r.ratings + r.comments,
+  }]));
+}
 
 function generateId() {
   return Math.random().toString(36).substring(2, 10);
@@ -43,12 +70,15 @@ router.get('/', async (req, res) => {
     const config = req.instance.config;
     await sweepExpired(instanceId, config);
     await sweepQuorum(instanceId, config);
-    const status = req.query.status || 'nominated';
-    const docs = await Topic.find({ instanceId, status }).sort({ expiresAt: 1 });
+    const statuses = String(req.query.status || 'nominated').split(',').map(s => s.trim()).filter(Boolean);
+    const docs = await Topic.find({ instanceId, status: { $in: statuses } }).sort({ expiresAt: 1 });
+    const rollup = await activityRollup(docs.map(t => t.id));
     const topics = docs.map(t => ({
       ...t.toJSON(),
       supporterCount: t.supporters.length,
       quorumThreshold: config.quorum.topicSupportThreshold,
+      activityCount: rollup[t.id]?.activityCount ?? 0,
+      activityScore: rollup[t.id]?.activityScore ?? 0,
     }));
     res.json({ topics });
   } catch (err) {
@@ -90,6 +120,22 @@ router.post('/nominate', async (req, res) => {
     const config = req.instance.config;
     const { nominationCost } = config.holons;
     const { topicSupportThreshold, topicWindowHours } = config.quorum;
+
+    // Exact duplicates are blocked while a topic is alive — overlapping
+    // questions belong inside the topic as activities, not as parallel topics.
+    // (Expired topics may be renominated.)
+    const normalized = String(title).trim();
+    const duplicate = await Topic.findOne({
+      instanceId,
+      status: { $in: ['nominated', 'confirmed'] },
+      title: { $regex: `^${normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
+    });
+    if (duplicate) {
+      return res.status(409).json({
+        error: `"${duplicate.title}" is already ${duplicate.status === 'confirmed' ? 'open' : 'seeking support'} — support it or add an activity instead`,
+        duplicateTopicId: duplicate.id,
+      });
+    }
 
     await spend({ userId, instanceId, type: 'nomination_cost', amount: nominationCost, refType: 'topic' });
 

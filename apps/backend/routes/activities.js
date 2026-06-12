@@ -4,13 +4,20 @@ const Activity = require('../models/Activity');
 const Sequence = require('../models/Sequence');
 const FrameOfReference = require('../models/FrameOfReference');
 const { transact, spend } = require('../utils/holons');
+const { notify } = require('../utils/notify');
 
 // Settle the stake pool when an activity closes:
 // Each staker's holons are distributed to comment authors proportional to their votes.
 // Unattributed stake (no votes cast, or leftover fraction) returns to the staker.
+// Returns a per-user summary { userId: { received, returned } } for visible payouts.
 async function settleActivityStakes(activity, instanceId) {
+  const summary = {};
+  const add = (userId, key, amount) => {
+    if (!summary[userId]) summary[userId] = { received: 0, returned: 0 };
+    summary[userId][key] += amount;
+  };
   const unsettledStakes = (activity.stakes || []).filter(s => !s.settled);
-  if (!unsettledStakes.length) return;
+  if (!unsettledStakes.length) return summary;
 
   // Build a map of userId → commentAuthorId for comments they voted on
   const commentById = {};
@@ -31,6 +38,7 @@ async function settleActivityStakes(activity, instanceId) {
     if (totalVotes === 0) {
       // No votes cast — full stake returned
       await transact({ userId: stake.userId, instanceId: stake.instanceId || instanceId, type: 'activity_stake_return', amount: stake.amount, refType: 'activity', refId: activity.id });
+      add(stake.userId, 'returned', stake.amount);
     } else {
       // Attribute stake equally across voted authors
       const perVote = stake.amount / totalVotes;
@@ -46,6 +54,7 @@ async function settleActivityStakes(activity, instanceId) {
         if (rounded > 0) {
           await transact({ userId: authorId, instanceId: stake.instanceId || instanceId, type: 'comment_attribution', amount: rounded, refType: 'activity', refId: activity.id });
           distributed += rounded;
+          add(authorId, 'received', rounded);
         }
       }
 
@@ -53,11 +62,72 @@ async function settleActivityStakes(activity, instanceId) {
       const remainder = stake.amount - distributed;
       if (remainder > 0) {
         await transact({ userId: stake.userId, instanceId: stake.instanceId || instanceId, type: 'activity_stake_return', amount: remainder, refType: 'activity', refId: activity.id });
+        add(stake.userId, 'returned', remainder);
       }
     }
 
     stake.settled = true;
   }
+  return summary;
+}
+
+// ─── Close rule ───────────────────────────────────────────────────────────────
+// A map settles at the earliest of:
+//  (a) complete — all slots filled AND every participant entered and voted
+//  (b) activityWindowHours after creation (sweep-on-read, like topic quorum)
+// Solo trackers (maxEntries 0) and the instance's topics activity never auto-close.
+
+function isComplete(activity) {
+  if (!activity.maxEntries || activity.maxEntries === 0) return false;
+  const participants = activity.participants || [];
+  if (participants.length < activity.maxEntries) return false;
+  for (const p of participants) {
+    const entered = (activity.ratings || []).some(r => r.userId === p.id);
+    const voted = (activity.comments || []).some(c => (c.votes || []).some(v => v.userId === p.id));
+    if (!entered || !voted) return false;
+  }
+  return true;
+}
+
+async function closeAndSettle(activity, instanceId, reason) {
+  activity.status = 'completed';
+  const summary = await settleActivityStakes(activity, instanceId);
+  await activity.save();
+  // The payout is the payoff — tell every affected player what happened
+  for (const [userId, s] of Object.entries(summary)) {
+    const parts = [];
+    if (s.received > 0) parts.push(`received ◈${s.received} from votes on your comments`);
+    if (s.returned > 0) parts.push(`◈${s.returned} of your stake returned`);
+    if (!parts.length) continue;
+    try {
+      await notify({ userId, type: 'activity_closed', message: `"${activity.title}" closed (${reason}) — ${parts.join(', ')}.`, refType: 'activity', refId: activity.id });
+    } catch (e) { console.error('[activities] close notify error:', e.message); }
+  }
+  console.log(`[activities] closed "${activity.title}" (${reason}), settled ${Object.keys(summary).length} players`);
+}
+
+async function sweepExpiredActivities(req) {
+  const hours = req.instance?.config?.quorum?.activityWindowHours ?? 168;
+  const topicsActivityId = req.instance?.config?.topicsActivityId || null;
+  const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+  const expired = await Activity.find({
+    status: 'active',
+    isDraft: { $ne: true },
+    maxEntries: { $gt: 0 },
+    createdAt: { $lte: cutoff },
+    ...(topicsActivityId ? { id: { $ne: topicsActivityId } } : {}),
+  });
+  if (!expired.length) return 0;
+  // Maps inside an active pattern session follow the session's pace,
+  // not the standalone window — never force-settle them mid-session.
+  const activeSeqs = await Sequence.find({ status: 'active' }).select('activities').lean();
+  const inSession = new Set(activeSeqs.flatMap(s => (s.activities || []).map(a => a.activityId)));
+  for (const activity of expired) {
+    if (inSession.has(activity.id)) continue;
+    try { await closeAndSettle(activity, req.instanceId, 'time window ended'); }
+    catch (e) { console.error('[activities] sweep close error:', e.message); }
+  }
+  return expired.length;
 }
 
 module.exports = function(io) {
@@ -113,6 +183,10 @@ router.get('/admin', async (req, res) => {
 // Get all activities (public endpoint - excludes drafts)
 router.get('/', async (req, res) => {
   try {
+    // Settle any maps whose time window has ended (sweep-on-read, like quorum)
+    await sweepExpiredActivities(req);
+
+    const windowHours = req.instance?.config?.quorum?.activityWindowHours ?? 168;
     const baseFilter = { $or: [{ isDraft: { $ne: true } }, { isDraft: { $exists: false } }] };
     if (req.query.topicId) baseFilter.topicId = req.query.topicId;
     if (req.query.frameId) baseFilter.frameId = req.query.frameId;
@@ -120,7 +194,7 @@ router.get('/', async (req, res) => {
     const activities = await Activity.find(baseFilter)
       .sort({ createdAt: -1 })
       .select('-__v');
-    
+
     // Use the custom id field, not MongoDB's _id
     const transformedActivities = activities.map(activity => {
       const activityObj = activity.toObject();
@@ -129,7 +203,11 @@ router.get('/', async (req, res) => {
         // Keep the custom id field if it exists, otherwise fallback to _id
         id: activityObj.id || activity._id.toString(),
         // Ensure isDraft field exists with default false for existing activities
-        isDraft: activityObj.isDraft !== undefined ? activityObj.isDraft : false
+        isDraft: activityObj.isDraft !== undefined ? activityObj.isDraft : false,
+        // When this map settles (window from creation) — null for solo trackers
+        closesAt: activityObj.status === 'active' && activityObj.maxEntries > 0 && activityObj.createdAt
+          ? new Date(new Date(activityObj.createdAt).getTime() + windowHours * 60 * 60 * 1000)
+          : null
       };
     });
 
@@ -161,11 +239,25 @@ router.get('/by-url/:urlName', async (req, res) => {
       });
     }
 
+    // Settle on read if this map's window has ended
+    const windowHours = req.instance?.config?.quorum?.activityWindowHours ?? 168;
+    const topicsActivityId = req.instance?.config?.topicsActivityId || null;
+    if (
+      activity.status === 'active' && !activity.isDraft && activity.maxEntries > 0 &&
+      activity.id !== topicsActivityId && activity.createdAt &&
+      Date.now() - new Date(activity.createdAt).getTime() > windowHours * 60 * 60 * 1000
+    ) {
+      await closeAndSettle(activity, req.instanceId, 'time window ended');
+    }
+
     // Use the custom id field, not MongoDB's _id
     const activityObj = activity.toObject();
     const transformedActivity = {
       ...activityObj,
-      id: activityObj.id || activity._id.toString() // Fallback to _id if custom id doesn't exist
+      id: activityObj.id || activity._id.toString(), // Fallback to _id if custom id doesn't exist
+      closesAt: activityObj.status === 'active' && activityObj.maxEntries > 0 && activityObj.createdAt
+        ? new Date(new Date(activityObj.createdAt).getTime() + windowHours * 60 * 60 * 1000)
+        : null
     };
 
     console.log('=== FETCHING ACTIVITY BY URL ===');
@@ -287,6 +379,8 @@ router.post('/', async (req, res) => {
       author,
       frameId,
       topicId,
+      isPublic,
+      isDraft,
       // Snapshot-specific
       snapshotQuestions,
       xAxisPoints,
@@ -364,6 +458,10 @@ router.post('/', async (req, res) => {
       } : undefined,
       frameId: frameId || null,
       topicId: topicId || null,
+      // Game-created maps go live immediately (isDraft: false from the client);
+      // admin-created activities keep the draft-then-publish default.
+      isDraft: isDraft !== undefined ? !!isDraft : true,
+      isPublic: isPublic !== undefined ? !!isPublic : false,
       status: 'active',
       participants: [],
       ratings: [],
@@ -985,7 +1083,15 @@ router.post('/:id/comment/:commentId/vote', async (req, res) => {
         comment: updatedComment
       });
     }
-    
+
+    // Complete rule: full table + everyone entered and voted → settle now
+    if (isComplete(activity)) {
+      await closeAndSettle(activity, req.instanceId, 'everyone has played');
+      if (io) {
+        io.to(req.params.id).emit('activity_updated', { activity });
+      }
+    }
+
     res.json({
       success: true,
       data: updatedComment

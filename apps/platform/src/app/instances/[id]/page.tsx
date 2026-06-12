@@ -33,6 +33,7 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
   const [domains, setDomains] = useState('');
   const [gameType, setGameType] = useState('');
   const [gameVersion, setGameVersion] = useState('');
+  const [gameNumber, setGameNumber] = useState('');
   const [active, setActive] = useState(true);
   const [accessMode, setAccessMode] = useState<'public' | 'invite'>('public');
   const [inviteCodes, setInviteCodes] = useState('');
@@ -63,6 +64,7 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
         setDomains(inst.domains.join('\n'));
         setGameType(inst.gameType);
         setGameVersion(inst.gameVersion || '1.0');
+        setGameNumber(inst.gameNumber != null ? String(inst.gameNumber) : '');
         setActive(inst.active);
         setAccessMode(inst.access.mode as 'public' | 'invite');
         setInviteCodes((inst.access.inviteCodes || []).join('\n'));
@@ -84,6 +86,7 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
       const body: Record<string, unknown> = {
         name, domains: domains.split('\n').map(d => d.trim()).filter(Boolean),
         gameType, gameVersion, active,
+        gameNumber: gameNumber.trim() === '' ? null : Number(gameNumber),
         access: { mode: accessMode, inviteCodes: inviteCodes.split('\n').map(c => c.trim()).filter(Boolean) },
         startDate: startDate || null,
         endDate: endDate || null,
@@ -149,9 +152,14 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
             <FieldGroup label="Game type">
               <input type="text" value={gameType} onChange={e => setGameType(e.target.value)} style={inputStyle} />
             </FieldGroup>
-            <FieldGroup label="Game version" hint={`Game #${instance?.gameNumber ?? '—'} — version shown to players in interView`}>
-              <input type="text" value={gameVersion} onChange={e => setGameVersion(e.target.value)} style={inputStyle} placeholder="1.0" />
-            </FieldGroup>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <FieldGroup label="Game number" hint="Edition number — drives /interview/g<N> URLs and the Edition badge">
+                <input type="number" min={1} value={gameNumber} onChange={e => setGameNumber(e.target.value)} style={inputStyle} placeholder="1" />
+              </FieldGroup>
+              <FieldGroup label="Game version" hint="Version shown to players in interView">
+                <input type="text" value={gameVersion} onChange={e => setGameVersion(e.target.value)} style={inputStyle} placeholder="1.0" />
+              </FieldGroup>
+            </div>
             <FieldGroup label="Domains" hint="One per line">
               <textarea rows={3} value={domains} onChange={e => setDomains(e.target.value)}
                 style={{ ...inputStyle, resize: 'vertical' }} />

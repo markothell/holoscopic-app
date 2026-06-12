@@ -45,7 +45,7 @@ async function cloneSequence(fromSequenceId, title, createdBy) {
   });
 }
 
-async function activateProposal(proposal, algorithm, instanceId) {
+async function activateProposal(proposal, algorithm, instanceId, config) {
   if (proposal.status !== 'open') return null;
   if (proposal.signups.length < proposal.quorumThreshold) return null;
 
@@ -84,6 +84,20 @@ async function activateProposal(proposal, algorithm, instanceId) {
   proposal.sequenceId = sequence.id;
   await proposal.save();
 
+  // Quorum met — settle the proposal economy:
+  // deposits return to everyone, host and participants earn their rewards.
+  const instConfig = config?.holons || {};
+  const depositAmount = instConfig.supportCost ?? 5;
+  for (const uid of userIds) {
+    try {
+      await transact({ userId: uid, instanceId, type: 'algorithm_proposal_return', amount: depositAmount, refType: 'algorithm', refId: proposal.algorithmId });
+      await transact({ userId: uid, instanceId, type: 'session_participant_reward', amount: instConfig.sessionParticipantReward ?? 15, refType: 'sequence', refId: sequence.id });
+    } catch (e) { console.error('[activateProposal] settle error:', e.message); }
+  }
+  try {
+    await transact({ userId: proposal.proposedBy, instanceId, type: 'session_host_reward', amount: instConfig.sessionHostReward ?? 30, refType: 'sequence', refId: sequence.id });
+  } catch (e) { console.error('[activateProposal] host reward error:', e.message); }
+
   for (const uid of userIds) {
     await notify({
       userId: uid,
@@ -97,6 +111,22 @@ async function activateProposal(proposal, algorithm, instanceId) {
   return sequence;
 }
 
+// Expired proposals refund everyone — same liability rule as topic expiry.
+async function sweepExpiredProposals(instanceId, config) {
+  const depositAmount = config?.holons?.supportCost ?? 5;
+  const expired = await AlgorithmProposal.find({ instanceId, status: 'open', expiresAt: { $lte: new Date() } });
+  for (const proposal of expired) {
+    proposal.status = 'cancelled';
+    await proposal.save();
+    for (const s of proposal.signups) {
+      try {
+        await transact({ userId: s.userId, instanceId, type: 'algorithm_proposal_return', amount: depositAmount, refType: 'algorithm', refId: proposal.algorithmId });
+      } catch (e) { console.error('[algorithms] proposal refund error:', e.message); }
+    }
+  }
+  return expired.length;
+}
+
 // GET /api/algorithms
 router.get('/', async (req, res) => {
   try {
@@ -108,7 +138,18 @@ router.get('/', async (req, res) => {
     const authors = await User.find({ id: { $in: authorIds } }).select('id name').lean();
     const authorMap = Object.fromEntries(authors.map(u => [u.id, u.name]));
 
-    res.json({ algorithms: algorithms.map(a => ({ ...a, authorName: authorMap[a.authorId] || 'Unknown' })) });
+    // Step counts from linked sequences — lets the UI show graph scale
+    const seqIds = algorithms.map(a => a.sequenceId).filter(Boolean);
+    const seqs = seqIds.length
+      ? await Sequence.find({ id: { $in: seqIds } }).select('id activities').lean()
+      : [];
+    const stepMap = Object.fromEntries(seqs.map(s => [s.id, (s.activities || []).length]));
+
+    res.json({ algorithms: algorithms.map(a => ({
+      ...a,
+      authorName: authorMap[a.authorId] || 'Unknown',
+      activityCount: a.sequenceId ? (stepMap[a.sequenceId] ?? 0) : 0,
+    })) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -159,6 +200,9 @@ router.get('/my-sessions', async (req, res) => {
 // GET /api/algorithms/proposals
 router.get('/proposals', async (req, res) => {
   try {
+    // Refund deposits on any proposals whose window ended (sweep-on-read)
+    await sweepExpiredProposals(req.instanceId, req.instance.config);
+
     const proposals = await AlgorithmProposal.find({
       instanceId: req.instanceId,
       status: 'open',
@@ -251,7 +295,7 @@ router.post('/:id/proposals', async (req, res) => {
       expiresAt,
     });
 
-    const sequence = await activateProposal(proposal, algorithm, instanceId);
+    const sequence = await activateProposal(proposal, algorithm, instanceId, config);
     const proposer = await User.findOne({ id: userId }).select('name').lean();
 
     res.status(201).json({
@@ -286,7 +330,7 @@ router.post('/:id/proposals/:proposalId/join', async (req, res) => {
     proposal.signups.push({ userId, joinedAt: new Date() });
     await proposal.save();
 
-    const sequence = await activateProposal(proposal, algorithm, instanceId);
+    const sequence = await activateProposal(proposal, algorithm, instanceId, config);
     res.json({ proposal: proposal.toObject(), sessionStarted: !!sequence, sequenceUrlName: sequence?.urlName || null });
   } catch (err) {
     res.status(err.message === 'Insufficient Holons' ? 402 : 500).json({ error: err.message });
@@ -307,6 +351,8 @@ router.post('/:id/proposals/:proposalId/withdraw', async (req, res) => {
 
     proposal.signups = proposal.signups.filter(s => s.userId !== userId);
     await proposal.save();
+    // Wager returned in full — same promise as topic support withdrawal
+    await transact({ userId, instanceId: req.instanceId, type: 'algorithm_proposal_return', amount: req.instance.config?.holons?.supportCost ?? 5, refType: 'algorithm', refId: proposal.algorithmId });
     res.json({ proposal: proposal.toObject() });
   } catch (err) {
     res.status(500).json({ error: err.message });

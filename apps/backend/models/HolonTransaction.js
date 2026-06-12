@@ -9,6 +9,7 @@ const holonTransactionSchema = new mongoose.Schema({
     required: true,
     enum: [
       'join_bonus',
+      'daily_bonus',
       'nomination_cost',
       'nomination_return',
       'support_cost',
@@ -21,6 +22,7 @@ const holonTransactionSchema = new mongoose.Schema({
       'algorithm_frame_royalty',
       'algorithm_proposal',
       'algorithm_proposal_join',
+      'algorithm_proposal_return',
       // Activity stake model
       'activity_stake',
       'activity_stake_return',

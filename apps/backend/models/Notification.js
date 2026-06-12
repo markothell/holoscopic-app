@@ -5,7 +5,7 @@ const notificationSchema = new mongoose.Schema({
   userId: { type: String, required: true, index: true },
   type: {
     type: String,
-    enum: ['topic_confirmed', 'inquiry_linked', 'algorithm_session_ready', 'frame_nominated'],
+    enum: ['topic_confirmed', 'inquiry_linked', 'algorithm_session_ready', 'frame_nominated', 'activity_closed'],
     required: true,
   },
   message: { type: String, required: true },
