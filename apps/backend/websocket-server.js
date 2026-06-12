@@ -106,6 +106,10 @@ app.use('/socket.io', wsLimiter);
 const resolveInstance = require('./middleware/resolveInstance');
 app.use('/api', resolveInstance);
 
+// Verify bearer tokens (signed from the NextAuth session by the game frontend)
+const { attachVerifiedUser } = require('./middleware/verifyUser');
+app.use('/api', attachVerifiedUser);
+
 // Create server
 const server = http.createServer(app);
 
@@ -201,20 +205,24 @@ function loadAPIRoutes() {
       const frameRoutes = require('./routes/frames');
       const frameRefRoutes = require('./routes/frameRefs');
       const instanceRoutes = require('./routes/instances');
-      app.use('/api/activities', activityRoutes);
+      // Identity-bearing writes on these routers require a verified token —
+      // bare x-user-id / body.userId is never trusted for mutations.
+      // (admin/import/instances stay on requireAdmin; auth/waitlist are anonymous.)
+      const { enforceVerifiedUser } = require('./middleware/verifyUser');
+      app.use('/api/activities', enforceVerifiedUser, activityRoutes);
       app.use('/api/analytics', analyticsRoutes);
-      app.use('/api/sequences', sequenceRoutes);
+      app.use('/api/sequences', enforceVerifiedUser, sequenceRoutes);
       app.use('/api/auth', authRoutes);
-      app.use('/api/users', userRoutes);
+      app.use('/api/users', enforceVerifiedUser, userRoutes);
       app.use('/api/admin', adminRoutes);
       app.use('/api/waitlist', waitlistRoutes);
       app.use('/api/import', importRoutes);
-      app.use('/api/holons', holonRoutes);
-      app.use('/api/topics', topicRoutes);
-      app.use('/api/notifications', notificationRoutes);
-      app.use('/api/algorithms', algorithmRoutes);
-      app.use('/api/frames', frameRoutes);
-      app.use('/api/frame-refs', frameRefRoutes);
+      app.use('/api/holons', enforceVerifiedUser, holonRoutes);
+      app.use('/api/topics', enforceVerifiedUser, topicRoutes);
+      app.use('/api/notifications', enforceVerifiedUser, notificationRoutes);
+      app.use('/api/algorithms', enforceVerifiedUser, algorithmRoutes);
+      app.use('/api/frames', enforceVerifiedUser, frameRoutes);
+      app.use('/api/frame-refs', enforceVerifiedUser, frameRefRoutes);
       app.use('/api/instances', instanceRoutes);
       apiRoutesLoaded = true;
       console.log('✅ API routes loaded successfully');
