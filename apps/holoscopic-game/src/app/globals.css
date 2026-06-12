@@ -2,26 +2,40 @@
 @source "../../../../packages/activities/src";
 
 :root {
-  /* Warm-dark base colors */
-  --bg-primary: #1A1714;
-  --bg-secondary: #252120;
-  --bg-tertiary: #302B28;
-  --bg-elevated: #2A2522;
+  /* Warm-light editorial base (site-wide unified theme) */
+  --bg-primary: #F7F4EF;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #EFEAE2;
+  --bg-elevated: #FCFAF6;
 
-  /* Warm text colors */
-  --text-primary: #F5F0EB;
-  --text-secondary: #A89F96;
-  --text-muted: #7A7068;
+  /* Ink text colors */
+  --text-primary: #0F0D0B;
+  --text-secondary: #3F3A34;
+  --text-muted: #6B6560;
 
-  /* Accent colors — shared with editorial palette */
+  /* Accent colors */
   --accent: #C83B50;
   --accent-blue: #1A4FD4;
-  --accent-emerald: #34d399;
+  --accent-emerald: #0E8F66;
 
-  /* Border colors — warm tones */
-  --border-subtle: rgba(215, 205, 195, 0.06);
-  --border-default: rgba(215, 205, 195, 0.12);
-  --border-strong: rgba(215, 205, 195, 0.22);
+  /* Border colors — warm ink tones */
+  --border-subtle: rgba(15, 13, 11, 0.07);
+  --border-default: rgba(15, 13, 11, 0.13);
+  --border-strong: rgba(15, 13, 11, 0.24);
+
+  /* Node category colors (graph) — light-contrast variants */
+  --node-topic: #C83B50;
+  --node-frame: #9A7B2F;
+  --node-pattern: #3D6FA3;
+  --node-sequence: #0E8F66;
+
+  /* Type scale — every game surface draws from these */
+  --text-2xs: 0.65rem;   /* micro-labels, eyebrows, type tags (mono, tracked) */
+  --text-xs: 0.72rem;    /* secondary metadata */
+  --text-sm: 0.8rem;     /* list items, node titles */
+  --text-base: 0.9rem;   /* body, descriptions */
+  --text-lg: 1rem;       /* card titles */
+  --text-xl: 1.35rem;    /* page titles */
 
   /* Editorial warm palette (used by page modules) */
   --warm-bg: #F7F4EF;
@@ -30,8 +44,8 @@
   --warm-rule: #D9D4CC;
 
   /* Legacy compatibility */
-  --background: #1A1714;
-  --foreground: #F5F0EB;
+  --background: #F7F4EF;
+  --foreground: #0F0D0B;
 }
 
 @theme inline {
@@ -57,7 +71,7 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Form inputs - warm-dark theme */
+/* Form inputs - warm-light theme */
 input, textarea, select {
   background: var(--bg-secondary);
   border: 1px solid var(--border-default);
@@ -74,6 +88,12 @@ input::placeholder, textarea::placeholder {
   color: var(--text-muted);
 }
 
+/* Visible keyboard focus for interactive elements */
+button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
@@ -81,21 +101,21 @@ input::placeholder, textarea::placeholder {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: var(--bg-tertiary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-tertiary);
+  background: var(--warm-rule);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3D3632;
+  background: #C7C0B6;
 }
 
 /* Selection styling */
 ::selection {
-  background: rgba(200, 59, 80, 0.3);
+  background: rgba(200, 59, 80, 0.2);
   color: var(--text-primary);
 }
 
@@ -118,9 +138,9 @@ input[type="range"].slider::-webkit-slider-thumb {
   width: 20px;
   border-radius: 50%;
   background: #C83B50;
-  border: 2px solid #F5F0EB;
+  border: 2px solid #FFFFFF;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 4px rgba(15, 13, 11, 0.25);
 }
 
 input[type="range"].slider::-moz-range-thumb {
@@ -128,9 +148,9 @@ input[type="range"].slider::-moz-range-thumb {
   width: 20px;
   border-radius: 50%;
   background: #C83B50;
-  border: 2px solid #F5F0EB;
+  border: 2px solid #FFFFFF;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 4px rgba(15, 13, 11, 0.25);
 }
 
 input[type="range"].slider:focus {

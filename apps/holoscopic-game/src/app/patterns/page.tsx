@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlgorithmService, Algorithm, AlgorithmProposal } from '@/services/algorithmService';
-import UserMenu from '@/components/UserMenu';
+import GameNav from '@/components/GameNav';
 
 type EnrichedProposal = AlgorithmProposal & { algorithmTitle: string };
 
@@ -54,24 +54,7 @@ export default function PatternsPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
-      <header style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-        <div style={{ maxWidth: '100%', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <Link href="/" style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', textDecoration: 'none' }}>
-              Holo<span style={{ color: 'var(--accent)' }}>scopic</span>
-            </Link>
-            <nav style={{ display: 'flex', gap: '1rem' }}>
-              {[{ label: 'Topics', href: '/topics' }, { label: 'Patterns', href: '/patterns' }].map(item => (
-                <Link key={item.href} href={item.href}
-                  style={{ fontSize: '0.7rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.1em', color: item.href === '/patterns' ? 'var(--accent)' : 'var(--text-muted)', textDecoration: 'none', textTransform: 'uppercase' }}>
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-          <UserMenu />
-        </div>
-      </header>
+      <GameNav active="patterns" />
 
       <main style={{ maxWidth: 720, margin: '0 auto', padding: '3rem 1.5rem' }}>
 

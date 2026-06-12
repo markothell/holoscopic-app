@@ -45,7 +45,7 @@ export default function SettingsPage() {
     const loadSettings = async () => {
       try {
         setLoading(true);
-        const settings = await UserService.getUserSettings(userId);
+        const settings = await UserService.getSettings(userId);
         setName(settings.name || '');
         setEmail(settings.email || '');
         setNotifyNewActivities(settings.notifications?.newActivities ?? true);
@@ -70,7 +70,7 @@ export default function SettingsPage() {
     setSaving(true);
 
     try {
-      await UserService.updateUserSettings(userId, {
+      await UserService.updateSettings(userId, {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         notifications: {
