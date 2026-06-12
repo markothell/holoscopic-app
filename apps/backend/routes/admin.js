@@ -213,4 +213,26 @@ router.put('/config', async (req, res) => {
   }
 });
 
+// POST /api/admin/users/:userId/reset-password — facilitator manual reset.
+// Sets a temporary password (auto-generated unless provided) and returns it
+// once, in plaintext, to the admin. The User pre-save hook hashes it.
+router.post('/users/:userId/reset-password', async (req, res) => {
+  try {
+    const user = await User.findOne({ id: req.params.userId });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const tempPassword = (req.body && req.body.newPassword) ||
+      Math.random().toString(36).slice(2, 8) + Math.random().toString(36).slice(2, 6);
+    if (String(tempPassword).length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    user.password = String(tempPassword);
+    await user.save();
+    console.log(`[admin] password reset for ${user.email} by ${req.adminUser.email}`);
+    res.json({ tempPassword, email: user.email });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
 module.exports = router;

@@ -679,16 +679,33 @@ router.delete('/:id/slot', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const activity = await Activity.findOne({ id: req.params.id });
-    
+
     if (!activity) {
       return res.status(404).json({
         success: false,
         error: 'Activity not found'
       });
     }
-    
+
+    // Creator or admin only — this endpoint previously had no guard at all
+    const userId = req.headers['x-user-id'];
+    const User = require('../models/User');
+    const user = userId ? await User.findOne({ id: userId }).lean() : null;
+    const isCreator = activity.author?.userId && activity.author.userId === userId;
+    if (!isCreator && user?.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Only the creator or an admin can delete this map' });
+    }
+
+    // Return all unsettled stakes in full — moderation deletes never
+    // redistribute; escrowed holons go home.
+    for (const stake of (activity.stakes || []).filter(s => !s.settled)) {
+      try {
+        await transact({ userId: stake.userId, instanceId: stake.instanceId || req.instanceId, type: 'activity_stake_return', amount: stake.amount, refType: 'activity', refId: activity.id });
+      } catch (e) { console.error('[activities] delete refund error:', e.message); }
+    }
+
     await Activity.deleteOne({ id: req.params.id });
-    
+
     res.json({
       success: true,
       message: 'Activity deleted successfully'
@@ -1310,6 +1327,28 @@ router.get('/health', (req, res) => {
     message: 'Activity service is healthy',
     timestamp: new Date().toISOString()
   });
+});
+
+// DELETE /api/activities/:id/comment/:commentId — moderation (admin only)
+const requireAdmin = require('../middleware/requireAdmin');
+router.delete('/:id/comment/:commentId', requireAdmin, async (req, res) => {
+  try {
+    const activity = await Activity.findOne({ id: req.params.id });
+    if (!activity) return res.status(404).json({ success: false, error: 'Activity not found' });
+
+    const before = activity.comments.length;
+    activity.comments = activity.comments.filter(c => c.id !== req.params.commentId);
+    if (activity.comments.length === before) {
+      return res.status(404).json({ success: false, error: 'Comment not found' });
+    }
+    await activity.save();
+
+    if (io) io.to(req.params.id).emit('activity_updated', { activity });
+    console.log(`[activities] comment ${req.params.commentId} removed by admin ${req.adminUser.email}`);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
   return router;

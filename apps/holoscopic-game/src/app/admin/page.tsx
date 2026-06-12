@@ -163,6 +163,17 @@ export default function SuperAdminPage() {
     }
   };
 
+  const handleResetPassword = async (user: AdminUser) => {
+    if (!confirm(`Reset password for ${user.email}? A temporary password will be shown once.`)) return;
+    try {
+      const { tempPassword } = await AdminService.resetPassword(userId!, user.id);
+      // Shown once, never stored client-side — facilitator relays it in person
+      prompt(`Temporary password for ${user.email} (copy it now):`, tempPassword);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Failed to reset password');
+    }
+  };
+
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '—';
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -393,6 +404,13 @@ export default function SuperAdminPage() {
                                 style={{ opacity: isSelf ? 0.3 : 1, cursor: isSelf ? 'not-allowed' : 'pointer' }}
                               >
                                 {user.isActive ? 'Deactivate' : 'Activate'}
+                              </button>
+                              <span className={styles.actionDot}>·</span>
+                              <button
+                                className={`${styles.actionBtn} ${styles.actionEdit}`}
+                                onClick={() => handleResetPassword(user)}
+                              >
+                                Reset PW
                               </button>
                             </div>
                           </td>

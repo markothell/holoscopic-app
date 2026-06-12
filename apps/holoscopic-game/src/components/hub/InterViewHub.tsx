@@ -250,7 +250,7 @@ const SORT_OPTIONS: Record<HubView, { label: string; value: string }[]> = {
 
 // ─── Popup card ───────────────────────────────────────────────────────────────
 
-function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig, onExplore }: {
+function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig, onExplore, isAdmin }: {
   node: Node<NodeData>;
   onClose: () => void;
   userId: string | null;
@@ -258,6 +258,7 @@ function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig
   holonBalance: number | null;
   holonsConfig: { supportCost: number; activityStakeAmount: number } | null;
   onExplore?: () => void;
+  isAdmin?: boolean;
 }) {
   const d = node.data;
   const meta = d.meta || {};
@@ -376,6 +377,19 @@ function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig
         )}
         {d.nodeType === 'pattern' && meta.id && (
           <Link href={`/patterns/${meta.id as string}`} style={{ ...btn('fill'), textDecoration: 'none' }}>View {STR.pattern.toLowerCase()} →</Link>
+        )}
+        {/* Moderation: admin-only removal; escrow refunds happen server-side */}
+        {isAdmin && (d.nodeType === 'topic' || d.nodeType === 'activity') && (
+          <button
+            onClick={() => {
+              if (!window.confirm(`Remove "${d.label}"? Escrowed ${STR.holons} are refunded.`)) return;
+              const path = d.nodeType === 'topic' ? `/topics/${meta.topicId}` : `/activities/${node.id}`;
+              act(() => apiFetch(path, { method: 'DELETE', userId: userId! }), 'Removed — escrow refunded');
+            }}
+            style={{ ...btn('outline'), color: 'var(--accent)', borderColor: 'rgba(200,59,80,0.4)' }}
+          >
+            Remove
+          </button>
         )}
       </div>
     </div>
@@ -561,7 +575,7 @@ const BROWSE_MAX = 20;
 const NAV_HEIGHT = 52;
 
 function HubInner({ view }: { view: HubView }) {
-  const { userId, holonBalance, isAuthenticated, refreshBalance } = useAuth();
+  const { userId, holonBalance, isAuthenticated, refreshBalance, userRole } = useAuth();
   const { instance, config } = useInstance();
   const { fitView } = useReactFlow();
 
@@ -1073,6 +1087,7 @@ function HubInner({ view }: { view: HubView }) {
               onExplore={graphMode === 'browse' && items.some(i => i.id === popupNode.id)
                 ? () => { setSelectedId(popupNode.id); setGraphMode('drill'); setPopupNode(null); }
                 : undefined}
+              isAdmin={userRole === 'admin'}
             />
           )}
 

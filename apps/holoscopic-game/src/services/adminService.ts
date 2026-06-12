@@ -75,4 +75,8 @@ export const AdminService = {
 
   awardHolons: (userId: string, payload: { targetUserId: string; amount: number; reason?: string }) =>
     apiFetch('/admin/holons/award', { method: 'POST', userId, body: JSON.stringify(payload) }),
+
+  resetPassword: (userId: string, targetUserId: string) =>
+    apiFetch(`/admin/users/${targetUserId}/reset-password`, { method: 'POST', userId, body: JSON.stringify({}) })
+      .then(d => d as { tempPassword: string; email: string }),
 };

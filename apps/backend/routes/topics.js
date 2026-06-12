@@ -222,4 +222,29 @@ router.post('/:id/unsupport', async (req, res) => {
   }
 });
 
+// DELETE /api/topics/:id — moderation (admin only).
+// Live nominations refund everyone first, same as expiry; nothing strands.
+const requireAdmin = require('../middleware/requireAdmin');
+router.delete('/:id', requireAdmin, async (req, res) => {
+  try {
+    const { instanceId } = req;
+    const config = req.instance.config;
+    const topic = await Topic.findOne({ id: req.params.id, instanceId });
+    if (!topic) return res.status(404).json({ error: 'Topic not found' });
+
+    if (topic.status === 'nominated') {
+      await transact({ userId: topic.nominatedBy, instanceId, type: 'nomination_return', amount: config.holons.nominationCost, refType: 'topic', refId: topic.id });
+      for (const s of topic.supporters) {
+        await transact({ userId: s.userId, instanceId, type: 'support_return', amount: s.holonsWagered, refType: 'topic', refId: topic.id });
+      }
+    }
+
+    await Topic.deleteOne({ id: topic.id });
+    console.log(`[topics] "${topic.title}" removed by admin ${req.adminUser.email}`);
+    res.json({ deleted: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
