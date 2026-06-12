@@ -81,7 +81,7 @@ export default function GameLeaderboard() {
                   {r.name}{isMe ? ' — you' : ''}
                 </span>
                 <span style={{ fontSize: 'var(--text-2xs)', fontFamily: mono, color: 'var(--text-muted)' }}>
-                  {r.events} {r.events === 1 ? 'event' : 'events'}
+                  {r.events} {r.events === 1 ? 'contribution' : 'contributions'}
                 </span>
                 <span style={{ fontSize: 'var(--text-base)', fontFamily: mono, fontWeight: 600, color: 'var(--accent)' }}>
                   {HOLON_SYMBOL} {r.earned}
