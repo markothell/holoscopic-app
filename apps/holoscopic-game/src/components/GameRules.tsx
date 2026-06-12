@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useInstance } from '@/contexts/InstanceContext';
 import GameNav from '@/components/GameNav';
+import Term from '@/components/Term';
 import { STR, HOLON_SYMBOL, gamePath } from '@/lib/strings';
 import { btn, mono } from '@/lib/ui';
 
@@ -53,28 +54,17 @@ export default function GameRules() {
             The purpose of the game is to generate structured, repeatable conversations that help collectives
             see, think, and act as whole units. To do this we&apos;ve created a simple one-shot group idea map
             that can be connected into {STR.patterns.toLowerCase()} — and an economic unit called the{' '}
-            <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{STR.holon}</span>.
+            <Term k="holon"><span style={{ color: 'var(--accent)', fontWeight: 600 }}>{STR.holon}</span></Term>.
           </p>
         </div>
 
-        {/* What are Holons */}
-        <Section title={`What are ${STR.holons}?`}>
-          <p style={body}>
-            A {STR.holon} is a unit of contribution and influence. You start with{' '}
-            <span style={monoVal}>{HOLON_SYMBOL} {h?.startingStake ?? 100}</span>{' '}
-            on joining. You earn them by participating and contributing meaningfully. You spend them to signal conviction — nominating topics, wagering on community questions, publishing {STR.patterns.toLowerCase()}.
-          </p>
-          <p style={{ ...body, margin: 0 }}>
-            {STR.holons} cannot be bought. They can only be earned by showing up.
-          </p>
-        </Section>
-
-        {/* The Map */}
-        <Section title={`The ${STR.map}`}>
+        {/* ① Join a map — the 80% case comes first */}
+        <Section title={`1 · Join a ${STR.map}`}>
           <p style={{ ...body, marginBottom: '1.25rem' }}>
             Each {STR.map.toLowerCase()} is a mapping exercise: you place yourself (or an idea) on a two-dimensional grid defined by a{' '}
-            <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{STR.frameLong}</strong> — a pair of named axes
-            that define the conceptual space. You also leave a comment, and others can vote on yours.
+            <Term k="frame"><strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{STR.frameLong}</strong></Term> — a pair of named axes
+            that define the conceptual space. You also leave a comment, and others can vote on yours — then the {STR.map.toLowerCase()}{' '}
+            <Term k="settle">settles</Term>.
           </p>
 
           <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem' }}>
@@ -101,37 +91,8 @@ export default function GameRules() {
           </p>
         </Section>
 
-        {/* Earn */}
-        <Section title={`How you earn ${STR.holons}`}>
-          <div style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            <EconomyRow event="Join this edition" type="join_bonus" dir="+" note={`One-time starting stake of ${HOLON_SYMBOL} ${h?.startingStake ?? 100}`} />
-            <EconomyRow event={`${STR.map} closes — voted portion of stake received`} type="comment_attribution" dir="+" note="Others directed their stake to your comments" />
-            <EconomyRow event={`${STR.map} closes — unattributed stake returned`} type="activity_stake_return" dir="+" note="You voted on fewer comments than your full stake" />
-            <EconomyRow event={`Your ${STR.map.toLowerCase()} entry inspires a follow-up`} type="entry_seed_reward" dir="+" note="A facilitator builds the next question from your position" />
-            <EconomyRow event={`Someone creates a ${STR.map.toLowerCase()} using your ${STR.frame}`} type="frame_use_reward" dir="+" note={`${HOLON_SYMBOL} ${h?.frameUseReward ?? 5} per adoption — your axis pair reshaped someone's exploration`} />
-            <EconomyRow event={`New ${STR.map.toLowerCase()} added to a ${STR.pattern} you own`} type="pattern_activity_reward" dir="+" note={`${HOLON_SYMBOL} ${h?.patternActivityReward ?? 3} per addition`} />
-            <EconomyRow event={`${STR.pattern} session runs (quorum met)`} type="session_host_reward" dir="+" note={`${HOLON_SYMBOL} ${h?.sessionHostReward ?? 30} for the ${STR.pattern} proposer`} />
-            <EconomyRow event={`Join a ${STR.pattern}`} type="session_participant_reward" dir="+" note={`${HOLON_SYMBOL} ${h?.sessionParticipantReward ?? 15} on first enrollment`} />
-            <EconomyRow event="Topic reaches quorum" type="session_host_reward" dir="+" note={`${HOLON_SYMBOL} ${h?.topicQuorumReward ?? 25} to the nominator`} />
-            <EconomyRow event="Topic expires without quorum" type="nomination_return" dir="+" note="Full nomination cost returned" />
-            <EconomyRow event="Withdraw support before topic expires" type="support_return" dir="+" note="Your wager returned in full" />
-            <EconomyRow event={`Fork of your ${STR.pattern} published`} type="pattern_royalty" dir="+" note={`${h?.algorithmRoyaltyPercent ?? 10}% of fork's publish cost, propagates up the fork chain`} />
-          </div>
-        </Section>
-
-        {/* Spend */}
-        <Section title={`How you spend ${STR.holons}`}>
-          <div style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            <EconomyRow event={`Join a ${STR.map.toLowerCase()}`} type="activity_stake" dir="−" note={`${HOLON_SYMBOL} ${h?.activityStakeAmount ?? 5} escrowed — returned or attributed at close`} />
-            <EconomyRow event="Nominate a topic" type="nomination_cost" dir="−" note={`${HOLON_SYMBOL} ${h?.nominationCost ?? 10} — refunded if the topic reaches quorum`} />
-            <EconomyRow event="Support a topic (wager)" type="support_cost" dir="−" note={`${HOLON_SYMBOL} ${h?.supportCost ?? 5} minimum — signals conviction, adds to the community pool`} />
-            <EconomyRow event={`Publish a ${STR.pattern}`} type="pattern_publish_cost" dir="−" note={`${HOLON_SYMBOL} ${h?.algorithmPublishCost ?? 150} — creates a reusable conversation template for others to run`} />
-            <EconomyRow event={`Sign up for a ${STR.pattern} proposal`} type="pattern_proposal" dir="−" note="Small deposit, returned when the session runs" />
-          </div>
-        </Section>
-
         {/* Topics */}
-        <Section title="Topics & Community Signaling">
+        <Section title="2 · Topics — community signaling">
           <p style={body}>
             Anyone can nominate a topic. Nominations cost{' '}
             <span style={monoVal}>{HOLON_SYMBOL} {h?.nominationCost ?? 10}</span>{' '}
@@ -147,7 +108,7 @@ export default function GameRules() {
         </Section>
 
         {/* Frames */}
-        <Section title={`${STR.frames} of Reference`}>
+        <Section title={`3 · ${STR.frames} of Reference`}>
           <p style={body}>
             A {STR.frameLong} is a pair of named axes — the conceptual space in which a {STR.map.toLowerCase()} lives.
             {STR.frames} are standalone: the same frame can be applied to different topics, in different {STR.maps.toLowerCase()}, by different people.
@@ -160,7 +121,7 @@ export default function GameRules() {
         </Section>
 
         {/* Patterns */}
-        <Section title={STR.patterns}>
+        <Section title={`4 · ${STR.patterns}`}>
           <p style={body}>
             A {STR.pattern} is a curated sequence of {STR.maps.toLowerCase()} — a repeatable conversation structure. Anyone can propose running one.
             When enough people sign up, the session launches and the proposer earns a host reward.
@@ -177,6 +138,47 @@ export default function GameRules() {
           <p style={{ ...body, margin: 0 }}>
             Members enrolled in a {STR.pattern} share a single cohort — joining it enrolls you in all its {STR.maps.toLowerCase()}.
           </p>
+        </Section>
+
+        {/* What are Holons — context before the reference tables */}
+        <Section title={`What are ${STR.holons}?`}>
+          <p style={body}>
+            A {STR.holon} is a unit of contribution and influence. You start with{' '}
+            <span style={monoVal}>{HOLON_SYMBOL} {h?.startingStake ?? 100}</span>{' '}
+            on joining. You earn them by participating and contributing meaningfully. You spend them to signal conviction — nominating topics, wagering on community questions, publishing {STR.patterns.toLowerCase()}.
+          </p>
+          <p style={{ ...body, margin: 0 }}>
+            {STR.holons} cannot be bought. They can only be earned by showing up.
+          </p>
+        </Section>
+
+        {/* Reference — Earn */}
+        <Section title="Reference · how you earn">
+          <div style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <EconomyRow event="Join this edition" type="join_bonus" dir="+" note={`One-time starting stake of ${HOLON_SYMBOL} ${h?.startingStake ?? 100}`} />
+            <EconomyRow event={`${STR.map} closes — voted portion of stake received`} type="comment_attribution" dir="+" note="Others directed their stake to your comments" />
+            <EconomyRow event={`${STR.map} closes — unattributed stake returned`} type="activity_stake_return" dir="+" note="You voted on fewer comments than your full stake" />
+            <EconomyRow event={`Your ${STR.map.toLowerCase()} entry inspires a follow-up`} type="entry_seed_reward" dir="+" note="A facilitator builds the next question from your position" />
+            <EconomyRow event={`Someone creates a ${STR.map.toLowerCase()} using your ${STR.frame}`} type="frame_use_reward" dir="+" note={`${HOLON_SYMBOL} ${h?.frameUseReward ?? 5} per adoption — your axis pair reshaped someone's exploration`} />
+            <EconomyRow event={`New ${STR.map.toLowerCase()} added to a ${STR.pattern} you own`} type="pattern_activity_reward" dir="+" note={`${HOLON_SYMBOL} ${h?.patternActivityReward ?? 3} per addition`} />
+            <EconomyRow event={`${STR.pattern} session runs (quorum met)`} type="session_host_reward" dir="+" note={`${HOLON_SYMBOL} ${h?.sessionHostReward ?? 30} for the ${STR.pattern} proposer`} />
+            <EconomyRow event={`Join a ${STR.pattern}`} type="session_participant_reward" dir="+" note={`${HOLON_SYMBOL} ${h?.sessionParticipantReward ?? 15} on first enrollment`} />
+            <EconomyRow event="Topic reaches quorum" type="session_host_reward" dir="+" note={`${HOLON_SYMBOL} ${h?.topicQuorumReward ?? 25} to the nominator`} />
+            <EconomyRow event="Topic expires without quorum" type="nomination_return" dir="+" note="Full nomination cost returned" />
+            <EconomyRow event="Withdraw support before topic expires" type="support_return" dir="+" note="Your wager returned in full" />
+            <EconomyRow event={`Fork of your ${STR.pattern} published`} type="pattern_royalty" dir="+" note={`${h?.algorithmRoyaltyPercent ?? 10}% of fork's publish cost, propagates up the fork chain`} />
+          </div>
+        </Section>
+
+        {/* Reference — Spend */}
+        <Section title="Reference · how you spend">
+          <div style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <EconomyRow event={`Join a ${STR.map.toLowerCase()}`} type="activity_stake" dir="−" note={`${HOLON_SYMBOL} ${h?.activityStakeAmount ?? 5} escrowed — returned or attributed at close`} />
+            <EconomyRow event="Nominate a topic" type="nomination_cost" dir="−" note={`${HOLON_SYMBOL} ${h?.nominationCost ?? 10} — refunded if the topic reaches quorum`} />
+            <EconomyRow event="Support a topic (wager)" type="support_cost" dir="−" note={`${HOLON_SYMBOL} ${h?.supportCost ?? 5} minimum — signals conviction, adds to the community pool`} />
+            <EconomyRow event={`Publish a ${STR.pattern}`} type="pattern_publish_cost" dir="−" note={`${HOLON_SYMBOL} ${h?.algorithmPublishCost ?? 150} — creates a reusable conversation template for others to run`} />
+            <EconomyRow event={`Sign up for a ${STR.pattern} proposal`} type="pattern_proposal" dir="−" note="Small deposit, returned when the session runs" />
+          </div>
         </Section>
 
         {/* Footer CTA */}

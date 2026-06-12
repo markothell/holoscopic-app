@@ -26,6 +26,7 @@ import { SequenceService } from '@/services/sequenceService';
 import { AlgorithmService } from '@/services/algorithmService';
 import GameNav from '@/components/GameNav';
 import Toasts, { toast } from '@/components/Toasts';
+import FirstVisitOverlay from '@/components/FirstVisitOverlay';
 import { STR, HOLON_SYMBOL } from '@/lib/strings';
 import { btn, inputCss, labelCss, mono } from '@/lib/ui';
 import { useRouter } from 'next/navigation';
@@ -1129,6 +1130,7 @@ function HubInner({ view }: { view: HubView }) {
       </div>
 
       <Toasts />
+      <FirstVisitOverlay />
     </div>
   );
 }
