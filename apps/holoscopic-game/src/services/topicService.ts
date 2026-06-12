@@ -18,7 +18,7 @@ export interface Topic {
 }
 
 export const TopicService = {
-  list: (status: 'nominated' | 'confirmed' | 'expired' = 'nominated') =>
+  list: (status: string = 'nominated') =>
     apiFetch(`/topics?status=${status}`).then(d => d.topics as Topic[]),
 
   get: (id: string) =>

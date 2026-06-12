@@ -18,6 +18,7 @@ function notificationHref(n: AppNotification): string {
   if (n.type === 'frame_nominated' && n.refType === 'frame_nomination' && n.refId) {
     return `/frame/${n.refId}`;
   }
+  if (n.type === 'activity_closed') return '/interview';
   return '/';
 }
 
@@ -56,7 +57,7 @@ function BellIcon({ unreadCount, notifications, onMarkRead, onMarkAllRead }: {
       </button>
 
       {open && (
-        <div style={{ position: 'absolute', left: 0, marginTop: '0.5rem', width: '18rem', background: '#F7F4EF', borderRadius: 8, boxShadow: '0 4px 24px rgba(15,13,11,0.12)', border: '1px solid #D9D4CC', zIndex: 1200 }}>
+        <div style={{ position: 'absolute', right: 0, marginTop: '0.5rem', width: '18rem', maxWidth: 'calc(100vw - 1rem)', background: '#F7F4EF', borderRadius: 8, boxShadow: '0 4px 24px rgba(15,13,11,0.12)', border: '1px solid #D9D4CC', zIndex: 1200 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 1rem', borderBottom: '1px solid #D9D4CC' }}>
             <span style={{ fontSize: '0.6rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0F0D0B' }}>Notifications</span>
             {unreadCount > 0 && (
@@ -121,7 +122,7 @@ export default function UserMenu() {
     return (
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
         <button
-          onClick={() => router.push('/login')}
+          onClick={() => router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`)}
           style={{
             fontFamily: 'var(--font-dm-mono), monospace',
             fontSize: '0.62rem',

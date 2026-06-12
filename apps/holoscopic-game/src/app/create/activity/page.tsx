@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch } from '@/lib/api';
 import { TopicService } from '@/services/topicService';
 import { FrameRefService } from '@/services/frameRefService';
+import AxisPreview from '@/components/AxisPreview';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -120,6 +121,28 @@ function CreateActivityContent() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Frame type-ahead: typing an axis label searches the existing frame
+  // library; applying one pre-fills the axes and routes the use-reward
+  // to the frame's creator.
+  const [pickedFrameId, setPickedFrameId] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+
+  useEffect(() => {
+    const q = xLabel.trim();
+    if (pickedFrameId || frameId || q.length < 2) { setSuggestions([]); return; }
+    const t = setTimeout(() => {
+      FrameRefService.list(q, 5).then(({ frames }) => setSuggestions(frames)).catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [xLabel, pickedFrameId, frameId]);
+
+  function applyFrame(f: any) {
+    setPickedFrameId(f.id);
+    setXLabel(f.xLabel || ''); setXMin(f.xMin || ''); setXMax(f.xMax || '');
+    setYLabel(f.yLabel || ''); setYMin(f.yMin || ''); setYMax(f.yMax || '');
+    setSuggestions([]);
+  }
+
   // Load context
   useEffect(() => {
     setLoadingCtx(true);
@@ -175,8 +198,10 @@ function CreateActivityContent() {
         yAxis: { label: yLabel.trim(), min: yMin.trim() || '↓', max: yMax.trim() || '↑' },
         maxEntries,
         isPublic: true,
+        isDraft: false,
       };
-      if (frameId) body.frameId = frameId;
+      const effectiveFrameId = frameId || pickedFrameId;
+      if (effectiveFrameId) body.frameId = effectiveFrameId;
       if (topicId) body.topicId = topicId;
 
       const data = await apiFetch('/activities', { method: 'POST', userId, body: JSON.stringify(body) });
@@ -293,8 +318,30 @@ function CreateActivityContent() {
           {/* Axis labels */}
           <div>
             <span style={label}>X axis</span>
-            <input value={xLabel} onChange={e => setXLabel(e.target.value)}
-              placeholder="e.g. Individual ↔ Collective" style={{ ...input, marginBottom: '0.4rem' }} />
+            {pickedFrameId && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', fontSize: '0.62rem', fontFamily: 'var(--font-dm-mono), monospace', color: '#9A7B2F' }}>
+                Using an existing Frame — its creator earns the use-reward
+                <button type="button" onClick={() => setPickedFrameId(null)}
+                  style={{ background: 'none', border: '1px solid var(--border-default)', borderRadius: 999, padding: '0.1rem 0.5rem', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.6rem' }}>
+                  unlink ✕
+                </button>
+              </div>
+            )}
+            <div style={{ position: 'relative' }}>
+              <input value={xLabel} onChange={e => setXLabel(e.target.value)}
+                placeholder="Type to search existing frames, e.g. Individual ↔ Collective" style={{ ...input, marginBottom: '0.4rem' }} />
+              {suggestions.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 8, boxShadow: '0 6px 20px rgba(15,13,11,0.12)', overflow: 'hidden' }}>
+                  {suggestions.map((f: any) => (
+                    <button key={f.id} type="button" onClick={() => applyFrame(f)}
+                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.5rem 0.75rem', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer', fontSize: '0.72rem', fontFamily: 'var(--font-dm-mono), monospace', color: 'var(--text-primary)' }}>
+                      {f.xLabel} / {f.yLabel}
+                      <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{f.usageCount ?? 0} maps</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
               <input value={xMin} onChange={e => setXMin(e.target.value)} placeholder="← left pole" style={{ ...input, fontSize: '0.7rem' }} />
               <input value={xMax} onChange={e => setXMax(e.target.value)} placeholder="right pole →" style={{ ...input, fontSize: '0.7rem' }} />
@@ -310,6 +357,16 @@ function CreateActivityContent() {
               <input value={yMax} onChange={e => setYMax(e.target.value)} placeholder="top pole ↑" style={{ ...input, fontSize: '0.7rem' }} />
             </div>
           </div>
+
+          {/* Live preview — the frame is its geometry */}
+          {(xLabel || yLabel) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <AxisPreview xLabel={xLabel} xMin={xMin} xMax={xMax} yLabel={yLabel} yMin={yMin} yMax={yMax} />
+              <p style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', color: 'var(--text-muted)', lineHeight: 1.6, margin: 0, maxWidth: 220 }}>
+                This is the space participants will map into — poles at the edges, tension in between.
+              </p>
+            </div>
+          )}
 
           {/* Comment question */}
           <div>
