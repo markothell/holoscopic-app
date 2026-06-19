@@ -598,11 +598,17 @@ function HubInner({ view }: { view: HubView }) {
 
   // Responsive detection
   useEffect(() => {
+    let prevMobile: boolean | null = null;
     const check = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile) setSidebarOpen(false);
-      else setSidebarOpen(true);
+      // Only open/close the sidebar when we actually cross the breakpoint.
+      // The mobile soft keyboard fires `resize`, so reacting to every resize
+      // would snap the drawer shut as soon as the user starts typing.
+      if (mobile !== prevMobile) {
+        setSidebarOpen(!mobile);
+        prevMobile = mobile;
+      }
     };
     check();
     window.addEventListener('resize', check);
