@@ -197,6 +197,7 @@ function loadAPIRoutes() {
       const userRoutes = require('./routes/users');
       const adminRoutes = require('./routes/admin');
       const waitlistRoutes = require('./routes/waitlist');
+      const signupRoutes = require('./routes/signup');
       const importRoutes = require('./routes/import');
       const holonRoutes = require('./routes/holons');
       const topicRoutes = require('./routes/topics');
@@ -216,6 +217,7 @@ function loadAPIRoutes() {
       app.use('/api/users', enforceVerifiedUser, userRoutes);
       app.use('/api/admin', adminRoutes);
       app.use('/api/waitlist', waitlistRoutes);
+      app.use('/api/signup', signupRoutes);
       app.use('/api/import', importRoutes);
       app.use('/api/holons', enforceVerifiedUser, holonRoutes);
       app.use('/api/topics', enforceVerifiedUser, topicRoutes);

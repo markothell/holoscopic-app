@@ -7,9 +7,9 @@ import Term from '@/components/Term';
 import { STR, HOLON_SYMBOL, gamePath } from '@/lib/strings';
 import { btn, mono } from '@/lib/ui';
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
-    <section style={{ marginBottom: '3rem' }}>
+    <section id={id} style={{ marginBottom: '3rem', scrollMarginTop: '5rem' }}>
       <h2 style={{ fontSize: 'var(--text-2xs)', fontFamily: mono, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '0 0 1rem 0' }}>
         {title}
       </h2>
@@ -141,7 +141,7 @@ export default function GameRules() {
         </Section>
 
         {/* What are Holons — context before the reference tables */}
-        <Section title={`What are ${STR.holons}?`}>
+        <Section id="economy" title={`What are ${STR.holons}?`}>
           <p style={body}>
             A {STR.holon} is a unit of contribution and influence. You start with{' '}
             <span style={monoVal}>{HOLON_SYMBOL} {h?.startingStake ?? 100}</span>{' '}
