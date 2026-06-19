@@ -9,11 +9,16 @@ import { mono, eyebrowCss } from '@/lib/ui';
 
 /**
  * interView landing page — where people arrive from the Holoscopic homepage.
- * A single striking card: the outlined wordmark, three quiet nav links,
- * and one way in (ENTER → Topics).
+ * A single striking card: the outlined wordmark, one way in (ENTER → Topics),
+ * and three quiet nav links below it.
  */
 
 const CARD_BG = '#D8D3C5'; // warm taupe, a shade under the cream page
+
+// The subtitle sets the width; the wordmark is sized as a fixed multiple of it
+// so "INTERVIEW" always spans the same width as the tagline at every breakpoint.
+const SUB_SIZE = 'clamp(0.62rem, 3.55vw, 1.45rem)';
+const WORDMARK_SIZE = `calc(${SUB_SIZE} * 6.3)`;
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   const [hovered, setHovered] = useState(false);
@@ -24,8 +29,8 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
       onMouseLeave={() => setHovered(false)}
       style={{
         // Matches the dashboard nav label: DM Mono, light, wide tracking.
-        fontFamily: mono, fontWeight: 300, fontSize: 'var(--text-base)',
-        letterSpacing: '0.18em', textTransform: 'uppercase',
+        fontFamily: mono, fontWeight: 300, fontSize: 'var(--text-sm)',
+        letterSpacing: '0.16em', textTransform: 'uppercase',
         textDecoration: 'none', whiteSpace: 'nowrap',
         color: hovered ? 'var(--accent)' : 'var(--text-muted)',
         transition: 'color 0.15s ease',
@@ -50,33 +55,19 @@ export default function InterViewLandingPage() {
       </header>
 
       {/* Body — the striking card */}
-      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem clamp(1rem, 5vw, 4rem) 3rem' }}>
+      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem clamp(0.75rem, 4vw, 4rem) 3rem' }}>
         <section
           style={{
             position: 'relative', width: '100%', maxWidth: 1100,
             background: CARD_BG, borderRadius: 4,
-            padding: 'clamp(1.5rem, 4vw, 2.5rem)',
+            padding: 'clamp(2rem, 5vw, 3rem) clamp(1.25rem, 4vw, 3rem) clamp(3.5rem, 6vw, 4rem)',
           }}
         >
-          {/* Quiet nav, top-right */}
-          <nav
-            aria-label={`${GAME_NAME} links`}
-            style={{
-              display: 'flex', justifyContent: 'flex-end',
-              gap: 'clamp(1.25rem, 4vw, 3rem)', flexWrap: 'wrap', marginBottom: '1rem',
-            }}
-          >
-            <NavLink href={gamePath(g, 'rules')}>The Rules</NavLink>
-            <NavLink href={`${gamePath(g, 'rules')}#economy`}>Economic Model</NavLink>
-            <NavLink href="/start">Start your own</NavLink>
-          </nav>
-
-          {/* Hero — the wordmark */}
+          {/* Hero — wordmark, way in, links */}
           <div
             style={{
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
-              padding: 'clamp(2rem, 6vw, 4rem) 0 clamp(2rem, 5vw, 3.5rem)',
             }}
           >
             <h1
@@ -85,7 +76,7 @@ export default function InterViewLandingPage() {
                 margin: 0, display: 'flex', justifyContent: 'center', alignItems: 'baseline',
                 fontFamily: 'var(--font-barlow), system-ui, sans-serif', fontWeight: 800,
                 textTransform: 'uppercase', letterSpacing: '-0.01em',
-                fontSize: 'clamp(3.2rem, 13vw, 9rem)', lineHeight: 0.95,
+                fontSize: WORDMARK_SIZE, lineHeight: 0.95,
               }}
             >
               <span
@@ -104,7 +95,8 @@ export default function InterViewLandingPage() {
               style={{
                 margin: '0.1rem 0 0', fontFamily: mono,
                 color: 'var(--accent)', fontWeight: 500,
-                fontSize: 'clamp(0.7rem, 2.4vw, 1.45rem)', letterSpacing: '0.01em',
+                fontSize: SUB_SIZE, letterSpacing: '0.005em',
+                whiteSpace: 'nowrap',
               }}
             >
               collaborative.conversation.design.game
@@ -116,10 +108,10 @@ export default function InterViewLandingPage() {
               onMouseEnter={() => setEnterHover(true)}
               onMouseLeave={() => setEnterHover(false)}
               style={{
-                marginTop: 'clamp(2rem, 6vw, 4rem)',
+                marginTop: 'clamp(2.5rem, 7vw, 4rem)',
                 fontFamily: 'var(--font-barlow), system-ui, sans-serif', fontWeight: 400,
                 textTransform: 'uppercase', letterSpacing: '0.18em',
-                fontSize: 'clamp(1.4rem, 4vw, 2rem)', textDecoration: 'none',
+                fontSize: 'clamp(1.5rem, 5vw, 2rem)', textDecoration: 'none',
                 color: enterHover ? 'var(--accent)' : 'var(--text-primary)',
                 borderBottom: `2px solid ${enterHover ? 'var(--accent)' : 'var(--text-primary)'}`,
                 paddingBottom: '0.15em', transition: 'color 0.15s ease, border-color 0.15s ease',
@@ -127,12 +119,27 @@ export default function InterViewLandingPage() {
             >
               Enter
             </Link>
+
+            {/* Quiet nav, below the way in */}
+            <nav
+              aria-label={`${GAME_NAME} links`}
+              style={{
+                marginTop: 'clamp(2.5rem, 7vw, 3.5rem)', width: '100%',
+                borderTop: '1px solid rgba(15,13,11,0.12)', paddingTop: 'clamp(1.25rem, 4vw, 1.75rem)',
+                display: 'flex', justifyContent: 'center', alignItems: 'center',
+                gap: 'clamp(1.1rem, 5vw, 3rem)', flexWrap: 'wrap', textAlign: 'center',
+              }}
+            >
+              <NavLink href={gamePath(g, 'rules')}>The Rules</NavLink>
+              <NavLink href={`${gamePath(g, 'rules')}#economy`}>Economic Model</NavLink>
+              <NavLink href="/start">Start your own</NavLink>
+            </nav>
           </div>
 
           {/* Edition tag, bottom-right */}
           <span
             style={{
-              position: 'absolute', right: 'clamp(1.5rem, 4vw, 2.5rem)', bottom: 'clamp(1rem, 3vw, 1.75rem)',
+              position: 'absolute', right: 'clamp(1.25rem, 4vw, 2.5rem)', bottom: 'clamp(1rem, 3vw, 1.5rem)',
               fontFamily: mono, fontWeight: 300, fontSize: 'var(--text-2xs)',
               letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-muted)',
             }}

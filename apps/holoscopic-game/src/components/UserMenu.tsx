@@ -95,7 +95,9 @@ function BellIcon({ unreadCount, notifications, onMarkRead, onMarkAllRead }: {
   );
 }
 
-export default function UserMenu() {
+export interface GameLink { label: string; href: string; active?: boolean }
+
+export default function UserMenu({ gameLinks }: { gameLinks?: GameLink[] } = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, userName, userEmail, userRole, userId, holonBalance, socket } = useAuth();
@@ -295,6 +297,43 @@ export default function UserMenu() {
               )}
             </div>
           </div>
+
+          {gameLinks && gameLinks.length > 0 && (
+            <div style={{ borderBottom: '1px solid #D9D4CC', padding: '0.5rem 0' }}>
+              <p style={{
+                fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', fontWeight: 300,
+                letterSpacing: '0.18em', textTransform: 'uppercase' as const, color: '#9A938C',
+                margin: 0, padding: '0.1rem 1rem 0.35rem',
+              }}>interView</p>
+              {gameLinks.map((link) => (
+                <button
+                  key={link.href}
+                  onClick={() => {
+                    router.push(link.href);
+                    setIsOpen(false);
+                  }}
+                  style={{
+                    width: '100%', textAlign: 'left' as const, padding: '0.6rem 1rem',
+                    fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', fontWeight: 300,
+                    letterSpacing: '0.12em', textTransform: 'uppercase' as const,
+                    color: link.active ? '#C83B50' : '#0F0D0B',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    transition: 'background 0.15s, color 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(0,0,0,0.04)';
+                    e.currentTarget.style.color = '#C83B50';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'none';
+                    e.currentTarget.style.color = link.active ? '#C83B50' : '#0F0D0B';
+                  }}
+                >
+                  {link.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {[
             { label: 'Profile', path: `/profile/${userId}` },
