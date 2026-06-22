@@ -225,16 +225,28 @@ export default function HomePage() {
           <p className={styles.heroSub}>
             Games for understanding how we work, <em>together.</em>
           </p>
-          <a
-            href="#idea"
-            className={styles.heroCta}
-            onClick={(e) => {
-              e.preventDefault();
-              scrollTo('idea');
-            }}
-          >
-            What is this
-          </a>
+          <div className={styles.heroCtaRow}>
+            <a
+              href="#idea"
+              className={styles.heroCta}
+              onClick={(e) => {
+                e.preventDefault();
+                scrollTo('idea');
+              }}
+            >
+              What is this
+            </a>
+            <a
+              href="#game"
+              className={styles.heroCta}
+              onClick={(e) => {
+                e.preventDefault();
+                scrollTo('game');
+              }}
+            >
+              Join a Game
+            </a>
+          </div>
         </section>
 
         <div className={styles.divider} />
@@ -296,39 +308,6 @@ export default function HomePage() {
 
         <div className={styles.divider} />
 
-        {/* ── The Opportunity ──────────────────────────────────────────────── */}
-        <RevealSection id="opportunity" className={styles.section}>
-          <p className={styles.sectionLabel}>Our Frame</p>
-          <h2 className={styles.sectionHeadline}>
-            Friction Is <em>Fuel</em>
-          </h2>
-
-          <div className={styles.expandGroup}>
-            <ExpandItem title={<>The Noise Is <em style={{ fontStyle: 'normal', color: 'var(--accent)' }}>Data</em></>}>
-              We are surrounded by conflict, friction, polarization. Most treat
-              this as the problem to solve. But every place where people disagree
-              is potential energy — stored insight waiting to be released.
-              We&apos;ve never had so much of it visible at once.
-            </ExpandItem>
-
-            <ExpandItem title={<><em style={{ fontStyle: 'normal', color: 'var(--accent)' }}>Lenses,</em> Not Laws</>}>
-              You don&apos;t resolve that tension by imposing a solution. You resolve
-              it by learning to see it more clearly, together. Holoscopic
-              doesn&apos;t tell groups what to think — it shows them what they already
-              think in a form they couldn&apos;t see before. The insight does the work.
-            </ExpandItem>
-
-            <ExpandItem title={<>Patterns Become <em style={{ fontStyle: 'normal', color: 'var(--accent)' }}>Tools</em></>}>
-              When a group can see its own shape clearly enough, new possibilities
-              emerge from that seeing. Not theories handed down — thinking tools
-              that grow from the collective looking itself. The map becomes the
-              path.
-            </ExpandItem>
-          </div>
-        </RevealSection>
-
-        <div className={styles.divider} />
-
         {/* ── The Practice ─────────────────────────────────────────────────── */}
         <RevealSection id="practice" className={styles.section}>
           <p className={styles.sectionLabel}>The Practice</p>
@@ -374,36 +353,17 @@ export default function HomePage() {
 
         <div className={styles.divider} />
 
-        {/* ── Examples ─────────────────────────────────────────────────── */}
-        <RevealSection id="join" className={styles.invitation}>
-          <p className={styles.sectionLabel}>Examples</p>
-          <h2 className={styles.sectionHeadline}>
-            On our <em>mind:</em>
-          </h2>
-          <div className={styles.activityBigList}>
-            {[
-              { title: 'Relationship', sub: ['Conflict +', 'Resolution'] },
-              { title: 'Intuition',    sub: ['Impulse +', 'Action'] },
-              { title: 'Work',         sub: ['Duty ->', 'Purpose'] },
-              { title: 'Sexuality',    sub: ['Arousal +', 'Intentionality'] },
-            ].map(({ title, sub }, i) => (
-              <Link key={i} href="/waitlist" className={styles.activityBigCard}>
-                <span className={styles.activityBigTitle}>{title}</span>
-                {sub && (
-                  <span className={styles.activityBigSub}>
-                    <span>{sub[0]}</span>
-                    <span>{sub[1]}</span>
-                  </span>
-                )}
-              </Link>
-            ))}
-          </div>
-
-          <div className={styles.invitationLinks}>
-            <Link href="/waitlist" className={styles.invLink}>
-              Upcoming Activities
-            </Link>
-          </div>
+        {/* ── Join a Game ──────────────────────────────────────────────── */}
+        <RevealSection id="game" className={styles.invitation}>
+          <p className={styles.sectionLabel}>Join a Game</p>
+          <Link href="/interview" className={styles.gameCard}>
+            <span className={styles.gameCardTitle}>
+              inter<span className={styles.gameCardAccent}>View</span>
+            </span>
+            <span className={styles.gameCardSub}>
+              collaborative.conversation.design.game
+            </span>
+          </Link>
         </RevealSection>
 
       </main>

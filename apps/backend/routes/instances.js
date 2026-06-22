@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Instance = require('../models/Instance');
+const InstanceMembership = require('../models/InstanceMembership');
 const requireAdmin = require('../middleware/requireAdmin');
 
 function generateId() {
@@ -11,6 +12,47 @@ function generateId() {
 router.get('/current', (req, res) => {
   const { id, name, slug, gameType, access, config, startDate, endDate } = req.instance;
   res.json({ instance: { id, name, slug, gameType, access, config, startDate, endDate } });
+});
+
+// GET /api/instances/mine — interView editions the current user has joined.
+// "Joined" = has an InstanceMembership (created at signup under an edition, or
+// on first holon activity in it). Used to populate the dashboard's Games list.
+router.get('/mine', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    if (!userId) return res.json({ instances: [] });
+
+    const memberships = await InstanceMembership.find({ userId }).sort({ joinedAt: -1 });
+    if (memberships.length === 0) return res.json({ instances: [] });
+
+    const byInstance = new Map(memberships.map(m => [m.instanceId, m]));
+    const instances = await Instance.find({
+      id: { $in: [...byInstance.keys()] },
+      gameType: 'holoscopic-game',
+    });
+
+    const shaped = instances
+      .map(inst => {
+        const m = byInstance.get(inst.id);
+        return {
+          id: inst.id,
+          name: inst.name,
+          slug: inst.slug,
+          gameNumber: inst.gameNumber,
+          active: inst.active,
+          startDate: inst.startDate,
+          endDate: inst.endDate,
+          holonBalance: m ? m.holonBalance : 0,
+          joinedAt: m ? m.joinedAt : null,
+        };
+      })
+      .sort((a, b) => new Date(b.joinedAt || 0) - new Date(a.joinedAt || 0));
+
+    res.json({ instances: shaped });
+  } catch (err) {
+    console.error('GET /instances/mine error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // All routes below require admin

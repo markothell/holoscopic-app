@@ -7,12 +7,14 @@ import { Sequence } from '@/models/Sequence';
 import { HoloscopicActivity } from '@/models/Activity';
 import { SequenceService } from '@/services/sequenceService';
 import { ActivityService } from '@/services/activityService';
+import { InstanceService, JoinedEdition } from '@/services/instanceService';
 import { useAuth } from '@/contexts/AuthContext';
 import UserMenu from '@/components/UserMenu';
+import { gamePath } from '@/lib/strings';
 import { ActivityTypeIcon, getActivityTypeLabel } from '@hs/activities';
 import styles from './page.module.css';
 
-type TabType = 'activities' | 'sequences';
+type TabType = 'games' | 'activities' | 'sequences';
 type SequenceFilterType = 'enrolled' | 'invitations' | 'open';
 type ActivityFilterType = 'open' | 'completed';
 
@@ -20,10 +22,11 @@ export default function DashboardPage() {
   const router = useRouter();
   const { userId, userEmail, isLoading: authLoading } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<TabType>('sequences');
+  const [activeTab, setActiveTab] = useState<TabType>('games');
   const [sequenceFilter, setSequenceFilter] = useState<SequenceFilterType>('enrolled');
   const [activityFilter, setActivityFilter] = useState<ActivityFilterType>('open');
 
+  const [editions, setEditions] = useState<JoinedEdition[]>([]);
   const [enrolledSequences, setEnrolledSequences] = useState<Sequence[]>([]);
   const [publicSequences, setPublicSequences] = useState<Sequence[]>([]);
   const [invitedSequences, setInvitedSequences] = useState<Sequence[]>([]);
@@ -44,6 +47,15 @@ export default function DashboardPage() {
       try {
         setLoading(true);
         setError(null);
+
+        // interView editions this user has joined — fails soft so the rest of
+        // the dashboard still loads if the endpoint errors.
+        try {
+          setEditions(await InstanceService.getMine(userId));
+        } catch (e) {
+          console.error('Error loading joined editions:', e);
+          setEditions([]);
+        }
 
         const enrolledData = await SequenceService.getUserSequences(userId);
         setEnrolledSequences(enrolledData);
@@ -160,6 +172,12 @@ export default function DashboardPage() {
         {/* Main Tabs */}
         <div className={styles.tabs}>
           <button
+            onClick={() => setActiveTab('games')}
+            className={`${styles.tab} ${activeTab === 'games' ? styles.tabActive : ''}`}
+          >
+            Games
+          </button>
+          <button
             onClick={() => setActiveTab('sequences')}
             className={`${styles.tab} ${activeTab === 'sequences' ? styles.tabActive : ''}`}
           >
@@ -174,6 +192,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Filter Pills */}
+        {activeTab !== 'games' && (
         <div className={styles.filters}>
           {activeTab === 'sequences' ? (
             <>
@@ -213,28 +232,64 @@ export default function DashboardPage() {
             </>
           )}
         </div>
+        )}
 
         {/* Content */}
-        {activeTab === 'sequences' && filteredSequences.length === 0 ? (
+        {activeTab === 'games' ? (
+          editions.length === 0 ? (
+            <div className={styles.empty}>
+              You haven&apos;t joined an interView game yet.
+              <div>
+                <Link href="/interview" className={styles.emptyLink}>
+                  Explore interView &rarr;
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.list}>
+              {editions.map((ed, index) => {
+                const ended = ed.endDate ? new Date(ed.endDate) < new Date() : false;
+                const live = ed.active && !ended;
+                return (
+                  <div key={ed.id} className={styles.listItem}>
+                    <div className={styles.listRow}>
+                      <span className={styles.listNum}>{index + 1}.</span>
+                      <div className={styles.listBody}>
+                        <div className={styles.listHeader}>
+                          <Link href={gamePath(ed.gameNumber, 'topics')} className={styles.listTitle}>
+                            inter<span style={{ color: '#C83B50' }}>View</span>
+                            {ed.gameNumber != null && ` · Edition #${ed.gameNumber}`}
+                          </Link>
+                          <span className={`${styles.badge} ${live ? styles.badgeActive : styles.badgeCompleted}`}>
+                            {live ? 'Live' : 'Ended'}
+                          </span>
+                        </div>
+                        <div className={styles.listMeta}>
+                          <span>{ed.holonBalance} Holons</span>
+                          {ed.joinedAt && (
+                            <span>Joined {new Date(ed.joinedAt).toLocaleDateString()}</span>
+                          )}
+                        </div>
+                      </div>
+                      <Link href={gamePath(ed.gameNumber, 'topics')} className={styles.viewLink}>
+                        Enter &rarr;
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : activeTab === 'sequences' && filteredSequences.length === 0 ? (
           <div className={styles.empty}>
             {sequenceFilter === 'enrolled' && 'You haven\'t enrolled in any sequences yet.'}
             {sequenceFilter === 'invitations' && 'No pending invitations.'}
             {sequenceFilter === 'open' && 'No public sequences available.'}
-            <div>
-              <Link href="/activities" className={styles.emptyLink}>
-                Browse activities &rarr;
-              </Link>
-            </div>
           </div>
         ) : activeTab === 'activities' && filteredActivities.length === 0 ? (
           <div className={styles.empty}>
             {activityFilter === 'open' && 'No open activities.'}
             {activityFilter === 'completed' && 'No completed activities yet.'}
-            <div>
-              <Link href="/activities" className={styles.emptyLink}>
-                Explore activities &rarr;
-              </Link>
-            </div>
           </div>
         ) : (
           <div className={styles.list}>
@@ -328,7 +383,6 @@ export default function DashboardPage() {
         <footer className={styles.footer}>
           <div className={styles.footerInner}>
             <Link href="/" className={styles.footerLink}>Home</Link>
-            <Link href="/activities" className={styles.footerLink}>Explore</Link>
           </div>
         </footer>
       </div>
