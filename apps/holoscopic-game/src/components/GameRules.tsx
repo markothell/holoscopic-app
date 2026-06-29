@@ -40,9 +40,10 @@ export default function GameRules() {
   const g = instance?.gameNumber ?? 1;
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--bg-primary)' }}>
       <GameNav active="rules" />
 
+      <div style={{ flex: 1, overflowY: 'auto' }}>
       <main style={{ maxWidth: 680, margin: '0 auto', padding: '3.5rem 1.5rem' }}>
 
         {/* Intro */}
@@ -191,6 +192,7 @@ export default function GameRules() {
           </Link>
         </div>
       </main>
+      </div>
     </div>
   );
 }

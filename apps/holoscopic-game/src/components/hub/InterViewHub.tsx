@@ -27,7 +27,7 @@ import { AlgorithmService } from '@/services/algorithmService';
 import GameNav from '@/components/GameNav';
 import Toasts, { toast } from '@/components/Toasts';
 import FirstVisitOverlay from '@/components/FirstVisitOverlay';
-import { STR, HOLON_SYMBOL } from '@/lib/strings';
+import { STR, HOLON_SYMBOL, gamePath } from '@/lib/strings';
 import { btn, inputCss, labelCss, mono } from '@/lib/ui';
 import { useRouter } from 'next/navigation';
 
@@ -944,7 +944,7 @@ function HubInner({ view }: { view: HubView }) {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: 'var(--bg-primary)' }}>
       <GameNav active={view} />
 
-      <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
 
         {/* Mobile overlay backdrop */}
         {isMobile && sidebarOpen && (
@@ -967,6 +967,22 @@ function HubInner({ view }: { view: HubView }) {
             boxShadow: sidebarOpen ? '4px 0 24px rgba(15,13,11,0.08)' : 'none',
           } : {}),
         }}>
+
+          {/* View tabs */}
+          <div style={{ display: 'flex', flexShrink: 0, borderBottom: '1px solid var(--border-subtle)' }}>
+            {(['topics', 'frames', 'patterns'] as const).map(v => (
+              <Link key={v} href={gamePath(instance?.gameNumber, v)} style={{
+                flex: 1, padding: '0.55rem 0', textAlign: 'center',
+                fontFamily: mono, fontSize: 'var(--text-2xs)', letterSpacing: '0.1em', textTransform: 'uppercase',
+                textDecoration: 'none',
+                color: view === v ? 'var(--accent)' : 'var(--text-muted)',
+                borderBottom: `2px solid ${view === v ? 'var(--accent)' : 'transparent'}`,
+                marginBottom: '-1px',
+              }}>
+                {v === 'topics' ? STR.topics : v === 'frames' ? STR.frames : STR.patterns}
+              </Link>
+            ))}
+          </div>
 
           {/* Sort */}
           <div style={{ padding: '0.6rem 1rem 0', flexShrink: 0 }}>

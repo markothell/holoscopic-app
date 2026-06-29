@@ -18,15 +18,19 @@ export default function GameNav({ active }: { active?: GameView }) {
   const { instance } = useInstance();
   const g = instance?.gameNumber ?? 1;
 
-  // All game sections live in the user-menu dropdown now, so the bar stays
-  // uncluttered on mobile. Standings + How to play ride along after the views.
   const gameLinks = [
-    { label: STR.topics, href: gamePath(g, 'topics'), active: active === 'topics' },
-    { label: STR.frames, href: gamePath(g, 'frames'), active: active === 'frames' },
-    { label: STR.patterns, href: gamePath(g, 'patterns'), active: active === 'patterns' },
     { label: 'Standings', href: gamePath(g, 'leaderboard'), active: active === 'leaderboard' },
     { label: STR.rules, href: gamePath(g, 'rules'), active: active === 'rules' },
   ];
+
+  const utilLinkStyle: React.CSSProperties = {
+    fontFamily: mono,
+    fontSize: 'var(--text-2xs)',
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase',
+    color: 'var(--text-muted)',
+    textDecoration: 'none',
+  };
 
   return (
     <header style={{
@@ -41,6 +45,11 @@ export default function GameNav({ active }: { active?: GameView }) {
       </Link>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
+        {/* Desktop-only util links */}
+        <div className="hidden md:flex" style={{ alignItems: 'center', gap: '1.5rem' }}>
+          <Link href={gamePath(g, 'leaderboard')} style={utilLinkStyle}>Standings</Link>
+          <Link href={gamePath(g, 'rules')} style={utilLinkStyle}>{STR.rules}</Link>
+        </div>
         {isAuthenticated && (
           <span style={{ fontSize: 'var(--text-sm)', fontFamily: mono, color: 'var(--accent)', fontWeight: 600 }}
             title={`${STR.holon} balance`}>

@@ -37,9 +37,10 @@ export default function GameLeaderboard() {
   const status = editionStatus(instance, (instance as any)?.active ?? true);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--bg-primary)' }}>
       <GameNav active="leaderboard" />
 
+      <div style={{ flex: 1, overflowY: 'auto' }}>
       <main style={{ maxWidth: 560, margin: '0 auto', padding: '3rem 1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: 'var(--font-cormorant), serif' }}>
@@ -91,6 +92,7 @@ export default function GameLeaderboard() {
           })}
         </div>
       </main>
+      </div>
     </div>
   );
 }
