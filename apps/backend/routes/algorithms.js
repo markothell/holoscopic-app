@@ -477,4 +477,19 @@ router.post('/:id/fork', async (req, res) => {
   }
 });
 
+// DELETE /api/algorithms/:id
+// Remove a pattern (admin only)
+const requireAdmin = require('../middleware/requireAdmin');
+router.delete('/:id', requireAdmin, async (req, res) => {
+  try {
+    const algorithm = await Algorithm.findOne({ id: req.params.id, instanceId: req.instanceId });
+    if (!algorithm) return res.status(404).json({ error: 'Algorithm not found' });
+    await Algorithm.deleteOne({ id: req.params.id });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[algorithms] delete error:', err.message);
+    res.status(500).json({ error: 'Failed to delete algorithm' });
+  }
+});
+
 module.exports = router;

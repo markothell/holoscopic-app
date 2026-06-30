@@ -391,6 +391,28 @@ function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig
             Remove
           </button>
         )}
+        {isAdmin && d.nodeType === 'frame' && meta.frameId && (
+          <button
+            onClick={() => {
+              if (!window.confirm(`Remove this frame? This cannot be undone.`)) return;
+              act(() => apiFetch(`/frame-refs/${meta.frameId}`, { method: 'DELETE', userId: userId! }), 'Frame removed');
+            }}
+            style={{ ...btn('outline'), color: 'var(--accent)', borderColor: 'rgba(200,59,80,0.4)' }}
+          >
+            Remove
+          </button>
+        )}
+        {isAdmin && d.nodeType === 'pattern' && meta.id && (
+          <button
+            onClick={() => {
+              if (!window.confirm(`Remove "${d.label}"? This cannot be undone.`)) return;
+              act(() => apiFetch(`/algorithms/${meta.id}`, { method: 'DELETE', userId: userId! }), 'Pattern removed');
+            }}
+            style={{ ...btn('outline'), color: 'var(--accent)', borderColor: 'rgba(200,59,80,0.4)' }}
+          >
+            Remove
+          </button>
+        )}
       </div>
     </div>
   );

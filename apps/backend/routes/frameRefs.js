@@ -99,6 +99,21 @@ router.post('/', async (req, res) => {
   }
 });
 
+// DELETE /api/frame-refs/:id
+// Remove a frame (admin only)
+const requireAdmin = require('../middleware/requireAdmin');
+router.delete('/:id', requireAdmin, async (req, res) => {
+  try {
+    const frame = await FrameOfReference.findOne({ id: req.params.id });
+    if (!frame) return res.status(404).json({ error: 'Frame not found' });
+    await FrameOfReference.deleteOne({ id: req.params.id });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[frame-refs] delete error:', err.message);
+    res.status(500).json({ error: 'Failed to delete frame' });
+  }
+});
+
 // PUT /api/frame-refs/:id
 // Update a frame (creator only)
 router.put('/:id', async (req, res) => {

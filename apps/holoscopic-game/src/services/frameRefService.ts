@@ -36,4 +36,7 @@ export const FrameRefService = {
 
   update: (userId: string, id: string, payload: Partial<Pick<FrameRef, 'xLabel' | 'xMin' | 'xMax' | 'yLabel' | 'yMin' | 'yMax'>>) =>
     apiFetch(`/frame-refs/${id}`, { method: 'PUT', userId, body: JSON.stringify(payload) }).then(d => d.frame as FrameRef),
+
+  delete: (userId: string, id: string) =>
+    apiFetch(`/frame-refs/${id}`, { method: 'DELETE', userId }),
 };

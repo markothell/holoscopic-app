@@ -79,4 +79,7 @@ export const AlgorithmService = {
   withdrawProposal: (userId: string, algorithmId: string, proposalId: string) =>
     apiFetch(`/algorithms/${algorithmId}/proposals/${proposalId}/withdraw`, { method: 'POST', userId })
       .then(d => d.proposal as AlgorithmProposal),
+
+  delete: (userId: string, id: string) =>
+    apiFetch(`/algorithms/${id}`, { method: 'DELETE', userId }),
 };
