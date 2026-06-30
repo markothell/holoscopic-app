@@ -1,5 +1,10 @@
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
+// Set by InstanceContext after resolving the current instance. Injected into
+// every apiFetch/authFetch call so the backend always lands on the right tenant.
+let _instanceId: string | null = null;
+export function setCurrentInstanceId(id: string | null) { _instanceId = id; }
+
 // ── Game token (proves identity to the backend) ──────────────────────────────
 // Short-lived JWT issued by /api/auth/game-token from the NextAuth session.
 // The backend rejects identity-bearing writes without it, so bare x-user-id
@@ -38,14 +43,14 @@ const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  */
 export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
   const method = (init.method || 'GET').toUpperCase();
+  const extraHeaders: Record<string, string> = {};
+  if (_instanceId) extraHeaders['x-instance-id'] = _instanceId;
   if (MUTATING.has(method)) {
     const token = await getGameToken();
-    if (token) {
-      init = {
-        ...init,
-        headers: { ...(init.headers as Record<string, string>), Authorization: `Bearer ${token}` },
-      };
-    }
+    if (token) extraHeaders['Authorization'] = `Bearer ${token}`;
+  }
+  if (Object.keys(extraHeaders).length) {
+    init = { ...init, headers: { ...(init.headers as Record<string, string>), ...extraHeaders } };
   }
   return fetch(input, init);
 }
@@ -60,6 +65,7 @@ export async function apiFetch(
     ...(rest.headers as Record<string, string>),
   };
   if (userId) headers['x-user-id'] = userId;
+  if (_instanceId) headers['x-instance-id'] = _instanceId;
 
   // Attach the identity proof on writes and on any explicit-identity request.
   // (Some routes carry userId in the body rather than the header, so writes

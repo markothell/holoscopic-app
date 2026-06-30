@@ -4,10 +4,11 @@ module.exports = async function resolveInstance(req, res, next) {
   try {
     let instance = null;
 
-    // 1. Explicit header (useful in dev with multiple instances on localhost)
+    // 1. Explicit header — accepts either the instance id or slug
     const headerInstanceId = req.headers['x-instance-id'];
     if (headerInstanceId) {
-      instance = await Instance.findOne({ id: headerInstanceId, active: true });
+      instance = await Instance.findOne({ id: headerInstanceId, active: true })
+             || await Instance.findOne({ slug: headerInstanceId, active: true });
     }
 
     // 2. Origin/Referer header → domain lookup

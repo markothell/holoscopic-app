@@ -1,6 +1,14 @@
 'use client';
 
 import { createContext, useContext, ReactNode, useEffect, useState } from 'react';
+import { setCurrentInstanceId } from '@/lib/api';
+
+// Top-level Next.js page routes that are not instance slugs.
+const SYSTEM_PATHS = new Set([
+  '', 'dashboard', 'admin', 'create', 'profile', 'login', 'signup',
+  'settings', 'start', 'waitlist', 'essays', 'manifesto', 'sequence',
+  'patterns', 'frame', 'play', 'topics', 'inquiry', 'algorithms', 'api',
+]);
 
 interface HolonConfig {
   startingStake: number;
@@ -66,10 +74,17 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-    fetch(`${apiUrl}/instances/current`)
+    const pathSlug = window.location.pathname.split('/')[1];
+    const headers: Record<string, string> = {};
+    if (!SYSTEM_PATHS.has(pathSlug)) headers['x-instance-id'] = pathSlug;
+
+    fetch(`${apiUrl}/instances/current`, { headers })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
-        if (data?.instance) setInstance(data.instance);
+        if (data?.instance) {
+          setInstance(data.instance);
+          setCurrentInstanceId(data.instance.id);
+        }
       })
       .catch(() => {})
       .finally(() => setIsLoading(false));
