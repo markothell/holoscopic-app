@@ -362,7 +362,7 @@ function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig
             : <span style={{ ...btn('outline'), opacity: 0.5, cursor: 'not-allowed' }}>Need {HOLON_SYMBOL}{holonsConfig?.activityStakeAmount} — you have {HOLON_SYMBOL}{bal}</span>
         )}
         {d.nodeType === 'activity' && meta.urlName && (
-          <Link href={`/${meta.urlName as string}`} style={{ ...btn('fill'), textDecoration: 'none' }}>Open {STR.map.toLowerCase()} →</Link>
+          <Link href={`/a/${meta.urlName as string}`} style={{ ...btn('fill'), textDecoration: 'none' }}>Open {STR.map.toLowerCase()} →</Link>
         )}
         {d.nodeType === 'activity' && meta.slots === 0 && meta.topicId && (
           <Link href={`/create/activity?topicId=${meta.topicId}`} style={{ ...btn('outline'), textDecoration: 'none' }}>New {STR.map.toLowerCase()}</Link>
@@ -993,7 +993,7 @@ function HubInner({ view }: { view: HubView }) {
           {/* View tabs */}
           <div style={{ display: 'flex', flexShrink: 0, borderBottom: '1px solid var(--border-subtle)' }}>
             {(['topics', 'frames', 'patterns'] as const).map(v => (
-              <Link key={v} href={gamePath(instance?.gameNumber, v)} style={{
+              <Link key={v} href={gamePath(instance?.slug ?? 'interview', instance?.gameNumber, v)} style={{
                 flex: 1, padding: '0.55rem 0', textAlign: 'center',
                 fontFamily: mono, fontSize: 'var(--text-2xs)', letterSpacing: '0.1em', textTransform: 'uppercase',
                 textDecoration: 'none',
@@ -1061,7 +1061,7 @@ function HubInner({ view }: { view: HubView }) {
           {/* Footer: edition info + signed-out CTA */}
           <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '0.55rem 1rem', flexShrink: 0 }}>
             {!isAuthenticated && (
-              <Link href={`/login?callbackUrl=${encodeURIComponent(`/interview/g${instance?.gameNumber ?? 1}/${view}`)}`} style={{ ...btn('fill'), textDecoration: 'none', display: 'block', textAlign: 'center', marginBottom: '0.45rem' }}>
+              <Link href={`/login?callbackUrl=${encodeURIComponent(`/${instance?.slug ?? 'interview'}/g${instance?.gameNumber ?? 1}/${view}`)}`} style={{ ...btn('fill'), textDecoration: 'none', display: 'block', textAlign: 'center', marginBottom: '0.45rem' }}>
                 Sign in to play
               </Link>
             )}

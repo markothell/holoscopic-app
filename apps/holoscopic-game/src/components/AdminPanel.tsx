@@ -484,7 +484,7 @@ export default function AdminPanel({
               </div>
               <p style={s.hint}>
                 {formData.urlName ?
-                  `URL: holoscopic.io/${UrlUtils.cleanActivityName(formData.urlName)}` :
+                  `URL: holoscopic.io/a/${UrlUtils.cleanActivityName(formData.urlName)}` :
                   'Leave empty to auto-generate from title'
                 }
               </p>

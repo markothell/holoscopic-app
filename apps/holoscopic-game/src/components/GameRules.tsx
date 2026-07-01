@@ -37,6 +37,7 @@ const monoVal: React.CSSProperties = { fontFamily: mono, color: 'var(--text-prim
 export default function GameRules() {
   const { instance, config } = useInstance();
   const h = config?.holons;
+  const slug = instance?.slug ?? 'interview';
   const g = instance?.gameNumber ?? 1;
 
   return (
@@ -184,10 +185,10 @@ export default function GameRules() {
 
         {/* Footer CTA */}
         <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link href={gamePath(g, 'topics')} style={{ ...btn('fill'), textDecoration: 'none', padding: '0.55rem 1.4rem' }}>
+          <Link href={gamePath(slug, g, 'topics')} style={{ ...btn('fill'), textDecoration: 'none', padding: '0.55rem 1.4rem' }}>
             Start playing →
           </Link>
-          <Link href="/interview" style={{ ...btn('outline'), textDecoration: 'none', padding: '0.55rem 1.4rem' }}>
+          <Link href={`/${slug}`} style={{ ...btn('outline'), textDecoration: 'none', padding: '0.55rem 1.4rem' }}>
             {`Back to ${'interView'}`}
           </Link>
         </div>

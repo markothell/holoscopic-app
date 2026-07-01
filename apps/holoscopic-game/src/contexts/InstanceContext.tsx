@@ -5,7 +5,7 @@ import { setCurrentInstanceId } from '@/lib/api';
 
 // Top-level Next.js page routes that are not instance slugs.
 const SYSTEM_PATHS = new Set([
-  '', 'dashboard', 'admin', 'create', 'profile', 'login', 'signup',
+  '', 'a', 'dashboard', 'admin', 'create', 'profile', 'login', 'signup',
   'settings', 'start', 'waitlist', 'essays', 'manifesto', 'sequence',
   'patterns', 'frame', 'play', 'topics', 'inquiry', 'algorithms', 'api',
 ]);

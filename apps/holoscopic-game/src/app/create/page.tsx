@@ -351,11 +351,11 @@ function AdminContent() {
                                   {getActivityTypeLabel(activity.activityType)}
                                 </span>
                                 <Link
-                                  href={`/${activity.urlName}`}
+                                  href={`/a/${activity.urlName}`}
                                   target="_blank"
                                   className={styles.cardLink}
                                 >
-                                  /{activity.urlName} ↗
+                                  /a/{activity.urlName} ↗
                                 </Link>
                               </div>
                             </div>
@@ -466,11 +466,11 @@ function AdminContent() {
                               </td>
                               <td className={styles.td}>
                                 <Link
-                                  href={`/${activity.urlName}`}
+                                  href={`/a/${activity.urlName}`}
                                   target="_blank"
                                   className={styles.cardLink}
                                 >
-                                  /{activity.urlName} ↗
+                                  /a/{activity.urlName} ↗
                                 </Link>
                               </td>
                               <td className={styles.td}>

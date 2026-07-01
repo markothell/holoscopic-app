@@ -13,7 +13,7 @@ export default function ActivityByNamePage() {
   const searchParams = useSearchParams();
   const activityName = params.activityName as string;
   const sequenceId = searchParams.get('sequence');
-  
+
   const [activity, setActivity] = useState<HoloscopicActivity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,10 +24,10 @@ export default function ActivityByNamePage() {
       try {
         setLoading(true);
         setError(null);
-        
+
         // Get activity by URL name
         const foundActivity = await ActivityService.getActivityByUrlName(activityName);
-        
+
         if (foundActivity) {
           setActivity(foundActivity);
           // Track this activity as recently visited

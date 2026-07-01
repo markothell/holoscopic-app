@@ -43,6 +43,7 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
 
 export default function InterViewLandingPage() {
   const { instance } = useInstance();
+  const slug = instance?.slug ?? 'interview';
   const g = instance?.gameNumber ?? 1;
   const [enterHover, setEnterHover] = useState(false);
 
@@ -104,7 +105,7 @@ export default function InterViewLandingPage() {
 
             {/* ENTER */}
             <Link
-              href={gamePath(g, 'topics')}
+              href={gamePath(slug, g, 'topics')}
               onMouseEnter={() => setEnterHover(true)}
               onMouseLeave={() => setEnterHover(false)}
               style={{
@@ -130,8 +131,8 @@ export default function InterViewLandingPage() {
                 gap: 'clamp(1.1rem, 5vw, 3rem)', flexWrap: 'wrap', textAlign: 'center',
               }}
             >
-              <NavLink href={gamePath(g, 'rules')}>The Rules</NavLink>
-              <NavLink href={`${gamePath(g, 'rules')}#economy`}>Economic Model</NavLink>
+              <NavLink href={gamePath(slug, g, 'rules')}>The Rules</NavLink>
+              <NavLink href={`${gamePath(slug, g, 'rules')}#economy`}>Economic Model</NavLink>
               <NavLink href="/start">Start your own</NavLink>
             </nav>
           </div>
