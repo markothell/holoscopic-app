@@ -38,7 +38,6 @@ export default function GameRules() {
   const { instance, config } = useInstance();
   const h = config?.holons;
   const slug = instance?.slug ?? 'interview';
-  const g = instance?.gameNumber ?? 1;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--bg-primary)' }}>
@@ -185,10 +184,10 @@ export default function GameRules() {
 
         {/* Footer CTA */}
         <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link href={gamePath(slug, g, 'topics')} style={{ ...btn('fill'), textDecoration: 'none', padding: '0.55rem 1.4rem' }}>
+          <Link href={gamePath(slug, 'topics')} style={{ ...btn('fill'), textDecoration: 'none', padding: '0.55rem 1.4rem' }}>
             Start playing →
           </Link>
-          <Link href={`/${slug}`} style={{ ...btn('outline'), textDecoration: 'none', padding: '0.55rem 1.4rem' }}>
+          <Link href={`/interview/${slug}`} style={{ ...btn('outline'), textDecoration: 'none', padding: '0.55rem 1.4rem' }}>
             {`Back to ${'interView'}`}
           </Link>
         </div>

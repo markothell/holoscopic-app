@@ -5,16 +5,10 @@ import GameLeaderboard from '@/components/GameLeaderboard';
 
 const HUB_VIEWS = ['topics', 'frames', 'patterns'] as const;
 
-/**
- * Game-numbered routes: /interview/g1/topics | frames | patterns | rules.
- * The g<N> segment keeps edition links stable; the active edition is
- * resolved by InstanceContext (one instance per domain).
- */
 export default async function GameViewPage({ params }: {
-  params: Promise<{ game: string; view: string }>;
+  params: Promise<{ session: string; view: string }>;
 }) {
-  const { game, view } = await params;
-  if (!/^g\d+$/.test(game)) notFound();
+  const { view } = await params;
 
   if (view === 'rules') return <GameRules />;
   if (view === 'leaderboard') return <GameLeaderboard />;

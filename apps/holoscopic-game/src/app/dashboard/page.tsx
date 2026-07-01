@@ -256,7 +256,7 @@ export default function DashboardPage() {
                       <span className={styles.listNum}>{index + 1}.</span>
                       <div className={styles.listBody}>
                         <div className={styles.listHeader}>
-                          <Link href={gamePath(ed.slug, ed.gameNumber, 'topics')} className={styles.listTitle}>
+                          <Link href={gamePath(ed.slug, 'topics')} className={styles.listTitle}>
                             inter<span style={{ color: '#C83B50' }}>View</span>
                             {ed.gameNumber != null && ` · Edition #${ed.gameNumber}`}
                           </Link>
@@ -271,7 +271,7 @@ export default function DashboardPage() {
                           )}
                         </div>
                       </div>
-                      <Link href={gamePath(ed.slug, ed.gameNumber, 'topics')} className={styles.viewLink}>
+                      <Link href={gamePath(ed.slug, 'topics')} className={styles.viewLink}>
                         Enter &rarr;
                       </Link>
                     </div>

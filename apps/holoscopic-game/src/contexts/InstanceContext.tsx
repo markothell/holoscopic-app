@@ -8,6 +8,7 @@ export const SYSTEM_PATHS = new Set([
   '', 'a', 'dashboard', 'admin', 'create', 'profile', 'login', 'signup',
   'settings', 'start', 'waitlist', 'essays', 'manifesto', 'sequence',
   'patterns', 'frame', 'play', 'topics', 'inquiry', 'algorithms', 'api',
+  'interview',
 ]);
 
 interface HolonConfig {
@@ -81,9 +82,11 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-    const pathSlug = window.location.pathname.split('/')[1];
+    const segments = window.location.pathname.split('/');
+    // /interview/[session]/... → session is the instance slug
+    const pathSlug = segments[1] === 'interview' ? segments[2] : segments[1];
     const headers: Record<string, string> = {};
-    if (!SYSTEM_PATHS.has(pathSlug)) headers['x-instance-id'] = pathSlug;
+    if (pathSlug && !SYSTEM_PATHS.has(pathSlug)) headers['x-instance-id'] = pathSlug;
 
     fetch(`${apiUrl}/instances/current`, { headers })
       .then(res => res.ok ? res.json() : null)

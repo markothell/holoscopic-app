@@ -17,11 +17,10 @@ export default function GameNav({ active }: { active?: GameView }) {
   const { isAuthenticated, holonBalance } = useAuth();
   const { instance } = useInstance();
   const slug = instance?.slug ?? 'interview';
-  const g = instance?.gameNumber ?? 1;
 
   const gameLinks = [
-    { label: 'Standings', href: gamePath(slug, g, 'leaderboard'), active: active === 'leaderboard' },
-    { label: STR.rules, href: gamePath(slug, g, 'rules'), active: active === 'rules' },
+    { label: 'Standings', href: gamePath(slug, 'leaderboard'), active: active === 'leaderboard' },
+    { label: STR.rules, href: gamePath(slug, 'rules'), active: active === 'rules' },
   ];
 
   const utilLinkStyle: React.CSSProperties = {
@@ -39,7 +38,7 @@ export default function GameNav({ active }: { active?: GameView }) {
       justifyContent: 'space-between', gap: '1rem', padding: '0 1.25rem',
       borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-primary)',
     }}>
-      <Link href={`/${slug}`} style={{ textDecoration: 'none', flexShrink: 0 }} aria-label={GAME_NAME}>
+      <Link href={`/interview/${slug}`} style={{ textDecoration: 'none', flexShrink: 0 }} aria-label={GAME_NAME}>
         <span style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>
           inter<span style={{ color: 'var(--accent)' }}>View</span>
         </span>
@@ -48,8 +47,8 @@ export default function GameNav({ active }: { active?: GameView }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
         {/* Desktop-only util links */}
         <div className="hidden md:flex" style={{ alignItems: 'center', gap: '1.5rem' }}>
-          <Link href={gamePath(slug, g, 'leaderboard')} style={utilLinkStyle}>Standings</Link>
-          <Link href={gamePath(slug, g, 'rules')} style={utilLinkStyle}>{STR.rules}</Link>
+          <Link href={gamePath(slug, 'leaderboard')} style={utilLinkStyle}>Standings</Link>
+          <Link href={gamePath(slug, 'rules')} style={utilLinkStyle}>{STR.rules}</Link>
         </div>
         {isAuthenticated && (
           <span style={{ fontSize: 'var(--text-sm)', fontFamily: mono, color: 'var(--accent)', fontWeight: 600 }}

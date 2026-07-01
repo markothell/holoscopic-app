@@ -24,8 +24,7 @@ export const STR = {
   rules: 'How to play',
 } as const;
 
-/** Builds a game-scoped path: gamePath('interview', 1, 'topics') → /interview/g1/topics */
-export function gamePath(slug: string, gameNumber: number | null | undefined, sub?: string): string {
-  const seg = `g${gameNumber ?? 1}`;
-  return sub ? `/${slug}/${seg}/${sub}` : `/${slug}/${seg}`;
+/** Builds a game-scoped path: gamePath('america', 'topics') → /interview/america/topics */
+export function gamePath(session: string, sub?: string): string {
+  return sub ? `/interview/${session}/${sub}` : `/interview/${session}`;
 }
