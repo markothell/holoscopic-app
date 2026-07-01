@@ -104,6 +104,7 @@ app.use('/socket.io', wsLimiter);
 
 // Resolve instance for all API requests
 const resolveInstance = require('./middleware/resolveInstance');
+const Instance = require('./models/Instance');
 app.use('/api', resolveInstance);
 
 // Verify bearer tokens (signed from the NextAuth session by the game frontend)
@@ -210,7 +211,11 @@ function loadAPIRoutes() {
       // bare x-user-id / body.userId is never trusted for mutations.
       // (admin/import/instances stay on requireAdmin; auth/waitlist are anonymous.)
       const { enforceVerifiedUser } = require('./middleware/verifyUser');
-      app.use('/api/activities', enforceVerifiedUser, activityRoutes);
+      // Same routers also reject mutations once their instance has ended —
+      // reads stay open, admin/auth/waitlist/instances stay unaffected so an
+      // instance can still be reactivated.
+      const blockIfInstanceEnded = require('./middleware/blockIfInstanceEnded');
+      app.use('/api/activities', enforceVerifiedUser, blockIfInstanceEnded, activityRoutes);
       app.use('/api/analytics', analyticsRoutes);
       app.use('/api/sequences', enforceVerifiedUser, sequenceRoutes);
       app.use('/api/auth', authRoutes);
@@ -219,12 +224,12 @@ function loadAPIRoutes() {
       app.use('/api/waitlist', waitlistRoutes);
       app.use('/api/signup', signupRoutes);
       app.use('/api/import', importRoutes);
-      app.use('/api/holons', enforceVerifiedUser, holonRoutes);
-      app.use('/api/topics', enforceVerifiedUser, topicRoutes);
+      app.use('/api/holons', enforceVerifiedUser, blockIfInstanceEnded, holonRoutes);
+      app.use('/api/topics', enforceVerifiedUser, blockIfInstanceEnded, topicRoutes);
       app.use('/api/notifications', enforceVerifiedUser, notificationRoutes);
-      app.use('/api/algorithms', enforceVerifiedUser, algorithmRoutes);
-      app.use('/api/frames', enforceVerifiedUser, frameRoutes);
-      app.use('/api/frame-refs', enforceVerifiedUser, frameRefRoutes);
+      app.use('/api/algorithms', enforceVerifiedUser, blockIfInstanceEnded, algorithmRoutes);
+      app.use('/api/frames', enforceVerifiedUser, blockIfInstanceEnded, frameRoutes);
+      app.use('/api/frame-refs', enforceVerifiedUser, blockIfInstanceEnded, frameRefRoutes);
       app.use('/api/instances', instanceRoutes);
       apiRoutesLoaded = true;
       console.log('✅ API routes loaded successfully');
@@ -473,8 +478,16 @@ io.on('connection', (socket) => {
   });
 
   // Submit rating
-  socket.on('submit_rating', async ({ activityId, userId, position, objectName, slotNumber, timestamp }) => {
+  socket.on('submit_rating', async ({ activityId, userId, position, objectName, slotNumber, timestamp, instanceId }) => {
     try {
+      if (instanceId) {
+        const instance = await Instance.findOne({ id: instanceId });
+        if (!instance || instance.isEnded()) {
+          socket.emit('mutation_rejected', { reason: 'instance_ended', action: 'submit_rating' });
+          return;
+        }
+      }
+
       console.log(`⭐ User ${userId} submitting rating for activity ${activityId} (slot ${slotNumber || 1})`);
 
       // Update database
@@ -505,8 +518,16 @@ io.on('connection', (socket) => {
   });
 
   // Submit comment
-  socket.on('submit_comment', async ({ activityId, userId, text, objectName, slotNumber, timestamp }) => {
+  socket.on('submit_comment', async ({ activityId, userId, text, objectName, slotNumber, timestamp, instanceId }) => {
     try {
+      if (instanceId) {
+        const instance = await Instance.findOne({ id: instanceId });
+        if (!instance || instance.isEnded()) {
+          socket.emit('mutation_rejected', { reason: 'instance_ended', action: 'submit_comment' });
+          return;
+        }
+      }
+
       console.log(`💬 User ${userId} submitting comment for activity ${activityId} (slot ${slotNumber || 1})`);
 
       // Update database

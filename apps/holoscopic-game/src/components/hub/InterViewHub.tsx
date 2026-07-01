@@ -250,7 +250,7 @@ const SORT_OPTIONS: Record<HubView, { label: string; value: string }[]> = {
 
 // ─── Popup card ───────────────────────────────────────────────────────────────
 
-function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig, onExplore, isAdmin }: {
+function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig, onExplore, isAdmin, ended }: {
   node: Node<NodeData>;
   onClose: () => void;
   userId: string | null;
@@ -259,6 +259,7 @@ function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig
   holonsConfig: { supportCost: number; activityStakeAmount: number } | null;
   onExplore?: () => void;
   isAdmin?: boolean;
+  ended?: boolean;
 }) {
   const d = node.data;
   const meta = d.meta || {};
@@ -351,10 +352,10 @@ function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig
         )}
         {d.nodeType === 'topic' && userId && meta.status === 'nominated' && !meta.isNominator && (
           meta.isSupporter
-            ? <button onClick={() => act(() => TopicService.unsupport(userId!, meta.topicId), `Support withdrawn — your ${HOLON_SYMBOL}${holonsConfig?.supportCost ?? ''} wager returned`)} style={btn('outline')}>Unsupport</button>
-            : canAffordSupport
+            ? <button disabled={ended} onClick={() => act(() => TopicService.unsupport(userId!, meta.topicId), `Support withdrawn — your ${HOLON_SYMBOL}${holonsConfig?.supportCost ?? ''} wager returned`)} style={{ ...btn('outline'), opacity: ended ? 0.5 : 1, cursor: ended ? 'not-allowed' : 'pointer' }}>Unsupport</button>
+            : canAffordSupport && !ended
               ? <button onClick={() => act(() => TopicService.support(userId!, meta.topicId), `${HOLON_SYMBOL}${holonsConfig?.supportCost ?? ''} wagered on "${d.label}" — returned if it expires`)} style={btn('fill')}>Support · {HOLON_SYMBOL}{holonsConfig?.supportCost ?? ''}</button>
-              : <span style={{ ...btn('outline'), opacity: 0.5, cursor: 'not-allowed' }}>Need {HOLON_SYMBOL}{holonsConfig?.supportCost} — you have {HOLON_SYMBOL}{bal}</span>
+              : <span style={{ ...btn('outline'), opacity: 0.5, cursor: 'not-allowed' }}>{ended ? 'Ended' : `Need ${HOLON_SYMBOL}${holonsConfig?.supportCost} — you have ${HOLON_SYMBOL}${bal}`}</span>
         )}
         {d.nodeType === 'topic' && userId && meta.status === 'confirmed' && (
           canAffordStake
@@ -381,34 +382,37 @@ function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig
         {/* Moderation: admin-only removal; escrow refunds happen server-side */}
         {isAdmin && (d.nodeType === 'topic' || d.nodeType === 'activity') && (
           <button
+            disabled={ended}
             onClick={() => {
               if (!window.confirm(`Remove "${d.label}"? Escrowed ${STR.holons} are refunded.`)) return;
               const path = d.nodeType === 'topic' ? `/topics/${meta.topicId}` : `/activities/${node.id}`;
               act(() => apiFetch(path, { method: 'DELETE', userId: userId! }), 'Removed — escrow refunded');
             }}
-            style={{ ...btn('outline'), color: 'var(--accent)', borderColor: 'rgba(200,59,80,0.4)' }}
+            style={{ ...btn('outline'), color: 'var(--accent)', borderColor: 'rgba(200,59,80,0.4)', opacity: ended ? 0.5 : 1, cursor: ended ? 'not-allowed' : 'pointer' }}
           >
             Remove
           </button>
         )}
         {isAdmin && d.nodeType === 'frame' && meta.frameId && (
           <button
+            disabled={ended}
             onClick={() => {
               if (!window.confirm(`Remove this frame? This cannot be undone.`)) return;
               act(() => apiFetch(`/frame-refs/${meta.frameId}`, { method: 'DELETE', userId: userId! }), 'Frame removed');
             }}
-            style={{ ...btn('outline'), color: 'var(--accent)', borderColor: 'rgba(200,59,80,0.4)' }}
+            style={{ ...btn('outline'), color: 'var(--accent)', borderColor: 'rgba(200,59,80,0.4)', opacity: ended ? 0.5 : 1, cursor: ended ? 'not-allowed' : 'pointer' }}
           >
             Remove
           </button>
         )}
         {isAdmin && d.nodeType === 'pattern' && meta.id && (
           <button
+            disabled={ended}
             onClick={() => {
               if (!window.confirm(`Remove "${d.label}"? This cannot be undone.`)) return;
               act(() => apiFetch(`/algorithms/${meta.id}`, { method: 'DELETE', userId: userId! }), 'Pattern removed');
             }}
-            style={{ ...btn('outline'), color: 'var(--accent)', borderColor: 'rgba(200,59,80,0.4)' }}
+            style={{ ...btn('outline'), color: 'var(--accent)', borderColor: 'rgba(200,59,80,0.4)', opacity: ended ? 0.5 : 1, cursor: ended ? 'not-allowed' : 'pointer' }}
           >
             Remove
           </button>
@@ -598,7 +602,7 @@ const NAV_HEIGHT = 52;
 
 function HubInner({ view }: { view: HubView }) {
   const { userId, holonBalance, isAuthenticated, refreshBalance, userRole } = useAuth();
-  const { instance, config } = useInstance();
+  const { instance, config, ended } = useInstance();
   const { fitView } = useReactFlow();
 
   const [sortOrder, setSortOrder] = useState(SORT_OPTIONS[view][0].value);
@@ -1023,7 +1027,7 @@ function HubInner({ view }: { view: HubView }) {
             <span style={{ fontSize: 'var(--text-2xs)', fontFamily: mono, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text-muted)' }}>
               {loadingItems ? '…' : `${sortedItems.length} ${view}`}
             </span>
-            {isAuthenticated && (
+            {isAuthenticated && !ended && (
               <button onClick={() => setShowCreate(v => !v)} title={`Add ${view.slice(0, -1)}`} aria-label={`Add ${view.slice(0, -1)}`} style={{
                 width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 'var(--text-sm)', lineHeight: 1, transition: 'all 0.12s',
                 border: `1px solid ${showCreate ? 'var(--accent)' : 'var(--border-default)'}`,
@@ -1034,7 +1038,7 @@ function HubInner({ view }: { view: HubView }) {
           </div>
 
           {/* Creation form */}
-          {showCreate && isAuthenticated && (
+          {showCreate && isAuthenticated && !ended && (
             <CreationForm view={view} userId={userId} onCreated={handleCreated} onClose={() => setShowCreate(false)}
               costs={{
                 nominationCost: config?.holons?.nominationCost,
@@ -1132,6 +1136,7 @@ function HubInner({ view }: { view: HubView }) {
                 ? () => { setSelectedId(popupNode.id); setGraphMode('drill'); setPopupNode(null); }
                 : undefined}
               isAdmin={userRole === 'admin'}
+              ended={ended}
             />
           )}
 

@@ -4,7 +4,7 @@ import { createContext, useContext, ReactNode, useEffect, useState } from 'react
 import { setCurrentInstanceId } from '@/lib/api';
 
 // Top-level Next.js page routes that are not instance slugs.
-const SYSTEM_PATHS = new Set([
+export const SYSTEM_PATHS = new Set([
   '', 'a', 'dashboard', 'admin', 'create', 'profile', 'login', 'signup',
   'settings', 'start', 'waitlist', 'essays', 'manifesto', 'sequence',
   'patterns', 'frame', 'play', 'topics', 'inquiry', 'algorithms', 'api',
@@ -48,6 +48,7 @@ interface InstanceData {
   slug: string;
   config: InstanceConfig;
   access: { mode: string; inviteCodes: string[] };
+  active: boolean;
   startDate: string | null;
   endDate: string | null;
   gameVersion: string | null;
@@ -58,13 +59,21 @@ interface InstanceContextType {
   instance: InstanceData | null;
   config: InstanceConfig | null;
   isLoading: boolean;
+  ended: boolean;
 }
 
 const InstanceContext = createContext<InstanceContextType>({
   instance: null,
   config: null,
   isLoading: true,
+  ended: false,
 });
+
+function computeEnded(instance: InstanceData | null): boolean {
+  if (!instance) return false;
+  if (instance.active === false) return true;
+  return !!(instance.endDate && new Date(instance.endDate) < new Date());
+}
 
 export function InstanceProvider({ children }: { children: ReactNode }) {
   const [instance, setInstance] = useState<InstanceData | null>(null);
@@ -89,7 +98,7 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <InstanceContext.Provider value={{ instance, config: instance?.config ?? null, isLoading }}>
+    <InstanceContext.Provider value={{ instance, config: instance?.config ?? null, isLoading, ended: computeEnded(instance) }}>
       {children}
     </InstanceContext.Provider>
   );

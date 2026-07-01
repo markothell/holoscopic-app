@@ -4,6 +4,7 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:300
 // every apiFetch/authFetch call so the backend always lands on the right tenant.
 let _instanceId: string | null = null;
 export function setCurrentInstanceId(id: string | null) { _instanceId = id; }
+export function getCurrentInstanceId() { return _instanceId; }
 
 // ── Game token (proves identity to the backend) ──────────────────────────────
 // Short-lived JWT issued by /api/auth/game-token from the NextAuth session.

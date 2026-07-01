@@ -5,6 +5,7 @@ import { HoloscopicActivity, Rating, Comment, SnapshotQuestion } from '@/models/
 import { ActivityService } from '@/services/activityService';
 import { webSocketService } from '@/services/websocketService';
 import { useAuth } from '@/contexts/AuthContext';
+import { useInstance } from '@/contexts/InstanceContext';
 import Image from 'next/image';
 import Link from 'next/link';
 import UserMenu from '@/components/UserMenu';
@@ -20,6 +21,7 @@ interface ActivityPageModalProps {
 
 export default function ActivityPageModal({ activityId, sequenceId }: ActivityPageModalProps) {
   const { userId, userName, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { ended } = useInstance();
   const [activity, setActivity] = useState<HoloscopicActivity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,7 +139,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
   // Solo Tracker Mode helpers
   const isSoloTracker = activity?.maxEntries === 0;
   const isCreator = activity?.author?.userId === userId;
-  const canAddEntries = !isSoloTracker || isCreator;
+  const canAddEntries = (!isSoloTracker || isCreator) && !ended;
 
   // User's actual filled slot numbers (sorted) — source of truth for circle rendering
   const userFilledSlots = (activity && userId)
@@ -421,7 +423,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                   <CommentSection
                     activity={activity}
                     onCommentSubmit={() => {}}
-                    onCommentVote={activity.status === 'completed' ? undefined : async (commentId) => {
+                    onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (commentId) => {
                       try {
                         await ActivityService.voteComment(activityId, commentId, userId!);
                         const updated = await ActivityService.getActivity(activityId);
@@ -446,7 +448,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               activity={activity}
               isVisible={true}
               onToggle={() => {}}
-              onCommentVote={activity.status === 'completed' ? undefined : async (commentId: string) => {
+              onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (commentId: string) => {
                 try {
                   await ActivityService.voteComment(activityId, commentId, userId!);
                   const updated = await ActivityService.getActivity(activityId);
@@ -595,7 +597,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                       <CommentSection
                         activity={activity}
                         onCommentSubmit={() => {}}
-                        onCommentVote={activity.status === 'completed' ? undefined : async (commentId) => {
+                        onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (commentId) => {
                           try {
                             await ActivityService.voteComment(activityId, commentId, userId!);
                             const updated = await ActivityService.getActivity(activityId);
@@ -619,7 +621,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                 activity={activity}
                 isVisible={true}
                 onToggle={() => {}}
-                onCommentVote={activity.status === 'completed' ? undefined : async (commentId: string) => {
+                onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (commentId: string) => {
                   try {
                     await ActivityService.voteComment(activityId, commentId, userId!);
                     const updated = await ActivityService.getActivity(activityId);
@@ -654,7 +656,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
             <CommentSection
               activity={activity}
               onCommentSubmit={() => {}}
-              onCommentVote={activity.status === 'completed' ? undefined : async (commentId) => {
+              onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (commentId) => {
                 try {
                   await ActivityService.voteComment(activityId, commentId, userId!);
                   const updated = await ActivityService.getActivity(activityId);

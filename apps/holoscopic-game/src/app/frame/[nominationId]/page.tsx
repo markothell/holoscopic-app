@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useInstance } from '@/contexts/InstanceContext';
 import { FrameService, FrameNomination } from '@/services/frameService';
 import UserMenu from '@/components/UserMenu';
 
@@ -12,6 +13,7 @@ export default function FrameNominationPage() {
   const router = useRouter();
   const nominationId = params.nominationId as string;
   const { userId, isLoading: authLoading } = useAuth();
+  const { ended } = useInstance();
 
   const [nomination, setNomination] = useState<FrameNomination | null>(null);
   const [sourceActivity, setSourceActivity] = useState<any>(null);
@@ -251,13 +253,18 @@ export default function FrameNominationPage() {
             </div>
           </div>
 
+          {ended && (
+            <p style={{ fontSize: '0.75rem', color: 'var(--accent)', textAlign: 'right', marginBottom: '0.5rem' }}>
+              This game has ended — nominations are read only.
+            </p>
+          )}
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-            <button type="button" onClick={handleDecline} disabled={declining}
-              style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.5rem 1.2rem', borderRadius: 999, border: '1px solid var(--border-default)', background: 'none', color: 'var(--text-muted)', cursor: declining ? 'wait' : 'pointer', opacity: declining ? 0.7 : 1 }}>
+            <button type="button" onClick={handleDecline} disabled={declining || ended}
+              style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.5rem 1.2rem', borderRadius: 999, border: '1px solid var(--border-default)', background: 'none', color: 'var(--text-muted)', cursor: (declining || ended) ? (ended ? 'not-allowed' : 'wait') : 'pointer', opacity: (declining || ended) ? 0.6 : 1 }}>
               Decline
             </button>
-            <button type="submit" disabled={submitting}
-              style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.5rem 1.4rem', borderRadius: 999, border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
+            <button type="submit" disabled={submitting || ended}
+              style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.5rem 1.4rem', borderRadius: 999, border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: (submitting || ended) ? (ended ? 'not-allowed' : 'wait') : 'pointer', opacity: (submitting || ended) ? 0.6 : 1 }}>
               {submitting ? 'Submitting…' : 'Submit frame'}
             </button>
           </div>

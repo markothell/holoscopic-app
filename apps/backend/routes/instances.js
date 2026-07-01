@@ -10,8 +10,8 @@ function generateId() {
 
 // GET /api/instances/current — returns config for the resolved instance (used by frontend)
 router.get('/current', (req, res) => {
-  const { id, name, slug, access, config, startDate, endDate } = req.instance;
-  res.json({ instance: { id, name, slug, access, config, startDate, endDate } });
+  const { id, name, slug, access, config, active, startDate, endDate } = req.instance;
+  res.json({ instance: { id, name, slug, access, config, active, startDate, endDate } });
 });
 
 // GET /api/instances/mine — interView editions the current user has joined.

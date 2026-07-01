@@ -7,8 +7,8 @@ module.exports = async function resolveInstance(req, res, next) {
     // 1. Explicit header — accepts either the instance id or slug
     const headerInstanceId = req.headers['x-instance-id'];
     if (headerInstanceId) {
-      instance = await Instance.findOne({ id: headerInstanceId, active: true })
-             || await Instance.findOne({ slug: headerInstanceId, active: true });
+      instance = await Instance.findOne({ id: headerInstanceId })
+             || await Instance.findOne({ slug: headerInstanceId });
     }
 
     // 2. Origin/Referer header → domain lookup
@@ -24,13 +24,9 @@ module.exports = async function resolveInstance(req, res, next) {
       instance = await Instance.getDefault();
     }
 
-    // Hard stop if instance is expired
-    if (instance.endDate && instance.endDate < new Date()) {
-      return res.status(410).json({ error: 'This instance has ended' });
-    }
-
-    req.instance   = instance;
-    req.instanceId = instance.id;
+    req.instance      = instance;
+    req.instanceId    = instance.id;
+    req.instanceEnded = instance.isEnded();
     next();
   } catch (err) {
     console.error('resolveInstance error:', err.message);

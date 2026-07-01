@@ -2,6 +2,7 @@
 
 import { io, Socket } from 'socket.io-client';
 import { HoloscopicActivity, WebSocketEvents, Rating, Comment, Participant } from '@/models/Activity';
+import { getCurrentInstanceId } from '@/lib/api';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
 
@@ -88,6 +89,7 @@ export class WebSocketService {
         userId: this.userId,
         position,
         timestamp: new Date(),
+        instanceId: getCurrentInstanceId(),
       });
     }
   }
@@ -100,6 +102,7 @@ export class WebSocketService {
         userId: this.userId,
         text,
         timestamp: new Date(),
+        instanceId: getCurrentInstanceId(),
       });
     }
   }

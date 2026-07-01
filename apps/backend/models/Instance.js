@@ -68,7 +68,12 @@ instanceSchema.pre('save', function (next) {
 // Find by domain (strips protocol, handles port variants)
 instanceSchema.statics.findByDomain = async function (rawDomain) {
   const host = rawDomain.replace(/^https?:\/\//, '').split('/')[0];
-  return this.findOne({ domains: host, active: true });
+  return this.findOne({ domains: host });
+};
+
+// True once the instance has been deactivated or its endDate has passed
+instanceSchema.methods.isEnded = function () {
+  return !this.active || (this.endDate && this.endDate < new Date());
 };
 
 // Get or create the default instance (always exists)

@@ -7,6 +7,7 @@ import { Sequence } from '@/models/Sequence';
 import { SequenceService } from '@/services/sequenceService';
 import { FormattingService } from '@/utils/formatting';
 import { useAuth } from '@/contexts/AuthContext';
+import { useInstance } from '@/contexts/InstanceContext';
 import UserMenu from '@/components/UserMenu';
 import { FrameService, FrameEntry } from '@/services/frameService';
 import styles from './page.module.css';
@@ -27,6 +28,7 @@ export default function ManagePage() {
   const router = useRouter();
   const urlName = params.urlName as string;
   const { userId, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { ended } = useInstance();
 
   const [sequence, setSequence] = useState<Sequence | null>(null);
   const [loading, setLoading] = useState(true);
@@ -632,9 +634,9 @@ export default function ManagePage() {
               style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.45rem 1rem', borderRadius: 999, border: '1px solid #D9D4CC', background: 'none', color: '#6B6560', cursor: 'pointer' }}>
               Cancel
             </button>
-            <button onClick={handleNominate} disabled={nominating || (nominateMethod === 'manual' && !nominateUserId)}
-              style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.45rem 1.2rem', borderRadius: 999, border: 'none', background: '#C83B50', color: '#fff', cursor: nominating ? 'wait' : 'pointer', opacity: (nominating || (nominateMethod === 'manual' && !nominateUserId)) ? 0.6 : 1 }}>
-              {nominating ? 'Sending…' : 'Send nomination'}
+            <button onClick={handleNominate} disabled={nominating || ended || (nominateMethod === 'manual' && !nominateUserId)}
+              style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.45rem 1.2rem', borderRadius: 999, border: 'none', background: '#C83B50', color: '#fff', cursor: (nominating || ended || (nominateMethod === 'manual' && !nominateUserId)) ? (ended ? 'not-allowed' : 'wait') : 'pointer', opacity: (nominating || ended || (nominateMethod === 'manual' && !nominateUserId)) ? 0.6 : 1 }}>
+              {nominating ? 'Sending…' : ended ? 'Game ended' : 'Send nomination'}
             </button>
           </div>
         </div>

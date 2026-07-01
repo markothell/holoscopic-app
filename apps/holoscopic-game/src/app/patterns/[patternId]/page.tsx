@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useInstance } from '@/contexts/InstanceContext';
 import { AlgorithmService, Algorithm, AlgorithmProposal } from '@/services/algorithmService';
 import UserMenu from '@/components/UserMenu';
 
@@ -11,6 +12,7 @@ export default function PatternDetailPage() {
   const { patternId } = useParams<{ patternId: string }>();
   const router = useRouter();
   const { userId, isAuthenticated, refreshBalance } = useAuth();
+  const { ended } = useInstance();
 
   const [pattern, setPattern] = useState<Algorithm | null>(null);
   const [proposals, setProposals] = useState<AlgorithmProposal[]>([]);
@@ -123,7 +125,7 @@ export default function PatternDetailPage() {
 
         {/* Action buttons */}
         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2.5rem', flexWrap: 'wrap' }}>
-          {isAuthenticated && !myProposal && (
+          {isAuthenticated && !myProposal && !ended && (
             <button onClick={() => setShowProposeForm(v => !v)}
               style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.5rem 1.2rem', borderRadius: 999, border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: 'pointer' }}>
               Propose a session
@@ -172,8 +174,8 @@ export default function PatternDetailPage() {
                         isIn ? (
                           <span style={{ flexShrink: 0, fontSize: '0.6rem', fontFamily: 'var(--font-dm-mono), monospace', padding: '0.35rem 0.75rem', borderRadius: 999, border: '1px solid var(--accent)', color: 'var(--accent)' }}>Joined</span>
                         ) : (
-                          <button onClick={() => handleJoin(p)} disabled={joiningId === p.id}
-                            style={{ flexShrink: 0, fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', padding: '0.4rem 0.85rem', borderRadius: 999, border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: joiningId === p.id ? 'wait' : 'pointer', opacity: joiningId === p.id ? 0.7 : 1 }}>
+                          <button onClick={() => handleJoin(p)} disabled={joiningId === p.id || ended}
+                            style={{ flexShrink: 0, fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', padding: '0.4rem 0.85rem', borderRadius: 999, border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: (joiningId === p.id || ended) ? (ended ? 'not-allowed' : 'wait') : 'pointer', opacity: (joiningId === p.id || ended) ? 0.6 : 1 }}>
                             {joiningId === p.id ? '…' : 'Join'}
                           </button>
                         )

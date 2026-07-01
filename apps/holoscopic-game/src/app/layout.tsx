@@ -5,6 +5,7 @@ import { SessionProvider } from "@/components/SessionProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { InstanceProvider } from "@/contexts/InstanceContext";
 import ServiceWorkerRegistration from "@/components/pwa/ServiceWorkerRegistration";
+import InstanceEndedBanner from "@/components/InstanceEndedBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -76,6 +77,7 @@ export default function RootLayout({
         <SessionProvider>
           <InstanceProvider>
             <AuthProvider>
+              <InstanceEndedBanner />
               {children}
               <ServiceWorkerRegistration />
             </AuthProvider>
