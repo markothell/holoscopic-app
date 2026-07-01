@@ -78,14 +78,15 @@ instanceSchema.methods.isEnded = function () {
 
 // Get or create the default instance (always exists)
 instanceSchema.statics.getDefault = async function () {
-  let inst = await this.findOne({ id: 'default' });
+  // Prefer the primary interView instance; fall back to the legacy 'default' doc
+  let inst = await this.findOne({ slug: 'interview' })
+          || await this.findOne({ id: 'default' });
   if (!inst) {
     inst = await this.create({
       id: 'default',
-      name: 'Holoscopic',
-      slug: 'default',
+      name: 'interView',
+      slug: 'interview',
       domains: ['localhost', 'localhost:3000', '127.0.0.1', '127.0.0.1:3000'],
-      gameType: 'holoscopic-game',
       active: true,
     });
     console.log('✅ Default instance created');

@@ -28,7 +28,6 @@ router.get('/mine', async (req, res) => {
     const byInstance = new Map(memberships.map(m => [m.instanceId, m]));
     const instances = await Instance.find({
       id: { $in: [...byInstance.keys()] },
-      gameType: 'holoscopic-game',
     });
 
     const shaped = instances
