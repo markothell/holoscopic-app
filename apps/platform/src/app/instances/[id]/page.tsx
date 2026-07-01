@@ -10,10 +10,10 @@ interface HolonConfig { startingStake: number; nominationCost: number; supportCo
 interface QuorumConfig { topicSupportThreshold: number; topicWindowHours: number; inquiryMinParticipants: number; frameVoteThreshold: number; algorithmSessionQuorum: number; algorithmProposalWindowHours: number; }
 interface InstanceData {
   id: string; name: string; slug: string; domains: string[];
-  gameType: string; gameVersion: string | null; gameNumber: number | null; active: boolean;
+  gameVersion: string | null; gameNumber: number | null; active: boolean;
   access: { mode: string; inviteCodes: string[] };
   startDate: string | null; endDate: string | null;
-  config: { topicsActivityId: string | null; holons: HolonConfig; quorum: QuorumConfig };
+  config: { holons: HolonConfig; quorum: QuorumConfig };
 }
 
 type Tab = 'basic' | 'config';
@@ -31,7 +31,6 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [domains, setDomains] = useState('');
-  const [gameType, setGameType] = useState('');
   const [gameVersion, setGameVersion] = useState('');
   const [gameNumber, setGameNumber] = useState('');
   const [active, setActive] = useState(true);
@@ -43,7 +42,6 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
   // Config fields
   const [holons, setHolons] = useState<HolonConfig | null>(null);
   const [quorum, setQuorum] = useState<QuorumConfig | null>(null);
-  const [topicsActivityId, setTopicsActivityId] = useState('');
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -62,7 +60,6 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
         setName(inst.name);
         setSlug(inst.slug);
         setDomains(inst.domains.join('\n'));
-        setGameType(inst.gameType);
         setGameVersion(inst.gameVersion || '1.0');
         setGameNumber(inst.gameNumber != null ? String(inst.gameNumber) : '');
         setActive(inst.active);
@@ -72,7 +69,6 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
         setEndDate(inst.endDate ? inst.endDate.slice(0, 10) : '');
         setHolons(inst.config.holons);
         setQuorum(inst.config.quorum);
-        setTopicsActivityId(inst.config.topicsActivityId || '');
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
@@ -85,14 +81,14 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
     try {
       const body: Record<string, unknown> = {
         name, domains: domains.split('\n').map(d => d.trim()).filter(Boolean),
-        gameType, gameVersion, active,
+        gameVersion, active,
         gameNumber: gameNumber.trim() === '' ? null : Number(gameNumber),
         access: { mode: accessMode, inviteCodes: inviteCodes.split('\n').map(c => c.trim()).filter(Boolean) },
         startDate: startDate || null,
         endDate: endDate || null,
       };
       if (tab === 'config' && holons && quorum) {
-        body.config = { holons, quorum, topicsActivityId: topicsActivityId || null };
+        body.config = { holons, quorum };
       }
       await apiFetch(`/instances/${id}`, { method: 'PUT', userId: user.id, body: JSON.stringify(body) });
       setSaved(true);
@@ -149,9 +145,6 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
             <FieldGroup label="Slug" hint="(changing slug does not update domains)">
               <input type="text" value={slug} readOnly style={{ ...inputStyle, color: 'var(--ink-light)', cursor: 'not-allowed' }} />
             </FieldGroup>
-            <FieldGroup label="Game type">
-              <input type="text" value={gameType} onChange={e => setGameType(e.target.value)} style={inputStyle} />
-            </FieldGroup>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <FieldGroup label="Game number" hint="Edition number — drives /interview/g<N> URLs and the Edition badge">
                 <input type="number" min={1} value={gameNumber} onChange={e => setGameNumber(e.target.value)} style={inputStyle} placeholder="1" />
@@ -194,13 +187,6 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
 
         {tab === 'config' && holons && quorum && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            <Section title="Tier Links">
-              <FieldGroup label="Topics — Activity ID">
-                <input type="text" value={topicsActivityId} onChange={e => setTopicsActivityId(e.target.value)}
-                  style={inputStyle} placeholder="Paste activity ID" />
-              </FieldGroup>
-            </Section>
-
             <Section title="Holon Amounts">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(13rem, 1fr))', gap: '0.75rem' }}>
                 {(Object.keys(holons) as (keyof HolonConfig)[]).map(key => (

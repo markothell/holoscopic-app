@@ -38,7 +38,6 @@ interface QuorumConfig {
 }
 
 interface InstanceConfig {
-  topicsActivityId: string | null;
   holons: HolonConfig;
   quorum: QuorumConfig;
 }
@@ -47,7 +46,6 @@ interface InstanceData {
   id: string;
   name: string;
   slug: string;
-  gameType: string;
   config: InstanceConfig;
   access: { mode: string; inviteCodes: string[] };
   startDate: string | null;

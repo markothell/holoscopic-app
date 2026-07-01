@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const instanceConfigSchema = new mongoose.Schema({
-  topicsActivityId: { type: String, default: null },
   holons: {
     startingStake:           { type: Number, default: 100 },
     nominationCost:          { type: Number, default: 10 },
@@ -42,8 +41,6 @@ const instanceSchema = new mongoose.Schema({
   name:     { type: String, required: true, trim: true },
   slug:     { type: String, required: true, unique: true, lowercase: true, trim: true },
   domains:  [{ type: String, lowercase: true, trim: true }],
-  gameType: { type: String, default: 'holoscopic-game' },
-
   access: {
     mode:        { type: String, enum: ['public', 'invite'], default: 'public' },
     inviteCodes: [{ type: String }],

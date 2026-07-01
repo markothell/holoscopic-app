@@ -10,8 +10,8 @@ function generateId() {
 
 // GET /api/instances/current — returns config for the resolved instance (used by frontend)
 router.get('/current', (req, res) => {
-  const { id, name, slug, gameType, access, config, startDate, endDate } = req.instance;
-  res.json({ instance: { id, name, slug, gameType, access, config, startDate, endDate } });
+  const { id, name, slug, access, config, startDate, endDate } = req.instance;
+  res.json({ instance: { id, name, slug, access, config, startDate, endDate } });
 });
 
 // GET /api/instances/mine — interView editions the current user has joined.
@@ -71,7 +71,7 @@ router.get('/', async (req, res) => {
 // POST /api/instances — create a new instance
 router.post('/', async (req, res) => {
   try {
-    const { name, slug, domains, gameType, access, startDate, endDate, config } = req.body;
+    const { name, slug, domains, access, startDate, endDate, config } = req.body;
     if (!name || !slug) return res.status(400).json({ error: 'name and slug are required' });
 
     const existing = await Instance.findOne({ slug });
@@ -83,7 +83,6 @@ router.post('/', async (req, res) => {
       name,
       slug,
       domains: domains || [],
-      gameType: gameType || 'holoscopic-game',
       access: access || { mode: 'public' },
       startDate: startDate || null,
       endDate: endDate || null,

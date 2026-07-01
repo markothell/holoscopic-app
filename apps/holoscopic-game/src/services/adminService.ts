@@ -70,7 +70,7 @@ export const AdminService = {
   getConfig: (userId: string) =>
     apiFetch('/admin/config', { userId }),
 
-  updateConfig: (userId: string, config: { holons?: object; quorum?: object; topicsActivityId?: string | null }) =>
+  updateConfig: (userId: string, config: { holons?: object; quorum?: object }) =>
     apiFetch('/admin/config', { method: 'PUT', userId, body: JSON.stringify(config) }),
 
   awardHolons: (userId: string, payload: { targetUserId: string; amount: number; reason?: string }) =>

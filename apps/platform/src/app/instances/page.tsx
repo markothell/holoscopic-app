@@ -11,7 +11,6 @@ interface Instance {
   name: string;
   slug: string;
   domains: string[];
-  gameType: string;
   active: boolean;
   access: { mode: string };
   startDate: string | null;
@@ -88,7 +87,7 @@ export default function InstancesPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
-                  {['Name', 'Domains', 'Game', 'Access', 'Status', 'Dates', ''].map(h => (
+                  {['Name', 'Domains', 'Access', 'Status', 'Dates', ''].map(h => (
                     <th key={h} style={{ ...mono, padding: '0.6rem 1rem', textAlign: 'left', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 400 }}>{h}</th>
                   ))}
                 </tr>
@@ -104,9 +103,6 @@ export default function InstancesPage() {
                       <div style={{ ...mono, color: 'var(--ink-mid)' }}>
                         {inst.domains.length > 0 ? inst.domains.join(', ') : <span style={{ color: 'var(--ink-light)' }}>—</span>}
                       </div>
-                    </td>
-                    <td style={{ padding: '0.75rem 1rem' }}>
-                      <span style={{ ...mono, color: 'var(--ink-mid)' }}>{inst.gameType}</span>
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <span style={badge(inst.access.mode === 'invite' ? 'gray' : 'green')}>{inst.access.mode}</span>

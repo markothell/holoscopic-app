@@ -38,7 +38,6 @@ export default function SuperAdminPage() {
   // Config state
   const [holonConfig, setHolonConfig] = useState<HolonConfig | null>(null);
   const [quorumConfig, setQuorumConfig] = useState<QuorumConfig | null>(null);
-  const [topicsActivityId, setTopicsActivityId] = useState('');
   const [configSaving, setConfigSaving] = useState(false);
   const [configSaved, setConfigSaved] = useState(false);
 
@@ -101,7 +100,6 @@ export default function SuperAdminPage() {
     const data = await AdminService.getConfig(userId);
     setHolonConfig(data.holons);
     setQuorumConfig(data.quorum);
-    setTopicsActivityId(data.topicsActivityId || '');
   }, [userId]);
 
   const awardHolons = async () => {
@@ -123,7 +121,7 @@ export default function SuperAdminPage() {
     if (!userId || !holonConfig || !quorumConfig) return;
     setConfigSaving(true);
     try {
-      await AdminService.updateConfig(userId, { holons: holonConfig, quorum: quorumConfig, topicsActivityId });
+      await AdminService.updateConfig(userId, { holons: holonConfig, quorum: quorumConfig });
       setConfigSaved(true);
       setTimeout(() => setConfigSaved(false), 2000);
     } finally {
@@ -545,20 +543,6 @@ export default function SuperAdminPage() {
                     </p>
                   )}
                 </div>
-                <div>
-                  <h3 style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--ink-light)', marginBottom: '0.75rem' }}>Tier Links</h3>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxWidth: '24rem' }}>
-                    <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.58rem', letterSpacing: '0.08em', color: 'var(--ink-light)', textTransform: 'uppercase' }}>Topics — Activity ID</span>
-                    <input
-                      type="text"
-                      value={topicsActivityId}
-                      onChange={e => setTopicsActivityId(e.target.value)}
-                      placeholder="Paste activity ID from create panel"
-                      style={{ padding: '0.4rem 0.6rem', border: '1px solid var(--rule)', borderRadius: 4, fontSize: '0.85rem', background: '#fff', color: 'var(--ink)', outline: 'none', width: '100%' }}
-                    />
-                  </label>
-                </div>
-
                 <div>
                   <h3 style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--ink-light)', marginBottom: '0.75rem' }}>Holon Amounts</h3>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(14rem, 1fr))', gap: '0.75rem' }}>
