@@ -46,3 +46,6 @@ next-env.d.ts
 # backend
 apps/backend/server.log
 apps/backend/migrate-add-urlname.js
+
+# claude code internal
+.claude/worktrees/

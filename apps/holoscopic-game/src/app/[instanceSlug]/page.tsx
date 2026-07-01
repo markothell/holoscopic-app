@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useParams } from 'next/navigation';
 import { useInstance } from '@/contexts/InstanceContext';
 import UserMenu from '@/components/UserMenu';
 import { GAME_NAME, gamePath } from '@/lib/strings';
@@ -42,8 +43,8 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
 }
 
 export default function InterViewLandingPage() {
+  const { instanceSlug: slug } = useParams<{ instanceSlug: string }>();
   const { instance } = useInstance();
-  const slug = instance?.slug ?? 'interview';
   const g = instance?.gameNumber ?? 1;
   const [enterHover, setEnterHover] = useState(false);
 
