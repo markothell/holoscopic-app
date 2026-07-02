@@ -66,7 +66,8 @@ export async function apiFetch(
     ...(rest.headers as Record<string, string>),
   };
   if (userId) headers['x-user-id'] = userId;
-  if (_instanceId) headers['x-instance-id'] = _instanceId;
+  // Ambient instance fills in only when the caller didn't set one explicitly
+  if (_instanceId && !headers['x-instance-id']) headers['x-instance-id'] = _instanceId;
 
   // Attach the identity proof on writes and on any explicit-identity request.
   // (Some routes carry userId in the body rather than the header, so writes

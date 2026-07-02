@@ -2,48 +2,103 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import UserMenu from '@/components/UserMenu';
+import PlayerMap from '@/components/graph/PlayerMap';
+import { UserService, PlayerGamesResponse, GameMapResponse } from '@/services/userService';
+import { STR } from '@/lib/strings';
 import styles from './page.module.css';
 
-interface Activity {
-  id: string;
-  title: string;
-  urlName: string;
-  xAxisLabel: string;
-  yAxisLabel: string;
-  updatedAt: string;
-  userEntries?: {
-    slotNumber: number;
-    objectName: string;
-    x: number;
-    y: number;
-    comment?: string;
-  }[];
+function gameLabel(game: { name: string; gameNumber: number | null }) {
+  return game.gameNumber != null ? `${game.name} · g${game.gameNumber}` : game.name;
 }
 
-interface UserProfile {
-  id: string;
-  name: string;
-  sequenceId: string;
-  sequenceUrlName: string;
-  sequenceTitle: string;
-  joinedAt: string;
-  participatedActivities: Activity[];
+// ─── Player history (default mode) ───────────────────────────────────────────
+
+function PlayerHistory({ data, targetUserId, isOwnProfile }: {
+  data: PlayerGamesResponse;
+  targetUserId: string;
+  isOwnProfile: boolean;
+}) {
+  const displayName = data.user.name || 'Anonymous';
+
+  return (
+    <>
+      <div className={styles.profileHeader}>
+        <div className={styles.avatar}>
+          {displayName.charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <h1 className={styles.profileName}>{displayName}</h1>
+          <p className={styles.profileMeta}>
+            {data.games.length} {data.games.length === 1 ? 'game' : 'games'} played
+          </p>
+        </div>
+      </div>
+
+      <div className={styles.divider} />
+
+      {data.games.length > 0 ? (
+        <div>
+          <h2 className={styles.sectionTitle}>Player History</h2>
+          {data.games.map((game) => (
+            <div key={game.instanceId} className={styles.activityCard}>
+              <div className={styles.activityTitle}>
+                {gameLabel(game)}
+                {!game.active && (
+                  <span style={{ marginLeft: '0.5rem', fontSize: '0.55rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                    ended
+                  </span>
+                )}
+              </div>
+              <div className={styles.activityAxes}>
+                {game.joinedAt && <>Joined {new Date(game.joinedAt).toLocaleDateString()} &middot; </>}
+                {game.stats.entries} {game.stats.entries === 1 ? 'entry' : 'entries'} across {game.stats.activities} {game.stats.activities === 1 ? STR.map.toLowerCase() : STR.maps.toLowerCase()}
+                {game.stats.votesCast > 0 && <> &middot; {game.stats.votesCast} votes cast</>}
+                {game.stats.frames > 0 && <> &middot; {game.stats.frames} {game.stats.frames === 1 ? STR.frame.toLowerCase() : STR.frames.toLowerCase()}</>}
+                {game.stats.patterns > 0 && <> &middot; {game.stats.patterns} {game.stats.patterns === 1 ? STR.pattern.toLowerCase() : STR.patterns.toLowerCase()}</>}
+              </div>
+              <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.6rem' }}>
+                <Link
+                  href={`/interview/${game.slug}/topics`}
+                  className={styles.footerLink}
+                >
+                  Collective map &rarr;
+                </Link>
+                <Link
+                  href={`/profile/${targetUserId}?game=${game.slug}`}
+                  className={styles.footerLink}
+                >
+                  {isOwnProfile ? 'Your map' : 'Their map'} &rarr;
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className={styles.empty}>
+          {isOwnProfile
+            ? "You haven't joined any games yet."
+            : `${displayName} hasn't joined any games you share.`}
+        </div>
+      )}
+    </>
+  );
 }
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: session, status } = useSession();
-  const { userId: viewerId } = useAuth();
+  const { userId: viewerId, isLoading: authLoading } = useAuth();
   const targetUserId = params.userId as string;
-  const sequenceId = searchParams.get('sequence');
+  const game = searchParams.get('game');
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [games, setGames] = useState<PlayerGamesResponse | null>(null);
+  const [gameMap, setGameMap] = useState<GameMapResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,49 +108,21 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
+    if (authLoading || !targetUserId) return;
+
     async function fetchProfile() {
+      setLoading(true);
+      setError(null);
       try {
-        if (!sequenceId) {
-          setError('Sequence context is required. Please access this profile from within a sequence.');
-          setLoading(false);
+        if (!viewerId) {
+          setError('Sign in to view player profiles.');
           return;
         }
-
-        if (targetUserId.startsWith('starter_')) {
-          setProfile({
-            id: targetUserId,
-            name: 'Sample Data',
-            sequenceId: sequenceId,
-            sequenceUrlName: '',
-            sequenceTitle: 'Sample Sequence',
-            joinedAt: new Date().toISOString(),
-            participatedActivities: []
-          });
-          setLoading(false);
-          return;
+        if (game) {
+          setGameMap(await UserService.getGameMap(targetUserId, viewerId, game));
+        } else {
+          setGames(await UserService.getGames(targetUserId, viewerId));
         }
-
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-        const response = await fetch(`${API_URL}/sequences/${sequenceId}/profile/${targetUserId}?viewerId=${viewerId || ''}`);
-
-        if (response.status === 403) {
-          setError('You do not have permission to view this profile. Only sequence members can view profiles.');
-          setLoading(false);
-          return;
-        }
-
-        if (response.status === 404) {
-          setError('Profile not found in this sequence.');
-          setLoading(false);
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch profile');
-        }
-
-        const data = await response.json();
-        setProfile(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load profile');
       } finally {
@@ -103,12 +130,10 @@ export default function ProfilePage() {
       }
     }
 
-    if (targetUserId) {
-      fetchProfile();
-    }
-  }, [targetUserId, sequenceId, viewerId]);
+    fetchProfile();
+  }, [targetUserId, viewerId, game, authLoading]);
 
-  if (loading) {
+  if (loading || authLoading) {
     return <div className={styles.loading}>Loading profile...</div>;
   }
 
@@ -136,12 +161,49 @@ export default function ProfilePage() {
     );
   }
 
-  if (!profile) {
-    return null;
+  const isOwnProfile = viewerId === targetUserId;
+
+  // ── Personal map mode (?game=slug) ──
+  if (game && gameMap) {
+    const displayName = gameMap.user.name || 'Anonymous';
+    return (
+      <div className={styles.page} style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        <div className={styles.grain} />
+        <div style={{ flexShrink: 0, padding: '1rem 1.5rem 0.5rem', position: 'relative', zIndex: 10 }}>
+          <nav className={styles.nav} style={{ marginBottom: '0.5rem' }}>
+            <Link href="/" className={styles.wordmark}>
+              Holo<span>scopic</span>
+            </Link>
+            <div className={styles.navRight}>
+              <span className={styles.navLabel}>Player map</span>
+              <UserMenu />
+            </div>
+          </nav>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.85rem', flexWrap: 'wrap' }}>
+            <Link href={`/profile/${targetUserId}`} className={styles.breadcrumb} style={{ margin: 0 }}>
+              &larr; {displayName}
+            </Link>
+            {gameMap.instance && (
+              <>
+                <span className={styles.profileMeta} style={{ margin: 0 }}>
+                  in {gameLabel(gameMap.instance)}
+                </span>
+                <Link href={`/interview/${gameMap.instance.slug}/topics`} className={styles.footerLink}>
+                  Collective map &rarr;
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+        <div style={{ flex: 1, minHeight: 0, position: 'relative', zIndex: 5 }}>
+          <PlayerMap map={gameMap} />
+        </div>
+      </div>
+    );
   }
 
-  const isOwnProfile = viewerId === targetUserId;
-  const displayName = profile.name || 'Anonymous';
+  // ── Player history mode ──
+  if (!games) return null;
 
   return (
     <div className={styles.page}>
@@ -158,74 +220,7 @@ export default function ProfilePage() {
           </div>
         </nav>
 
-        {profile.sequenceUrlName && (
-          <Link
-            href={`/sequence/${profile.sequenceUrlName}`}
-            className={styles.breadcrumb}
-          >
-            &larr; Back to {profile.sequenceTitle}
-          </Link>
-        )}
-
-        <div className={styles.profileHeader}>
-          <div className={styles.avatar}>
-            {displayName.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h1 className={styles.profileName}>{displayName}</h1>
-            <p className={styles.profileMeta}>
-              {profile.sequenceTitle} &middot; Joined {new Date(profile.joinedAt).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-
-        <div className={styles.divider} />
-
-        {profile.participatedActivities && profile.participatedActivities.length > 0 && (
-          <div>
-            <h2 className={styles.sectionTitle}>Activity Participation</h2>
-            {profile.participatedActivities.map((activity) => (
-              <div key={activity.id} className={styles.activityCard}>
-                <div className={styles.activityTitle}>{activity.title}</div>
-                <div className={styles.activityAxes}>
-                  {activity.xAxisLabel} &times; {activity.yAxisLabel}
-                </div>
-
-                {activity.userEntries && activity.userEntries.length > 0 && (
-                  <div>
-                    {activity.userEntries.map((entry) => (
-                      <div key={entry.slotNumber} className={styles.entryCard}>
-                        <div className={styles.entryHeader}>
-                          <span className={styles.entrySlot}>Slot {entry.slotNumber}</span>
-                          <span className={styles.entryName}>{entry.objectName}</span>
-                        </div>
-                        {entry.x !== undefined && entry.y !== undefined && (
-                          <div className={styles.entryPosition}>
-                            Position: ({entry.x.toFixed(1)}, {entry.y.toFixed(1)})
-                          </div>
-                        )}
-                        {entry.comment && (
-                          <div className={styles.entryComment}>
-                            &ldquo;{entry.comment}&rdquo;
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {(!profile.participatedActivities || profile.participatedActivities.length === 0) && (
-          <div className={styles.empty}>
-            {isOwnProfile
-              ? "You haven't participated in any activities in this sequence yet."
-              : `${displayName} hasn't participated in any activities in this sequence yet.`
-            }
-          </div>
-        )}
+        <PlayerHistory data={games} targetUserId={targetUserId} isOwnProfile={isOwnProfile} />
 
         <footer className={styles.footer}>
           <Link href="/" className={styles.footerLink}>Home</Link>

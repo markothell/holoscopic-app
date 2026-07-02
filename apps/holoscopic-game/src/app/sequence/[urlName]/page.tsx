@@ -324,7 +324,7 @@ export default function SequenceDetailPage() {
               )}
               {isEnrolled && userId && (
                 <div className={styles.myActivityRow}>
-                  <Link href={`/profile/${userId}?sequence=${sequence.id}`} className={styles.myActivityLink}>
+                  <Link href={`/profile/${userId}`} className={styles.myActivityLink}>
                     My activity &rarr;
                   </Link>
                 </div>

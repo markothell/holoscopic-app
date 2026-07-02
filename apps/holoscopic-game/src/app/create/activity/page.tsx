@@ -199,6 +199,9 @@ function CreateActivityContent() {
         maxEntries,
         isPublic: true,
         isDraft: false,
+        // interView maps link comments to game-scoped profiles by default;
+        // this is the creation flow's choice, not a schema-level hardwire
+        showProfileLinks: true,
       };
       const effectiveFrameId = frameId || pickedFrameId;
       if (effectiveFrameId) body.frameId = effectiveFrameId;
