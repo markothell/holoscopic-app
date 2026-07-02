@@ -1,17 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { HoloscopicActivity, Rating } from '../../../types/Activity';
+import { HoloscopicActivity, ActivityEntry } from '../../../types/Activity';
 import { QUADRANT_POSITIONS, getQuadrantFromPosition } from '../types';
 
 interface QuadrantSelectorProps {
   activity: HoloscopicActivity;
   onQuadrantSelect: (position: { x: number; y: number }) => void;
-  userRating?: Rating;
+  userRating?: ActivityEntry;
 }
 
 export default function QuadrantSelector({ activity, onQuadrantSelect, userRating }: QuadrantSelectorProps) {
-  const initialQuadrant = userRating
+  const initialQuadrant = userRating?.position
     ? getQuadrantFromPosition(userRating.position.x, userRating.position.y)
     : null;
 

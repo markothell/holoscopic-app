@@ -85,7 +85,7 @@ function ResolveIcon({ size, className }: { size: number; className?: string }) 
 }
 
 export default function ActivityTypeIcon({ type, size = 20, className }: ActivityTypeIconProps) {
-  if (type === 'resolve' || type === 'findthecenter') {
+  if (type === 'resolve') {
     return <ResolveIcon size={size} className={className} />;
   }
   return <DissolveIcon size={size} className={className} />;

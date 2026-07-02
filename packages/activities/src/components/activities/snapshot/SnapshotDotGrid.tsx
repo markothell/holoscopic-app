@@ -1,10 +1,10 @@
 'use client';
 
-import { HoloscopicActivity, Rating, SnapshotQuestion } from '../../../types/Activity';
+import { HoloscopicActivity, PositionedEntry, SnapshotQuestion } from '../../../types/Activity';
 
 interface SnapshotDotGridProps {
   activity: HoloscopicActivity;
-  ratings: Rating[];
+  ratings: PositionedEntry[];
   onCellClick?: (quadrant: number, subCell?: number) => void;
   activeCells?: Set<string>;
   visibleQuestions: Set<string>;
@@ -47,7 +47,7 @@ function getFillPositions(n: number, col: number): { row: number; col: number }[
 
 interface QuadrantCellProps {
   question: SnapshotQuestion | null;
-  ratings: Rating[];
+  ratings: PositionedEntry[];
   questions: SnapshotQuestion[];
   visibleQuestions: Set<string>;
   isActive: boolean;
@@ -66,7 +66,7 @@ function DotCell({
   fillFromRight,
   fillFromBottom,
 }: {
-  ratings: Rating[];
+  ratings: PositionedEntry[];
   questions: SnapshotQuestion[];
   visibleQuestions: Set<string>;
   isActive: boolean;
@@ -84,7 +84,7 @@ function DotCell({
   const n = Math.min(10, Math.max(5, Math.ceil(Math.sqrt(count))));
 
   // Build grid: fill from inner corner (row 0, col 0 = inner corner)
-  const grid: (Rating | null)[][] = Array.from({ length: n }, () => Array(n).fill(null));
+  const grid: (PositionedEntry | null)[][] = Array.from({ length: n }, () => Array(n).fill(null));
   let placed = 0;
   outer: for (let row = 0; row < n; row++) {
     for (let col = 0; col < n; col++) {
@@ -149,7 +149,7 @@ function DotCell({
 
 interface QuadrantCardProps {
   quadrant: number; // 1-4
-  ratings: Rating[];
+  ratings: PositionedEntry[];
   questions: SnapshotQuestion[];
   visibleQuestions: Set<string>;
   xPoints: number;

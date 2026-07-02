@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Comment, CommentSectionProps, CommentSortOrder } from '../types/Activity';
+import { ActivityEntry, CommentSectionProps, CommentSortOrder, commentEntries, positionedEntries, entryTimestamp } from '../types/Activity';
 import { ValidationService } from '../utils/validation';
 import { FormattingService } from '../utils/formatting';
 
@@ -17,7 +17,7 @@ export default function CommentSection({
   selectedCommentId,
   onSelectedCommentChange,
   onVisibleCommentsChange,
-  sequenceId,
+  gameSlug,
   filterCommentIds,
 }: CommentSectionProps) {
   const [commentText, setCommentText] = useState(userComment?.text || '');
@@ -28,6 +28,8 @@ export default function CommentSection({
   const commentRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
+  const comments = commentEntries(activity);
+
   // Update comment text when userComment prop changes
   useEffect(() => {
     if (userComment?.text) {
@@ -37,40 +39,26 @@ export default function CommentSection({
     }
   }, [userComment]);
 
-  // Get user's object name from their rating or comment
-  const getUserObjectName = (userId: string): string | null => {
-    const userRating = activity.ratings.find(r => r.userId === userId);
-    if (userRating?.objectName) return userRating.objectName;
-
-    const userComment = activity.comments.find(c => c.userId === userId);
-    if (userComment?.objectName) return userComment.objectName;
-
-    return null;
+  const sortComments = (list: ActivityEntry[]): ActivityEntry[] => {
+    const sorted = [...list];
+    switch (sortOrder) {
+      case 'oldest':
+        return sorted.sort((a, b) => entryTimestamp(a).getTime() - entryTimestamp(b).getTime());
+      case 'votes':
+        return sorted.sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
+      case 'newest':
+      default:
+        return sorted.sort((a, b) => entryTimestamp(b).getTime() - entryTimestamp(a).getTime());
+    }
   };
 
   // Notify parent of visible comments when sort order changes
   useEffect(() => {
     if (onVisibleCommentsChange) {
-      const comments = [...activity.comments];
-      let visibleComments: Comment[] = [];
-
-      switch (sortOrder) {
-        case 'newest':
-          visibleComments = comments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-          break;
-        case 'oldest':
-          visibleComments = comments.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-          break;
-        case 'votes':
-          visibleComments = comments.sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
-          break;
-        default:
-          visibleComments = comments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      }
-
-      onVisibleCommentsChange(visibleComments.map(c => c.id));
+      onVisibleCommentsChange(sortComments(comments).map(c => c.id));
     }
-  }, [sortOrder, activity.comments, activity.ratings, onVisibleCommentsChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortOrder, activity.entries, onVisibleCommentsChange]);
 
   // Scroll to selected comment
   useEffect(() => {
@@ -148,8 +136,6 @@ export default function CommentSection({
     };
   }, []);
 
-  // Remove auto-resize functionality since we want fixed size
-
   // Handle comment submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,46 +168,33 @@ export default function CommentSection({
     setValidationError(null);
   };
 
-  // Get user color based on their rating position (matching by userId and slotNumber)
-  const getUserColor = (comment: Comment) => {
+  // Get user color based on the entry's position (or question color for snapshot)
+  const getUserColor = (entry: ActivityEntry) => {
     // Snapshot: use the question's color
-    if (comment.questionId && activity.snapshotQuestions) {
-      const question = activity.snapshotQuestions.find(q => q.id === comment.questionId);
+    if (entry.questionId && activity.snapshotQuestions) {
+      const question = activity.snapshotQuestions.find(q => q.id === entry.questionId);
       if (question?.color) return question.color;
     }
-    const userRating = activity.ratings.find(r =>
-      r.userId === comment.userId && (r.slotNumber || 1) === (comment.slotNumber || 1)
-    );
-    if (userRating) {
-      const quadrant = ValidationService.getQuadrant(userRating.position);
+    if (entry.position) {
+      const quadrant = ValidationService.getQuadrant(entry.position);
       return ValidationService.getQuadrantColor(quadrant);
     }
-    // Fallback to username-based color for backward compatibility
-    return FormattingService.generateColorFromString(comment.username);
+    return FormattingService.generateColorFromString(entry.username);
   };
 
   // Get display name for comment (object name or username)
-  const getDisplayName = (comment: Comment) => {
-    // Use objectName if available
-    if (comment.objectName) {
-      return comment.objectName;
-    }
-
-    // Try to get objectName from user's rating
-    const objectName = getUserObjectName(comment.userId);
-    if (objectName) {
-      return objectName;
-    }
-
-    // Fallback to username for backward compatibility
-    return comment.username;
+  const getDisplayName = (entry: ActivityEntry) => {
+    if (entry.objectName) return entry.objectName;
+    // Any of the author's entries may carry the object name
+    const named = positionedEntries(activity).find(e => e.userId === entry.userId && e.objectName);
+    return named?.objectName || entry.username;
   };
 
   // Handle comment voting
-  const handleVote = async (commentId: string) => {
+  const handleVote = async (entryId: string) => {
     if (onCommentVote) {
       try {
-        await onCommentVote(commentId);
+        await onCommentVote(entryId);
       } catch {
         console.error('Vote failed');
       }
@@ -229,29 +202,19 @@ export default function CommentSection({
   };
 
   // Sort comments based on selected order, applying quadrant filter if set
-  const getSortedComments = (): Comment[] => {
-    let comments = [...activity.comments];
+  const getSortedComments = (): ActivityEntry[] => {
+    let list = comments;
     if (filterCommentIds != null) {
       const idSet = new Set(filterCommentIds);
-      comments = comments.filter(c => idSet.has(c.id));
+      list = list.filter(c => idSet.has(c.id));
     }
-
-    switch (sortOrder) {
-      case 'newest':
-        return comments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      case 'oldest':
-        return comments.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-      case 'votes':
-        return comments.sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
-      default:
-        return comments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    }
+    return sortComments(list);
   };
 
   // Check if current user has voted on a comment
-  const hasUserVoted = (comment: Comment): boolean => {
-    if (!currentUserId || !comment.votes) return false;
-    return comment.votes.some(vote => vote.userId === currentUserId);
+  const hasUserVoted = (entry: ActivityEntry): boolean => {
+    if (!currentUserId) return false;
+    return (entry.voterIds || []).includes(currentUserId);
   };
 
   return (
@@ -306,10 +269,10 @@ export default function CommentSection({
           <div className="flex justify-between items-center mb-4 flex-shrink-0">
             {/* Vote Counter - Left side - Show if vote limit is configured (not for solo tracker mode) */}
             {activity.maxEntries !== 0 && activity.votesPerUser !== null && activity.votesPerUser !== undefined && currentUserId && (() => {
-              const votedCommentIds = activity.comments.filter(c =>
-                c.votes.some(v => v.userId === currentUserId)
+              const votedCount = (activity.entries || []).filter(e =>
+                (e.voterIds || []).includes(currentUserId)
               ).length;
-              const remainingVotes = Math.max(0, activity.votesPerUser - votedCommentIds);
+              const remainingVotes = Math.max(0, activity.votesPerUser - votedCount);
               return (
                 <div
                   className={`px-3 py-1 rounded text-sm font-medium ${
@@ -326,7 +289,7 @@ export default function CommentSection({
 
             {!readOnly && (
               <h4 className="font-semibold text-[var(--text-secondary)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                {FormattingService.formatCommentCount(activity.comments.length)}
+                {FormattingService.formatCommentCount(comments.length)}
               </h4>
             )}
 
@@ -349,7 +312,7 @@ export default function CommentSection({
           </div>
 
           {/* Comments or No Comments Message */}
-          {activity.comments.length > 0 ? (
+          {comments.length > 0 ? (
             <div className={`space-y-3 overflow-y-auto ${readOnly ? "flex-1 min-h-0" : "max-h-60"}`}>
               {getSortedComments().map((comment) => {
                 return (
@@ -369,10 +332,10 @@ export default function CommentSection({
                         {getDisplayName(comment)}
                       </span>
                       <div className="flex items-center gap-1.5">
-                        {/* Profile Icon - Only show if sequenceId present (indicates sequence context) */}
-                        {activity.showProfileLinks !== false && comment.userId && !comment.userId.startsWith('anon_') && !comment.userId.startsWith('starter_') && sequenceId && (
+                        {/* Profile Icon — links to the author's game-scoped profile */}
+                        {activity.showProfileLinks !== false && comment.userId && !comment.isSeed && !comment.userId.startsWith('anon_') && gameSlug && (
                           <a
-                            href={`/profile/${comment.userId}?sequence=${sequenceId}`}
+                            href={`/profile/${comment.userId}?game=${gameSlug}`}
                             onClick={(e) => e.stopPropagation()}
                             className="flex items-center justify-center transition-opacity hover:opacity-80 opacity-90"
                             title="View profile"
@@ -421,7 +384,7 @@ export default function CommentSection({
                     {/* Timestamp moved to bottom */}
                     <div className="flex justify-end">
                       <span className="text-xs text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.5rem', letterSpacing: '0.06em' }}>
-                        {FormattingService.formatTimestamp(comment.timestamp)}
+                        {FormattingService.formatTimestamp(entryTimestamp(comment))}
                       </span>
                     </div>
                   </div>

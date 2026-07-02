@@ -25,11 +25,9 @@ export { UrlUtils } from './utils/urlUtils';
 
 // Components
 export { default as MappingGrid } from './components/MappingGrid';
-export { default as DotGrid } from './components/DotGrid';
 export { default as ResultsView } from './components/ResultsView';
 export { default as ResultsViewSimple } from './components/ResultsViewSimple';
 export { default as PauseOverlay } from './components/PauseOverlay';
 export { default as CollapsibleSection } from './components/CollapsibleSection';
 export { default as ActivityTypeIcon } from './components/icons/ActivityTypeIcon';
 export { default as CommentSection } from './components/CommentSection';
-export { default as CommentPopup } from './components/CommentPopup';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ResultsViewProps } from '../../../types/Activity';
+import { ResultsViewProps, commentEntries, positionedEntries } from '../../../types/Activity';
 import SnapshotDotGrid from './SnapshotDotGrid';
 
 function getQuadrant(x: number, y: number): number {
@@ -48,19 +48,14 @@ export default function SnapshotResults({
     const cellFiltered = cells.size > 0;
     if (!cellFiltered && !questionFiltered) return null;
 
-    return activity.comments
+    return commentEntries(activity)
       .filter(c => {
         if (questionFiltered && c.questionId && !visible.has(c.questionId)) return false;
         if (cellFiltered) {
-          const rating = activity.ratings.find(r =>
-            r.userId === c.userId &&
-            r.slotNumber === c.slotNumber &&
-            (r.questionId || null) === (c.questionId || null)
-          );
-          if (!rating) return false;
-          const q = getQuadrant(rating.position.x, rating.position.y);
+          if (!c.position) return false;
+          const q = getQuadrant(c.position.x, c.position.y);
           const sc = (xPoints >= 4 || yPoints >= 4)
-            ? getSubCell(rating.position.x, rating.position.y, xPoints, yPoints, q)
+            ? getSubCell(c.position.x, c.position.y, xPoints, yPoints, q)
             : 0;
           if (!cells.has(`${q}-${sc}`)) return false;
         }
@@ -92,7 +87,7 @@ export default function SnapshotResults({
       <div className="w-full max-w-[560px]">
         <SnapshotDotGrid
           activity={activity}
-          ratings={activity.ratings}
+          ratings={positionedEntries(activity)}
           onCellClick={handleCellClick}
           activeCells={activeCells}
           visibleQuestions={visibleQuestions}

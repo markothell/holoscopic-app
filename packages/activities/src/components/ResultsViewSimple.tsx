@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ResultsViewProps } from '../types/Activity';
+import { ResultsViewProps, commentEntries, positionedEntries } from '../types/Activity';
 import ResolveGrid from './activities/resolve/ResolveGrid';
 
 function getQuadrant(x: number, y: number): number {
@@ -20,6 +20,11 @@ export default function ResultsViewSimple({
 
   if (!isVisible) return null;
 
+  const inActiveCells = (cells: Set<number>) =>
+    commentEntries(activity).filter(c =>
+      c.position ? cells.has(getQuadrant(c.position.x, c.position.y)) : false
+    );
+
   const handleCellClick = (quadrant: number) => {
     const next = new Set(activeCells);
     if (next.has(quadrant)) { next.delete(quadrant); } else { next.add(quadrant); }
@@ -29,34 +34,19 @@ export default function ResultsViewSimple({
       if (next.size === 0) {
         onActiveCellChange(null);
       } else {
-        const ids = activity.comments
-          .filter(c => {
-            const rating = activity.ratings.find(
-              r => r.userId === c.userId && (r.slotNumber ?? 1) === (c.slotNumber ?? 1)
-            );
-            return rating ? next.has(getQuadrant(rating.position.x, rating.position.y)) : false;
-          })
-          .map(c => c.id);
-        onActiveCellChange(ids);
+        onActiveCellChange(inActiveCells(next).map(c => c.id));
       }
     }
   };
 
-  const filteredCount = activeCells.size > 0
-    ? activity.comments.filter(c => {
-        const rating = activity.ratings.find(
-          r => r.userId === c.userId && (r.slotNumber ?? 1) === (c.slotNumber ?? 1)
-        );
-        return rating ? activeCells.has(getQuadrant(rating.position.x, rating.position.y)) : false;
-      }).length
-    : null;
+  const filteredCount = activeCells.size > 0 ? inActiveCells(activeCells).length : null;
 
   return (
     <div className="h-full flex flex-col items-center justify-start p-4 overflow-y-auto">
       <div className="w-full max-w-[560px]">
         <ResolveGrid
           activity={activity}
-          ratings={activity.ratings}
+          ratings={positionedEntries(activity)}
           onCellClick={handleCellClick}
           activeCells={activeCells}
         />

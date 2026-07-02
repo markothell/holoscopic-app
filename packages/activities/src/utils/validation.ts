@@ -42,7 +42,7 @@ export class ValidationService {
     }
 
     // X-axis validation - label only required for dissolve type
-    if (data.activityType !== 'findthecenter' && data.activityType !== 'resolve') {
+    if (data.activityType !== 'resolve') {
       if (!data.xAxisLabel || data.xAxisLabel.trim().length === 0) {
         errors.xAxisLabel = 'X-axis label is required';
       } else if (data.xAxisLabel.trim().length > 50) {
@@ -63,7 +63,7 @@ export class ValidationService {
     }
 
     // Y-axis validation - label only required for dissolve type
-    if (data.activityType !== 'findthecenter' && data.activityType !== 'resolve') {
+    if (data.activityType !== 'resolve') {
       if (!data.yAxisLabel || data.yAxisLabel.trim().length === 0) {
         errors.yAxisLabel = 'Y-axis label is required';
       } else if (data.yAxisLabel.trim().length > 50) {

@@ -1,5 +1,5 @@
 import { ComponentType } from 'react';
-import { HoloscopicActivity, Rating, Comment, SnapshotAnswer, ResultsViewProps, ActivityFormData } from '../../types/Activity';
+import { HoloscopicActivity, ActivityEntry, SnapshotAnswer, ResultsViewProps, ActivityFormData } from '../../types/Activity';
 
 export interface TypePositioningStepsProps {
   activity: HoloscopicActivity;
@@ -9,8 +9,8 @@ export interface TypePositioningStepsProps {
   onXChange: (v: number) => void;
   onYChange: (v: number) => void;
   objectName: string;
-  existingRating?: Rating;
-  existingComment?: Comment;
+  existingRating?: ActivityEntry;
+  existingComment?: ActivityEntry;
   // Snapshot only: called when answers are updated so EntryModal can include them on submit
   onSnapshotAnswersChange?: (answers: SnapshotAnswer[]) => void;
   // Snapshot only: when set, only show this question's flow (single-question mode)

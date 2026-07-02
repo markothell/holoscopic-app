@@ -1,8 +1,7 @@
 // TypeScript interfaces for Holoscopic data models
 
 // Activity types supported by the app
-// New names: 'dissolve' and 'resolve'. Old names kept for backward compatibility with existing DB documents.
-export type ActivityType = 'dissolve' | 'resolve' | 'holoscopic' | 'findthecenter' | 'snapshot';
+export type ActivityType = 'dissolve' | 'resolve' | 'snapshot';
 
 export interface SnapshotQuestion {
   id: string;
@@ -19,8 +18,45 @@ export interface SnapshotAnswer {
   comment: string;
 }
 
+// The atomic unit of participation: one (user, slot, question) contribution —
+// a named position on the grid plus its comment text and received votes.
+// Mirrors the backend Entry collection (the storage source of truth).
+export interface ActivityEntry {
+  id: string;
+  userId: string;
+  username: string;
+  slotNumber: number;
+  questionId?: string | null; // Snapshot: which question this belongs to
+  objectName?: string;
+  position?: { x: number; y: number } | null; // 0-1 normalized
+  text?: string;
+  voterIds: string[];
+  voteCount: number;
+  isSeed?: boolean; // sample data seeded from starterData
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+// An entry that has been placed on the map
+export type PositionedEntry = ActivityEntry & { position: { x: number; y: number } };
+
+// Entries that render in the comments panel (have text)
+export function commentEntries(activity: Pick<HoloscopicActivity, 'entries'>): ActivityEntry[] {
+  return (activity.entries || []).filter(e => e.text && e.text.trim());
+}
+
+// Entries that render on the map (have a position)
+export function positionedEntries(activity: Pick<HoloscopicActivity, 'entries'>): PositionedEntry[] {
+  return (activity.entries || []).filter((e): e is PositionedEntry => !!e.position);
+}
+
+export function entryTimestamp(entry: ActivityEntry): Date {
+  return new Date(entry.updatedAt || entry.createdAt);
+}
+
 export interface HoloscopicActivity {
   id: string;
+  instanceId?: string; // the game this map belongs to
   title: string;
   urlName: string; // URL-friendly name for routing (e.g., "gratitude")
   activityType: ActivityType; // Determines UI/flow behavior
@@ -61,7 +97,7 @@ export interface HoloscopicActivity {
   wikiLink?: string; // Optional reference link for the activity
 
   // Starter data for seeding the activity
-  starterData?: string; // JSON string of initial ratings/comments
+  starterData?: string; // JSON string materialized as isSeed entries
 
   // Vote configuration
   votesPerUser?: number | null; // null/undefined = unlimited votes
@@ -85,79 +121,40 @@ export interface HoloscopicActivity {
   isDraft: boolean;
   createdAt: Date;
   updatedAt: Date;
+  closesAt?: Date | string | null; // when this map settles (window from creation)
 
-  // Access control
-  requiresEnrollment?: boolean;
-  enrollmentDescription?: string;
-  maxParticipants?: number | null;
-  enrolledUsers?: {
-    userId: string;
-    enrolledAt: Date;
-  }[];
-  
-  // Participant data
+  // Frame / topic context
+  frameId?: string | null;
+  topicId?: string | null;
+
+  // Membership (presence is socket state, not data)
   participants: Participant[];
-  ratings: Rating[];
-  comments: Comment[];
-}
 
-export interface Rating {
-  id: string;
-  userId: string;
-  username: string;
-  objectName?: string; // User's named object
-  slotNumber?: number; // Entry slot (1-4)
-  position: {
-    x: number; // 0-1 normalized
-    y: number; // 0-1 normalized
-  };
-  questionId?: string | null; // Snapshot: which question this belongs to
-  timestamp: Date;
-}
+  // Participation content — present on single-activity payloads
+  entries: ActivityEntry[];
 
-export interface Comment {
-  id: string;
-  userId: string;
-  username: string;
-  objectName?: string; // User's named object replaces quadrant name
-  slotNumber?: number; // Entry slot (1-4)
-  text: string;
-  questionId?: string | null; // Snapshot: which question this belongs to
-  timestamp: Date;
-  votes: CommentVote[];
-  voteCount: number;
-}
-
-export interface CommentVote {
-  id: string;
-  userId: string;
-  username: string;
-  timestamp: Date;
+  // Present on list payloads instead of full entries
+  entryCount?: number;
 }
 
 export interface Participant {
   id: string;
   username: string;
-  objectName?: string; // Store participant's named object
-  isConnected: boolean;
-  hasSubmitted: boolean;
   joinedAt: Date;
 }
 
 // WebSocket event types
 export interface WebSocketEvents {
   // User actions
-  'submit_rating': { userId: string; position: { x: number; y: number }; timestamp: Date };
-  'submit_comment': { userId: string; text: string; timestamp: Date };
-  'vote_comment': { userId: string; commentId: string; timestamp: Date };
+  'submit_entry': { userId: string; position?: { x: number; y: number }; text?: string; objectName?: string; slotNumber?: number; questionId?: string | null };
   'join_activity': { userId: string; username: string };
   'leave_activity': { userId: string };
-  
+
   // Broadcast events
-  'rating_added': { rating: Rating };
-  'comment_added': { comment: Comment };
-  'comment_updated': { comment: Comment };
-  'comment_voted': { comment: Comment };
+  'entry_upserted': { entry: ActivityEntry };
+  'entry_voted': { entry: ActivityEntry };
+  'entry_removed': { entryId: string };
+  'entries_cleared': { userId: string; slotNumber: number };
   'participant_joined': { participant: Participant };
   'participant_left': { participantId: string };
   'activity_updated': { activity: HoloscopicActivity };
@@ -169,7 +166,7 @@ export interface ActivityFormData {
   urlName?: string; // Optional - will be generated from title if not provided
   activityType: ActivityType; // Activity type selection
   mapQuestion: string;
-  mapQuestion2: string; // Used by holoscopic type, empty for resolve
+  mapQuestion2: string; // Used by dissolve type, empty for resolve
   objectNameQuestion: string;
   xAxisLabel: string;
   xAxisMin: string;
@@ -194,13 +191,6 @@ export interface ActivityFormData {
   yAxisLabels?: string[];
 }
 
-// API response types
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-
 export interface ActivityListResponse {
   activities: HoloscopicActivity[];
   total: number;
@@ -210,10 +200,10 @@ export interface ActivityListResponse {
 export interface MappingGridProps {
   activity: HoloscopicActivity;
   onRatingSubmit: (position: { x: number; y: number }) => void;
-  userRating?: Rating;
+  userRating?: ActivityEntry;
   showAllRatings?: boolean;
   hoveredCommentId?: string | null;
-  onDotClick?: (commentId: string) => void;
+  onDotClick?: (entryId: string) => void;
   visibleCommentIds?: string[];
   hoveredSlotNumber?: number | null;
   currentUserId?: string;
@@ -222,16 +212,18 @@ export interface MappingGridProps {
 export interface CommentSectionProps {
   activity: HoloscopicActivity;
   onCommentSubmit: (text: string) => void;
-  onCommentVote?: (commentId: string) => void;
-  userComment?: Comment;
+  onCommentVote?: (entryId: string) => void;
+  userComment?: ActivityEntry;
   showAllComments?: boolean;
   readOnly?: boolean;
   currentUserId?: string;
-  onCommentHover?: (commentId: string | null) => void;
+  onCommentHover?: (entryId: string | null) => void;
   selectedCommentId?: string | null;
-  onSelectedCommentChange?: (commentId: string | null) => void;
-  onVisibleCommentsChange?: (commentIds: string[]) => void;
-  sequenceId?: string;
+  onSelectedCommentChange?: (entryId: string | null) => void;
+  onVisibleCommentsChange?: (entryIds: string[]) => void;
+  // Game slug for profile links — when set (and the activity allows it),
+  // each comment links to its author's game-scoped profile
+  gameSlug?: string;
   // When set, only comments whose ID appears in this list are shown (used for quadrant filtering)
   filterCommentIds?: string[] | null;
 }
@@ -242,13 +234,13 @@ export interface ResultsViewProps {
   activity: HoloscopicActivity;
   isVisible: boolean;
   onToggle: () => void;
-  onCommentVote?: (commentId: string) => void;
-  onVoteComment?: (activityId: string, commentId: string, userId: string) => Promise<void>;
+  onCommentVote?: (entryId: string) => void;
+  onVoteComment?: (activityId: string, entryId: string, userId: string) => Promise<void>;
   currentUserId?: string;
   hoveredSlotNumber?: number | null;
-  sequenceId?: string;
+  gameSlug?: string;
   hideCommentsPanel?: boolean; // Hide the internal comments panel on lg screens
-  onDotClick?: (commentId: string) => void; // External dot-click handler (for when panel is hidden)
+  onDotClick?: (entryId: string) => void; // External dot-click handler (for when panel is hidden)
   externalHoveredCommentId?: string | null; // External hover state (for when panel is hidden)
   // Snapshot: called when a quadrant cell is clicked; passes filtered comment IDs (null = clear filter)
   onActiveCellChange?: (filteredCommentIds: string[] | null) => void;

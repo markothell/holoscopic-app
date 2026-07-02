@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
-import { HoloscopicActivity, Rating, MappingGridProps } from '../types/Activity';
+import { ActivityEntry, MappingGridProps, positionedEntries, entryTimestamp } from '../types/Activity';
 import { FormattingService } from '../utils/formatting';
 import { ValidationService } from '../utils/validation';
 
@@ -17,6 +17,8 @@ export default function MappingGrid({
   currentUserId
 }: MappingGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
+
+  const positioned = positionedEntries(activity);
 
   // Handle click on grid to place rating
   const handleGridClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -34,83 +36,68 @@ export default function MappingGrid({
     onRatingSubmit({ x: clampedX, y: clampedY });
   };
 
-  // Get position style for a rating dot
-  const getPositionStyle = (rating: Rating) => ({
-    left: `${rating.position.x * 100}%`,
-    top: `${(1 - rating.position.y) * 100}%`, // Flip Y-axis: high values go to top
+  // Get position style for an entry dot
+  const getPositionStyle = (entry: ActivityEntry) => ({
+    left: `${entry.position!.x * 100}%`,
+    top: `${(1 - entry.position!.y) * 100}%`, // Flip Y-axis: high values go to top
     transform: 'translate(-50%, -50%)',
   });
 
   // Get user color based on position
-  const getUserColor = (rating: Rating) => {
-    const quadrant = ValidationService.getQuadrant(rating.position);
+  const getUserColor = (entry: ActivityEntry) => {
+    const quadrant = ValidationService.getQuadrant(entry.position!);
     return ValidationService.getQuadrantColor(quadrant);
   };
 
-  // Get comment for user and slot
-  const getCommentForUser = (userId: string, slotNumber?: number) => {
-    return activity.comments.find(c =>
-      c.userId === userId && (c.slotNumber || 1) === (slotNumber || 1)
-    );
-  };
+  // Check if entry should be highlighted
+  const isHighlighted = (entry: ActivityEntry): boolean => {
+    // Highlight if its comment is hovered
+    if (hoveredCommentId && entry.id === hoveredCommentId) return true;
 
-  // Check if rating should be highlighted
-  const isRatingHighlighted = (rating: Rating): boolean => {
-    // Highlight if comment is hovered
-    if (hoveredCommentId) {
-      const comment = getCommentForUser(rating.userId, rating.slotNumber);
-      if (comment?.id === hoveredCommentId) return true;
-    }
-
-    // Highlight if slot button is hovered and this rating belongs to current user and hovered slot
+    // Highlight if slot button is hovered and this entry belongs to current user and hovered slot
     if (hoveredSlotNumber && currentUserId) {
-      return rating.userId === currentUserId && (rating.slotNumber || 1) === hoveredSlotNumber;
+      return entry.userId === currentUserId && (entry.slotNumber || 1) === hoveredSlotNumber;
     }
 
     return false;
   };
 
-  // Check if rating should be visible (based on comment filters)
-  const isRatingVisible = (rating: Rating): boolean => {
+  // Check if entry should be visible (based on comment filters)
+  const isVisible = (entry: ActivityEntry): boolean => {
     if (visibleCommentIds.length === 0) return true;
-    const comment = getCommentForUser(rating.userId, rating.slotNumber);
-    return comment ? visibleCommentIds.includes(comment.id) : false;
+    return visibleCommentIds.includes(entry.id);
   };
 
   // Get dot size based on vote count (proportional to max votes in activity)
-  const getDotSize = (rating: Rating): { width: string; height: string } => {
-    const comment = getCommentForUser(rating.userId, rating.slotNumber);
-    const commentVotes = comment?.voteCount || 0;
+  const getDotSize = (entry: ActivityEntry): { width: string; height: string } => {
+    const votes = entry.voteCount || 0;
     const mindiam = 12; // Base size for 0 votes
     const maxdiam = 30; // Max size
-    
+
     // Find highest vote count in current activity
-    const highestCommentVotes = Math.max(1, ...activity.comments.map(c => c.voteCount || 0));
-    
-    // Formula: (comment votes/highest comment votes)*(maxdiam-mindiam)+12px
-    const scaledSize = (commentVotes / highestCommentVotes) * (maxdiam - mindiam) + 12;
-    
+    const highestVotes = Math.max(1, ...positioned.map(e => e.voteCount || 0));
+
+    // Formula: (votes/highest votes)*(maxdiam-mindiam)+12px
+    const scaledSize = (votes / highestVotes) * (maxdiam - mindiam) + 12;
+
     return {
       width: `${scaledSize}px`,
       height: `${scaledSize}px`
     };
   };
 
-  // Handle rating dot click
-  const handleRatingClick = (rating: Rating, event: React.MouseEvent) => {
+  // Handle entry dot click
+  const handleEntryClick = (entry: ActivityEntry, event: React.MouseEvent) => {
     event.stopPropagation();
-    if (onDotClick) {
-      const comment = getCommentForUser(rating.userId, rating.slotNumber);
-      if (comment) {
-        onDotClick(comment.id);
-      }
+    if (onDotClick && entry.text && entry.text.trim()) {
+      onDotClick(entry.id);
     }
   };
 
   return (
     <div className="space-y-4">
 
-      {/* Mapping Grid 
+      {/* Mapping Grid
           IMPORTANT: Grid sizing uses single constraint min(500px, 90vw)
           - 500px max size for desktop
           - 90vw for mobile responsiveness
@@ -120,14 +107,14 @@ export default function MappingGrid({
       <div className="flex flex-col items-center justify-center mx-auto px-4">
         {/* Top label */}
         <div className="text-[var(--text-primary)] text-sm font-semibold text-center p-2" style={{ width: 'min(500px, calc(90vw - 56px))' }}>{activity.yAxis.max}</div>
-        
+
         <div className="flex items-center justify-center gap-2">
           {/* Left label */}
-          <div className="text-[var(--text-primary)] text-sm font-semibold text-center p-2 w-5 flex items-center justify-center flex-shrink-0" 
+          <div className="text-[var(--text-primary)] text-sm font-semibold text-center p-2 w-5 flex items-center justify-center flex-shrink-0"
                style={{ writingMode: 'vertical-lr', textOrientation: 'mixed', transform: 'rotate(180deg)' }}>
             {activity.xAxis.min}
           </div>
-          
+
           {/* Grid Container */}
           <div
             ref={gridRef}
@@ -191,34 +178,33 @@ export default function MappingGrid({
             </>
           )}
 
-          {/* Existing Ratings */}
-          {showAllRatings && activity.ratings.filter(isRatingVisible).map((rating) => {
-            const comment = getCommentForUser(rating.userId, rating.slotNumber);
-            const highlighted = isRatingHighlighted(rating);
-            const hasComment = !!comment;
-            const dotSize = getDotSize(rating);
+          {/* Existing Entries */}
+          {showAllRatings && positioned.filter(isVisible).map((entry) => {
+            const highlighted = isHighlighted(entry);
+            const hasComment = !!(entry.text && entry.text.trim());
+            const dotSize = getDotSize(entry);
 
             return (
               <div
-                key={rating.id}
+                key={entry.id}
                 className={`absolute rounded-full border-2 border-white shadow-md z-10 transition-all duration-200 ${
                   hasComment && onDotClick ? 'cursor-pointer hover:scale-110' : ''
                 }`}
                 style={{
-                  ...getPositionStyle(rating),
-                  backgroundColor: getUserColor(rating),
+                  ...getPositionStyle(entry),
+                  backgroundColor: getUserColor(entry),
                   boxShadow: highlighted ? '0 0 0 4px rgba(255, 215, 0, 0.9)' : undefined,
                   width: dotSize.width,
                   height: dotSize.height,
                 }}
-                title={rating.objectName ? (comment ? `${rating.objectName}\n${comment.text}` : rating.objectName) : (comment ? comment.text : '')}
-                onClick={hasComment ? (e) => handleRatingClick(rating, e) : undefined}
+                title={entry.objectName ? (hasComment ? `${entry.objectName}\n${entry.text}` : entry.objectName) : (entry.text || '')}
+                onClick={hasComment ? (e) => handleEntryClick(entry, e) : undefined}
               />
             );
           })}
 
           {/* User's Current Rating */}
-          {userRating && (
+          {userRating && userRating.position && (
             <div
               className="absolute w-4 h-4 rounded-full border-3 border-white shadow-lg z-20"
               style={{
@@ -226,19 +212,19 @@ export default function MappingGrid({
                 backgroundColor: getUserColor(userRating),
                 boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.5)',
               }}
-              title={`Your rating - ${FormattingService.formatTimestamp(userRating.timestamp)}`}
+              title={`Your rating - ${FormattingService.formatTimestamp(entryTimestamp(userRating))}`}
             />
           )}
 
           </div>
-          
+
           {/* Right label */}
           <div className="text-[var(--text-primary)] text-sm font-semibold text-center p-2 w-5 flex items-center justify-center flex-shrink-0"
                style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>
             {activity.xAxis.max}
           </div>
         </div>
-        
+
         {/* Bottom label */}
         <div className="text-[var(--text-primary)] text-sm font-semibold text-center p-2" style={{ width: 'min(500px, calc(90vw - 56px))' }}>{activity.yAxis.min}</div>
       </div>

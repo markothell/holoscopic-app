@@ -22,12 +22,10 @@ export interface ActivityTypeConfig {
   hasCommentTab: boolean;
 }
 
-// Normalize legacy activity type names from existing DB documents
+// Guard an activity type string to a canonical value (defaults to dissolve)
 export function normalizeActivityType(type: string): 'dissolve' | 'resolve' | 'snapshot' {
-  if (type === 'holoscopic' || type === 'dissolve') return 'dissolve';
-  if (type === 'findthecenter' || type === 'resolve') return 'resolve';
-  if (type === 'snapshot') return 'snapshot';
-  return 'dissolve'; // default
+  if (type === 'resolve' || type === 'snapshot') return type;
+  return 'dissolve';
 }
 
 const ACTIVITY_TYPE_CONFIGS: Record<'dissolve' | 'resolve' | 'snapshot', ActivityTypeConfig> = {

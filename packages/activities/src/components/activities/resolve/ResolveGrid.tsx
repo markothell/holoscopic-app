@@ -1,10 +1,10 @@
 'use client';
 
-import { HoloscopicActivity, Rating } from '../../../types/Activity';
+import { HoloscopicActivity, PositionedEntry } from '../../../types/Activity';
 
 interface ResolveGridProps {
   activity: HoloscopicActivity;
-  ratings: Rating[];
+  ratings: PositionedEntry[];
   onCellClick?: (quadrant: number) => void;
   activeCells?: Set<number>;
 }
@@ -38,7 +38,7 @@ function QuadrantCell({
   onClick,
 }: {
   quadrant: number;
-  ratings: Rating[];
+  ratings: PositionedEntry[];
   isActive: boolean;
   onClick: () => void;
 }) {
@@ -121,7 +121,7 @@ export default function ResolveGrid({ activity, ratings, onCellClick, activeCell
     whiteSpace: 'nowrap',
   };
 
-  const ratingsByQ: Record<number, Rating[]> = { 1: [], 2: [], 3: [], 4: [] };
+  const ratingsByQ: Record<number, PositionedEntry[]> = { 1: [], 2: [], 3: [], 4: [] };
   ratings.forEach(r => {
     const q = getQuadrant(r.position.x, r.position.y);
     ratingsByQ[q].push(r);

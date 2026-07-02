@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { ResultsViewProps } from '../types/Activity';
+import { ResultsViewProps, commentEntries, positionedEntries, entryTimestamp } from '../types/Activity';
 import { FormattingService } from '../utils/formatting';
 import MappingGrid from './MappingGrid';
 import CommentSection from './CommentSection';
@@ -12,7 +12,7 @@ export default function ResultsView({
   onCommentVote,
   currentUserId,
   hoveredSlotNumber,
-  sequenceId,
+  gameSlug,
   hideCommentsPanel = false,
   onDotClick,
   externalHoveredCommentId,
@@ -53,14 +53,11 @@ export default function ResultsView({
   }, []);
 
   // Calculate basic statistics
+  const positioned = positionedEntries(activity);
   const stats = {
     totalParticipants: activity.participants.length,
-    totalRatings: activity.ratings.length,
-    totalComments: activity.comments.length,
-    averagePosition: activity.ratings.length > 0 ? {
-      x: activity.ratings.reduce((sum, r) => sum + r.position.x, 0) / activity.ratings.length,
-      y: activity.ratings.reduce((sum, r) => sum + r.position.y, 0) / activity.ratings.length,
-    } : null,
+    totalRatings: positioned.length,
+    totalComments: commentEntries(activity).length,
   };
 
   return (
@@ -158,7 +155,7 @@ export default function ResultsView({
                     selectedCommentId={selectedCommentId}
                     onSelectedCommentChange={setSelectedCommentId}
                     onVisibleCommentsChange={handleVisibleCommentsChange}
-                    sequenceId={sequenceId}
+                    gameSlug={gameSlug}
                   />
                 </div>
               )}
@@ -176,15 +173,12 @@ export default function ResultsView({
                 onClick={(e) => e.stopPropagation()}
               >
                 {(() => {
-                  const comment = activity.comments.find(c => c.id === mobilePopupComment);
+                  const comment = commentEntries(activity).find(c => c.id === mobilePopupComment);
                   if (!comment) return null;
 
-                  const rating = activity.ratings.find(r =>
-                    r.userId === comment.userId && (r.slotNumber || 1) === (comment.slotNumber || 1)
-                  );
-                  const displayName = comment.objectName || rating?.objectName || comment.username;
+                  const displayName = comment.objectName || comment.username;
                   const isOwnComment = comment.userId === currentUserId;
-                  const hasVoted = comment.votes?.some(v => v.userId === currentUserId) || false;
+                  const hasVoted = currentUserId ? (comment.voterIds || []).includes(currentUserId) : false;
                   const canVote = onCommentVote && currentUserId && (activity.maxEntries === 0 || !isOwnComment);
 
                   return (
@@ -231,7 +225,7 @@ export default function ResultsView({
                       {/* Timestamp */}
                       <div className="mt-4 pt-4 border-t border-[var(--border-default)]">
                         <p className="text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>
-                          {FormattingService.formatTimestamp(comment.timestamp)}
+                          {FormattingService.formatTimestamp(entryTimestamp(comment))}
                         </p>
                       </div>
                     </div>
@@ -310,7 +304,7 @@ export default function ResultsView({
                     selectedCommentId={selectedCommentId}
                     onSelectedCommentChange={setSelectedCommentId}
                     onVisibleCommentsChange={handleVisibleCommentsChange}
-                    sequenceId={sequenceId}
+                    gameSlug={gameSlug}
                   />
                 </div>
               </div>
