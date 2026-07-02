@@ -48,21 +48,33 @@ Resolution order:
 The middleware attaches `req.instance` and `req.instanceId` for all downstream handlers.
 
 **Instance-scoped models** (always filter by `instanceId: req.instanceId`):
-- `Topic`, `Algorithm`, `AlgorithmProposal`, `HolonTransaction`, `InstanceMembership`
+- `Topic`, `Algorithm`, `AlgorithmProposal`, `HolonTransaction`, `InstanceMembership`, `Activity`, `Entry`, `FrameOfReference`
 
-**NOT instance-scoped**: `Activity`, `Sequence`, `User` — these are global.
+**NOT instance-scoped**: `Sequence`, `User` — these are global.
+
+## Storage Protocol: Entries
+
+The **`Entry` collection is the source of truth for all participation content** (positions, comment text, votes). One document per `(activityId, userId, slotNumber, questionId)` carrying denormalized ancestry (`instanceId`, `topicId`, `activityId`), `position`, `text`, `objectName`, `voterIds[]`, `voteCount`, and `isSeed`. `Activity` documents hold only configuration, membership (`participants[]`), and the stake ledger — never entry content.
+
+All entry writes go through `apps/backend/utils/entries.js` (upsert, vote, clear, seed). REST routes and Socket.IO handlers are thin wrappers over it. Key rules encoded there:
+- Re-submitting a slot **upserts** (merges position/text) — no duplicates, no retry loops.
+- Submitting a new position **resets votes cast by others** on that entry (returns voters' budgets).
+- Seed/sample data is flagged `isSeed: true` (never magic userId prefixes).
+
+Map queries are flat index scans: personal maps via `{instanceId, userId}`, voted-for lookups via multikey `{instanceId, voterIds}`, topic rollups via `{topicId}`.
 
 ## Critical Architectural Decisions
 
 - **Custom `id` field**: Every MongoDB document has a short random string `id` field, NOT `_id`. Always query with `findOne({ id })`, never `findById()`.
-- **Dual submission path**: Ratings and comments can arrive via WebSocket events OR REST calls. Both paths persist to MongoDB and broadcast via Socket.IO. REST is the source of truth.
+- **Dual submission path**: Entries can arrive via the `submit_entry` WebSocket event OR `POST /activities/:id/entry`. Both wrap `utils/entries.js` and broadcast `entry_upserted` via Socket.IO.
 - **Routes loaded lazily**: All Express routes mount inside `loadAPIRoutes()`, which only fires once MongoDB connects. If Mongo is down at startup, routes are never registered.
-- **Quorum sweep on read**: `GET /api/topics` and `GET /api/topics/:id` call `sweepExpired()` and `sweepQuorum()` — reads have write side effects.
-- **Activity types have legacy aliases**: The DB schema accepts `holoscopic` and `findthecenter` (old names). `@hs/activities` normalizes these to `dissolve` and `resolve`. Create new activities with the normalized names.
+- **Sweeps on read**: `GET /api/topics` calls `sweepExpired()`/`sweepQuorum()`, and `GET /api/activities` settles expired maps — reads have write side effects.
+- **Activity types**: exactly `dissolve`, `resolve`, `snapshot`. No legacy aliases exist in the schema or the client.
+- **Game-scoped profiles**: `GET /api/users/:userId/games` (player history) and `GET /api/users/:userId/game-map` (redacted personal map — voted-for entries are author-stripped **server-side**). Privacy gate is shared `InstanceMembership`.
 
-## API Response Envelope Inconsistency
+## API Response Envelope
 
-Activities routes return `{ success: true, data: ... }`. Topics, algorithms, and sequences return plain objects like `{ topic: {...} }` or `{ topics: [...] }`. Be aware when writing new consumers.
+All routes return plain objects: `{ activity }`, `{ activities, total }`, `{ entry }`, `{ topic }`, etc. Errors are `{ error }` with a meaningful status. (Auth/signup routes still use `{ success }` — they predate the convention.)
 
 ## Holon Economy
 
@@ -79,10 +91,11 @@ Allowed origins from `CLIENT_URL` env var (comma-separated) in `apps/backend/.en
 ## What NOT to Do
 
 - Do NOT query `Activity.findById()` — use `Activity.findOne({ id })`.
-- Do NOT add new instance-scoped collections without also updating `resolveInstance` usage in the relevant route.
-- Do NOT skip `instanceId` on new `Topic`/`Algorithm`/`AlgorithmProposal` documents.
+- Do NOT write to the entries collection outside `utils/entries.js`.
+- Do NOT skip `instanceId` on new `Activity`/`Entry`/`Topic`/`FrameOfReference`/`Algorithm` documents.
+- Do NOT return another user's identity on voted-for entries — redaction happens in the API layer (`entries.toRedacted`), never client-side.
 - Do NOT use `maxEntries: 0` unless you intend solo tracker mode (creator-only, unlimited slots).
-- Do NOT add new activity types to the DB schema enum without also adding them to `normalizeActivityType()` in `@hs/activities`.
+- Do NOT add new activity types to the DB schema enum without registering them in `@hs/activities`.
 
 ## When to Escalate to the User
 

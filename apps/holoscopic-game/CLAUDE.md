@@ -84,7 +84,7 @@ All API calls go through typed service objects in `src/services/`. Never call `a
 
 | Service | Notes |
 |---|---|
-| `ActivityService` | Class-based; leave as-is (large, working) |
+| `ActivityService` | Class-based; `submitEntry` (position+text in one call) and `voteEntry`; plain-object envelope |
 | `PatternService` | Object literal; uses `apiFetch` |
 | `SequenceService` | Object literal; userId in request body (not header) for most routes |
 | `TopicService` | Object literal; `get` returns `Topic` directly (not `{ topic }`) |
@@ -98,6 +98,8 @@ Admin routes pass `userId` via `apiFetch({ userId })` which sets the `x-user-id`
 ## Key Patterns
 
 - All models use a custom `id` field (8-char random string), not `_id`
+- Activity payloads carry `entries[]` (see `packages/activities/CLAUDE.md`); live play updates arrive as `entry_upserted`/`entry_voted`/`entries_cleared` socket events
+- Player profiles are game-scoped: `/profile/[userId]` = cross-game history; `/profile/[userId]?game={slug}` = redacted personal map (`components/graph/PlayerMap.tsx`)
 - Tailwind v4 — CSS vars in globals.css, `@source` directive scans `packages/activities/src`
 - Warm dark theme: bg `#1A1714`, cards `#252120`, accent `#C83B50`
 - Use CSS vars for colors (`var(--accent)` etc.), not Tailwind color utilities

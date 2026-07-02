@@ -11,7 +11,9 @@ Express + Socket.IO + Mongoose server. Single entry point: `websocket-server.js`
 | `middleware/requireAdmin.js` | Checks `x-user-id` header, verifies `role === 'admin'` on `User` doc |
 | `utils/holons.js` | `transact()` and `spend()` — the only way to move Holon balances |
 | `utils/notify.js` | Creates `Notification` documents for a user |
-| `models/Activity.js` | Core document with inline participants, ratings, comments, votes |
+| `utils/entries.js` | The single write funnel for entries (upsert, vote, clear, seed) + wire serializers `toClient`/`toRedacted` |
+| `models/Entry.js` | Source of truth for participation: position + text + votes per (activity, user, slot, question), with denormalized `instanceId`/`topicId` |
+| `models/Activity.js` | Map configuration + membership (`participants[]`) + stake ledger — no entry content |
 | `models/Sequence.js` | Ordered collection of activities with members and round visibility |
 | `models/Instance.js` | Per-deployment config: holons, quorum, domains, access |
 | `models/InstanceMembership.js` | Per-user per-instance Holon balance |
@@ -44,14 +46,11 @@ Routes that handle instance-scoped data always read `req.instanceId` (set by `re
 ```js
 const docs = await Topic.find({ instanceId: req.instanceId, status: 'nominated' });
 ```
-`Activity` and `Sequence` are NOT instance-scoped — they're global.
+`Activity`, `Entry`, and `FrameOfReference` are instance-scoped; `Sequence` and `User` are global.
 
 ## API Response Envelopes
 
-**Activities routes** use `{ success: true, data: ... }` (or `{ success: false, error: '...' }`).
-**All other routes** (topics, sequences, algorithms, etc.) return plain objects: `{ topic }`, `{ topics: [] }`, `{ sequence }`.
-
-Do not mix these patterns within a route file.
+All routes return plain objects — `{ activity }`, `{ activities, total }`, `{ entry }`, `{ topic }` — and `{ error }` with a meaningful status code on failure. (Auth/signup routes still use `{ success }`.)
 
 ## Quorum Sweep Side Effect
 
@@ -59,9 +58,13 @@ Do not mix these patterns within a route file.
 
 ## Activity Model: Special Modes
 
-- `maxEntries === 0` → solo tracker mode: creator-only, unlimited `slotNumber` values
+- `maxEntries === 0` → solo tracker mode: creator-only, unlimited `slotNumber` values, self-votes allowed
 - `maxEntries === 1/2/4` → standard collaborative mode, `slotNumber` validates against `maxEntries`
-- `activityType === 'snapshot'` → `slotNumber` maps to a question index, not an extra entry
+- `activityType === 'snapshot'` → `slotNumber` = question order and `questionId` is set on the entry
+
+## Close Rule
+
+A map settles at the earliest of (a) complete — table full AND every participant has entered and voted (checked after each vote), or (b) `activityWindowHours` after creation (sweep-on-read in `GET /activities`). Settlement distributes each staker's pool to the entry authors they voted for (`settleActivityStakes`).
 
 ## WebSocket Events (Socket.IO)
 
@@ -81,10 +84,9 @@ Call `setIO(io)` for both utilities in `websocket-server.js` right after `io` is
 | Event (client→server) | Purpose |
 |---|---|
 | `join_user_room` | Join personal room for live balance/notification push |
-| `join_activity` | Register presence; adds participant to DB |
-| `leave_activity` | Remove presence; marks `isConnected: false` in DB |
-| `submit_rating` | Persist position; broadcasts `rating_added` to room |
-| `submit_comment` | Persist comment; broadcasts `comment_added` to room |
+| `join_activity` | Register presence (in-memory) + add membership to DB |
+| `leave_activity` | Remove presence (in-memory only — no DB write) |
+| `submit_entry` | Persist entry via `utils/entries.js`; broadcasts `entry_upserted` |
 
 | Event (server→client) | Trigger |
 |---|---|
@@ -92,10 +94,11 @@ Call `setIO(io)` for both utilities in `websocket-server.js` right after `io` is
 | `notification_new` | After any `notify()` call |
 | `participant_joined` | New join |
 | `participant_left` | Disconnect or leave |
-| `rating_added` | Via WebSocket or REST |
-| `comment_added` / `comment_updated` | Via WebSocket or REST |
-| `comment_voted` | REST vote endpoint |
-| `activity_updated` | Slot clear via REST |
+| `entry_upserted` | Entry submitted via WebSocket or REST |
+| `entry_voted` | REST vote endpoint |
+| `entry_removed` | Admin moderation delete |
+| `entries_cleared` | Slot clear via REST |
+| `activity_updated` | Auto-close settlement |
 | `connection_rejected` | Server at capacity |
 | `capacity_warning` | >80% connection limit |
 
@@ -122,6 +125,6 @@ await transact({ userId, instanceId, type: 'my_reward', amount: 25, refType: 'to
 ## Things That Are Easy to Break
 
 - **Adding a route before `loadAPIRoutes`**: Any `app.use('/api/...')` call outside `loadAPIRoutes()` bypasses the lazy-load guard and runs before Mongo is ready.
-- **`addRating` concurrent updates**: The method uses multi-step `findOneAndUpdate` with retry logic (version errors, duplicate key). Do not replace it with simple `$push` — concurrent WebSocket and REST submissions will corrupt data.
-- **Starter data userId pattern**: `starter_<activityObjectId>_<index>` and `username === 'Example Data'` are used to identify and remove seed entries. Do not use this prefix for real users.
+- **Writing entries outside `utils/entries.js`**: the upsert key, vote-reset-on-remap rule, and voteCount maintenance live there; bypassing it desyncs them.
+- **Seed data**: seed entries are `isSeed: true` with userId `seed_<activityId>_<index>`. Filter with the flag, never by userId prefix.
 - **Connection limit (MAX_CONNECTIONS=25 default)**: The server rejects new Socket.IO connections at capacity. In prod, tune via the env var.

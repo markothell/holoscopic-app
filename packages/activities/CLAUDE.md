@@ -14,9 +14,8 @@ All activity-type-specific UI, positioning logic, type definitions, and shared u
 | `src/components/activities/registry.tsx` | Maps each type to its components (PositioningSteps, Results, CreatePanel) |
 | `src/components/activities/types.ts` | Type configs, `normalizeActivityType()`, `QUADRANT_POSITIONS` |
 | `src/components/activities/registry-types.ts` | TypeScript interface for `ActivityTypeRegistration` |
-| `src/types/Activity.ts` | Core `HoloscopicActivity` type and sub-types |
+| `src/types/Activity.ts` | Core `HoloscopicActivity` + `ActivityEntry` types and selectors (`commentEntries`, `positionedEntries`) |
 | `src/components/MappingGrid.tsx` | 2D canvas grid for continuous positioning (dissolve) |
-| `src/components/DotGrid.tsx` | Grid with dots per participant |
 | `src/components/ResultsView.tsx` | Full results display for dissolve type |
 | `src/components/ResultsViewSimple.tsx` | Simplified results for resolve type |
 | `src/components/activities/snapshot/SnapshotResults.tsx` | Results for snapshot type |
@@ -31,13 +30,22 @@ Three canonical types:
 | `resolve` | 4-quadrant click | 3 | No second question needed |
 | `snapshot` | Multi-question quadrant | Dynamic | Steps = 3 + question count |
 
-Legacy DB values `holoscopic` and `findthecenter` are normalized at render time via `normalizeActivityType()`. Never store these in new documents.
+These are the only type values — there are no legacy aliases. `normalizeActivityType()` just guards unknown strings to `dissolve`.
+
+## Entries
+
+Activity payloads carry `entries: ActivityEntry[]` — one entry per (user, slot, question) holding position, text, objectName, and votes together. Components never join separate ratings/comments arrays; use the selectors:
+- `commentEntries(activity)` — entries with text (the comments panel)
+- `positionedEntries(activity)` — entries with a position (the map dots); returns `PositionedEntry` with a non-null position
+- `entryTimestamp(entry)` — updatedAt/createdAt as a Date
+
+Votes live on the entry as `voterIds[]` + `voteCount`. Seed data is `isSeed: true`. Profile links in `CommentSection` are game-scoped via the `gameSlug` prop (`/profile/{userId}?game={slug}`).
 
 ## Adding a New Activity Type
 
 1. Add type string to `ActivityType` union in `src/types/Activity.ts`.
 2. Add config entry in `ACTIVITY_TYPE_CONFIGS` in `types.ts`.
-3. Update `normalizeActivityType()` if aliases exist.
+3. Update `normalizeActivityType()` so the new value passes through.
 4. Create `PositioningSteps`, `Results`, and `CreatePanel` components.
 5. Register all three in `registry.tsx` under the new key.
 6. Add the new string to the backend `Activity` schema enum in `apps/backend/models/Activity.js`.
