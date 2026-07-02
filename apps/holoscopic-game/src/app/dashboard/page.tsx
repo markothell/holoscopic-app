@@ -337,11 +337,12 @@ export default function DashboardPage() {
 
             {/* Activities List */}
             {activeTab === 'activities' && filteredActivities.map((activity, index) => {
-              const userEntryCount = activity.ratings?.filter(r => r.userId === userId).length || 0;
+              const mySlots: number[] = (activity as HoloscopicActivity & { mySlots?: number[] }).mySlots || [];
+              const userEntryCount = mySlots.length;
               const isSoloTracker = activity.maxEntries === 0;
               const allSlotsSubmitted = !isSoloTracker &&
                 Array.from({ length: activity.maxEntries || 1 }, (_, i) => i + 1)
-                  .every(slot => activity.ratings?.find(r => r.userId === userId && (r.slotNumber || 1) === slot));
+                  .every(slot => mySlots.includes(slot));
               const showResults = activity.status === 'completed' || allSlotsSubmitted;
 
               return (
@@ -365,7 +366,7 @@ export default function DashboardPage() {
                       </div>
                       <div className={styles.listMeta}>
                         <span>{activity.participants?.length || 0} participants</span>
-                        <span>{activity.comments?.length || 0} comments</span>
+                        <span>{(activity as HoloscopicActivity & { commentCount?: number }).commentCount || 0} comments</span>
                         <span>Your entries: {userEntryCount}</span>
                       </div>
                     </div>

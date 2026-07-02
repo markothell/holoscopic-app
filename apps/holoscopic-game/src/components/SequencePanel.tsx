@@ -360,8 +360,7 @@ export default function SequencePanel({
         title: `${activityToClone.title} (Copy)`,
         isDraft: true,
         participants: [],
-        ratings: [],
-        comments: []
+        entries: []
       };
 
       delete (clonedActivity as any).createdAt;

@@ -251,7 +251,9 @@ module.exports = function(io) {
     }
   });
 
-  // Get activities a user has participated in
+  // Get activities a user has participated in.
+  // Each activity carries commentCount plus the caller's filled slots
+  // (mySlots) so dashboards don't need full entry payloads.
   router.get('/user/:userId', async (req, res) => {
     try {
       const { userId } = req.params;
@@ -263,9 +265,32 @@ module.exports = function(io) {
         .sort({ createdAt: -1 })
         .select('-__v');
 
+      const activityIds = activities.map(a => a.id);
+      const [commentRows, myEntries] = await Promise.all([
+        activityIds.length
+          ? Entry.aggregate([
+              { $match: { activityId: { $in: activityIds }, text: { $nin: [null, ''] } } },
+              { $group: { _id: '$activityId', n: { $sum: 1 } } },
+            ])
+          : [],
+        activityIds.length
+          ? Entry.find({ activityId: { $in: activityIds }, userId, position: { $ne: null } })
+              .select('activityId slotNumber').lean()
+          : [],
+      ]);
+      const commentCounts = Object.fromEntries(commentRows.map(r => [r._id, r.n]));
+      const slotsByActivity = {};
+      for (const e of myEntries) {
+        (slotsByActivity[e.activityId] ||= new Set()).add(e.slotNumber ?? 1);
+      }
+
       const windowHours = req.instance?.config?.quorum?.activityWindowHours ?? 168;
       res.json({
-        activities: activities.map(a => serializeActivity(a, { windowHours })),
+        activities: activities.map(a => ({
+          ...serializeActivity(a, { windowHours }),
+          commentCount: commentCounts[a.id] ?? 0,
+          mySlots: [...(slotsByActivity[a.id] ?? [])].sort((x, y) => x - y),
+        })),
         total: activities.length,
       });
     } catch (error) {

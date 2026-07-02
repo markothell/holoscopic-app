@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { HoloscopicActivity, Rating, Comment, SnapshotAnswer, SnapshotQuestion } from '@/models/Activity';
+import { HoloscopicActivity, ActivityEntry, SnapshotAnswer, SnapshotQuestion } from '@/models/Activity';
 import { normalizeActivityType, REGISTRY } from '@hs/activities';
 
 interface EntryModalProps {
@@ -18,8 +18,8 @@ interface EntryModalProps {
   slotNumber: number;
   existingData?: {
     objectName?: string;
-    rating?: Rating;
-    comment?: Comment;
+    rating?: ActivityEntry;
+    comment?: ActivityEntry;
   };
   // Snapshot single-question mode: when set, the modal handles only this question
   snapshotQuestion?: SnapshotQuestion;
@@ -62,8 +62,8 @@ export default function EntryModal({
     if (isOpen) {
       setStep(1);
       setObjectName(existingData?.objectName || '');
-      setXValue(existingData?.rating?.position.x ?? 0.5);
-      setYValue(existingData?.rating?.position.y ?? 0.5);
+      setXValue(existingData?.rating?.position?.x ?? 0.5);
+      setYValue(existingData?.rating?.position?.y ?? 0.5);
       setComment(existingData?.comment?.text || '');
       setSnapshotAnswers([]);
     }

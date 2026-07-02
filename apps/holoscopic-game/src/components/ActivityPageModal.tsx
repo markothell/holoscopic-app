@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { HoloscopicActivity, Rating, Comment, SnapshotQuestion } from '@/models/Activity';
+import { HoloscopicActivity, ActivityEntry, SnapshotQuestion, positionedEntries } from '@/models/Activity';
 import { ActivityService } from '@/services/activityService';
 import { webSocketService } from '@/services/websocketService';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,7 +21,7 @@ interface ActivityPageModalProps {
 
 export default function ActivityPageModal({ activityId, sequenceId }: ActivityPageModalProps) {
   const { userId, userName, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { ended } = useInstance();
+  const { instance, ended } = useInstance();
   const [activity, setActivity] = useState<HoloscopicActivity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +73,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
         if (userId) {
           const joined = data.participants.some((p: { id: string }) => p.id === userId);
           setHasJoined(joined);
-          const hasEntries = data.ratings.some((r: { userId: string }) => r.userId === userId);
+          const hasEntries = data.entries.some(e => e.userId === userId && e.position);
           if (!joined || !hasEntries) setShowPreamble(true);
         }
       } catch (err) {
@@ -94,45 +94,52 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
     webSocketService.connect(activityId, userId, username);
 
     const handleActivityUpdate = (data: { activity: HoloscopicActivity }) => {
-      setActivity(data.activity);
+      setActivity(prev => ({
+        ...data.activity,
+        // activity_updated may omit entries — keep what we have if so
+        entries: data.activity.entries ?? prev?.entries ?? [],
+      }));
     };
 
-    const handleCommentVoted = (data: { comment: Comment }) => {
+    const upsertEntry = (entry: ActivityEntry) => {
       setActivity(prev => {
         if (!prev) return prev;
-        return {
-          ...prev,
-          comments: prev.comments.map(c => c.id === data.comment.id ? data.comment : c),
-        };
+        const rest = prev.entries.filter(e => e.id !== entry.id);
+        return { ...prev, entries: [...rest, entry] };
       });
     };
 
     const unsubscribe = webSocketService.on('activity_updated', handleActivityUpdate);
-    const unsubscribeVoted = webSocketService.on('comment_voted', handleCommentVoted);
+    const unsubUpserted = webSocketService.on('entry_upserted', ({ entry }) => upsertEntry(entry));
+    const unsubVoted = webSocketService.on('entry_voted', ({ entry }) => upsertEntry(entry));
+    const unsubCleared = webSocketService.on('entries_cleared', ({ userId: uid, slotNumber }) => {
+      setActivity(prev => prev
+        ? { ...prev, entries: prev.entries.filter(e => !(e.userId === uid && e.slotNumber === slotNumber)) }
+        : prev);
+    });
 
     return () => {
       unsubscribe();
-      unsubscribeVoted();
+      unsubUpserted();
+      unsubVoted();
+      unsubCleared();
       webSocketService.disconnect();
     };
   }, [activity, activityId, userId, username]);
 
-  // Get slot data helper
+  // Get slot data helper — the entry carries both position and text
   const getSlotData = (slotNum: number) => {
     if (!activity || !userId) return { hasData: false, objectName: '', rating: undefined, comment: undefined };
 
-    const rating = activity.ratings.find(r =>
-      r.userId === userId && (r.slotNumber || 1) === slotNum
-    );
-    const comment = activity.comments.find(c =>
-      c.userId === userId && (c.slotNumber || 1) === slotNum
+    const entry = activity.entries.find(e =>
+      e.userId === userId && (e.slotNumber || 1) === slotNum && !e.questionId
     );
 
     return {
-      hasData: !!(rating || comment),
-      objectName: rating?.objectName || comment?.objectName || '',
-      rating,
-      comment
+      hasData: !!entry,
+      objectName: entry?.objectName || '',
+      rating: entry?.position ? entry : undefined,
+      comment: entry?.text ? entry : undefined,
     };
   };
 
@@ -143,7 +150,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
 
   // User's actual filled slot numbers (sorted) — source of truth for circle rendering
   const userFilledSlots = (activity && userId)
-    ? [...new Set(activity.ratings.filter(r => r.userId === userId).map(r => r.slotNumber || 1))].sort((a, b) => a - b)
+    ? [...new Set(positionedEntries(activity).filter(e => e.userId === userId).map(e => e.slotNumber || 1))].sort((a, b) => a - b)
     : [];
 
   // Next slot number avoids gaps/collisions after deletions
@@ -166,33 +173,22 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
         // Snapshot single-question: use question.order as slotNumber so each question has its own slot
         for (const answer of data.snapshotAnswers) {
           const question = activity.snapshotQuestions?.find(q => q.id === answer.questionId);
-          const slotNum = question?.order || 1;
-          await ActivityService.submitRating(
-            activityId, userId, answer.position, answer.objectName, slotNum, answer.questionId
-          );
-          if (answer.comment.trim()) {
-            await ActivityService.submitComment(
-              activityId, userId, answer.comment, answer.objectName, slotNum, answer.questionId
-            );
-          }
+          await ActivityService.submitEntry(activityId, userId, {
+            slotNumber: question?.order || 1,
+            questionId: answer.questionId,
+            position: answer.position,
+            objectName: answer.objectName,
+            text: answer.comment,
+          });
         }
       } else {
-        // Standard flow
-        await ActivityService.submitRating(
-          activityId,
-          userId,
-          data.position,
-          data.objectName,
-          currentSlot
-        );
-
-        await ActivityService.submitComment(
-          activityId,
-          userId,
-          data.comment,
-          data.objectName,
-          currentSlot
-        );
+        // Standard flow — one entry carries position, name, and comment
+        await ActivityService.submitEntry(activityId, userId, {
+          slotNumber: currentSlot,
+          position: data.position,
+          objectName: data.objectName,
+          text: data.comment,
+        });
       }
 
       // Close modal
@@ -219,9 +215,13 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
   // Snapshot: get existing data for a specific question
   const getSnapshotQuestionData = (questionId: string) => {
     if (!activity || !userId) return { hasData: false, objectName: '', rating: undefined, comment: undefined };
-    const rating = activity.ratings.find(r => r.userId === userId && r.questionId === questionId);
-    const comment = activity.comments.find(c => c.userId === userId && c.questionId === questionId);
-    return { hasData: !!(rating || comment), objectName: rating?.objectName || comment?.objectName || '', rating, comment };
+    const entry = activity.entries.find(e => e.userId === userId && e.questionId === questionId);
+    return {
+      hasData: !!entry,
+      objectName: entry?.objectName || '',
+      rating: entry?.position ? entry : undefined,
+      comment: entry?.text ? entry : undefined,
+    };
   };
 
   const handleSnapshotQuestionClick = (question: SnapshotQuestion) => {
@@ -423,9 +423,9 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                   <CommentSection
                     activity={activity}
                     onCommentSubmit={() => {}}
-                    onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (commentId) => {
+                    onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (entryId) => {
                       try {
-                        await ActivityService.voteComment(activityId, commentId, userId!);
+                        await ActivityService.voteEntry(activityId, entryId, userId!);
                         const updated = await ActivityService.getActivity(activityId);
                         setActivity(updated);
                       } catch (err) {
@@ -435,7 +435,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                     showAllComments={true}
                     readOnly={true}
                     currentUserId={userId || ''}
-                    sequenceId={sequenceId}
+                    gameSlug={instance?.slug}
                     filterCommentIds={activeCellFilteredIds}
                   />
                 </div>
@@ -448,9 +448,9 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               activity={activity}
               isVisible={true}
               onToggle={() => {}}
-              onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (commentId: string) => {
+              onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (entryId: string) => {
                 try {
-                  await ActivityService.voteComment(activityId, commentId, userId!);
+                  await ActivityService.voteEntry(activityId, entryId, userId!);
                   const updated = await ActivityService.getActivity(activityId);
                   setActivity(updated);
                 } catch (err) {
@@ -459,7 +459,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               }}
               currentUserId={userId || ''}
               hoveredSlotNumber={hoveredSlot}
-              sequenceId={sequenceId}
+              gameSlug={instance?.slug}
             />
           </div>
         )}
@@ -597,9 +597,9 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                       <CommentSection
                         activity={activity}
                         onCommentSubmit={() => {}}
-                        onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (commentId) => {
+                        onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (entryId) => {
                           try {
-                            await ActivityService.voteComment(activityId, commentId, userId!);
+                            await ActivityService.voteEntry(activityId, entryId, userId!);
                             const updated = await ActivityService.getActivity(activityId);
                             setActivity(updated);
                           } catch (err) {
@@ -609,7 +609,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                         showAllComments={true}
                         readOnly={true}
                         currentUserId={userId || ''}
-                        sequenceId={sequenceId}
+                        gameSlug={instance?.slug}
                         filterCommentIds={activeCellFilteredIds}
                       />
                     </div>
@@ -621,9 +621,9 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                 activity={activity}
                 isVisible={true}
                 onToggle={() => {}}
-                onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (commentId: string) => {
+                onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (entryId: string) => {
                   try {
-                    await ActivityService.voteComment(activityId, commentId, userId!);
+                    await ActivityService.voteEntry(activityId, entryId, userId!);
                     const updated = await ActivityService.getActivity(activityId);
                     setActivity(updated);
                   } catch (err) {
@@ -632,7 +632,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
                 }}
                 currentUserId={userId || ''}
                 hoveredSlotNumber={hoveredSlot}
-                sequenceId={sequenceId}
+                gameSlug={instance?.slug}
                 hideCommentsPanel={true}
                 onDotClick={setExternalSelectedComment}
                 externalHoveredCommentId={externalHoveredComment}
@@ -656,9 +656,9 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
             <CommentSection
               activity={activity}
               onCommentSubmit={() => {}}
-              onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (commentId) => {
+              onCommentVote={(activity.status === 'completed' || ended) ? undefined : async (entryId) => {
                 try {
-                  await ActivityService.voteComment(activityId, commentId, userId!);
+                  await ActivityService.voteEntry(activityId, entryId, userId!);
                   const updated = await ActivityService.getActivity(activityId);
                   setActivity(updated);
                 } catch (err) {
@@ -668,7 +668,7 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               showAllComments={true}
               readOnly={true}
               currentUserId={userId || ''}
-              sequenceId={sequenceId}
+              gameSlug={instance?.slug}
               selectedCommentId={externalSelectedComment}
               onSelectedCommentChange={setExternalSelectedComment}
               onCommentHover={setExternalHoveredComment}

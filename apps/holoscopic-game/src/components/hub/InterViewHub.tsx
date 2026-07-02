@@ -822,7 +822,7 @@ function HubInner({ view }: { view: HubView }) {
             },
           };
           const [actR, seqR] = await Promise.allSettled([
-            apiFetch(`/activities?topicId=${selectedId}`).then(d => d.data?.activities ?? []),
+            apiFetch(`/activities?topicId=${selectedId}`).then(d => d.activities ?? []),
             apiFetch(`/sequences/public?topicId=${selectedId}`).then((d: any) => d ?? []),
           ]);
           const acts = actR.status === 'fulfilled' ? actR.value : [];

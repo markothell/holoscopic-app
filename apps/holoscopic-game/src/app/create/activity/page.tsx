@@ -206,7 +206,7 @@ function CreateActivityContent() {
 
       const data = await apiFetch('/activities', { method: 'POST', userId, body: JSON.stringify(body) });
       refreshBalance();
-      const actUrlName = data?.data?.urlName;
+      const actUrlName = data?.activity?.urlName;
       router.push(actUrlName ? `/a/${actUrlName}` : '/interview');
     } catch (e: any) {
       setError(e.message);

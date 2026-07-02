@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { HoloscopicActivity } from '@/models/Activity';
+import { HoloscopicActivity, commentEntries } from '@/models/Activity';
 import { ActivityService } from '@/services/activityService';
 import { FormattingService } from '@/utils/formatting';
 import { useAllAnalytics, type AnalyticsStats } from '@/hooks/useAnalytics';
@@ -124,8 +124,7 @@ function AdminContent() {
       title: `${activity.title} (Copy)`,
       isDraft: true,
       participants: [],
-      ratings: [],
-      comments: []
+      entries: []
     };
 
     delete duplicatedActivity.createdAt;
@@ -201,10 +200,11 @@ function AdminContent() {
   };
 
   // Handle full JSON download
-  const handleDownloadFullJSON = (activity: HoloscopicActivity) => {
+  const handleDownloadFullJSON = async (activity: HoloscopicActivity) => {
+    const full = await ActivityService.getActivity(activity.id);
     const sortedActivity = {
-      ...activity,
-      comments: [...(activity.comments || [])].sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0))
+      ...full,
+      entries: [...(full.entries || [])].sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0))
     };
 
     const dataStr = JSON.stringify(sortedActivity, null, 2);
@@ -221,21 +221,16 @@ function AdminContent() {
   };
 
   // Handle starter data JSON download
-  const handleDownloadStarterData = (activity: HoloscopicActivity) => {
-    const sortedComments = [...(activity.comments || [])].sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
+  const handleDownloadStarterData = async (activity: HoloscopicActivity) => {
+    const full = await ActivityService.getActivity(activity.id);
+    const sorted = commentEntries(full).sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
 
-    const starterEntries = sortedComments.map(comment => {
-      const rating = activity.ratings?.find(r =>
-        r.userId === comment.userId && r.slotNumber === comment.slotNumber
-      );
-
-      return {
-        objectName: comment.objectName || 'Unnamed',
-        position: rating ? { x: rating.position.x, y: rating.position.y } : { x: 0.5, y: 0.5 },
-        comment: comment.text,
-        votes: comment.voteCount || 0
-      };
-    });
+    const starterEntries = sorted.map(entry => ({
+      objectName: entry.objectName || 'Unnamed',
+      position: entry.position ? { x: entry.position.x, y: entry.position.y } : { x: 0.5, y: 0.5 },
+      comment: entry.text,
+      votes: entry.voteCount || 0
+    }));
 
     const dataStr = JSON.stringify(starterEntries, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });

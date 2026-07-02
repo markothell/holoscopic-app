@@ -1,7 +1,7 @@
 // WebSocket service for real-time communication
 
 import { io, Socket } from 'socket.io-client';
-import { HoloscopicActivity, WebSocketEvents, Rating, Comment, Participant } from '@/models/Activity';
+import { HoloscopicActivity, WebSocketEvents, ActivityEntry, Participant } from '@/models/Activity';
 import { getCurrentInstanceId } from '@/lib/api';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
@@ -81,27 +81,19 @@ export class WebSocketService {
     }
   }
 
-  // Submit rating
-  submitRating(position: { x: number; y: number }): void {
+  // Submit an entry (position and/or text for a slot)
+  submitEntry(entry: {
+    position?: { x: number; y: number };
+    text?: string;
+    objectName?: string;
+    slotNumber?: number;
+    questionId?: string | null;
+  }): void {
     if (this.socket && this.activityId && this.userId) {
-      this.socket.emit('submit_rating', {
+      this.socket.emit('submit_entry', {
         activityId: this.activityId,
         userId: this.userId,
-        position,
-        timestamp: new Date(),
-        instanceId: getCurrentInstanceId(),
-      });
-    }
-  }
-
-  // Submit comment
-  submitComment(text: string): void {
-    if (this.socket && this.activityId && this.userId) {
-      this.socket.emit('submit_comment', {
-        activityId: this.activityId,
-        userId: this.userId,
-        text,
-        timestamp: new Date(),
+        ...entry,
         instanceId: getCurrentInstanceId(),
       });
     }
@@ -111,18 +103,21 @@ export class WebSocketService {
   private setupEventListeners(): void {
     if (!this.socket) return;
 
-    // Rating events
-    this.socket.on('rating_added', (data: { rating: Rating }) => {
-      this.notifyListeners('rating_added', data);
+    // Entry events
+    this.socket.on('entry_upserted', (data: { entry: ActivityEntry }) => {
+      this.notifyListeners('entry_upserted', data);
     });
 
-    // Comment events
-    this.socket.on('comment_added', (data: { comment: Comment }) => {
-      this.notifyListeners('comment_added', data);
+    this.socket.on('entry_voted', (data: { entry: ActivityEntry }) => {
+      this.notifyListeners('entry_voted', data);
     });
-    
-    this.socket.on('comment_voted', (data: { comment: Comment }) => {
-      this.notifyListeners('comment_voted', data);
+
+    this.socket.on('entry_removed', (data: { entryId: string }) => {
+      this.notifyListeners('entry_removed', data);
+    });
+
+    this.socket.on('entries_cleared', (data: { userId: string; slotNumber: number }) => {
+      this.notifyListeners('entries_cleared', data);
     });
 
     // Participant events
