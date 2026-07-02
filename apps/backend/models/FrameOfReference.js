@@ -11,6 +11,9 @@ const frameOfReferenceSchema = new mongoose.Schema({
     },
   },
 
+  // The game this frame was authored in (Instance.id) — stamped at creation
+  instanceId: { type: String, required: true, index: true },
+
   // The two axis labels — these together name the frame
   xLabel: { type: String, required: true, trim: true, maxlength: 100 },
   xMin:   { type: String, default: '', trim: true, maxlength: 100 },

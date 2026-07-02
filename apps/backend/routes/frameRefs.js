@@ -14,10 +14,10 @@ function generateId() {
 router.get('/', async (req, res) => {
   try {
     const { search, limit = 50, skip = 0 } = req.query;
-    let query = {};
+    const query = { instanceId: req.instanceId };
     if (search) {
       const re = new RegExp(search, 'i');
-      query = { $or: [{ xLabel: re }, { yLabel: re }, { xMin: re }, { xMax: re }, { yMin: re }, { yMax: re }] };
+      query.$or = [{ xLabel: re }, { yLabel: re }, { xMin: re }, { xMax: re }, { yMin: re }, { yMax: re }];
     }
     const frames = await FrameOfReference.find(query)
       .sort({ createdAt: -1 })
@@ -83,6 +83,7 @@ router.post('/', async (req, res) => {
 
     const frame = await FrameOfReference.create({
       id: generateId(),
+      instanceId: req.instanceId,
       xLabel: xLabel.trim(),
       xMin: xMin?.trim() || '',
       xMax: xMax?.trim() || '',

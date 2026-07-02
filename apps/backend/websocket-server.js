@@ -105,6 +105,7 @@ app.use('/socket.io', wsLimiter);
 // Resolve instance for all API requests
 const resolveInstance = require('./middleware/resolveInstance');
 const Instance = require('./models/Instance');
+const entryUtils = require('./utils/entries');
 app.use('/api', resolveInstance);
 
 // Verify bearer tokens (signed from the NextAuth session by the game frontend)
@@ -422,8 +423,6 @@ io.on('connection', (socket) => {
       participant: {
         id: userId,
         username: username,
-        isConnected: true,
-        hasSubmitted: false,
         joinedAt: new Date()
       }
     });
@@ -431,129 +430,68 @@ io.on('connection', (socket) => {
     console.log(`📢 Notified ${participantIds.length} participants about join`);
   });
 
-  // Leave activity
-  socket.on('leave_activity', async ({ activityId, userId }) => {
-    const operationKey = `leave_${activityId}_${userId}`;
-    if (operationsInProgress.has(operationKey)) {
-      return;
+  // Leave activity — presence is in-memory only; membership stays in the DB
+  socket.on('leave_activity', ({ activityId, userId }) => {
+    console.log(`👋 User ${userId} leaving activity ${activityId}`);
+
+    const connection = connections.get(socket.id);
+    if (connection) {
+      connection.activityIds.delete(activityId);
     }
-    
-    operationsInProgress.add(operationKey);
-    
-    try {
-      console.log(`👋 User ${userId} leaving activity ${activityId}`);
-      
-      const connection = connections.get(socket.id);
-      if (connection) {
-        connection.activityIds.delete(activityId);
+
+    if (activities.has(activityId)) {
+      activities.get(activityId).delete(userId);
+      if (activities.get(activityId).size === 0) {
+        activities.delete(activityId);
       }
-      
-      if (activities.has(activityId)) {
-        activities.get(activityId).delete(userId);
-        if (activities.get(activityId).size === 0) {
-          activities.delete(activityId);
-        }
-      }
-      
-      socket.leave(activityId);
-      
-      // Update database
-      await safeDbOperation(async () => {
-        const activity = await Activity.findOne({ id: activityId });
-        if (activity) {
-          await activity.updateParticipantConnection(userId, false);
-        }
-      });
-      
-      // Notify participants
-      io.to(activityId).emit('participant_left', {
-        participantId: userId
-      });
-      
-    } catch (error) {
-      console.error(`❌ Error in leave_activity: ${error.message}`);
-    } finally {
-      operationsInProgress.delete(operationKey);
     }
+
+    socket.leave(activityId);
+
+    io.to(activityId).emit('participant_left', {
+      participantId: userId
+    });
   });
 
-  // Submit rating
-  socket.on('submit_rating', async ({ activityId, userId, position, objectName, slotNumber, timestamp, instanceId }) => {
+  // Submit entry — thin wrapper over the same utils/entries funnel as REST
+  socket.on('submit_entry', async ({ activityId, userId, position, objectName, text, slotNumber, questionId, instanceId }) => {
     try {
       if (instanceId) {
         const instance = await Instance.findOne({ id: instanceId });
         if (!instance || instance.isEnded()) {
-          socket.emit('mutation_rejected', { reason: 'instance_ended', action: 'submit_rating' });
+          socket.emit('mutation_rejected', { reason: 'instance_ended', action: 'submit_entry' });
           return;
         }
       }
 
-      console.log(`⭐ User ${userId} submitting rating for activity ${activityId} (slot ${slotNumber || 1})`);
+      console.log(`⭐ User ${userId} submitting entry for activity ${activityId} (slot ${slotNumber || 1})`);
 
-      // Update database
-      let newRating = null;
+      let entry = null;
       await safeDbOperation(async () => {
         const activity = await Activity.findOne({ id: activityId });
-        if (activity) {
+        if (activity && activity.status === 'active') {
           const participant = activity.participants.find(p => p.id === userId);
           if (participant) {
-            const updatedActivity = await activity.addRating(userId, participant.username, position, objectName, slotNumber || 1);
-            newRating = updatedActivity.ratings.find(r => r.userId === userId && r.slotNumber === (slotNumber || 1));
-            console.log(`💾 Rating saved to database for user ${userId}, slot ${slotNumber || 1}`);
+            entry = await entryUtils.upsertEntry({
+              activity,
+              instanceId: activity.instanceId || instanceId,
+              userId,
+              username: participant.username,
+              slotNumber: slotNumber || 1,
+              questionId: questionId || null,
+              position: position ?? undefined,
+              objectName,
+              text: text != null ? String(text).trim() : undefined,
+            });
           }
         }
       });
-      
-      // Broadcast to activity participants
-      if (newRating) {
-        io.to(activityId).emit('rating_added', {
-          rating: newRating
-        });
-        console.log(`📢 Rating broadcast to activity ${activityId}`);
+
+      if (entry) {
+        io.to(activityId).emit('entry_upserted', { entry: entryUtils.toClient(entry) });
       }
-      
     } catch (error) {
-      console.error(`❌ Error submitting rating: ${error.message}`);
-    }
-  });
-
-  // Submit comment
-  socket.on('submit_comment', async ({ activityId, userId, text, objectName, slotNumber, timestamp, instanceId }) => {
-    try {
-      if (instanceId) {
-        const instance = await Instance.findOne({ id: instanceId });
-        if (!instance || instance.isEnded()) {
-          socket.emit('mutation_rejected', { reason: 'instance_ended', action: 'submit_comment' });
-          return;
-        }
-      }
-
-      console.log(`💬 User ${userId} submitting comment for activity ${activityId} (slot ${slotNumber || 1})`);
-
-      // Update database
-      let newComment = null;
-      await safeDbOperation(async () => {
-        const activity = await Activity.findOne({ id: activityId });
-        if (activity) {
-          const participant = activity.participants.find(p => p.id === userId);
-          if (participant) {
-            const updatedActivity = await activity.addComment(userId, participant.username, text, objectName, slotNumber || 1);
-            newComment = updatedActivity.comments.find(c => c.userId === userId && c.slotNumber === (slotNumber || 1));
-            console.log(`💾 Comment saved to database for user ${userId}, slot ${slotNumber || 1}`);
-          }
-        }
-      });
-      
-      // Broadcast to activity participants
-      if (newComment) {
-        io.to(activityId).emit('comment_added', {
-          comment: newComment
-        });
-        console.log(`📢 Comment broadcast to activity ${activityId}`);
-      }
-      
-    } catch (error) {
-      console.error(`❌ Error submitting comment: ${error.message}`);
+      console.error(`❌ Error submitting entry: ${error.message}`);
     }
   });
 
@@ -566,7 +504,7 @@ io.on('connection', (socket) => {
     if (connection && connection.userId) {
       const userId = connection.userId;
       
-      // Update all activities this user was in
+      // Update all activities this user was in — presence is in-memory only
       for (const activityId of connection.activityIds) {
         try {
           if (activities.has(activityId)) {
@@ -575,20 +513,11 @@ io.on('connection', (socket) => {
               activities.delete(activityId);
             }
           }
-          
-          // Update database
-          await safeDbOperation(async () => {
-            const activity = await Activity.findOne({ id: activityId });
-            if (activity) {
-              await activity.updateParticipantConnection(userId, false);
-            }
-          });
-          
-          // Notify participants
+
           io.to(activityId).emit('participant_left', {
             participantId: userId
           });
-          
+
         } catch (error) {
           console.error(`❌ Error processing disconnect for activity ${activityId}:`, error.message);
         }

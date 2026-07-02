@@ -1,10 +1,26 @@
 const express = require('express');
 const router = express.Router();
 const Activity = require('../models/Activity');
+const Entry = require('../models/Entry');
 const Sequence = require('../models/Sequence');
 const FrameNomination = require('../models/FrameNomination');
 const User = require('../models/User');
 const { notify } = require('../utils/notify');
+
+// Positioned entries for an activity, with quadrant classification
+async function positionedEntries(activityId) {
+  const docs = await Entry.find({ activityId, position: { $ne: null } }).lean();
+  return docs.map(e => ({
+    userId: e.userId,
+    username: e.username,
+    objectName: e.objectName || '',
+    slotNumber: e.slotNumber ?? 1,
+    position: { x: e.position.x, y: e.position.y },
+    quadrant: getQuadrant(e.position.x, e.position.y),
+    voteCount: e.voteCount ?? 0,
+    commentText: e.text || '',
+  }));
+}
 
 function generateId() {
   return Math.random().toString(36).substring(2, 10);
@@ -33,27 +49,7 @@ router.get('/entries/:activityId', async (req, res) => {
     const activity = await Activity.findOne({ id: activityId }).lean();
     if (!activity) return res.status(404).json({ error: 'Activity not found' });
 
-    const commentMap = {};
-    for (const c of activity.comments || []) {
-      commentMap[`${c.userId}:${c.slotNumber ?? 1}`] = c;
-    }
-
-    const entries = (activity.ratings || []).map(r => {
-      const slot = r.slotNumber ?? 1;
-      const comment = commentMap[`${r.userId}:${slot}`] || null;
-      const x = r.position?.x ?? 0.5;
-      const y = r.position?.y ?? 0.5;
-      return {
-        userId: r.userId,
-        username: r.username,
-        objectName: r.objectName || '',
-        slotNumber: slot,
-        position: { x, y },
-        quadrant: getQuadrant(x, y),
-        voteCount: comment?.voteCount ?? 0,
-        commentText: comment?.text || '',
-      };
-    });
+    const entries = await positionedEntries(activityId);
 
     // top_voted: entry with most votes overall
     const topVoted = entries.length
@@ -100,18 +96,7 @@ router.post('/nominate', async (req, res) => {
     const activity = await Activity.findOne({ id: sourceActivityId }).lean();
     if (!activity) return res.status(404).json({ error: 'Source activity not found' });
 
-    const commentMap = {};
-    for (const c of activity.comments || []) {
-      commentMap[`${c.userId}:${c.slotNumber ?? 1}`] = c;
-    }
-
-    const entries = (activity.ratings || []).map(r => {
-      const slot = r.slotNumber ?? 1;
-      const comment = commentMap[`${r.userId}:${slot}`] || null;
-      const x = r.position?.x ?? 0.5;
-      const y = r.position?.y ?? 0.5;
-      return { userId: r.userId, username: r.username, objectName: r.objectName || '', slotNumber: slot, position: { x, y }, quadrant: getQuadrant(x, y), voteCount: comment?.voteCount ?? 0 };
-    });
+    const entries = await positionedEntries(sourceActivityId);
 
     let targetEntry = null;
 
@@ -213,6 +198,7 @@ router.post('/:id/submit', async (req, res) => {
     const urlName = toSlug(title);
 
     const activity = await Activity.create({
+      instanceId: req.instanceId,
       title: title.trim(),
       urlName,
       mapQuestion: mapQuestion.trim(),

@@ -2,91 +2,192 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Activity = require('../models/Activity');
-const Sequence = require('../models/Sequence');
+const Entry = require('../models/Entry');
+const Topic = require('../models/Topic');
+const FrameOfReference = require('../models/FrameOfReference');
+const Algorithm = require('../models/Algorithm');
+const Instance = require('../models/Instance');
+const InstanceMembership = require('../models/InstanceMembership');
+const entries = require('../utils/entries');
 
-// Get user profile with privacy checks
-router.get('/:userId', async (req, res) => {
+// Profiles are game-scoped: a viewer may see another player's profile and
+// personal map only inside a game they both belong to.
+async function canViewInGame(targetUserId, viewerUserId, instanceId) {
+  if (!viewerUserId || viewerUserId.startsWith('anon_')) return false;
+  if (targetUserId === viewerUserId) return true;
+  const [target, viewer] = await Promise.all([
+    InstanceMembership.exists({ userId: targetUserId, instanceId }),
+    InstanceMembership.exists({ userId: viewerUserId, instanceId }),
+  ]);
+  return !!(target && viewer);
+}
+
+// GET /api/users/:userId/games — player history across games.
+// Each game links out to its collective map and this player's personal map.
+router.get('/:userId/games', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { viewerId } = req.query;
+    const viewerId = req.headers['x-user-id'] || req.query.viewerId;
 
-    // Find the user
     const user = await User.findByCustomId(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const memberships = await InstanceMembership.find({ userId }).lean();
+    if (!memberships.length) {
+      return res.json({ user: { id: user.id, name: user.name }, games: [] });
     }
 
-    // Check privacy permissions
-    const canView = await checkProfileViewPermission(userId, viewerId);
-    if (!canView) {
-      return res.status(403).json({ error: 'You do not have permission to view this profile' });
+    const instanceIds = memberships.map(m => m.instanceId);
+    const joinedAtByInstance = Object.fromEntries(memberships.map(m => [m.instanceId, m.joinedAt]));
+
+    // Viewer sees only the games they share with the target (own profile sees all)
+    let visibleIds = instanceIds;
+    if (viewerId !== userId) {
+      if (!viewerId || viewerId.startsWith('anon_')) {
+        return res.status(403).json({ error: 'You do not have permission to view this profile' });
+      }
+      const shared = await InstanceMembership.find({ userId: viewerId, instanceId: { $in: instanceIds } }).lean();
+      visibleIds = shared.map(m => m.instanceId);
+      if (!visibleIds.length) {
+        return res.status(403).json({ error: 'You do not share a game with this player' });
+      }
     }
 
-    // Get user's sequences and activities
-    const joinedSequences = await user.getJoinedSequences();
-    const participatedActivities = await user.getParticipatedActivities();
+    const [instances, entryRows, voteRows, frameRows, patternRows] = await Promise.all([
+      Instance.find({ id: { $in: visibleIds } }).lean(),
+      Entry.aggregate([
+        { $match: { instanceId: { $in: visibleIds }, userId, isSeed: { $ne: true } } },
+        { $group: {
+          _id: '$instanceId',
+          entries: { $sum: 1 },
+          activities: { $addToSet: '$activityId' },
+          topics: { $addToSet: '$topicId' },
+        } },
+      ]),
+      Entry.aggregate([
+        { $match: { instanceId: { $in: visibleIds }, voterIds: userId } },
+        { $group: { _id: '$instanceId', votesCast: { $sum: 1 } } },
+      ]),
+      FrameOfReference.aggregate([
+        { $match: { instanceId: { $in: visibleIds }, createdBy: userId } },
+        { $group: { _id: '$instanceId', frames: { $sum: 1 } } },
+      ]),
+      Algorithm.aggregate([
+        { $match: { instanceId: { $in: visibleIds }, authorId: userId, status: 'published' } },
+        { $group: { _id: '$instanceId', patterns: { $sum: 1 } } },
+      ]),
+    ]);
 
-    // For each activity, get user's specific entries
-    const activitiesWithEntries = await Promise.all(
-      participatedActivities.map(async (activity) => {
-        const fullActivity = await Activity.findOne({ id: activity.id });
-        const userEntries = [];
+    const byInstance = (rows) => Object.fromEntries(rows.map(r => [r._id, r]));
+    const e = byInstance(entryRows);
+    const v = byInstance(voteRows);
+    const f = byInstance(frameRows);
+    const p = byInstance(patternRows);
 
-        // Get all ratings for this user across all slots
-        const userRatings = fullActivity.ratings.filter(r => r.userId === userId);
+    const games = instances
+      .map(inst => ({
+        instanceId: inst.id,
+        name: inst.name,
+        slug: inst.slug,
+        gameNumber: inst.gameNumber ?? null,
+        active: inst.active !== false && !(inst.endDate && new Date(inst.endDate) < new Date()),
+        startDate: inst.startDate,
+        endDate: inst.endDate,
+        joinedAt: joinedAtByInstance[inst.id] || null,
+        stats: {
+          entries: e[inst.id]?.entries ?? 0,
+          activities: e[inst.id]?.activities?.length ?? 0,
+          topics: (e[inst.id]?.topics || []).filter(Boolean).length,
+          votesCast: v[inst.id]?.votesCast ?? 0,
+          frames: f[inst.id]?.frames ?? 0,
+          patterns: p[inst.id]?.patterns ?? 0,
+        },
+      }))
+      .sort((a, b) => new Date(b.joinedAt || 0) - new Date(a.joinedAt || 0));
 
-        for (const rating of userRatings) {
-          // Find corresponding comment
-          const comment = fullActivity.comments.find(
-            c => c.userId === userId && c.slotNumber === rating.slotNumber
-          );
-
-          // Find participant entry for object name
-          const participant = fullActivity.participants.find(
-            p => p.userId === userId && p.slotNumber === rating.slotNumber
-          );
-
-          userEntries.push({
-            slotNumber: rating.slotNumber,
-            objectName: participant?.objectName || 'Unknown',
-            x: rating.position?.x,
-            y: rating.position?.y,
-            comment: comment?.text || ''
-          });
-        }
-
-        return {
-          id: activity.id,
-          title: activity.title,
-          urlName: activity.urlName,
-          xAxisLabel: activity.xAxisLabel,
-          yAxisLabel: activity.yAxisLabel,
-          updatedAt: activity.updatedAt,
-          userEntries
-        };
-      })
-    );
-
-    // Return profile data
-    const profileData = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      bio: user.bio,
-      createdAt: user.createdAt,
-      joinedSequences: joinedSequences.map(seq => ({
-        id: seq.id,
-        title: seq.title,
-        urlName: seq.urlName,
-        description: seq.description
-      })),
-      participatedActivities: activitiesWithEntries
-    };
-
-    res.json(profileData);
+    res.json({ user: { id: user.id, name: user.name }, games });
   } catch (error) {
-    console.error('Error fetching user profile:', error);
-    res.status(500).json({ error: 'Failed to fetch user profile' });
+    console.error('Error fetching player games:', error);
+    res.status(500).json({ error: 'Failed to fetch player games' });
+  }
+});
+
+// GET /api/users/:userId/game-map — a player's redacted personal map for the
+// current game (instance resolved from the request). Their own entries carry
+// authorship; entries they voted for are redacted server-side — the map shows
+// what was voted for, never who else authored or voted.
+router.get('/:userId/game-map', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const viewerId = req.headers['x-user-id'] || req.query.viewerId;
+    const instanceId = req.instanceId;
+
+    const user = await User.findByCustomId(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (!(await canViewInGame(userId, viewerId, instanceId))) {
+      return res.status(403).json({ error: 'You must share this game with the player to view their map' });
+    }
+
+    const [ownDocs, votedDocs, frames, patterns] = await Promise.all([
+      Entry.find({ instanceId, userId, isSeed: { $ne: true } }).sort({ createdAt: 1 }).lean(),
+      Entry.find({ instanceId, voterIds: userId }).sort({ createdAt: 1 }).lean(),
+      FrameOfReference.find({ instanceId, createdBy: userId }).lean(),
+      Algorithm.find({ instanceId, authorId: userId, status: 'published' })
+        .select('id title thesis publishedAt sequenceId').lean(),
+    ]);
+
+    const activityIds = [...new Set([
+      ...ownDocs.map(d => d.activityId),
+      ...votedDocs.map(d => d.activityId),
+    ])];
+    const activities = activityIds.length
+      ? await Activity.find({ id: { $in: activityIds } })
+          .select('id title urlName activityType topicId frameId xAxis yAxis status maxEntries')
+          .lean()
+      : [];
+
+    const topicIds = [...new Set([
+      ...activities.map(a => a.topicId),
+      ...ownDocs.map(d => d.topicId),
+      ...votedDocs.map(d => d.topicId),
+    ].filter(Boolean))];
+    const topics = topicIds.length
+      ? await Topic.find({ id: { $in: topicIds }, instanceId }).select('id title status').lean()
+      : [];
+
+    const instance = await Instance.findOne({ id: instanceId }).lean();
+
+    res.json({
+      user: { id: user.id, name: user.name },
+      instance: instance
+        ? { id: instance.id, name: instance.name, slug: instance.slug, gameNumber: instance.gameNumber ?? null }
+        : null,
+      topics,
+      activities: activities.map(a => ({ ...a, _id: undefined })),
+      ownEntries: ownDocs.map(d => ({ ...entries.toClient(d), activityId: d.activityId })),
+      votedEntries: votedDocs.map(d => ({ ...entries.toRedacted(d), activityId: d.activityId })),
+      frames: frames.map(fr => ({
+        id: fr.id, xLabel: fr.xLabel, xMin: fr.xMin, xMax: fr.xMax,
+        yLabel: fr.yLabel, yMin: fr.yMin, yMax: fr.yMax, createdAt: fr.createdAt,
+      })),
+      patterns,
+    });
+  } catch (error) {
+    console.error('Error fetching game map:', error);
+    res.status(500).json({ error: 'Failed to fetch game map' });
+  }
+});
+
+// GET /api/users/:userId — basic public identity (name only)
+router.get('/:userId', async (req, res) => {
+  try {
+    const user = await User.findByCustomId(req.params.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ id: user.id, name: user.name, createdAt: user.createdAt });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
 
@@ -96,15 +197,12 @@ router.put('/:userId', async (req, res) => {
     const { userId } = req.params;
     const { bio } = req.body;
 
-    // Find and update user
     const user = await User.findByCustomId(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Update fields
     if (bio !== undefined) user.bio = bio;
-
     await user.save();
 
     res.json({
@@ -123,7 +221,6 @@ router.get('/:userId/settings', async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Find user
     const user = await User.findByCustomId(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -150,19 +247,16 @@ router.put('/:userId/settings', async (req, res) => {
     const { userId } = req.params;
     const { name, email, notifications } = req.body;
 
-    // Find user
     const user = await User.findByCustomId(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Update fields if provided
     if (name !== undefined) {
       user.name = name;
     }
 
     if (email !== undefined) {
-      // Check if email is already taken by another user
       const existingUser = await User.findByEmail(email);
       if (existingUser && existingUser.id !== userId) {
         return res.status(400).json({ error: 'Email already in use' });
@@ -171,7 +265,6 @@ router.put('/:userId/settings', async (req, res) => {
     }
 
     if (notifications !== undefined) {
-      // Merge notification settings
       user.notifications = {
         newActivities: notifications.newActivities !== undefined
           ? notifications.newActivities
@@ -195,37 +288,5 @@ router.put('/:userId/settings', async (req, res) => {
     res.status(500).json({ error: 'Failed to update user settings' });
   }
 });
-
-// Helper function to check if viewer can see this profile
-async function checkProfileViewPermission(targetUserId, viewerUserId) {
-  // User can always view their own profile
-  if (targetUserId === viewerUserId) {
-    return true;
-  }
-
-  // Anonymous users cannot view profiles
-  if (!viewerUserId || viewerUserId.startsWith('anon_')) {
-    return false;
-  }
-
-  // Check if users share a sequence
-  const targetUser = await User.findByCustomId(targetUserId);
-  const viewerUser = await User.findByCustomId(viewerUserId);
-
-  if (!targetUser || !viewerUser) {
-    return false;
-  }
-
-  const targetSequences = await targetUser.getJoinedSequences();
-  const viewerSequences = await viewerUser.getJoinedSequences();
-
-  const targetSequenceIds = targetSequences.map(s => s.id);
-  const viewerSequenceIds = viewerSequences.map(s => s.id);
-
-  // Check if there's any overlap in sequences
-  const sharedSequences = targetSequenceIds.filter(id => viewerSequenceIds.includes(id));
-
-  return sharedSequences.length > 0;
-}
 
 module.exports = router;

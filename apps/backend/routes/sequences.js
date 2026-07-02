@@ -2,7 +2,18 @@ const express = require('express');
 const router = express.Router();
 const Sequence = require('../models/Sequence');
 const Activity = require('../models/Activity');
+const Entry = require('../models/Entry');
 const User = require('../models/User');
+
+// Positioned-entry count for one activity (a "completed mapping")
+function completedMappings(activityId) {
+  return Entry.countDocuments({ activityId, position: { $ne: null } });
+}
+
+// Has this user placed an entry in this activity?
+async function hasEntered(activityId, userId) {
+  return !!(await Entry.exists({ activityId, userId, position: { $ne: null } }));
+}
 
 // Get all sequences (admin)
 // Optional ?createdBy=userId to scope to a specific creator
@@ -85,7 +96,7 @@ router.get('/public', async (req, res) => {
                 status: activity.status,
                 isDraft: activity.isDraft,
                 participants: activity.participants.length,
-                completedMappings: activity.ratings.length
+                completedMappings: await completedMappings(activity.id)
               } : null
             };
           })
@@ -123,7 +134,7 @@ router.get('/user/:userId', async (req, res) => {
 
             // Check if user has participated
             const hasParticipated = activity ?
-              activity.participants.some(p => p.id === userId && p.hasSubmitted) :
+              await hasEntered(activity.id, userId) :
               false;
 
             return {
@@ -213,7 +224,7 @@ router.get('/:id', async (req, res) => {
             status: activity.status,
             isDraft: activity.isDraft,
             participants: activity.participants.length,
-            completedMappings: activity.ratings.length
+            completedMappings: await completedMappings(activity.id)
           } : null
         };
       })
@@ -247,7 +258,7 @@ router.get('/url/:urlName', async (req, res) => {
 
         // Check if user has participated (if userId provided)
         const hasParticipated = (userId && activity) ?
-          activity.participants.some(p => p.id === userId && p.hasSubmitted) :
+          await hasEntered(activity.id, userId) :
           false;
 
         return {
@@ -260,7 +271,7 @@ router.get('/url/:urlName', async (req, res) => {
             status: activity.status,
             isDraft: activity.isDraft,
             participants: activity.participants.length,
-            completedMappings: activity.ratings.length
+            completedMappings: await completedMappings(activity.id)
           } : null,
           hasParticipated
         };
@@ -676,39 +687,24 @@ router.get('/:id/member-stats', async (req, res) => {
     const sequence = await Sequence.findOne({ id });
     if (!sequence) return res.status(404).json({ error: 'Sequence not found' });
 
-    const Activity = require('../models/Activity');
     const activityIds = sequence.activities.map(a => a.activityId);
-    const activities = await Activity.find({ id: { $in: activityIds } }).select('id ratings');
-
-    const stats = {};
-    sequence.members.forEach(m => { stats[m.userId] = { entries: 0, mappings: 0 }; });
-
-    activities.forEach(act => {
-      (act.ratings || []).forEach(r => {
-        if (stats[r.userId]) {
-          stats[r.userId].entries += 1;
-        }
-      });
-    });
-
-    // entries = distinct activities participated in; mappings = total rating slots
-    const activityParticipation = {};
-    sequence.members.forEach(m => { activityParticipation[m.userId] = new Set(); });
-    activities.forEach(act => {
-      (act.ratings || []).forEach(r => {
-        if (activityParticipation[r.userId]) {
-          activityParticipation[r.userId].add(act.id);
-        }
-      });
-    });
+    const rows = await Entry.aggregate([
+      { $match: { activityId: { $in: activityIds }, position: { $ne: null } } },
+      { $group: {
+        _id: '$userId',
+        mappings: { $sum: 1 },
+        activities: { $addToSet: '$activityId' },
+      } },
+    ]);
+    const byUser = Object.fromEntries(rows.map(r => [r._id, r]));
 
     const result = sequence.members.map(m => ({
       userId: m.userId,
       email: m.email,
       username: m.username,
       joinedAt: m.joinedAt,
-      activitiesCount: activityParticipation[m.userId] ? activityParticipation[m.userId].size : 0,
-      mappingsCount: stats[m.userId] ? stats[m.userId].entries : 0,
+      activitiesCount: byUser[m.userId]?.activities.length ?? 0,
+      mappingsCount: byUser[m.userId]?.mappings ?? 0,
     }));
 
     res.json(result);
@@ -750,6 +746,7 @@ router.post('/:id/duplicate', async (req, res) => {
       }
 
       const cloned = new Activity({
+        instanceId: src.instanceId || req.instanceId,
         title: `${src.title} (Copy)`,
         urlName: actUrl,
         author: src.author,
@@ -775,8 +772,6 @@ router.post('/:id/duplicate', async (req, res) => {
         isDraft: true,
         status: 'active',
         participants: [],
-        ratings: [],
-        comments: [],
       });
       await cloned.save();
       activityIdMap[seqAct.activityId] = cloned.id;
@@ -815,139 +810,6 @@ router.post('/:id/duplicate', async (req, res) => {
   } catch (error) {
     console.error('Error duplicating sequence:', error);
     res.status(500).json({ error: 'Failed to duplicate sequence' });
-  }
-});
-
-// Get user profile within sequence context
-router.get('/:sequenceId/profile/:userId', async (req, res) => {
-  try {
-    const { sequenceId, userId } = req.params;
-    const { viewerId } = req.query;
-
-    console.log(`📋 Profile request - Sequence: ${sequenceId}, Target: ${userId}, Viewer: ${viewerId}`);
-
-    // Find the sequence
-    const sequence = await Sequence.findOne({ id: sequenceId });
-    if (!sequence) {
-      console.log(`❌ Sequence ${sequenceId} not found`);
-      return res.status(404).json({ error: 'Sequence not found' });
-    }
-
-    console.log(`✅ Found sequence: ${sequence.title}, Members: ${sequence.members.length}`);
-    console.log(`📝 Member user IDs:`, sequence.members.map(m => m.userId));
-
-    // Check if target user is a member of this sequence
-    const targetMember = sequence.members.find(m => m.userId === userId);
-    if (!targetMember) {
-      console.log(`❌ Target user ${userId} not found in sequence members`);
-      console.log(`📝 Available members:`, sequence.members);
-      return res.status(404).json({ error: 'User not found in this sequence' });
-    }
-
-    // Fetch user's name from User model
-    const user = await User.findByCustomId(userId);
-    const name = user ? (user.name || 'Anonymous') : 'Anonymous';
-
-    console.log(`✅ Target user found: ${name}`);
-
-    // Check if viewer is a member of this sequence (only if viewerId provided and different from target)
-    if (viewerId && viewerId !== userId) {
-      const viewerMember = sequence.members.find(m => m.userId === viewerId);
-      if (!viewerMember) {
-        console.log(`❌ Viewer ${viewerId} not a member of sequence`);
-        return res.status(403).json({ error: 'You must be a member of this sequence to view profiles' });
-      }
-      console.log(`✅ Viewer ${viewerId} authorized`);
-    } else if (!viewerId) {
-      console.log(`⚠️ No viewerId provided - allowing view (own profile)`);
-    }
-
-    // Get only activities that belong to this sequence
-    const Activity = require('../models/Activity');
-
-    console.log(`📋 Sequence activities:`, sequence.activities);
-
-    if (!sequence.activities || sequence.activities.length === 0) {
-      console.log(`⚠️ Sequence has no activities`);
-      return res.json({
-        id: userId,
-        name: name,
-        sequenceId: sequence.id,
-        sequenceUrlName: sequence.urlName,
-        sequenceTitle: sequence.title,
-        joinedAt: targetMember.joinedAt,
-        participatedActivities: []
-      });
-    }
-
-    const sequenceActivityIds = sequence.activities.map(a => a.activityId);
-
-    console.log(`🔍 Looking for activities with IDs: ${sequenceActivityIds.join(', ')}`);
-
-    // Find activities from this sequence where user participated
-    const participatedActivities = await Activity.find({
-      id: { $in: sequenceActivityIds },
-      $or: [
-        { 'participants.userId': userId },
-        { 'ratings.userId': userId },
-        { 'comments.userId': userId }
-      ]
-    }).select('id title urlName xAxis yAxis updatedAt ratings comments');
-
-    console.log(`📊 Found ${participatedActivities.length} activities where user participated`);
-
-    // For each activity, get user's entries
-    const activitiesWithEntries = await Promise.all(
-      participatedActivities.map(async (activity) => {
-        const userEntries = [];
-
-        // Get all ratings for this user across all slots (with safety check)
-        const userRatings = (activity.ratings || []).filter(r => r.userId === userId);
-
-        for (const rating of userRatings) {
-          // Find corresponding comment (with safety check)
-          const comment = (activity.comments || []).find(
-            c => c.userId === userId && (c.slotNumber || 1) === (rating.slotNumber || 1)
-          );
-
-          userEntries.push({
-            slotNumber: rating.slotNumber || 1,
-            objectName: rating.objectName || 'Unknown',
-            x: rating.position?.x,
-            y: rating.position?.y,
-            comment: comment?.text || ''
-          });
-        }
-
-        return {
-          id: activity.id,
-          title: activity.title,
-          urlName: activity.urlName,
-          xAxisLabel: activity.xAxis?.label || '',
-          yAxisLabel: activity.yAxis?.label || '',
-          updatedAt: activity.updatedAt,
-          userEntries
-        };
-      })
-    );
-
-    // Return sequence-scoped profile
-    const profileData = {
-      id: userId,
-      name: name,
-      sequenceId: sequence.id,
-      sequenceUrlName: sequence.urlName,
-      sequenceTitle: sequence.title,
-      joinedAt: targetMember.joinedAt,
-      participatedActivities: activitiesWithEntries
-    };
-
-    console.log(`✅ Successfully built profile for ${name} with ${activitiesWithEntries.length} activities`);
-    res.json(profileData);
-  } catch (error) {
-    console.error('❌ Error fetching sequence profile:', error);
-    console.error('Stack trace:', error.stack);
-    res.status(500).json({ error: 'Failed to fetch profile', details: error.message });
   }
 });
 

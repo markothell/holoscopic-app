@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Activity = require('../models/Activity');
 const Sequence = require('../models/Sequence');
+const entries = require('../utils/entries');
 
 function slugify(text) {
   return text
@@ -51,6 +52,7 @@ router.post('/sequence', async (req, res) => {
       const yAxis = a.yAxis || { label: 'Vertical', min: 'Low', max: 'High' };
 
       const activity = new Activity({
+        instanceId: req.instanceId,
         title: (a.title || 'Untitled').trim(),
         urlName,
         activityType: a.activityType || 'dissolve',
@@ -83,13 +85,11 @@ router.post('/sequence', async (req, res) => {
         author: { userId },
         status: 'active',
         participants: [],
-        ratings: [],
-        comments: [],
       });
 
       const saved = await activity.save();
 
-      // Process starterData (accept array or JSON string)
+      // Process starterData (accept array or JSON string) → isSeed entries
       if (a.starterData) {
         try {
           const items = Array.isArray(a.starterData)
@@ -98,7 +98,6 @@ router.post('/sequence', async (req, res) => {
           // Quadrant → x/y center coordinates
           const quadrantToXY = { 1: { x: 0.75, y: 0.75 }, 2: { x: 0.25, y: 0.75 }, 3: { x: 0.25, y: 0.25 }, 4: { x: 0.75, y: 0.25 } };
           if (Array.isArray(items)) {
-            let current = saved; // re-fetched after each addRating to keep __v in sync
             for (let si = 0; si < items.length; si++) {
               const item = items[si];
               if (!item || typeof item !== 'object' || !item.objectName) continue;
@@ -111,16 +110,16 @@ router.post('/sequence', async (req, res) => {
               }
               if (typeof x !== 'number' || typeof y !== 'number') continue;
               if (x < 0 || x > 1 || y < 0 || y > 1) continue;
-              const starterUserId = `starter_${saved._id}_${si}`;
-              await current.addParticipant(starterUserId, 'Example Data');
-              await current.addRating(starterUserId, 'Example Data', { x, y }, item.objectName);
-              // Re-fetch to get latest __v after addRating's internal save()
-              current = await Activity.findOne({ id: saved.id });
-              if (!item.comment || !item.comment.trim()) {
-                continue;
-              }
-              await current.addComment(starterUserId, 'Example Data', item.comment.trim(), item.objectName);
-              current = await Activity.findOne({ id: saved.id });
+              await entries.upsertEntry({
+                activity: saved,
+                instanceId: req.instanceId,
+                userId: `seed_${saved.id}_${si}`,
+                username: 'Example Data',
+                position: { x, y },
+                objectName: item.objectName,
+                text: item.comment && item.comment.trim() ? item.comment.trim() : undefined,
+                isSeed: true,
+              });
             }
           }
         } catch (e) {
@@ -175,6 +174,8 @@ router.post('/sequence', async (req, res) => {
     // Best-effort cleanup: delete any activities already created
     if (createdActivityIds.length > 0) {
       await Activity.deleteMany({ id: { $in: createdActivityIds } }).catch(() => {});
+      const Entry = require('../models/Entry');
+      await Entry.deleteMany({ activityId: { $in: createdActivityIds } }).catch(() => {});
     }
     console.error('Import error:', err);
     res.status(500).json({ error: err.message || 'Import failed' });

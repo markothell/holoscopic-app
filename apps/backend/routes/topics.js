@@ -2,32 +2,40 @@ const express = require('express');
 const router = express.Router();
 const Topic = require('../models/Topic');
 const Activity = require('../models/Activity');
+const Entry = require('../models/Entry');
 const { transact, spend } = require('../utils/holons');
 const { notify } = require('../utils/notify');
 
-// Per-topic activity rollup: breadth (maps) and depth (entries + comments).
-// Score = 5×maps + 2×participants + 1×(ratings + comments).
+// Per-topic activity rollup: breadth (maps) and depth (positions + texts).
+// Score = 5×maps + 2×participants + 1×(positions + texts).
 async function activityRollup(topicIds) {
   if (topicIds.length === 0) return {};
-  const rows = await Activity.aggregate([
-    { $match: { topicId: { $in: topicIds }, isDraft: { $ne: true } } },
-    { $project: {
-      topicId: 1,
-      participants: { $size: { $ifNull: ['$participants', []] } },
-      ratings: { $size: { $ifNull: ['$ratings', []] } },
-      comments: { $size: { $ifNull: ['$comments', []] } },
-    } },
-    { $group: {
-      _id: '$topicId',
-      maps: { $sum: 1 },
-      participants: { $sum: '$participants' },
-      ratings: { $sum: '$ratings' },
-      comments: { $sum: '$comments' },
-    } },
+  const [activityRows, entryRows] = await Promise.all([
+    Activity.aggregate([
+      { $match: { topicId: { $in: topicIds }, isDraft: { $ne: true } } },
+      { $project: {
+        topicId: 1,
+        participants: { $size: { $ifNull: ['$participants', []] } },
+      } },
+      { $group: {
+        _id: '$topicId',
+        maps: { $sum: 1 },
+        participants: { $sum: '$participants' },
+      } },
+    ]),
+    Entry.aggregate([
+      { $match: { topicId: { $in: topicIds } } },
+      { $group: {
+        _id: '$topicId',
+        positions: { $sum: { $cond: [{ $ifNull: ['$position', false] }, 1, 0] } },
+        texts: { $sum: { $cond: [{ $gt: [{ $strLenCP: { $ifNull: ['$text', ''] } }, 0] }, 1, 0] } },
+      } },
+    ]),
   ]);
-  return Object.fromEntries(rows.map(r => [r._id, {
+  const depth = Object.fromEntries(entryRows.map(r => [r._id, r.positions + r.texts]));
+  return Object.fromEntries(activityRows.map(r => [r._id, {
     activityCount: r.maps,
-    activityScore: r.maps * 5 + r.participants * 2 + r.ratings + r.comments,
+    activityScore: r.maps * 5 + r.participants * 2 + (depth[r._id] ?? 0),
   }]));
 }
 

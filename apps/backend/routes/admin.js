@@ -23,7 +23,8 @@ router.use(requireAdmin);
 // GET /api/admin/stats — platform-wide aggregation
 router.get('/stats', async (req, res) => {
   try {
-    const [userCount, activityCount, sequenceCount, activityAgg] = await Promise.all([
+    const Entry = require('../models/Entry');
+    const [userCount, activityCount, sequenceCount, activityAgg, entryAgg] = await Promise.all([
       User.countDocuments(),
       Activity.countDocuments(),
       Sequence.countDocuments(),
@@ -31,25 +32,26 @@ router.get('/stats', async (req, res) => {
         {
           $group: {
             _id: null,
-            participants: { $sum: { $size: '$participants' } },
-            comments: { $sum: { $size: '$comments' } },
-            votes: {
-              $sum: {
-                $sum: {
-                  $map: {
-                    input: '$comments',
-                    as: 'comment',
-                    in: { $size: '$$comment.votes' }
-                  }
-                }
-              }
-            }
+            participants: { $sum: { $size: { $ifNull: ['$participants', []] } } },
+          }
+        }
+      ]),
+      Entry.aggregate([
+        {
+          $group: {
+            _id: null,
+            comments: { $sum: { $cond: [{ $gt: [{ $strLenCP: { $ifNull: ['$text', ''] } }, 0] }, 1, 0] } },
+            votes: { $sum: { $ifNull: ['$voteCount', 0] } },
           }
         }
       ])
     ]);
 
-    const agg = activityAgg[0] || { participants: 0, comments: 0, votes: 0 };
+    const agg = {
+      participants: activityAgg[0]?.participants ?? 0,
+      comments: entryAgg[0]?.comments ?? 0,
+      votes: entryAgg[0]?.votes ?? 0,
+    };
 
     res.json({
       users: userCount,
