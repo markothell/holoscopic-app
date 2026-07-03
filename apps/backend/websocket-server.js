@@ -55,7 +55,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-User-Id"]
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-User-Id", "X-Instance-Id"]
 }));
 
 app.use(bodyParser.json());

@@ -76,20 +76,22 @@ instanceSchema.methods.isEnded = function () {
   return !this.active || (this.endDate && this.endDate < new Date());
 };
 
-// Get or create the default instance (always exists)
+// Get or create the default instance (always exists).
+// Holoscopic is the platform, never an instance; instances are games.
+// Default = the lowest-numbered active game, falling back to any instance.
 instanceSchema.statics.getDefault = async function () {
-  // Prefer the primary interView instance; fall back to the legacy 'default' doc
-  let inst = await this.findOne({ slug: 'interview' })
-          || await this.findOne({ id: 'default' });
+  let inst = await this.findOne({ active: true }).sort({ gameNumber: 1, createdAt: 1 })
+          || await this.findOne({}).sort({ gameNumber: 1, createdAt: 1 });
   if (!inst) {
     inst = await this.create({
-      id: 'default',
+      id: require('crypto').randomUUID().substring(0, 8),
       name: 'interView',
-      slug: 'interview',
+      slug: 'g1',
+      gameNumber: 1,
       domains: ['localhost', 'localhost:3000', '127.0.0.1', '127.0.0.1:3000'],
       active: true,
     });
-    console.log('✅ Default instance created');
+    console.log('✅ Default game instance created (g1)');
   }
   return inst;
 };
