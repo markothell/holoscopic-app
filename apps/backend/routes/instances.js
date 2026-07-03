@@ -54,6 +54,22 @@ router.get('/mine', async (req, res) => {
   }
 });
 
+// GET /api/instances/resolve/:slugOrId — strict lookup with NO default
+// fallback. Unlike the x-instance-id header (which falls back to the default
+// game), this 404s for unknown slugs so the frontend can surface bad game
+// URLs instead of silently serving the default instance.
+router.get('/resolve/:slugOrId', async (req, res) => {
+  try {
+    const key = req.params.slugOrId;
+    const instance = await Instance.findOne({ slug: key }) || await Instance.findOne({ id: key });
+    if (!instance) return res.status(404).json({ error: 'No game found for that address' });
+    const { id, name, slug, gameNumber, access, active, startDate, endDate } = instance;
+    res.json({ instance: { id, name, slug, gameNumber, access, active, startDate, endDate } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // All routes below require admin
 router.use(requireAdmin);
 
