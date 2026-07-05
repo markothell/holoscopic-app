@@ -1,4 +1,6 @@
-# Holoscopic Monorepo
+# Holoscopic Spectrum Monorepo (fork of 07_holoscopic)
+
+**This is the 08_holoscopic fork**, home of **On the Spectrum** — a mobile-first social party game (`apps/spectrum`, port 4000; backend on port 4001). The rest of the monorepo (holoscopic-game, platform, packages) is kept as reference and runs on the 4000-block ports so 07 and 08 can run side by side. See `apps/spectrum/` and `apps/backend/routes/spectrum.js` for the game.
 
 Holoscopic is a collective-sensemaking platform where groups map their perspectives on a 2D grid, leave comments, and vote on each other's views. It is multi-tenant: one backend serves multiple isolated deployments ("instances"), each with its own holon economy, quorum rules, and data scope.
 

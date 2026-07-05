@@ -1,11 +1,12 @@
 {
-  "name": "holoscopic",
+  "name": "holoscopic-spectrum",
   "private": true,
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
+    "dev:spectrum": "npm run dev --workspace=apps/spectrum",
     "dev:game": "npm run dev --workspace=apps/holoscopic-game",
     "dev:backend": "npm run dev --workspace=apps/backend",
     "dev:platform": "npm run dev --workspace=apps/platform",

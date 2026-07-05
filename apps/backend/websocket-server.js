@@ -125,6 +125,8 @@ const io = new Server(server, {
 
 require('./utils/holons').setIO(io);
 require('./utils/notify').setIO(io);
+require('./utils/spectrumGames').setIO(io);
+const { registerSpectrumHandlers } = require('./sockets/spectrum');
 
 // Store active connections and activity participants
 const connections = new Map(); // socketId -> { userId, activityIds }
@@ -232,6 +234,10 @@ function loadAPIRoutes() {
       app.use('/api/frames', enforceVerifiedUser, blockIfInstanceEnded, frameRoutes);
       app.use('/api/frame-refs', enforceVerifiedUser, blockIfInstanceEnded, frameRefRoutes);
       app.use('/api/instances', instanceRoutes);
+      // On the Spectrum party game — guest identities, so enforceVerifiedUser
+      // (guest JWTs from the join route) but no blockIfInstanceEnded.
+      const spectrumRoutes = require('./routes/spectrum')(io);
+      app.use('/api/spectrum', enforceVerifiedUser, spectrumRoutes);
       apiRoutesLoaded = true;
       console.log('✅ API routes loaded successfully');
     } catch (error) {
@@ -378,6 +384,8 @@ io.on('connection', (socket) => {
       message: 'High traffic detected - performance may be slower.'
     });
   }
+
+  registerSpectrumHandlers(io, socket);
 
   // Join user room for personal events (holon updates, notifications)
   socket.on('join_user_room', ({ userId }) => {

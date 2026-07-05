@@ -1,0 +1,43 @@
+import type { Metadata, Viewport } from 'next';
+import { Barlow_Condensed, DM_Mono, Cormorant_Garamond } from 'next/font/google';
+import './globals.css';
+
+const barlow = Barlow_Condensed({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-barlow',
+});
+
+const dmMono = DM_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-dm-mono',
+});
+
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-cormorant',
+});
+
+export const metadata: Metadata = {
+  title: 'On the Spectrum',
+  description: 'Put your friends on the spectrum. Nominate, vote, rank, reveal.',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#FAF6EE',
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" className={`${barlow.variable} ${dmMono.variable} ${cormorant.variable}`}>
+      <body>{children}</body>
+    </html>
+  );
+}
