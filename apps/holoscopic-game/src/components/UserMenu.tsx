@@ -146,7 +146,7 @@ export default function UserMenu({ gameLinks }: { gameLinks?: GameLink[] } = {})
           Login
         </button>
         <button
-          onClick={() => router.push('/waitlist')}
+          onClick={() => router.push('/signup')}
           style={{
             fontFamily: 'var(--font-dm-mono), monospace',
             fontSize: '0.62rem',
