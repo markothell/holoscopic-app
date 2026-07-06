@@ -38,6 +38,7 @@ router.get('/mine', async (req, res) => {
           name: inst.name,
           slug: inst.slug,
           gameNumber: inst.gameNumber,
+          gameVersion: inst.gameVersion,
           active: inst.active,
           startDate: inst.startDate,
           endDate: inst.endDate,

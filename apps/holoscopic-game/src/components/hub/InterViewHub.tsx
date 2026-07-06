@@ -19,6 +19,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstance } from '@/contexts/InstanceContext';
+import { editionLabel } from '@/services/instanceService';
 import { apiFetch } from '@/lib/api';
 import { TopicService } from '@/services/topicService';
 import { FrameRefService } from '@/services/frameRefService';
@@ -1071,7 +1072,7 @@ function HubInner({ view }: { view: HubView }) {
             )}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 'var(--text-2xs)', fontFamily: mono, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text-muted)' }}>
-                Edition #{instance?.gameNumber ?? 1}
+                Edition {editionLabel(instance)}{instance?.name && instance.name.toLowerCase() !== 'interview' ? ` · ${instance.name}` : ''}
               </span>
               {instance?.gameVersion && (
                 <span style={{ fontSize: 'var(--text-2xs)', fontFamily: mono, color: 'var(--text-muted)' }}>

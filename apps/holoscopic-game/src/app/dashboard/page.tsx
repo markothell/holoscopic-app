@@ -7,7 +7,7 @@ import { Sequence } from '@/models/Sequence';
 import { HoloscopicActivity } from '@/models/Activity';
 import { SequenceService } from '@/services/sequenceService';
 import { ActivityService } from '@/services/activityService';
-import { InstanceService, JoinedEdition } from '@/services/instanceService';
+import { InstanceService, JoinedEdition, editionLabel } from '@/services/instanceService';
 import { useAuth } from '@/contexts/AuthContext';
 import UserMenu from '@/components/UserMenu';
 import { gamePath } from '@/lib/strings';
@@ -258,7 +258,8 @@ export default function DashboardPage() {
                         <div className={styles.listHeader}>
                           <Link href={gamePath(ed.slug, 'topics')} className={styles.listTitle}>
                             inter<span style={{ color: '#C83B50' }}>View</span>
-                            {ed.gameNumber != null && ` · Edition #${ed.gameNumber}`}
+                            {ed.gameNumber != null && ` ${editionLabel(ed)}`}
+                            {ed.name && ed.name.toLowerCase() !== 'interview' && ` · ${ed.name}`}
                           </Link>
                           <span className={`${styles.badge} ${live ? styles.badgeActive : styles.badgeCompleted}`}>
                             {live ? 'Live' : 'Ended'}

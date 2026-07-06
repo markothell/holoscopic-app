@@ -27,7 +27,9 @@ async function transact({ userId, instanceId, type, amount, refType = null, refI
     refId,
   });
 
-  if (_io) _io.to(`user:${userId}`).emit('holon_update', { balance: membership.holonBalance });
+  // instanceId lets clients apply the update only when it belongs to the
+  // instance they are currently viewing (balances are per-instance).
+  if (_io) _io.to(`user:${userId}`).emit('holon_update', { balance: membership.holonBalance, instanceId });
 
   return membership.holonBalance;
 }

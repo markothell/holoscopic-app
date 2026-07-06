@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useInstance } from '@/contexts/InstanceContext';
+import { editionLabel } from '@/services/instanceService';
 import UserMenu from '@/components/UserMenu';
 import { GAME_NAME, gamePath } from '@/lib/strings';
 import { mono, eyebrowCss } from '@/lib/ui';
@@ -45,7 +46,6 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
 export default function InterViewLandingPage() {
   const { session: slug } = useParams<{ session: string }>();
   const { instance } = useInstance();
-  const g = instance?.gameNumber ?? 1;
   const [enterHover, setEnterHover] = useState(false);
 
   return (
@@ -146,7 +146,7 @@ export default function InterViewLandingPage() {
               letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-muted)',
             }}
           >
-            Edition #{g}
+            Edition {editionLabel(instance)}{instance?.name && instance.name.toLowerCase() !== 'interview' ? ` · ${instance.name}` : ''}
           </span>
         </section>
       </main>

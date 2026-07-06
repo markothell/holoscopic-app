@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstance } from '@/contexts/InstanceContext';
+import { editionLabel } from '@/services/instanceService';
 import GameNav from '@/components/GameNav';
 import { apiFetch } from '@/lib/api';
 import { HOLON_SYMBOL, STR } from '@/lib/strings';
@@ -48,7 +49,7 @@ export default function GameLeaderboard() {
           </h1>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: 'var(--text-2xs)', fontFamily: mono, letterSpacing: '0.1em', textTransform: 'uppercase', color: status.color }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: status.color, display: 'inline-block' }} />
-            Edition #{instance?.gameNumber ?? 1} · {status.label}
+            Edition {editionLabel(instance)} · {status.label}
           </span>
         </div>
         <p style={{ ...eyebrowCss, marginBottom: '2.5rem' }}>

@@ -3,6 +3,8 @@
 import { createContext, useContext, ReactNode, useEffect, useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { io as socketIO, Socket } from 'socket.io-client';
+import { useInstance } from '@/contexts/InstanceContext';
+import { HolonService } from '@/services/holonService';
 
 interface AuthContextType {
   userId: string | null;
@@ -32,10 +34,14 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
+  const { instance, isLoading: instanceLoading } = useInstance();
   const [userId, setUserId] = useState<string | null>(null);
   const [holonBalance, setHolonBalance] = useState<number | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  // Balance is per-instance: track the current instance for socket filtering
+  const instanceIdRef = useRef<string | null>(null);
+  useEffect(() => { instanceIdRef.current = instance?.id ?? null; }, [instance?.id]);
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user) {
@@ -49,20 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshBalance = async () => {
     if (!userId || status !== 'authenticated') return;
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/holons/balance`,
-        { headers: { 'x-user-id': userId } }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setHolonBalance(data.balance);
-      }
+      setHolonBalance(await HolonService.getBalance(userId));
     } catch {}
   };
 
+  // Fetch once the instance is resolved (the balance is scoped to it), and
+  // refetch whenever the user moves to a different instance.
   useEffect(() => {
-    if (userId && status === 'authenticated') refreshBalance();
-  }, [userId, status]);
+    if (userId && status === 'authenticated' && !instanceLoading) refreshBalance();
+  }, [userId, status, instance?.id, instanceLoading]);
 
   // Persistent socket for user-level events (holon updates)
   useEffect(() => {
@@ -80,8 +81,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSocket(sock);
     });
 
-    sock.on('holon_update', ({ balance }: { balance: number }) => {
-      setHolonBalance(balance);
+    sock.on('holon_update', ({ balance, instanceId }: { balance: number; instanceId?: string }) => {
+      // Only apply updates for the instance currently being viewed
+      if (!instanceId || instanceId === instanceIdRef.current) setHolonBalance(balance);
     });
 
     return () => {
