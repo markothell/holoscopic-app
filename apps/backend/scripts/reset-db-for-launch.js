@@ -30,6 +30,7 @@ const CLEAR = [
   'notifications',
   'instances',
   'adminconfigs', // legacy per-app config; instance config lives on Instance now
+  'spectrumgames', // On the Spectrum rooms (entries are already cleared above)
 ];
 
 async function main() {
@@ -52,7 +53,7 @@ async function main() {
     name: 'interView',
     slug: 'g1',
     gameNumber: 1,
-    domains: ['localhost', 'localhost:3000', '127.0.0.1', '127.0.0.1:3000'],
+    domains: ['holoscopic.io', 'www.holoscopic.io', 'localhost', 'localhost:3000', '127.0.0.1', '127.0.0.1:3000'],
     active: true,
   });
   console.log(`created instance: ${g1.name} (id=${g1.id}, slug=${g1.slug}, gameNumber=${g1.gameNumber})`);

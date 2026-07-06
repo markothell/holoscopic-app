@@ -79,9 +79,12 @@ instanceSchema.methods.isEnded = function () {
 // Get or create the default instance (always exists).
 // Holoscopic is the platform, never an instance; instances are games.
 // Default = the lowest-numbered active game, falling back to any instance.
+// Instances without a gameNumber (e.g. spectrum) are never the default —
+// null sorts before numbers in Mongo, so they must be excluded explicitly.
 instanceSchema.statics.getDefault = async function () {
-  let inst = await this.findOne({ active: true }).sort({ gameNumber: 1, createdAt: 1 })
-          || await this.findOne({}).sort({ gameNumber: 1, createdAt: 1 });
+  let inst = await this.findOne({ active: true, gameNumber: { $ne: null } }).sort({ gameNumber: 1, createdAt: 1 })
+          || await this.findOne({ active: true }).sort({ createdAt: 1 })
+          || await this.findOne({}).sort({ createdAt: 1 });
   if (!inst) {
     inst = await this.create({
       id: require('crypto').randomUUID().substring(0, 8),

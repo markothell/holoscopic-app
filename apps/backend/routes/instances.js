@@ -86,13 +86,18 @@ router.get('/', async (req, res) => {
 // POST /api/instances — create a new instance
 router.post('/', async (req, res) => {
   try {
-    const { name, slug, domains, access, startDate, endDate, config } = req.body;
-    if (!name || !slug) return res.status(400).json({ error: 'name and slug are required' });
+    const { name, domains, access, startDate, endDate, config } = req.body;
+    if (!name) return res.status(400).json({ error: 'name is required' });
 
+    // Next game number = highest existing + 1 (count-based numbering breaks
+    // once non-game instances like spectrum exist).
+    const top = await Instance.findOne({ gameNumber: { $ne: null } }).sort({ gameNumber: -1 });
+    const gameNumber = (top?.gameNumber || 0) + 1;
+
+    // No custom slug → address the game by its number (g1, g2, …)
+    const slug = req.body.slug || `g${gameNumber}`;
     const existing = await Instance.findOne({ slug });
     if (existing) return res.status(409).json({ error: 'Slug already in use' });
-
-    const gameNumber = (await Instance.countDocuments()) + 1;
     const instance = await Instance.create({
       id: generateId(),
       name,
