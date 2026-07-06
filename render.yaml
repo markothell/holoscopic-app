@@ -14,3 +14,7 @@ services:
         sync: false
       - key: NODE_ENV
         value: production
+      # Concurrent Socket.IO cap (websocket-server.js falls back to 25).
+      # Each phone in a live Spectrum room + each interView player = 1 socket.
+      - key: MAX_CONNECTIONS
+        value: 200
