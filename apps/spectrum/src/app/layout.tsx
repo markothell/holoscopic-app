@@ -22,6 +22,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://spectrum.holoscopic.io'),
   title: 'On the Spectrum',
   description: 'Put your friends on the spectrum. Nominate, vote, rank, reveal.',
 };
