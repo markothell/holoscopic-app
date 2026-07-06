@@ -48,23 +48,11 @@ router.post('/signup', async (req, res) => {
 
     await user.save();
 
-    // Create membership and award starting stake for this instance
+    // Membership for the signup instance; getOrCreate seeds the starting
+    // stake + join_bonus ledger entry (same path as first touch of any
+    // instance — do not also transact here or the stake doubles).
     const instanceId = req.instanceId || 'default';
-    const config = req.instance ? req.instance.config : {};
-    const startingStake = config.holons?.startingStake ?? 100;
-
-    await InstanceMembership.create({
-      id: Math.random().toString(36).substring(2, 10),
-      userId: user.id,
-      instanceId,
-      holonBalance: 0,
-    });
-    await transact({
-      userId: user.id,
-      instanceId,
-      type: 'join_bonus',
-      amount: startingStake,
-    });
+    await InstanceMembership.getOrCreate(user.id, instanceId);
 
     res.status(201).json({
       success: true,
