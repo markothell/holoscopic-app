@@ -1,10 +1,10 @@
-# Holoscopic Monorepo (canonical — GitHub: markothell/holoscopic-app)
+# Holoscopic Monorepo (GitHub: markothell/holoscopic-app)
 
-**This directory (08_holoscopic) is the live, canonical repo** for the whole platform; the sibling `07_holoscopic` directory is frozen local history — never develop there. `main` is the single production branch: pushing it deploys the backend (Render) and the frontends (Vercel). Two games ship from here:
-- **interView** — `apps/holoscopic-game`, live at holoscopic.io (NOT reference code — it is the production game app)
-- **On the Spectrum** — `apps/spectrum`, live at spectrum.holoscopic.io (see `apps/backend/routes/spectrum.js`)
+`main` is the production branch: pushing it deploys the backend (Render) and the frontends (Vercel). Two games ship from here:
+- **interView** — `apps/holoscopic-game`, the production game app at holoscopic.io
+- **On the Spectrum** — `apps/spectrum`, at spectrum.holoscopic.io (backend surface: `apps/backend/routes/spectrum.js`)
 
-Local dev uses 4000-block ports (spectrum 4000, backend 4001, platform 4002, game 4003).
+Local dev ports: spectrum 4000, backend 4001, platform 4002, game 4003.
 
 Holoscopic is a collective-sensemaking platform where groups map their perspectives on a 2D grid, leave comments, and vote on each other's views. It is multi-tenant: one backend serves multiple isolated deployments ("instances"), each with its own holon economy, quorum rules, and data scope.
 

@@ -48,9 +48,8 @@ router.post('/signup', async (req, res) => {
 
     await user.save();
 
-    // Membership for the signup instance; getOrCreate seeds the starting
-    // stake + join_bonus ledger entry (same path as first touch of any
-    // instance — do not also transact here or the stake doubles).
+    // Membership for the signup instance. getOrCreate is the single grant
+    // point for the starting stake + join_bonus ledger entry.
     const instanceId = req.instanceId || 'default';
     await InstanceMembership.getOrCreate(user.id, instanceId);
 

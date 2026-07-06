@@ -14,8 +14,8 @@ const membershipSchema = new mongoose.Schema({
 membershipSchema.index({ userId: 1, instanceId: 1 }, { unique: true });
 
 // First touch of an instance seeds that instance's startingStake (logged as
-// a join_bonus), so every game is playable on arrival. Previously only
-// signup granted the stake — existing users entered new instances at 0.
+// a join_bonus), so every game is playable on arrival. This is the single
+// grant point — signup and all other paths rely on it.
 membershipSchema.statics.getOrCreate = async function (userId, instanceId, _retried = false) {
   let m = await this.findOne({ userId, instanceId });
   if (!m) {
