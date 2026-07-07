@@ -12,6 +12,7 @@ import { UrlUtils } from '@hs/activities';
 import UserMenu from '@/components/UserMenu';
 import PatternBuilderGraph, { type PatternBuilderGraphHandle } from '@/components/graph/PatternBuilderGraph';
 import type { BuilderNodeData } from '@/components/graph/PatternBuilderNode';
+import { holonAmount } from '@/lib/strings';
 
 // ─── Fork Form ────────────────────────────────────────────────────────────────
 
@@ -89,7 +90,7 @@ function ForkForm({ forkFromId }: { forkFromId: string }) {
       {error && <p style={{ fontSize: '0.8rem', color: 'var(--accent)', margin: 0 }}>{error}</p>}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem' }}>
         <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', color: 'var(--text-muted)' }}>
-          Balance: {holonBalance ?? '—'} H · Costs {instanceConfig?.holons?.algorithmPublishCost ?? '…'} H
+          Balance: {holonAmount(holonBalance, instanceConfig?.mode === 'explore', '—')} H{instanceConfig?.mode === 'explore' ? '' : ` · Costs ${instanceConfig?.holons?.algorithmPublishCost ?? '…'} H`}
         </span>
         <button type="submit" disabled={submitting}
           style={{ fontSize: '0.7rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.6rem 1.5rem', borderRadius: 999, border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
@@ -334,8 +335,10 @@ function PatternBuilder() {
               {error && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0 }}>{error}</p>}
               {saving && saveStatus && <p style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', color: 'var(--text-muted)', margin: 0 }}>{saveStatus}</p>}
               <div style={{ fontSize: '0.62rem', fontFamily: 'var(--font-dm-mono), monospace', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                Balance: {holonBalance ?? '—'} H<br />
-                Costs {instanceConfig?.holons?.algorithmPublishCost ?? '…'} H to publish
+                Balance: {holonAmount(holonBalance, instanceConfig?.mode === 'explore', '—')} H<br />
+                {instanceConfig?.mode === 'explore'
+                  ? 'Free to publish'
+                  : `Costs ${instanceConfig?.holons?.algorithmPublishCost ?? '…'} H to publish`}
               </div>
               <button onClick={() => handleSave(true)} disabled={saving}
                 style={{ fontSize: '0.68rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.6rem 0', borderRadius: 999, border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1, width: '100%' }}>

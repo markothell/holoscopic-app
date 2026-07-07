@@ -569,9 +569,10 @@ module.exports = function(io) {
 
       await activity.addParticipant(userId, resolvedUsername);
 
-      // Stake holons into activity pool (skip if already staked or no instance config)
+      // Stake holons into activity pool (skip if already staked or no instance config).
+      // Explore mode has no economy — record no stake so nothing needs settling.
       const alreadyStaked = (activity.stakes || []).some(s => s.userId === userId);
-      if (!alreadyStaked && req.instanceId && req.instance?.config?.holons) {
+      if (!alreadyStaked && req.instanceId && req.instance?.config?.holons && req.instance?.config?.mode !== 'explore') {
         const stakeAmount = req.instance.config.holons.activityStakeAmount ?? 0;
         if (stakeAmount > 0) {
           try {

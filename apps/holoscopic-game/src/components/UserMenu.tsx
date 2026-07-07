@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useInstance } from '@/contexts/InstanceContext';
+import { holonAmount } from '@/lib/strings';
 import { useNotifications, AppNotification } from '@/hooks/useNotifications';
 
 function notificationHref(n: AppNotification): string {
@@ -101,6 +103,8 @@ export default function UserMenu({ gameLinks }: { gameLinks?: GameLink[] } = {})
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, userName, userEmail, userRole, userId, holonBalance, socket } = useAuth();
+  const { instance } = useInstance();
+  const explore = instance?.config?.mode === 'explore';
   const router = useRouter();
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications(userId, socket);
 
@@ -276,7 +280,7 @@ export default function UserMenu({ gameLinks }: { gameLinks?: GameLink[] } = {})
                   color: '#059669',
                   borderRadius: '999px',
                 }}>
-                  {holonBalance} H
+                  {holonAmount(holonBalance, explore, '0')} H
                 </span>
               )}
               {userRole === 'admin' && (

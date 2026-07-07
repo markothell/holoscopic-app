@@ -32,6 +32,9 @@ interface QuorumConfig {
 }
 
 interface InstanceConfig {
+  // 'explore' switches the holon economy off: no costs, no rewards, instant
+  // creation. Balances render as ∞ rather than a number.
+  mode?: 'normal' | 'explore';
   holons: HolonConfig;
   quorum: QuorumConfig;
 }

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstance } from '@/contexts/InstanceContext';
 import UserMenu from '@/components/UserMenu';
-import { GAME_NAME, HOLON_SYMBOL, STR, gamePath } from '@/lib/strings';
+import { GAME_NAME, HOLON_SYMBOL, STR, gamePath, holonAmount } from '@/lib/strings';
 import { mono } from '@/lib/ui';
 
 export type GameView = 'topics' | 'frames' | 'patterns' | 'rules' | 'leaderboard';
@@ -16,6 +16,7 @@ export type GameView = 'topics' | 'frames' | 'patterns' | 'rules' | 'leaderboard
 export default function GameNav({ active }: { active?: GameView }) {
   const { isAuthenticated, holonBalance } = useAuth();
   const { instance } = useInstance();
+  const explore = instance?.config?.mode === 'explore';
   const slug = instance?.slug ?? 'interview';
 
   const gameLinks = [
@@ -53,7 +54,7 @@ export default function GameNav({ active }: { active?: GameView }) {
         {isAuthenticated && (
           <span style={{ fontSize: 'var(--text-sm)', fontFamily: mono, color: 'var(--accent)', fontWeight: 600 }}
             title={`${STR.holon} balance`}>
-            {HOLON_SYMBOL} {holonBalance ?? 0}
+            {HOLON_SYMBOL} {holonAmount(holonBalance, explore, '0')}
           </span>
         )}
         <UserMenu gameLinks={gameLinks} />

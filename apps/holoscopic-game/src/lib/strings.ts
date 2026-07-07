@@ -9,6 +9,18 @@ export const GAME_NAME = 'interView';
 
 export const HOLON_SYMBOL = '◈';
 
+// Balance readout. In explore-mode instances the economy is off, so the
+// balance shows ∞ instead of a number; otherwise the numeric balance (or
+// `fallback` when it hasn't loaded yet).
+export function holonAmount(
+  balance: number | null | undefined,
+  explore?: boolean,
+  fallback = '0',
+): string {
+  if (explore) return '∞';
+  return balance === null || balance === undefined ? fallback : String(balance);
+}
+
 export const STR = {
   topic: 'Topic',
   topics: 'Topics',

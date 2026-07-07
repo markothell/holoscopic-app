@@ -8,10 +8,8 @@ import UserMenu from '@/components/UserMenu';
 import { AdminService, PlatformStats, AdminUser, WaitlistData } from '@/services/adminService';
 import styles from './page.module.css';
 
-type Tab = 'analytics' | 'users' | 'waitlist' | 'config';
+type Tab = 'analytics' | 'users' | 'waitlist';
 
-interface HolonConfig { startingStake: number; nominationCost: number; supportCost: number; algorithmPublishCost: number; sessionHostReward: number; sessionParticipantReward: number; topicQuorumReward: number; algorithmRoyaltyPercent: number; forkRoyaltyDecayPercent: number; forkDepthCap: number; }
-interface QuorumConfig { topicSupportThreshold: number; topicWindowHours: number; inquiryMinParticipants: number; frameVoteThreshold: number; }
 
 export default function SuperAdminPage() {
   const router = useRouter();
@@ -34,18 +32,6 @@ export default function SuperAdminPage() {
   const [waitlistLoading, setWaitlistLoading] = useState(false);
   const [waitlistError, setWaitlistError] = useState<string | null>(null);
   const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
-
-  // Config state
-  const [holonConfig, setHolonConfig] = useState<HolonConfig | null>(null);
-  const [quorumConfig, setQuorumConfig] = useState<QuorumConfig | null>(null);
-  const [configSaving, setConfigSaving] = useState(false);
-  const [configSaved, setConfigSaved] = useState(false);
-
-  // Award Holons state
-  const [awardEmail, setAwardEmail] = useState('');
-  const [awardAmount, setAwardAmount] = useState(100);
-  const [awardResult, setAwardResult] = useState<string | null>(null);
-  const [awarding, setAwarding] = useState(false);
 
   useEffect(() => {
     const original = document.body.style.background;
@@ -95,47 +81,12 @@ export default function SuperAdminPage() {
     }
   }, [userId]);
 
-  const loadConfig = useCallback(async () => {
-    if (!userId) return;
-    const data = await AdminService.getConfig(userId);
-    setHolonConfig(data.holons);
-    setQuorumConfig(data.quorum);
-  }, [userId]);
-
-  const awardHolons = async () => {
-    if (!userId || !awardEmail || !awardAmount) return;
-    setAwarding(true);
-    setAwardResult(null);
-    try {
-      const data = await AdminService.awardHolons(userId, { targetUserId: awardEmail, amount: awardAmount });
-      setAwardResult(`✓ ${(data as any).name || (data as any).userId} now has ${(data as any).balance} H`);
-      setAwardEmail('');
-    } catch (err: any) {
-      setAwardResult(`Error: ${err.message}`);
-    } finally {
-      setAwarding(false);
-    }
-  };
-
-  const saveConfig = async () => {
-    if (!userId || !holonConfig || !quorumConfig) return;
-    setConfigSaving(true);
-    try {
-      await AdminService.updateConfig(userId, { holons: holonConfig, quorum: quorumConfig });
-      setConfigSaved(true);
-      setTimeout(() => setConfigSaved(false), 2000);
-    } finally {
-      setConfigSaving(false);
-    }
-  };
-
   useEffect(() => {
     if (!isAuthenticated || userRole !== 'admin') return;
     if (tab === 'analytics') loadStats();
     if (tab === 'users') loadUsers();
     if (tab === 'waitlist') loadWaitlist();
-    if (tab === 'config') loadConfig();
-  }, [tab, isAuthenticated, userRole, loadStats, loadUsers, loadWaitlist, loadConfig]);
+  }, [tab, isAuthenticated, userRole, loadStats, loadUsers, loadWaitlist]);
 
   const handleRoleToggle = async (user: AdminUser) => {
     const newRole = user.role === 'admin' ? 'user' : 'admin';
@@ -240,12 +191,6 @@ export default function SuperAdminPage() {
             onClick={() => setTab('waitlist')}
           >
             Waitlist
-          </button>
-          <button
-            className={`${styles.tab} ${tab === 'config' ? styles.tabActive : ''}`}
-            onClick={() => setTab('config')}
-          >
-            Config
           </button>
         </nav>
 
@@ -504,85 +449,6 @@ export default function SuperAdminPage() {
                 )}
               </div>
             )}
-          </section>
-        )}
-        {tab === 'config' && (
-          <section>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>Holon & Quorum Config</h2>
-            </div>
-            {(!holonConfig || !quorumConfig) && <p className={styles.loading} style={{ minHeight: 'auto', padding: '2rem 0' }}>Loading…</p>}
-            {holonConfig && quorumConfig && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                <div>
-                  <h3 style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--ink-light)', marginBottom: '0.75rem' }}>Award Holons</h3>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' as const }}>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: '2 1 12rem' }}>
-                      <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.58rem', letterSpacing: '0.08em', color: 'var(--ink-light)', textTransform: 'uppercase' }}>User email</span>
-                      <input type="email" value={awardEmail} onChange={e => setAwardEmail(e.target.value)}
-                        placeholder="user@example.com"
-                        style={{ padding: '0.4rem 0.6rem', border: '1px solid var(--rule)', borderRadius: 4, fontSize: '0.85rem', background: '#fff', color: 'var(--ink)', outline: 'none', width: '100%' }}
-                      />
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: '0 1 6rem' }}>
-                      <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.58rem', letterSpacing: '0.08em', color: 'var(--ink-light)', textTransform: 'uppercase' }}>Amount</span>
-                      <input type="number" value={awardAmount} onChange={e => setAwardAmount(Number(e.target.value))}
-                        style={{ padding: '0.4rem 0.6rem', border: '1px solid var(--rule)', borderRadius: 4, fontSize: '0.85rem', background: '#fff', color: 'var(--ink)', outline: 'none', width: '100%' }}
-                      />
-                    </label>
-                    <button onClick={awardHolons} disabled={awarding || !awardEmail}
-                      className={styles.secondaryBtn}
-                      style={{ flexShrink: 0 }}
-                    >
-                      {awarding ? 'Awarding…' : 'Award'}
-                    </button>
-                  </div>
-                  {awardResult && (
-                    <p style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', color: awardResult.startsWith('✓') ? '#059669' : '#C83B50', marginTop: '0.5rem' }}>
-                      {awardResult}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <h3 style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--ink-light)', marginBottom: '0.75rem' }}>Holon Amounts</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(14rem, 1fr))', gap: '0.75rem' }}>
-                    {(Object.keys(holonConfig) as (keyof HolonConfig)[]).map((key) => (
-                      <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.58rem', letterSpacing: '0.08em', color: 'var(--ink-light)', textTransform: 'uppercase' }}>
-                          {key.replace(/([A-Z])/g, ' $1').toLowerCase()}
-                        </span>
-                        <input type="number" value={holonConfig[key]}
-                          onChange={(e) => setHolonConfig((h) => h && { ...h, [key]: Number(e.target.value) })}
-                          style={{ padding: '0.4rem 0.6rem', border: '1px solid var(--rule)', borderRadius: 4, fontSize: '0.85rem', background: '#fff', color: 'var(--ink)', outline: 'none', width: '100%' }}
-                        />
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h3 style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--ink-light)', marginBottom: '0.75rem' }}>Quorum Settings</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(14rem, 1fr))', gap: '0.75rem' }}>
-                    {(Object.keys(quorumConfig) as (keyof QuorumConfig)[]).map((key) => (
-                      <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <span style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.58rem', letterSpacing: '0.08em', color: 'var(--ink-light)', textTransform: 'uppercase' }}>
-                          {key.replace(/([A-Z])/g, ' $1').toLowerCase()}
-                        </span>
-                        <input type="number" value={quorumConfig[key]}
-                          onChange={(e) => setQuorumConfig((q) => q && { ...q, [key]: Number(e.target.value) })}
-                          style={{ padding: '0.4rem 0.6rem', border: '1px solid var(--rule)', borderRadius: 4, fontSize: '0.85rem', background: '#fff', color: 'var(--ink)', outline: 'none', width: '100%' }}
-                        />
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <button onClick={saveConfig} disabled={configSaving} className={styles.secondaryBtn}>
-                    {configSaved ? 'Saved ✓' : configSaving ? 'Saving…' : 'Save Config'}
-                  </button>
-                </div>
-              </div>
-            )}
-
           </section>
         )}
       </main>

@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const instanceConfigSchema = new mongoose.Schema({
+  // 'explore' turns the holon economy off entirely: no costs, no rewards,
+  // and creation is instant (topics auto-confirm, sessions form solo). The
+  // stored holon/quorum numbers below are left intact and simply bypassed,
+  // so flipping back to 'normal' restores the exact prior economy.
+  mode: { type: String, enum: ['normal', 'explore'], default: 'normal' },
   holons: {
     startingStake:           { type: Number, default: 100 },
     nominationCost:          { type: Number, default: 10 },

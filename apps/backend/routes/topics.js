@@ -163,6 +163,13 @@ router.post('/nominate', async (req, res) => {
       priorCycleNotes: priorCycleNotes || null,
     });
 
+    // Explore mode: no support quorum — the topic opens for mapping instantly.
+    if (config.mode === 'explore') {
+      topic.status = 'confirmed';
+      topic.confirmedAt = now;
+      topic.holonPool = 0;
+    }
+
     await topic.save();
     res.status(201).json({ topic: topic.toJSON() });
   } catch (err) {

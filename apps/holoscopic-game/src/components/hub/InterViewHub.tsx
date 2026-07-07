@@ -251,13 +251,14 @@ const SORT_OPTIONS: Record<HubView, { label: string; value: string }[]> = {
 
 // ─── Popup card ───────────────────────────────────────────────────────────────
 
-function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig, onExplore, isAdmin, ended }: {
+function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig, explore, onExplore, isAdmin, ended }: {
   node: Node<NodeData>;
   onClose: () => void;
   userId: string | null;
   onAction: () => void;
   holonBalance: number | null;
   holonsConfig: { supportCost: number; activityStakeAmount: number } | null;
+  explore?: boolean;
   onExplore?: () => void;
   isAdmin?: boolean;
   ended?: boolean;
@@ -265,8 +266,12 @@ function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig
   const d = node.data;
   const meta = d.meta || {};
   const bal = holonBalance ?? 0;
-  const canAffordSupport = holonsConfig ? bal >= holonsConfig.supportCost : true;
-  const canAffordStake   = holonsConfig ? bal >= holonsConfig.activityStakeAmount : true;
+  // Explore mode: everything is free, so affordability never gates and cost
+  // suffixes are dropped.
+  const canAffordSupport = explore || (holonsConfig ? bal >= holonsConfig.supportCost : true);
+  const canAffordStake   = explore || (holonsConfig ? bal >= holonsConfig.activityStakeAmount : true);
+  const supportSuffix = explore ? '' : ` · ${HOLON_SYMBOL}${holonsConfig?.supportCost ?? ''}`;
+  const stakeSuffix   = explore ? '' : ` · ${HOLON_SYMBOL}${holonsConfig?.activityStakeAmount ?? ''}`;
 
   async function act(fn: () => Promise<unknown>, successMsg?: string) {
     if (!userId) return;
@@ -355,12 +360,12 @@ function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig
           meta.isSupporter
             ? <button disabled={ended} onClick={() => act(() => TopicService.unsupport(userId!, meta.topicId), `Support withdrawn — your ${HOLON_SYMBOL}${holonsConfig?.supportCost ?? ''} wager returned`)} style={{ ...btn('outline'), opacity: ended ? 0.5 : 1, cursor: ended ? 'not-allowed' : 'pointer' }}>Unsupport</button>
             : canAffordSupport && !ended
-              ? <button onClick={() => act(() => TopicService.support(userId!, meta.topicId), `${HOLON_SYMBOL}${holonsConfig?.supportCost ?? ''} wagered on "${d.label}" — returned if it expires`)} style={btn('fill')}>Support · {HOLON_SYMBOL}{holonsConfig?.supportCost ?? ''}</button>
+              ? <button onClick={() => act(() => TopicService.support(userId!, meta.topicId), `${HOLON_SYMBOL}${holonsConfig?.supportCost ?? ''} wagered on "${d.label}" — returned if it expires`)} style={btn('fill')}>Support{supportSuffix}</button>
               : <span style={{ ...btn('outline'), opacity: 0.5, cursor: 'not-allowed' }}>{ended ? 'Ended' : `Need ${HOLON_SYMBOL}${holonsConfig?.supportCost} — you have ${HOLON_SYMBOL}${bal}`}</span>
         )}
         {d.nodeType === 'topic' && userId && meta.status === 'confirmed' && (
           canAffordStake
-            ? <Link href={`/create/activity?topicId=${meta.topicId}`} style={{ ...btn('fill'), textDecoration: 'none' }}>Start a {STR.map.toLowerCase()} · {HOLON_SYMBOL}{holonsConfig?.activityStakeAmount ?? ''}</Link>
+            ? <Link href={`/create/activity?topicId=${meta.topicId}`} style={{ ...btn('fill'), textDecoration: 'none' }}>Start a {STR.map.toLowerCase()}{stakeSuffix}</Link>
             : <span style={{ ...btn('outline'), opacity: 0.5, cursor: 'not-allowed' }}>Need {HOLON_SYMBOL}{holonsConfig?.activityStakeAmount} — you have {HOLON_SYMBOL}{bal}</span>
         )}
         {d.nodeType === 'activity' && meta.urlName && (
@@ -371,7 +376,7 @@ function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig
         )}
         {d.nodeType === 'frame' && meta.frameId && (
           canAffordStake
-            ? <Link href={`/create/activity?frameId=${meta.frameId as string}`} style={{ ...btn('fill'), textDecoration: 'none' }}>Start a {STR.map.toLowerCase()} · {HOLON_SYMBOL}{holonsConfig?.activityStakeAmount ?? ''}</Link>
+            ? <Link href={`/create/activity?frameId=${meta.frameId as string}`} style={{ ...btn('fill'), textDecoration: 'none' }}>Start a {STR.map.toLowerCase()}{stakeSuffix}</Link>
             : <span style={{ ...btn('fill'), opacity: 0.5, cursor: 'not-allowed' }}>Need {HOLON_SYMBOL}{holonsConfig?.activityStakeAmount} — you have {HOLON_SYMBOL}{bal}</span>
         )}
         {d.nodeType === 'sequence' && meta.urlName && (
@@ -1133,6 +1138,7 @@ function HubInner({ view }: { view: HubView }) {
               holonsConfig={config?.holons
                 ? { supportCost: config.holons.supportCost, activityStakeAmount: config.holons.activityStakeAmount }
                 : null}
+              explore={config?.mode === 'explore'}
               onExplore={graphMode === 'browse' && items.some(i => i.id === popupNode.id)
                 ? () => { setSelectedId(popupNode.id); setGraphMode('drill'); setPopupNode(null); }
                 : undefined}

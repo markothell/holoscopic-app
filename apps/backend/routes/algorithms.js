@@ -279,7 +279,8 @@ router.post('/:id/proposals', async (req, res) => {
     if (!algorithm) return res.status(404).json({ error: 'Algorithm not found' });
 
     const supportCost = config.holons?.supportCost ?? 5;
-    const algorithmSessionQuorum = config.quorum?.algorithmSessionQuorum ?? 3;
+    // Explore mode: a proposal forms a session on its own, no signup quorum.
+    const algorithmSessionQuorum = config.mode === 'explore' ? 1 : (config.quorum?.algorithmSessionQuorum ?? 3);
     const algorithmProposalWindowHours = config.quorum?.algorithmProposalWindowHours ?? 48;
 
     await spend({ userId, instanceId, type: 'algorithm_proposal', amount: supportCost, refType: 'algorithm' });

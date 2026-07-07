@@ -13,7 +13,7 @@ interface InstanceData {
   gameVersion: string | null; gameNumber: number | null; active: boolean;
   access: { mode: string; inviteCodes: string[] };
   startDate: string | null; endDate: string | null;
-  config: { holons: HolonConfig; quorum: QuorumConfig };
+  config: { mode?: 'normal' | 'explore'; holons: HolonConfig; quorum: QuorumConfig };
 }
 
 type Tab = 'basic' | 'config';
@@ -40,6 +40,7 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
   const [endDate, setEndDate] = useState('');
 
   // Config fields
+  const [mode, setMode] = useState<'normal' | 'explore'>('normal');
   const [holons, setHolons] = useState<HolonConfig | null>(null);
   const [quorum, setQuorum] = useState<QuorumConfig | null>(null);
 
@@ -67,6 +68,7 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
         setInviteCodes((inst.access.inviteCodes || []).join('\n'));
         setStartDate(inst.startDate ? inst.startDate.slice(0, 10) : '');
         setEndDate(inst.endDate ? inst.endDate.slice(0, 10) : '');
+        setMode((inst.config.mode as 'normal' | 'explore') || 'normal');
         setHolons(inst.config.holons);
         setQuorum(inst.config.quorum);
       })
@@ -88,7 +90,7 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
         endDate: endDate || null,
       };
       if (tab === 'config' && holons && quorum) {
-        body.config = { holons, quorum };
+        body.config = { mode, holons, quorum };
       }
       await apiFetch(`/instances/${id}`, { method: 'PUT', userId: user.id, body: JSON.stringify(body) });
       setSaved(true);
@@ -187,6 +189,21 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
 
         {tab === 'config' && holons && quorum && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <Section title="Economy Mode">
+              <FieldGroup label="mode">
+                <select value={mode} onChange={e => setMode(e.target.value as 'normal' | 'explore')} style={inputStyle}>
+                  <option value="normal">Normal — holon economy on</option>
+                  <option value="explore">Explore — free, no economy, instant create</option>
+                </select>
+              </FieldGroup>
+              {mode === 'explore' && (
+                <p style={{ fontSize: '0.75rem', color: 'var(--ink-light)', margin: '0.5rem 0 0', maxWidth: '32rem' }}>
+                  Explore turns the economy off: no costs, no rewards, balances show ∞, and topics/sessions open instantly.
+                  The holon and quorum values below are kept but bypassed, so switching back to Normal restores them exactly.
+                </p>
+              )}
+            </Section>
+
             <Section title="Holon Amounts">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(13rem, 1fr))', gap: '0.75rem' }}>
                 {(Object.keys(holons) as (keyof HolonConfig)[]).map(key => (
