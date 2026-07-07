@@ -1,10 +1,16 @@
+import { instanceSlugFromPath } from './instanceSlug';
+
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
-// Set by InstanceContext after resolving the current instance. Injected into
-// every apiFetch/authFetch call so the backend always lands on the right tenant.
-let _instanceId: string | null = null;
-export function setCurrentInstanceId(id: string | null) { _instanceId = id; }
-export function getCurrentInstanceId() { return _instanceId; }
+// The active tenant is a pure function of the current URL — derived here, at
+// call time, with no stored state. Whatever game the URL is on, requests carry
+// that slug as x-instance-id (the backend resolves slug→instance). Navigating
+// between games can never leave requests pointed at a stale tenant, because
+// there is nothing to leave stale.
+export function getCurrentInstanceId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return instanceSlugFromPath(window.location.pathname);
+}
 
 // ── Game token (proves identity to the backend) ──────────────────────────────
 // Short-lived JWT issued by /api/auth/game-token from the NextAuth session.
@@ -45,7 +51,8 @@ const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
   const method = (init.method || 'GET').toUpperCase();
   const extraHeaders: Record<string, string> = {};
-  if (_instanceId) extraHeaders['x-instance-id'] = _instanceId;
+  const instanceId = getCurrentInstanceId();
+  if (instanceId) extraHeaders['x-instance-id'] = instanceId;
   if (MUTATING.has(method)) {
     const token = await getGameToken();
     if (token) extraHeaders['Authorization'] = `Bearer ${token}`;
@@ -66,8 +73,9 @@ export async function apiFetch(
     ...(rest.headers as Record<string, string>),
   };
   if (userId) headers['x-user-id'] = userId;
-  // Ambient instance fills in only when the caller didn't set one explicitly
-  if (_instanceId && !headers['x-instance-id']) headers['x-instance-id'] = _instanceId;
+  // Instance derived from the URL fills in unless the caller set one explicitly
+  const instanceId = getCurrentInstanceId();
+  if (instanceId && !headers['x-instance-id']) headers['x-instance-id'] = instanceId;
 
   // Attach the identity proof on writes and on any explicit-identity request.
   // (Some routes carry userId in the body rather than the header, so writes
