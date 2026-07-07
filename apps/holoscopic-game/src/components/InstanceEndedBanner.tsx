@@ -1,16 +1,17 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useInstance, SYSTEM_PATHS } from '@/contexts/InstanceContext';
+import { useInstance } from '@/contexts/InstanceContext';
+import { instanceSlugFromPath } from '@/lib/instanceSlug';
 import { mono } from '@/lib/ui';
 
-/** Persistent strip shown across instance-slug pages once the current game has ended. */
+/** Persistent strip shown across game pages once the current game has ended. */
 export default function InstanceEndedBanner() {
   const { ended } = useInstance();
   const pathname = usePathname();
-  const pathSlug = pathname.split('/')[1] ?? '';
 
-  if (!ended || SYSTEM_PATHS.has(pathSlug)) return null;
+  // Only on a game page (URL carries a slug), and only once that game has ended.
+  if (!ended || !instanceSlugFromPath(pathname)) return null;
 
   return (
     <div

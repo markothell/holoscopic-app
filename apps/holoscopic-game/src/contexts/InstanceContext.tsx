@@ -1,15 +1,8 @@
 'use client';
 
 import { createContext, useContext, ReactNode, useEffect, useState } from 'react';
-import { setCurrentInstanceId } from '@/lib/api';
-
-// Top-level Next.js page routes that are not instance slugs.
-export const SYSTEM_PATHS = new Set([
-  '', 'a', 'dashboard', 'admin', 'create', 'profile', 'login', 'signup',
-  'settings', 'start', 'waitlist', 'essays', 'manifesto', 'sequence',
-  'patterns', 'frame', 'play', 'topics', 'inquiry', 'algorithms', 'api',
-  'interview',
-]);
+import { usePathname } from 'next/navigation';
+import { instanceSlugFromPath } from '@/lib/instanceSlug';
 
 interface HolonConfig {
   startingStake: number;
@@ -80,25 +73,31 @@ export function InstanceProvider({ children }: { children: ReactNode }) {
   const [instance, setInstance] = useState<InstanceData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // The active game is the one in the URL. This context only loads that game's
+  // display config (name, holon costs, dates) — it does NOT decide request
+  // routing; that is derived from the URL per-request in lib/api. Re-fetch
+  // whenever the slug changes so a client-side game switch loads the new config.
+  const instanceSlug = instanceSlugFromPath(usePathname()) ?? '';
+
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-    const segments = window.location.pathname.split('/');
-    // /interview/[session]/... → session is the instance slug
-    const pathSlug = segments[1] === 'interview' ? segments[2] : segments[1];
     const headers: Record<string, string> = {};
-    if (pathSlug && !SYSTEM_PATHS.has(pathSlug)) headers['x-instance-id'] = pathSlug;
+    if (instanceSlug) headers['x-instance-id'] = instanceSlug;
 
+    let cancelled = false;
+    setIsLoading(true);
     fetch(`${apiUrl}/instances/current`, { headers })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
-        if (data?.instance) {
-          setInstance(data.instance);
-          setCurrentInstanceId(data.instance.id);
-        }
+        if (cancelled) return;
+        if (data?.instance) setInstance(data.instance);
       })
       .catch(() => {})
-      .finally(() => setIsLoading(false));
-  }, []);
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+
+    // A stale in-flight response must not overwrite a newer navigation.
+    return () => { cancelled = true; };
+  }, [instanceSlug]);
 
   return (
     <InstanceContext.Provider value={{ instance, config: instance?.config ?? null, isLoading, ended: computeEnded(instance) }}>
