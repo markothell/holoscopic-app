@@ -17,7 +17,8 @@ import { OasService } from '@/services/oasService';
 import type { Game, Nomination } from '@/lib/types';
 
 // The single game URL. Gates (auth → membership) first, then switches on
-// the server-authoritative phase.
+// the server-authoritative phase. Completed games are open to any signed-in
+// visitor — the final screen is an invitation, and the map is the record.
 
 function Center({ children }: { children: React.ReactNode }) {
   return (
@@ -170,6 +171,74 @@ function RoundStage({
   );
 }
 
+// Revise and complete keep the whole game reachable: the phase's own
+// surface up front, the topic web (and every map's reveal) one tab away.
+function EndedStage({
+  game,
+  nominations,
+  userId,
+  balance,
+}: {
+  game: Game;
+  nominations: Nomination[];
+  userId: string;
+  balance: number | null;
+}) {
+  const [view, setView] = useState<'main' | 'map'>('main');
+  const [openMapId, setOpenMapId] = useState<string | null>(null);
+  const mainLabel = game.phase === 'revise' ? 'Revise' : 'Next games';
+
+  const tabs = (
+    <div className="mt-3 flex gap-2">
+      {([['main', mainLabel], ['map', 'The map']] as const).map(([key, label]) => (
+        <button
+          key={key}
+          onClick={() => setView(key)}
+          className={`display flex-1 rounded-full border px-4 py-2 text-lg transition-colors ${
+            view === key ? 'border-ink bg-ink text-paper' : 'border-line-strong text-ink active:bg-paper-dim'
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <main className={view === 'map' ? 'flex h-dvh w-full flex-col' : 'min-h-dvh w-full'}>
+      <div className="mx-auto w-full max-w-md px-5 pb-2">
+        <GameHeader game={game} balance={balance} />
+        {tabs}
+      </div>
+      {view === 'map' ? (
+        <div className="min-h-0 flex-1">
+          <GameGraph
+            game={game}
+            nominations={nominations}
+            userId={userId}
+            balance={balance}
+            onOpenMap={setOpenMapId}
+            onProposeMap={() => {}}
+          />
+        </div>
+      ) : game.phase === 'revise' ? (
+        <ReviseFlow game={game} userId={userId} />
+      ) : (
+        <ProposalsScreen game={game} userId={userId} />
+      )}
+      {openMapId && (
+        <MapSheet
+          code={game.code}
+          game={game}
+          mapId={openMapId}
+          userId={userId}
+          onClose={() => setOpenMapId(null)}
+        />
+      )}
+    </main>
+  );
+}
+
 export default function GameShell({ code }: { code: string }) {
   const { userId, isAuthenticated, isLoading } = useAuth();
   const { loading, error, game, nominations, balance, refresh } = useOasGame(code);
@@ -197,18 +266,9 @@ export default function GameShell({ code }: { code: string }) {
   }
 
   const isParticipant = game.participants.some(p => p.id === userId);
-  if (!isParticipant) {
-    if (game.phase === 'complete') {
-      return (
-        <Center>
-          <p className="eyebrow">Room {game.code}</p>
-          <h1 className="display mt-3 text-4xl">This game has ended</h1>
-          <Link href="/" className="mt-6">
-            <Button variant="ghost">Start your own</Button>
-          </Link>
-        </Center>
-      );
-    }
+  // Finished games stay visible: visitors can browse the map and take up
+  // the invitations. Everything else still gates on joining.
+  if (!isParticipant && game.phase !== 'complete') {
     return <JoinGate game={game} userId={userId} onJoined={refresh} />;
   }
 
@@ -228,22 +288,14 @@ export default function GameShell({ code }: { code: string }) {
         />
       );
     case 'revise':
-      return (
-        <main className="min-h-dvh w-full">
-          <div className="mx-auto w-full max-w-md px-5">
-            <GameHeader game={game} balance={balance} />
-          </div>
-          <ReviseFlow game={game} userId={userId} />
-        </main>
-      );
     case 'complete':
       return (
-        <main className="min-h-dvh w-full">
-          <div className="mx-auto w-full max-w-md px-5">
-            <GameHeader game={game} balance={balance} />
-          </div>
-          <ProposalsScreen game={game} userId={userId} />
-        </main>
+        <EndedStage
+          game={game}
+          nominations={nominations}
+          userId={userId}
+          balance={balance}
+        />
       );
     default:
       return null;

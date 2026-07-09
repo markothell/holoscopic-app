@@ -123,9 +123,13 @@ export default function NodeSheet({
           >
             Propose a map · ● 1
           </Button>
-        ) : (
+        ) : currentRound === 1 ? (
           <p className="mt-6 text-center text-sm text-ink-soft">
             In the game — mappable from round 2.
+          </p>
+        ) : (
+          <p className="mt-6 text-center text-sm text-ink-soft">
+            Part of this game&apos;s web — tap its maps to see the reveals.
           </p>
         )
       )}

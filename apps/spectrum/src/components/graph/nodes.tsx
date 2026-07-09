@@ -119,19 +119,27 @@ export function SubtopicNode({ data }: { data: SubtopicNodeData }) {
   );
 }
 
-// A proposed or live map hanging off its subtopic — colored by theme.
+// A proposed, live, or revealed map hanging off its subtopic — colored by
+// theme.
 export function MapNode({ data }: { data: MapNodeData }) {
   const nom = data.nomination;
   const accent = THEME_ACCENT[nom.themeIndex ?? 0];
   const soft = THEME_SOFT[nom.themeIndex ?? 0];
   const expired = nom.status === 'expired';
+  const stage = nom.mapState?.stage ?? null;
+  const revealed = stage === 'done' || stage === 'closed';
+  const label = expired ? 'expired'
+    : revealed ? 'map · revealed'
+    : data.live ? 'map · live'
+    : 'map?';
+  const filled = data.live || revealed;
 
   return (
     <div
       style={{
         width: 112,
-        background: data.live ? `linear-gradient(${soft}, ${soft}), var(--paper-raised)` : 'var(--paper-raised)',
-        border: data.live ? `1.5px solid ${accent}` : `1px dashed ${accent}`,
+        background: filled ? `linear-gradient(${soft}, ${soft}), var(--paper-raised)` : 'var(--paper-raised)',
+        border: filled ? `1.5px solid ${accent}` : `1px dashed ${accent}`,
         borderRadius: 12,
         padding: '0.45rem 0.6rem',
         cursor: 'pointer',
@@ -139,8 +147,8 @@ export function MapNode({ data }: { data: MapNodeData }) {
       }}
     >
       <div className="eyebrow" style={{ fontSize: '0.55rem', color: accent, display: 'flex', justifyContent: 'space-between', gap: 6 }}>
-        <span>{data.live ? 'map · live' : expired ? 'expired' : 'map?'}</span>
-        {!data.live && !expired && (
+        <span>{label}</span>
+        {!filled && !expired && (
           <StakeDots count={nom.stakes.length} quorum={data.quorum} accent={accent} />
         )}
       </div>

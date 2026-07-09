@@ -89,7 +89,8 @@ function buildGraph(game: Game, nominations: Nomination[]) {
           nomination: m,
           quorum: m.quorumThreshold,
           theme: game.themes[m.themeIndex ?? 0] ?? '',
-          live: m.status === 'confirmed' && !!m.mapState,
+          live: m.status === 'confirmed' &&
+            (m.mapState?.stage === 'gather' || m.mapState?.stage === 'rank'),
         },
         draggable: false,
       });
