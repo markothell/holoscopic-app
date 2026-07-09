@@ -15,6 +15,7 @@
 
   /* Accent colors */
   --accent: #C83B50;
+  --accent-hover: #B03248;
   --accent-blue: #1A4FD4;
   --accent-emerald: #0E8F66;
 
@@ -42,15 +43,9 @@
   --warm-ink: #0F0D0B;
   --warm-ink-light: #6B6560;
   --warm-rule: #D9D4CC;
-
-  /* Legacy compatibility */
-  --background: #F7F4EF;
-  --foreground: #0F0D0B;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

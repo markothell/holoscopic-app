@@ -50,20 +50,20 @@ export default function ActivityByNamePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#1A1714] flex items-center justify-center">
-        <div className="text-[#7A7068]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Loading...</div>
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
+        <div className="text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Loading...</div>
       </div>
     );
   }
 
   if (error || !activity) {
     return (
-      <div className="min-h-screen bg-[#1A1714] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center p-4">
         <div className="text-center">
-          <p className="text-[#C83B50] mb-4">{error || `Activity "${activityName}" not found`}</p>
+          <p className="text-[var(--accent)] mb-4">{error || `Activity "${activityName}" not found`}</p>
           <Link
             href="/"
-            className="text-[#C83B50] hover:text-[#e04d63] transition-colors"
+            className="text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
             style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}
           >
             Return to Home

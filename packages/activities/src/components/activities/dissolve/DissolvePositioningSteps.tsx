@@ -24,7 +24,7 @@ export default function DissolvePositioningSteps({
         <span className="text-sm text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           Your perspective:
         </span>
-        <p className="text-lg font-semibold text-[#C83B50]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>
+        <p className="text-lg font-semibold text-[var(--accent)]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>
           {objectName}
         </p>
       </div>
