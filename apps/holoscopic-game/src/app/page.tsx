@@ -353,17 +353,35 @@ export default function HomePage() {
 
         <div className={styles.divider} />
 
-        {/* ── Join a Game ──────────────────────────────────────────────── */}
+        {/* ── Join a Game — newest first, the origin last ─────────────── */}
         <RevealSection id="game" className={styles.invitation}>
           <p className={styles.sectionLabel}>Join a Game</p>
-          <Link href="/interview" className={styles.gameCard}>
-            <span className={styles.gameCardTitle}>
-              inter<span className={styles.gameCardAccent}>View</span>
-            </span>
-            <span className={styles.gameCardSub}>
-              collaborative.conversation.design.game
-            </span>
-          </Link>
+          <div className={styles.gameCardStack}>
+            <a href="https://spectrum.holoscopic.io" className={styles.gameCard}>
+              <span className={styles.gameCardTitle}>
+                On&nbsp;a&nbsp;<span className={styles.gameCardAccent}>Spectrum</span>
+              </span>
+              <span className={styles.gameCardSub}>
+                a game for organizing collective minds
+              </span>
+            </a>
+            <Link href="/interview" className={styles.gameCard}>
+              <span className={styles.gameCardTitle}>
+                inter<span className={styles.gameCardAccent}>View</span>
+              </span>
+              <span className={styles.gameCardSub}>
+                collaborative.conversation.design.game
+              </span>
+            </Link>
+            <Link href="/map-sequence" className={styles.gameCard}>
+              <span className={styles.gameCardTitle}>
+                Map&nbsp;+&nbsp;<span className={styles.gameCardAccent}>Sequence</span>
+              </span>
+              <span className={styles.gameCardSub}>
+                the original holoscopic mapping tools
+              </span>
+            </Link>
+          </div>
         </RevealSection>
 
       </main>

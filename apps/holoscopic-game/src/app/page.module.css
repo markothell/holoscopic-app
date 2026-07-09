@@ -304,7 +304,13 @@
   transition: opacity 0.9s ease, transform 0.9s ease;
 }
 
-/* ---- JOIN A GAME CARD ---- */
+/* ---- JOIN A GAME CARDS ---- */
+
+.gameCardStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 
 .gameCard {
   display: flex;
