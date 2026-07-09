@@ -15,10 +15,12 @@
   --line: #E5DECF;
   --line-strong: #CDC3B0;
 
-  --x-accent: #E0344E; /* crimson — first spectrum  */
+  --x-accent: #E0344E; /* crimson — first theme  */
   --x-soft:   #FBE3E6;
-  --y-accent: #2B49D8; /* cobalt — second spectrum */
+  --y-accent: #2B49D8; /* cobalt — second theme */
   --y-soft:   #E1E6FA;
+  --z-accent: #0E8F66; /* emerald — third theme */
+  --z-soft:   #DCF1E8;
 
   --shadow-sheet: 0 -12px 40px rgba(20, 18, 16, 0.16);
   --shadow-card: 0 1px 2px rgba(20, 18, 16, 0.05), 0 8px 24px rgba(20, 18, 16, 0.06);
@@ -37,6 +39,8 @@
   --color-ax-soft: var(--x-soft);
   --color-ay: var(--y-accent);
   --color-ay-soft: var(--y-soft);
+  --color-az: var(--z-accent);
+  --color-az-soft: var(--z-soft);
   --font-display: var(--font-barlow);
   --font-mono-ui: var(--font-dm-mono);
   --font-story: var(--font-cormorant);

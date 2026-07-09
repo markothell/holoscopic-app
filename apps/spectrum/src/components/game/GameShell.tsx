@@ -5,10 +5,12 @@ import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import Lobby from '@/components/game/Lobby';
 import GameHeader from '@/components/game/GameHeader';
+import GameGraph from '@/components/graph/GameGraph';
+import SubtopicSheet from '@/components/nominate/SubtopicSheet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOasGame } from '@/hooks/useOasGame';
 import { OasService } from '@/services/oasService';
-import type { Game } from '@/lib/types';
+import type { Game, Nomination } from '@/lib/types';
 
 // The single game URL. Gates (auth → membership) first, then switches on
 // the server-authoritative phase.
@@ -89,24 +91,54 @@ function JoinGate({
   );
 }
 
-// Placeholder stages — replaced as later phases land.
-function RoundStage({ game, balance }: { game: Game; balance: number | null }) {
+// Rounds 1–4: masthead over the full-bleed topic web.
+function RoundStage({
+  game,
+  nominations,
+  userId,
+  balance,
+}: {
+  game: Game;
+  nominations: Nomination[];
+  userId: string;
+  balance: number | null;
+}) {
+  const [nominateOpen, setNominateOpen] = useState(false);
+
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-10">
-      <GameHeader game={game} balance={balance} />
-      <section className="mt-10 rounded-2xl border border-line bg-paper-raised p-5">
-        <p className="eyebrow">Coming up</p>
-        <p className="mt-2 text-base text-ink-soft">
-          The topic web renders here — nominate, stake, and watch the graph grow.
-        </p>
-      </section>
+    <main className="flex h-dvh w-full flex-col">
+      <div className="mx-auto w-full max-w-md px-5">
+        <GameHeader game={game} balance={balance} />
+      </div>
+      <div className="min-h-0 flex-1">
+        <GameGraph game={game} nominations={nominations} userId={userId} balance={balance} />
+      </div>
+      {game.phase === 'round1' && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="mx-auto w-full max-w-md px-5">
+            <Button
+              className="pointer-events-auto shadow-lg"
+              onClick={() => setNominateOpen(true)}
+              disabled={balance !== null && balance < 1}
+            >
+              {balance !== null && balance < 1 ? 'Out of tokens' : '+ Subtopic · ● 1'}
+            </Button>
+          </div>
+        </div>
+      )}
+      <SubtopicSheet
+        game={game}
+        userId={userId}
+        open={nominateOpen}
+        onClose={() => setNominateOpen(false)}
+      />
     </main>
   );
 }
 
 export default function GameShell({ code }: { code: string }) {
   const { userId, isAuthenticated, isLoading } = useAuth();
-  const { loading, error, game, balance, refresh } = useOasGame(code);
+  const { loading, error, game, nominations, balance, refresh } = useOasGame(code);
 
   if (isLoading || (loading && !game)) {
     return (
@@ -153,7 +185,14 @@ export default function GameShell({ code }: { code: string }) {
     case 'round2':
     case 'round3':
     case 'round4':
-      return <RoundStage game={game} balance={balance} />;
+      return (
+        <RoundStage
+          game={game}
+          nominations={nominations}
+          userId={userId}
+          balance={balance}
+        />
+      );
     case 'revise':
     case 'complete':
       return (
