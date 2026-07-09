@@ -1,8 +1,9 @@
 # Holoscopic Monorepo (GitHub: markothell/holoscopic-app)
 
-`main` is the production branch: pushing it deploys the backend (Render) and the frontends (Vercel). Two games ship from here:
+`main` is the production branch: pushing it deploys the backend (Render) and the frontends (Vercel). Three games ship from here (newest first, as on the holoscopic.io homepage):
+- **On a Spectrum** — `apps/spectrum`, at spectrum.holoscopic.io (backend surface: `apps/backend/routes/oas.js`; see `apps/spectrum/CLAUDE.md`). Replaced the retired On the Spectrum party game; its old backend surface (`routes/spectrum.js`, `models/SpectrumGame.js`, `utils/spectrumGames.js`) stays mounted but dormant until post-cutover deletion.
 - **interView** — `apps/holoscopic-game`, the production game app at holoscopic.io
-- **On the Spectrum** — `apps/spectrum`, at spectrum.holoscopic.io (backend surface: `apps/backend/routes/spectrum.js`)
+- **Map + Sequence** — the original create-panel + sequence-builder tools inside `apps/holoscopic-game` (`/create`, `/create/sequences`), presented as the first game behind `/map-sequence`
 
 Local dev ports: spectrum 4000, backend 4001, platform 4002, game 4003.
 
