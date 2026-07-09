@@ -4,7 +4,14 @@ const mongoose = require('mongoose');
 // Two kinds share the model and the quorum mechanic:
 //   subtopic — round 1: a node in the brainstorm web around the game topic
 //   map      — rounds 2–4: "map this confirmed subtopic through this round's
-//              theme", with the nominator-authored X/Y axes
+//              theme" as a 1D or 2D spectrum activity
+//
+// A confirmed map nomination runs its own mini state machine (mapState):
+// gather (submit items + nominate/vote spectra) → rank (drag-order the
+// frozen items along the winning spectra) → done/closed. Its content lives
+// in the Entry collection with THIS document duck-typed as the activity
+// (entries.js reads id, topicId, votesPerUser, maxEntries) — no Activity
+// document is involved.
 //
 // stakes[] is the token ledger for this nomination: 1 token per staker,
 // locked on stake and returned on map completion, no-quorum expiry, or the
@@ -18,9 +25,38 @@ const stakeSchema = new mongoose.Schema({
   returnedAt: { type: Date, default: null },
 }, { _id: false, id: false });
 
-const axisSchema = new mongoose.Schema({
-  min: { type: String, required: true, trim: true, maxlength: 30 },
-  max: { type: String, required: true, trim: true, maxlength: 30 },
+const winningAxisSchema = new mongoose.Schema({
+  entryId: { type: String, required: true },
+  label:   { type: String, required: true },
+}, { _id: false, id: false });
+
+const itemSchema = new mongoose.Schema({
+  entryId:  { type: String, required: true },
+  index:    { type: Number, required: true, min: 1 }, // Entry.slotNumber ≥ 1
+  label:    { type: String, required: true },
+  authorId: { type: String, required: true },
+}, { _id: false, id: false });
+
+const rankingDoneSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  axis:   { type: String, enum: ['x', 'y'], required: true },
+}, { _id: false, id: false });
+
+const mapStateSchema = new mongoose.Schema({
+  stage: {
+    type: String,
+    enum: ['gather', 'rank', 'done', 'closed'],
+    default: 'gather',
+  },
+  // Server-authoritative gather deadline: a proportional slice of the time
+  // left in the game round when the map went live.
+  stageDeadline: { type: Date, default: null },
+  // Resolved at gather→rank: [0] = x axis, plus [1] = y axis for 2D maps.
+  winningAxes: [winningAxisSchema],
+  // The item roster frozen at gather→rank; rankings address items by index.
+  items: [itemSchema],
+  // Which (player, axis) rankings are complete.
+  rankingDone: [rankingDoneSchema],
 }, { _id: false, id: false });
 
 const oasNominationSchema = new mongoose.Schema({
@@ -48,11 +84,12 @@ const oasNominationSchema = new mongoose.Schema({
   // kind 'map': the confirmed round-1 subtopic this map is about.
   subtopicId: { type: String, default: null },
 
-  // kind 'map': nominator-authored axes, visible before supporters stake.
-  axes: {
-    type: new mongoose.Schema({ x: axisSchema, y: axisSchema }, { _id: false, id: false }),
-    default: null,
-  },
+  // kind 'map': one spectrum or two — the nominator's call, visible before
+  // supporters stake.
+  dimensions: { type: Number, enum: [1, 2], default: 2 },
+
+  // kind 'map': the live activity's state machine; null until confirmed.
+  mapState: { type: mapStateSchema, default: null },
 
   nominatedBy:     { type: String, required: true },
   nominatedByName: { type: String, required: true },
@@ -64,9 +101,6 @@ const oasNominationSchema = new mongoose.Schema({
   quorumThreshold: { type: Number, required: true, min: 1 },
 
   status: { type: String, enum: ['nominated', 'confirmed', 'expired'], default: 'nominated' },
-
-  // kind 'map': set when quorum spawns the live Activity.
-  activityId: { type: String, default: null },
 }, {
   timestamps: true,
   id: false,

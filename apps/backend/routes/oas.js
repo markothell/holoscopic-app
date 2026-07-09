@@ -1,17 +1,15 @@
 const express = require('express');
 const games = require('../utils/oasGames');
+const entryUtils = require('../utils/entries');
 const OasGame = require('../models/OasGame');
 const OasNomination = require('../models/OasNomination');
-const Activity = require('../models/Activity');
 const User = require('../models/User');
 
 // On a Spectrum — REST surface. Thin wrappers over utils/oasGames.js (phase
-// machine + token economy). Mounted behind resolveInstance +
-// attachVerifiedUser + enforceVerifiedUser: every identity-bearing mutation
-// must carry a verified account token whose sub matches x-user-id.
-//
-// Map CONTENT does not live here — players hit the generic /api/activities
-// entry/vote routes with the room's x-instance-id.
+// machine + token economy + per-map activity machine). Mounted behind
+// resolveInstance + attachVerifiedUser + enforceVerifiedUser: every
+// identity-bearing mutation must carry a verified account token whose sub
+// matches x-user-id.
 //
 // All broadcasts go to room `oasgame:<gameId>`.
 module.exports = function (io) {
@@ -134,16 +132,13 @@ module.exports = function (io) {
         // Per-map completion/claim state for the requesting player.
         payload.myMaps = [];
         for (const nom of nominations) {
-          if (nom.kind !== 'map' || !nom.activityId) continue;
+          if (nom.kind !== 'map' || !nom.mapState) continue;
           const stake = nom.stakes.find(s => s.userId === userId);
           if (!stake) continue;
           payload.myMaps.push({
-            activityId: nom.activityId,
             nominationId: nom.id,
             stakeReturned: stake.returned,
-            completion: await games.mapCompletion({
-              game, activityId: nom.activityId, userId,
-            }),
+            completion: await games.mapCompletion({ game, nom, userId }),
           });
         }
       }
@@ -199,8 +194,8 @@ module.exports = function (io) {
     }
   });
 
-  // Nominate: round 1 takes {title}; rounds 2–4 take {subtopicId, axes}.
-  // Costs 1 token (the nominator's stake).
+  // Nominate: round 1 takes {title}; rounds 2–4 take {subtopicId,
+  // dimensions: 1|2}. Costs 1 token (the nominator's stake).
   router.post('/games/:code/nominations', async (req, res) => {
     try {
       const game = await loadGame(req, res);
@@ -216,19 +211,14 @@ module.exports = function (io) {
           game, userId: player.id, username: player.name, title,
         });
       } else {
-        const { subtopicId, axes } = req.body;
-        const clean = a => String(a || '').trim().slice(0, 30);
-        const cleanAxes = axes && {
-          x: { min: clean(axes.x && axes.x.min), max: clean(axes.x && axes.x.max) },
-          y: { min: clean(axes.y && axes.y.min), max: clean(axes.y && axes.y.max) },
-        };
-        if (!subtopicId || !cleanAxes ||
-            !cleanAxes.x.min || !cleanAxes.x.max || !cleanAxes.y.min || !cleanAxes.y.max) {
-          return res.status(400).json({ error: 'Subtopic and both axes are required' });
+        const { subtopicId } = req.body;
+        const dimensions = Number(req.body.dimensions);
+        if (!subtopicId || (dimensions !== 1 && dimensions !== 2)) {
+          return res.status(400).json({ error: 'Subtopic and dimensions (1 or 2) are required' });
         }
         nom = await games.nominateMap({
           game, userId: player.id, username: player.name,
-          subtopicId, axes: cleanAxes,
+          subtopicId, dimensions,
         });
       }
       res.status(201).json({ nomination: games.toClientNomination(nom) });
@@ -240,6 +230,7 @@ module.exports = function (io) {
         'That subtopic is already nominated',
         'That subtopic is already nominated this round',
         'Subtopic not found',
+        'dimensions must be 1 or 2',
         'Already staked',
       ]);
     }
@@ -287,33 +278,182 @@ module.exports = function (io) {
     }
   });
 
-  // Late-join a live map (1 token + activity membership).
-  router.post('/games/:code/maps/:activityId/join', async (req, res) => {
+  // ── Live map surface — each confirmed map nomination runs an
+  //    On-the-Spectrum-style activity: gather (items + spectrum ideas +
+  //    votes) → rank → done/closed. mapId = the nomination id.
+
+  async function loadMap(req, res, game) {
+    const nom = await OasNomination.findOne({
+      id: req.params.mapId, gameId: game.id, kind: 'map',
+    });
+    if (!nom || !nom.mapState) {
+      res.status(404).json({ error: 'Map not found' });
+      return null;
+    }
+    return nom;
+  }
+
+  const MAP_ERRORS = [
+    'Map not found', "That map's round is over", 'Join the map first',
+    'Gathering is over', 'Not in the ranking stage', 'Unknown axis',
+    'Order must include every item exactly once', 'Entry not found',
+    'Cannot vote on your own entry',
+  ];
+
+  // Everything a map sheet needs: nomination + items + spectrum ideas
+  // (+ my rankings mid-rank, + results once done/closed).
+  router.get('/games/:code/maps/:mapId', async (req, res) => {
+    try {
+      const game = await loadGame(req, res);
+      if (!game) return;
+      const nom = await loadMap(req, res, game);
+      if (!nom) return;
+      const userId = req.headers['x-user-id'] || null;
+      res.json(await games.mapDetail(game, nom, userId));
+    } catch (error) {
+      fail(res, error);
+    }
+  });
+
+  // Late-join a live map (1 token).
+  router.post('/games/:code/maps/:mapId/join', async (req, res) => {
     try {
       const game = await loadGame(req, res);
       if (!game) return;
       const player = requireParticipant(req, res, game);
       if (!player) return;
-      const nom = await games.joinMap({
-        game, activityId: req.params.activityId,
-        userId: player.id, username: player.name,
-      });
+      const nom = await loadMap(req, res, game);
+      if (!nom) return;
+      await games.joinMap({ game, nomination: nom, userId: player.id });
       res.json({ nomination: games.toClientNomination(nom) });
     } catch (error) {
-      fail(res, error, ['Map not found', "That map's round is over"]);
+      fail(res, error, MAP_ERRORS);
+    }
+  });
+
+  // Gather stage: add an item to be ranked.
+  router.post('/games/:code/maps/:mapId/items', async (req, res) => {
+    try {
+      const game = await loadGame(req, res);
+      if (!game) return;
+      const player = requireParticipant(req, res, game);
+      if (!player) return;
+      const nom = await loadMap(req, res, game);
+      if (!nom) return;
+      const text = String(req.body.text || '').trim().slice(0, 80);
+      if (!text) return res.status(400).json({ error: 'Item text is required' });
+      const entry = await games.submitMapItem({
+        game, nom, userId: player.id, username: player.name, text,
+      });
+      res.status(201).json({ entry: entryUtils.toClient(entry) });
+    } catch (error) {
+      if (error.message.startsWith('You can add')) {
+        return res.status(400).json({ error: error.message });
+      }
+      fail(res, error, MAP_ERRORS);
+    }
+  });
+
+  // Gather stage: suggest a spectrum to rank along.
+  router.post('/games/:code/maps/:mapId/axes', async (req, res) => {
+    try {
+      const game = await loadGame(req, res);
+      if (!game) return;
+      const player = requireParticipant(req, res, game);
+      if (!player) return;
+      const nom = await loadMap(req, res, game);
+      if (!nom) return;
+      const label = String(req.body.label || '').trim().slice(0, 60);
+      if (!label) return res.status(400).json({ error: 'Spectrum label is required' });
+      const entry = await games.nominateMapAxis({
+        game, nom, userId: player.id, username: player.name, label,
+      });
+      res.status(201).json({ entry: entryUtils.toClient(entry) });
+    } catch (error) {
+      if (error.message.startsWith('You can suggest')) {
+        return res.status(400).json({ error: error.message });
+      }
+      fail(res, error, MAP_ERRORS);
+    }
+  });
+
+  // Gather stage: toggle a vote on a spectrum idea (budget = votesPerUser).
+  router.post('/games/:code/maps/:mapId/axes/:entryId/vote', async (req, res) => {
+    try {
+      const game = await loadGame(req, res);
+      if (!game) return;
+      const player = requireParticipant(req, res, game);
+      if (!player) return;
+      const nom = await loadMap(req, res, game);
+      if (!nom) return;
+      const entry = await games.voteMapAxis({
+        game, nom, entryId: req.params.entryId, userId: player.id,
+      });
+      res.json({ entry: entryUtils.toClient(entry) });
+    } catch (error) {
+      if (error.message.startsWith('Vote limit')) {
+        return res.status(400).json({ error: error.message });
+      }
+      fail(res, error, MAP_ERRORS);
+    }
+  });
+
+  // Nominator (or game host): end gathering early and start ranking.
+  router.post('/games/:code/maps/:mapId/advance', async (req, res) => {
+    try {
+      const game = await loadGame(req, res);
+      if (!game) return;
+      const player = requireParticipant(req, res, game);
+      if (!player) return;
+      const nom = await loadMap(req, res, game);
+      if (!nom) return;
+      if (player.id !== nom.nominatedBy && player.id !== game.hostId) {
+        return res.status(403).json({ error: 'Only the map nominator or host can do that' });
+      }
+      const updated = await games.closeGather(game, nom, { forced: true });
+      res.json({ nomination: games.toClientNomination(updated) });
+    } catch (error) {
+      fail(res, error, MAP_ERRORS);
+    }
+  });
+
+  // Rank stage: submit a full ordering for one axis; done:true marks that
+  // axis complete for this player.
+  router.put('/games/:code/maps/:mapId/rankings/:axis', async (req, res) => {
+    try {
+      const game = await loadGame(req, res);
+      if (!game) return;
+      const player = requireParticipant(req, res, game);
+      if (!player) return;
+      const nom = await loadMap(req, res, game);
+      if (!nom) return;
+      const order = req.body.order;
+      if (!Array.isArray(order)) {
+        return res.status(400).json({ error: 'order must be an array of item entry ids' });
+      }
+      await games.submitMapRanking({
+        game, nom, userId: player.id, username: player.name,
+        axis: req.params.axis, order,
+      });
+      if (req.body.done) {
+        await games.markMapRankingDone(game, nom, player.id, req.params.axis);
+      }
+      res.json({ nomination: games.toClientNomination(nom) });
+    } catch (error) {
+      fail(res, error, MAP_ERRORS);
     }
   });
 
   // Claim the stake back after completing a map (server-verified).
-  router.post('/games/:code/maps/:activityId/claim', async (req, res) => {
+  router.post('/games/:code/maps/:mapId/claim', async (req, res) => {
     try {
       const game = await loadGame(req, res);
       if (!game) return;
       const player = requireParticipant(req, res, game);
       if (!player) return;
-      const result = await games.claimMapStake({
-        game, activityId: req.params.activityId, userId: player.id,
-      });
+      const nom = await loadMap(req, res, game);
+      if (!nom) return;
+      const result = await games.claimMapStake({ game, nom, userId: player.id });
       res.json({
         nomination: games.toClientNomination(result.nomination),
         balance: await games.balanceFor(player.id, game.instanceId),

@@ -7,10 +7,11 @@ const mongoose = require('mongoose');
 // variations (complete).
 //
 // The document holds configuration, membership, and phase-machine state
-// only. Nominations live in OasNomination; map content (positions, comments,
-// votes) lives in the Entry collection under real Activity documents spawned
-// at quorum. Each game owns a dedicated Instance (parentInstanceId set), so
-// token balances ride InstanceMembership per room via utils/holons.js.
+// only. Nominations (and each live map's own state machine) live in
+// OasNomination; map content lives in the Entry collection with the
+// nomination duck-typed as the activity. Each game owns a dedicated
+// Instance (parentInstanceId set), so token balances ride
+// InstanceMembership per room via utils/holons.js.
 const participantSchema = new mongoose.Schema({
   id:       { type: String, required: true },              // User.id
   name:     { type: String, required: true, trim: true, maxlength: 40 },
@@ -19,7 +20,6 @@ const participantSchema = new mongoose.Schema({
 }, { _id: false, id: false });
 
 const mapRefSchema = new mongoose.Schema({
-  activityId:   { type: String, required: true },
   nominationId: { type: String, required: true },
   subtopicId:   { type: String, required: true },
   round:        { type: Number, required: true, min: 2, max: 4 },
