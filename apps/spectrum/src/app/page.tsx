@@ -1,30 +1,50 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import TextField from '@/components/ui/TextField';
-import { GameService } from '@/services/gameService';
-import { getStoredName, storeIdentity, storeName } from '@/hooks/useIdentity';
+import { OasService } from '@/services/oasService';
+import { useAuth } from '@/contexts/AuthContext';
+
+const DEFAULT_THEMES = ['Experiences', 'Intentions', 'Actions'];
+
+const ROUND_LENGTHS = [
+  { label: '5 min', seconds: 300 },
+  { label: '20 min', seconds: 1200 },
+  { label: '1 hour', seconds: 3600 },
+  { label: '1 day', seconds: 86400 },
+];
 
 export default function Home() {
   const router = useRouter();
-  const [name, setName] = useState('');
+  const { userId, userName, isAuthenticated, isLoading, logout } = useAuth();
+  const [topic, setTopic] = useState('');
+  const [themes, setThemes] = useState<string[]>([...DEFAULT_THEMES]);
+  const [roundSeconds, setRoundSeconds] = useState(300);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { setName(getStoredName()); }, []);
-
   async function createGame() {
-    const trimmed = name.trim();
-    if (!trimmed) { setError('Tell us your name first'); return; }
+    if (!userId) return;
+    const trimmed = topic.trim();
+    if (!trimmed) { setError('Name the topic first'); return; }
+    if (themes.some(t => !t.trim())) { setError('All three themes need names'); return; }
     setBusy(true);
     setError(null);
     try {
-      const { game, player, token } = await GameService.create(trimmed);
-      storeName(trimmed);
-      storeIdentity(game.code, { playerId: player.id, name: player.name, token: token ?? null });
+      const { game } = await OasService.create({
+        topic: trimmed,
+        themes: themes.map(t => t.trim()),
+        config: {
+          roundSeconds: {
+            round1: roundSeconds, round2: roundSeconds, round3: roundSeconds,
+            round4: roundSeconds, revise: roundSeconds,
+          },
+        },
+      }, userId);
       router.push(`/g/${game.code}?new=1`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not start a game');
@@ -41,54 +61,129 @@ export default function Home() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-6 pb-10 pt-[max(3rem,env(safe-area-inset-top))]">
       <header className="rise-in">
-        <p className="eyebrow">A game for people who know each other</p>
+        <p className="eyebrow">A game for organizing collective minds</p>
         <h1 className="display mt-3 text-[4.2rem] leading-[0.88]">
-          On<br />the<br />
+          On<br />a<br />
           <span className="text-ax">Spec</span><span className="text-ay">trum</span>
         </h1>
-        <p className="mt-4 max-w-[26ch] text-base text-ink-soft">
-          Nominate what to measure. Rank each other. Meet on the map.
+        <p className="mt-4 max-w-[28ch] text-base text-ink-soft">
+          Brainstorm a web of subtopics, then map them together — one theme
+          per round, tokens keep it honest.
         </p>
       </header>
 
-      <section className="rise-in mt-auto pt-12" style={{ animationDelay: '0.1s' }}>
-        <label className="eyebrow mb-2 block">Your name</label>
-        <TextField
-          value={name}
-          maxLength={20}
-          onChange={e => setName(e.target.value)}
-          placeholder="Maya"
-          autoComplete="off"
-        />
-        <Button className="mt-3" onClick={createGame} disabled={busy}>
-          {busy ? 'Setting up…' : 'Start a game'}
-        </Button>
+      {isLoading ? null : !isAuthenticated ? (
+        <section className="rise-in mt-auto pt-12" style={{ animationDelay: '0.1s' }}>
+          <Link href="/login">
+            <Button>Sign in to play</Button>
+          </Link>
+          <Link href="/signup">
+            <Button variant="ghost" className="mt-3">Create an account</Button>
+          </Link>
 
-        <div className="mt-8 flex items-center gap-3">
-          <div className="h-px flex-1 bg-line" />
-          <span className="eyebrow">Have a code?</span>
-          <div className="h-px flex-1 bg-line" />
-        </div>
-        <div className="mt-3 flex gap-2">
+          <div className="mt-8 flex items-center gap-3">
+            <div className="h-px flex-1 bg-line" />
+            <span className="eyebrow">Have a code?</span>
+            <div className="h-px flex-1 bg-line" />
+          </div>
+          <div className="mt-3 flex gap-2">
+            <TextField
+              value={code}
+              onChange={e => setCode(e.target.value.toUpperCase())}
+              placeholder="ROOM"
+              maxLength={5}
+              autoComplete="off"
+              autoCapitalize="characters"
+              className="font-mono uppercase tracking-[0.3em]"
+              onKeyDown={e => { if (e.key === 'Enter') joinByCode(); }}
+            />
+            <button
+              onClick={joinByCode}
+              className="display shrink-0 rounded-2xl border border-line-strong px-6 text-xl text-ink active:bg-paper-dim"
+            >
+              Join
+            </button>
+          </div>
+          {error && <p className="mt-3 text-sm text-ax">{error}</p>}
+        </section>
+      ) : (
+        <section className="rise-in mt-10" style={{ animationDelay: '0.1s' }}>
+          <div className="flex items-baseline justify-between">
+            <p className="eyebrow">Playing as {userName}</p>
+            <button onClick={logout} className="text-xs text-ink-faint underline">
+              sign out
+            </button>
+          </div>
+
+          <label className="eyebrow mb-2 mt-6 block">Topic</label>
           <TextField
-            value={code}
-            onChange={e => setCode(e.target.value.toUpperCase())}
-            placeholder="ROOM"
-            maxLength={5}
+            value={topic}
+            maxLength={80}
+            onChange={e => setTopic(e.target.value)}
+            placeholder="Parenting"
             autoComplete="off"
-            autoCapitalize="characters"
-            className="font-mono tracking-[0.3em] uppercase"
-            onKeyDown={e => { if (e.key === 'Enter') joinByCode(); }}
           />
-          <button
-            onClick={joinByCode}
-            className="display shrink-0 rounded-2xl border border-line-strong px-6 text-xl text-ink active:bg-paper-dim"
-          >
-            Join
-          </button>
-        </div>
-        {error && <p className="mt-3 text-sm text-ax">{error}</p>}
-      </section>
+
+          <label className="eyebrow mb-2 mt-4 block">Three mapping themes</label>
+          <div className="flex flex-col gap-2">
+            {themes.map((t, i) => (
+              <TextField
+                key={i}
+                value={t}
+                maxLength={40}
+                onChange={e => setThemes(prev => prev.map((v, j) => (j === i ? e.target.value : v)))}
+                placeholder={DEFAULT_THEMES[i]}
+              />
+            ))}
+          </div>
+
+          <label className="eyebrow mb-2 mt-4 block">Round length</label>
+          <div className="flex gap-2">
+            {ROUND_LENGTHS.map(r => (
+              <button
+                key={r.seconds}
+                onClick={() => setRoundSeconds(r.seconds)}
+                className={`display flex-1 rounded-2xl border px-2 py-3 text-lg transition-colors ${
+                  roundSeconds === r.seconds
+                    ? 'border-ink bg-ink text-paper'
+                    : 'border-line-strong text-ink active:bg-paper-dim'
+                }`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+
+          <Button className="mt-6" onClick={createGame} disabled={busy}>
+            {busy ? 'Setting up…' : 'Start a game'}
+          </Button>
+
+          <div className="mt-8 flex items-center gap-3">
+            <div className="h-px flex-1 bg-line" />
+            <span className="eyebrow">Have a code?</span>
+            <div className="h-px flex-1 bg-line" />
+          </div>
+          <div className="mt-3 flex gap-2">
+            <TextField
+              value={code}
+              onChange={e => setCode(e.target.value.toUpperCase())}
+              placeholder="ROOM"
+              maxLength={5}
+              autoComplete="off"
+              autoCapitalize="characters"
+              className="font-mono uppercase tracking-[0.3em]"
+              onKeyDown={e => { if (e.key === 'Enter') joinByCode(); }}
+            />
+            <button
+              onClick={joinByCode}
+              className="display shrink-0 rounded-2xl border border-line-strong px-6 text-xl text-ink active:bg-paper-dim"
+            >
+              Join
+            </button>
+          </div>
+          {error && <p className="mt-3 text-sm text-ax">{error}</p>}
+        </section>
+      )}
     </main>
   );
 }

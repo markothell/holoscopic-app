@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import GameRoom from '@/components/game/GameRoom';
+import GameShell from '@/components/game/GameShell';
 
 export async function generateMetadata(
   { params }: { params: Promise<{ code: string }> },
@@ -8,11 +8,11 @@ export async function generateMetadata(
   const { code } = await params;
   const upper = code.toUpperCase();
   return {
-    title: `On the Spectrum — room ${upper}`,
-    description: `You've been put on the spectrum. Join room ${upper}.`,
+    title: `On a Spectrum — room ${upper}`,
+    description: `Help organize a collective mind. Join room ${upper}.`,
     openGraph: {
-      title: 'You’ve been put on the spectrum',
-      description: `Join room ${upper} — nominate, vote, rank, reveal.`,
+      title: 'You’re invited to organize a collective mind',
+      description: `Join room ${upper} — nominate, stake, map, revise.`,
     },
   };
 }
@@ -23,7 +23,7 @@ export default async function GamePage(
   const { code } = await params;
   return (
     <Suspense fallback={null}>
-      <GameRoom code={code.toUpperCase()} />
+      <GameShell code={code.toUpperCase()} />
     </Suspense>
   );
 }

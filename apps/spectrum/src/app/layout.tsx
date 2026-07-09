@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Barlow_Condensed, DM_Mono, Cormorant_Garamond } from 'next/font/google';
+import { AuthProvider } from '@/contexts/AuthContext';
 import './globals.css';
 
 const barlow = Barlow_Condensed({
@@ -23,8 +24,8 @@ const cormorant = Cormorant_Garamond({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://spectrum.holoscopic.io'),
-  title: 'On the Spectrum',
-  description: 'Put your friends on the spectrum. Nominate, vote, rank, reveal.',
+  title: 'On a Spectrum',
+  description: 'A game for organizing collective minds.',
 };
 
 export const viewport: Viewport = {
@@ -38,7 +39,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${barlow.variable} ${dmMono.variable} ${cormorant.variable}`}>
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

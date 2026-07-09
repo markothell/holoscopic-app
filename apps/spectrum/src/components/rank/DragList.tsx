@@ -9,7 +9,13 @@ import {
   useSortable, verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { RosterMember } from '@/lib/types';
+
+// Anything with an id and a display name can be ranked or reordered —
+// people, entries, or the game's own round structure.
+export interface DragItem {
+  id: string;
+  name: string;
+}
 
 function Row({
   member,
@@ -19,7 +25,7 @@ function Row({
   hasStory,
   onStory,
 }: {
-  member: RosterMember;
+  member: DragItem;
   index: number;
   total: number;
   accent: string;
@@ -83,12 +89,12 @@ export default function DragList({
   storiesFor,
   onStory,
 }: {
-  members: Map<string, RosterMember>;
+  members: Map<string, DragItem>;
   order: string[];
   onReorder: (next: string[]) => void;
   accent: string;
   storiesFor: Set<string>;
-  onStory: (member: RosterMember) => void;
+  onStory: (member: DragItem) => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),

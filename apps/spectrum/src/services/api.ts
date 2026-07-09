@@ -1,14 +1,13 @@
-import type { PlayerIdentity } from '@/lib/types';
-
-// All HTTP goes through here. Mutations attach the guest JWT minted at
-// join/create time; the backend's enforceVerifiedUser checks that the
+// All HTTP goes through here. Identity-bearing mutations attach a
+// short-lived game token minted from the NextAuth session by
+// /api/auth/game-token; the backend's enforceVerifiedUser checks that the
 // token's sub matches the claimed x-user-id.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 
-// Spectrum is one game (instance) on the shared Holoscopic backend. Declaring
-// it on every request keeps its entries cleanly scoped away from other games
-// (interView etc.) in the shared collections.
-const INSTANCE_ID = process.env.NEXT_PUBLIC_INSTANCE_ID || 'spectrum';
+// The PARENT instance for On a Spectrum — used for auth, create, and join.
+// In-game requests (map entries/votes) override with the room's own
+// instance id so their content scopes to the room.
+export const PARENT_INSTANCE_ID = process.env.NEXT_PUBLIC_INSTANCE_ID || 'spectrum';
 
 export class ApiError extends Error {
   status: number;
@@ -18,17 +17,44 @@ export class ApiError extends Error {
   }
 }
 
+// Game-token cache: tokens live 15 minutes; refresh with a minute to spare.
+let cachedToken: { token: string; expiresAt: number } | null = null;
+
+async function getGameToken(): Promise<string | null> {
+  if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) {
+    return cachedToken.token;
+  }
+  try {
+    const res = await fetch('/api/auth/game-token');
+    if (!res.ok) return null;
+    cachedToken = await res.json();
+    return cachedToken?.token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearGameToken() {
+  cachedToken = null;
+}
+
 export async function apiFetch<T>(
   path: string,
-  options: { method?: string; body?: unknown; auth?: PlayerIdentity | null } = {},
+  options: {
+    method?: string;
+    body?: unknown;
+    userId?: string | null;
+    instanceId?: string;
+  } = {},
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'x-instance-id': INSTANCE_ID,
+    'x-instance-id': options.instanceId || PARENT_INSTANCE_ID,
   };
-  if (options.auth) {
-    headers['x-user-id'] = options.auth.playerId;
-    if (options.auth.token) headers['Authorization'] = `Bearer ${options.auth.token}`;
+  if (options.userId) {
+    headers['x-user-id'] = options.userId;
+    const token = await getGameToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
   }
   const res = await fetch(`${API_BASE}${path}`, {
     method: options.method || 'GET',
