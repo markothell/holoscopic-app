@@ -1,6 +1,6 @@
 import { apiFetch } from './api';
 import type {
-  AxisPair, Game, Nomination, Proposal, RoundSeconds, Snapshot,
+  Axis, Game, MapDetail, MapEntry, Nomination, Proposal, RoundSeconds, Snapshot,
 } from '@/lib/types';
 
 export interface CreateGameInput {
@@ -52,9 +52,9 @@ export const OasService = {
     });
   },
 
-  nominateMap(code: string, subtopicId: string, axes: AxisPair, userId: string) {
+  nominateMap(code: string, subtopicId: string, dimensions: 1 | 2, userId: string) {
     return apiFetch<{ nomination: Nomination }>(`/oas/games/${code}/nominations`, {
-      method: 'POST', body: { subtopicId, axes }, userId,
+      method: 'POST', body: { subtopicId, dimensions }, userId,
     });
   },
 
@@ -72,16 +72,55 @@ export const OasService = {
     );
   },
 
-  joinMap(code: string, activityId: string, userId: string) {
+  mapDetail(code: string, mapId: string, userId?: string | null) {
+    return apiFetch<MapDetail>(`/oas/games/${code}/maps/${mapId}`, {
+      userId: userId ?? undefined,
+    });
+  },
+
+  joinMap(code: string, mapId: string, userId: string) {
     return apiFetch<{ nomination: Nomination }>(
-      `/oas/games/${code}/maps/${activityId}/join`,
+      `/oas/games/${code}/maps/${mapId}/join`,
       { method: 'POST', userId },
     );
   },
 
-  claimMapStake(code: string, activityId: string, userId: string) {
+  submitMapItem(code: string, mapId: string, text: string, userId: string) {
+    return apiFetch<{ entry: MapEntry }>(`/oas/games/${code}/maps/${mapId}/items`, {
+      method: 'POST', body: { text }, userId,
+    });
+  },
+
+  nominateMapAxis(code: string, mapId: string, label: string, userId: string) {
+    return apiFetch<{ entry: MapEntry }>(`/oas/games/${code}/maps/${mapId}/axes`, {
+      method: 'POST', body: { label }, userId,
+    });
+  },
+
+  voteMapAxis(code: string, mapId: string, entryId: string, userId: string) {
+    return apiFetch<{ entry: MapEntry }>(
+      `/oas/games/${code}/maps/${mapId}/axes/${entryId}/vote`,
+      { method: 'POST', userId },
+    );
+  },
+
+  advanceMap(code: string, mapId: string, userId: string) {
+    return apiFetch<{ nomination: Nomination }>(
+      `/oas/games/${code}/maps/${mapId}/advance`,
+      { method: 'POST', userId },
+    );
+  },
+
+  submitMapRanking(code: string, mapId: string, axis: Axis, order: string[], done: boolean, userId: string) {
+    return apiFetch<{ nomination: Nomination }>(
+      `/oas/games/${code}/maps/${mapId}/rankings/${axis}`,
+      { method: 'PUT', body: { order, done }, userId },
+    );
+  },
+
+  claimMapStake(code: string, mapId: string, userId: string) {
     return apiFetch<{ nomination: Nomination; balance: number }>(
-      `/oas/games/${code}/maps/${activityId}/claim`,
+      `/oas/games/${code}/maps/${mapId}/claim`,
       { method: 'POST', userId },
     );
   },

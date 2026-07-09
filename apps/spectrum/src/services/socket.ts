@@ -11,19 +11,17 @@ const GAME_EVENTS = [
   'oas_nomination_upserted',
   'oas_nomination_staked',
   'oas_map_opened',
-  'oas_map_closed',
+  'oas_map_stage',
+  'oas_map_entry',
+  'oas_map_ranked',
   'oas_stake_returned',
   'oas_proposal_added',
 ] as const;
-
-// Generic activity-room events for an open map sheet.
-const ACTIVITY_EVENTS = ['entry_upserted', 'entry_voted', 'entries_cleared'] as const;
 
 class OasSocket {
   private socket: Socket | null = null;
   private gameId: string | null = null;
   private userId: string | null = null;
-  private activityId: string | null = null;
   private listeners = new Map<string, Set<(payload: unknown) => void>>();
 
   connect(gameId: string, userId?: string | null) {
@@ -36,23 +34,10 @@ class OasSocket {
       this.socket?.emit('oas:join', { gameId });
       // Personal room carries holon_update (the token balance push).
       if (this.userId) this.socket?.emit('join_user_room', { userId: this.userId });
-      if (this.activityId) this.socket?.emit('join_activity', { activityId: this.activityId, userId: this.userId });
       this.dispatch('__reconnect', {});
     });
-    for (const event of [...GAME_EVENTS, ...ACTIVITY_EVENTS, 'holon_update']) {
+    for (const event of [...GAME_EVENTS, 'holon_update']) {
       this.socket.on(event, (payload: unknown) => this.dispatch(event, payload));
-    }
-  }
-
-  // Follow one live map's activity room while its sheet is open.
-  watchActivity(activityId: string | null) {
-    if (this.activityId === activityId) return;
-    if (this.socket && this.activityId) {
-      this.socket.emit('leave_activity', { activityId: this.activityId, userId: this.userId });
-    }
-    this.activityId = activityId;
-    if (this.socket && activityId) {
-      this.socket.emit('join_activity', { activityId, userId: this.userId });
     }
   }
 
@@ -63,7 +48,6 @@ class OasSocket {
     }
     this.socket = null;
     this.gameId = null;
-    this.activityId = null;
   }
 
   on(event: string, handler: (payload: unknown) => void): () => void {

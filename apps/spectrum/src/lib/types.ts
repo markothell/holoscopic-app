@@ -32,7 +32,6 @@ export interface GameConfig {
 }
 
 export interface MapRef {
-  activityId: string;
   nominationId: string;
   subtopicId: string;
   round: number;
@@ -67,13 +66,35 @@ export interface Game {
   createdAt: string;
 }
 
-export interface AxisPair {
-  x: { min: string; max: string };
-  y: { min: string; max: string };
-}
-
 export type NominationKind = 'subtopic' | 'map';
 export type NominationStatus = 'nominated' | 'confirmed' | 'expired';
+export type MapStage = 'gather' | 'rank' | 'done' | 'closed';
+export type Axis = 'x' | 'y';
+
+export interface WinningAxis {
+  entryId: string;
+  label: string;
+}
+
+export interface MapItem {
+  entryId: string;
+  index: number;
+  label: string;
+  authorId: string;
+}
+
+export interface RankingDone {
+  userId: string;
+  axis: Axis;
+}
+
+export interface MapState {
+  stage: MapStage;
+  stageDeadline: string | null;
+  winningAxes: WinningAxis[];
+  items: MapItem[];
+  rankingDone: RankingDone[];
+}
 
 export interface Nomination {
   id: string;
@@ -82,26 +103,24 @@ export interface Nomination {
   themeIndex: number | null;
   title: string;
   subtopicId: string | null;
-  axes: AxisPair | null;
+  dimensions: 1 | 2 | null;
+  mapState: MapState | null;
   nominatedBy: string;
   nominatedByName: string;
   stakes: { userId: string; returned: boolean }[];
   quorumThreshold: number;
   status: NominationStatus;
-  activityId: string | null;
   createdAt: string;
 }
 
 export interface MapCompletion {
-  hasPosition: boolean;
-  hasComment: boolean;
-  votesCast: number;
-  votesRequired: number;
+  hasItem: boolean;
+  rankedAxes: number;
+  axesRequired: number;
   complete: boolean;
 }
 
 export interface MyMapState {
-  activityId: string;
   nominationId: string;
   stakeReturned: boolean;
   completion: MapCompletion;
@@ -122,8 +141,8 @@ export interface PhaseChangedPayload {
 }
 
 // ---------------------------------------------------------------------------
-// Generic activity surface (live maps) — matches utils/entries.js toClient
-// and the /api/activities routes.
+// Live map surface — content entries (utils/entries.js toClient shape) and
+// the per-map detail payload.
 
 export interface MapEntry {
   id: string;
@@ -141,15 +160,29 @@ export interface MapEntry {
   updatedAt: string;
 }
 
-export interface MapActivity {
-  id: string;
-  title: string;
-  mapQuestion: string;
-  commentQuestion: string;
-  objectNameQuestion: string;
-  xAxis: { label: string; min: string; max: string };
-  yAxis: { label: string; min: string; max: string };
-  votesPerUser: number | null;
-  status: 'active' | 'completed';
-  entries?: MapEntry[];
+export interface MapResultDot {
+  entryId: string;
+  label: string;
+  authorId: string;
+  x: number;
+  y: number;
+}
+
+export interface MapDetail {
+  nomination: Nomination;
+  items: MapEntry[];
+  axisIdeas: MapEntry[];
+  myRankings?: Partial<Record<Axis, string[]>>;
+  results?: MapResultDot[];
+  serverNow: string;
+}
+
+export interface MapStagePayload {
+  mapId: string;
+  stage: MapStage;
+  stageDeadline: string | null;
+  serverNow: string;
+  winningAxes: WinningAxis[];
+  items: MapItem[];
+  reason?: string;
 }

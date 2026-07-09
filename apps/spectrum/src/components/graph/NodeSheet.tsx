@@ -23,12 +23,16 @@ export default function NodeSheet({
   userId,
   balance,
   onClose,
+  onOpenMap,
+  onProposeMap,
 }: {
   game: Game;
   nomination: Nomination | null;
   userId: string;
   balance: number | null;
   onClose: () => void;
+  onOpenMap: (mapId: string) => void;
+  onProposeMap: (subtopicId: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,16 +116,29 @@ export default function NodeSheet({
       )}
 
       {nom.status === 'confirmed' && nom.kind === 'subtopic' && (
-        <p className="mt-6 text-center text-sm text-ink-soft">
-          {currentRound === 1
-            ? 'In the game — mappable from round 2.'
-            : 'In the game — nominate a map for it this round.'}
-        </p>
+        currentRound !== null && currentRound >= 2 ? (
+          <Button
+            className="mt-6"
+            onClick={() => { onProposeMap(nom.id); onClose(); }}
+          >
+            Propose a map · ● 1
+          </Button>
+        ) : (
+          <p className="mt-6 text-center text-sm text-ink-soft">
+            In the game — mappable from round 2.
+          </p>
+        )
       )}
 
       {nom.status === 'confirmed' && nom.kind === 'map' && (
-        <Button className="mt-6" disabled variant="ghost">
-          Open map — arriving with the mapping rounds
+        <Button
+          className="mt-6"
+          onClick={() => { onOpenMap(nom.id); onClose(); }}
+          style={{ background: accent }}
+        >
+          {nom.mapState?.stage === 'gather' ? 'Open map — gathering'
+            : nom.mapState?.stage === 'rank' ? 'Open map — ranking'
+            : 'See the reveal'}
         </Button>
       )}
 

@@ -7,6 +7,10 @@ import Lobby from '@/components/game/Lobby';
 import GameHeader from '@/components/game/GameHeader';
 import GameGraph from '@/components/graph/GameGraph';
 import SubtopicSheet from '@/components/nominate/SubtopicSheet';
+import MapNominationSheet from '@/components/nominate/MapNominationSheet';
+import MapSheet from '@/components/map/MapSheet';
+import ReviseFlow from '@/components/revise/ReviseFlow';
+import ProposalsScreen from '@/components/final/ProposalsScreen';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOasGame } from '@/hooks/useOasGame';
 import { OasService } from '@/services/oasService';
@@ -91,7 +95,8 @@ function JoinGate({
   );
 }
 
-// Rounds 1–4: masthead over the full-bleed topic web.
+// Rounds 1–4: masthead over the full-bleed topic web. Sheets layer on top:
+// nominate (subtopic or map proposal) and the live map surface.
 function RoundStage({
   game,
   nominations,
@@ -104,6 +109,10 @@ function RoundStage({
   balance: number | null;
 }) {
   const [nominateOpen, setNominateOpen] = useState(false);
+  const [proposeSubtopicId, setProposeSubtopicId] = useState<string | null>(null);
+  const [openMapId, setOpenMapId] = useState<string | null>(null);
+  const isRound1 = game.phase === 'round1';
+  const noTokens = balance !== null && balance < 1;
 
   return (
     <main className="flex h-dvh w-full flex-col">
@@ -111,27 +120,52 @@ function RoundStage({
         <GameHeader game={game} balance={balance} />
       </div>
       <div className="min-h-0 flex-1">
-        <GameGraph game={game} nominations={nominations} userId={userId} balance={balance} />
+        <GameGraph
+          game={game}
+          nominations={nominations}
+          userId={userId}
+          balance={balance}
+          onOpenMap={setOpenMapId}
+          onProposeMap={(subtopicId) => { setProposeSubtopicId(subtopicId); setNominateOpen(true); }}
+        />
       </div>
-      {game.phase === 'round1' && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <div className="mx-auto w-full max-w-md px-5">
-            <Button
-              className="pointer-events-auto shadow-lg"
-              onClick={() => setNominateOpen(true)}
-              disabled={balance !== null && balance < 1}
-            >
-              {balance !== null && balance < 1 ? 'Out of tokens' : '+ Subtopic · ● 1'}
-            </Button>
-          </div>
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto w-full max-w-md px-5">
+          <Button
+            className="pointer-events-auto shadow-lg"
+            onClick={() => { setProposeSubtopicId(null); setNominateOpen(true); }}
+            disabled={noTokens}
+          >
+            {noTokens ? 'Out of tokens' : isRound1 ? '+ Subtopic · ● 1' : '+ Propose a map · ● 1'}
+          </Button>
         </div>
+      </div>
+      {isRound1 ? (
+        <SubtopicSheet
+          game={game}
+          userId={userId}
+          open={nominateOpen}
+          onClose={() => setNominateOpen(false)}
+        />
+      ) : (
+        <MapNominationSheet
+          game={game}
+          nominations={nominations}
+          userId={userId}
+          open={nominateOpen}
+          preselectedSubtopicId={proposeSubtopicId}
+          onClose={() => { setNominateOpen(false); setProposeSubtopicId(null); }}
+        />
       )}
-      <SubtopicSheet
-        game={game}
-        userId={userId}
-        open={nominateOpen}
-        onClose={() => setNominateOpen(false)}
-      />
+      {openMapId && (
+        <MapSheet
+          code={game.code}
+          game={game}
+          mapId={openMapId}
+          userId={userId}
+          onClose={() => setOpenMapId(null)}
+        />
+      )}
     </main>
   );
 }
@@ -194,18 +228,21 @@ export default function GameShell({ code }: { code: string }) {
         />
       );
     case 'revise':
+      return (
+        <main className="min-h-dvh w-full">
+          <div className="mx-auto w-full max-w-md px-5">
+            <GameHeader game={game} balance={balance} />
+          </div>
+          <ReviseFlow game={game} userId={userId} />
+        </main>
+      );
     case 'complete':
       return (
-        <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-10">
-          <GameHeader game={game} balance={balance} />
-          <section className="mt-10 rounded-2xl border border-line bg-paper-raised p-5">
-            <p className="eyebrow">{game.phase === 'revise' ? 'Revise' : 'Complete'}</p>
-            <p className="mt-2 text-base text-ink-soft">
-              {game.phase === 'revise'
-                ? 'Reshape the game structure here — coming in a later phase.'
-                : 'Suggested next games appear here — coming in a later phase.'}
-            </p>
-          </section>
+        <main className="min-h-dvh w-full">
+          <div className="mx-auto w-full max-w-md px-5">
+            <GameHeader game={game} balance={balance} />
+          </div>
+          <ProposalsScreen game={game} userId={userId} />
         </main>
       );
     default:

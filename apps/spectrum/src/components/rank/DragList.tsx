@@ -24,13 +24,15 @@ function Row({
   accent,
   hasStory,
   onStory,
+  actionLabels,
 }: {
   member: DragItem;
   index: number;
   total: number;
   accent: string;
   hasStory: boolean;
-  onStory: () => void;
+  onStory?: () => void;
+  actionLabels?: [string, string]; // [idle, done] — defaults to the story pair
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: member.id });
@@ -68,15 +70,17 @@ function Row({
         {index + 1}
       </span>
       <span className="display min-w-0 flex-1 truncate text-2xl">{member.name}</span>
-      <button
-        onClick={onStory}
-        className={`shrink-0 rounded-full border px-3 py-1.5 text-xs ${
-          hasStory ? 'border-transparent text-white' : 'border-line-strong text-ink-soft'
-        }`}
-        style={hasStory ? { background: accent } : undefined}
-      >
-        {hasStory ? 'story ✓' : '+ story'}
-      </button>
+      {onStory && (
+        <button
+          onClick={onStory}
+          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs ${
+            hasStory ? 'border-transparent text-white' : 'border-line-strong text-ink-soft'
+          }`}
+          style={hasStory ? { background: accent } : undefined}
+        >
+          {hasStory ? (actionLabels?.[1] ?? 'story ✓') : (actionLabels?.[0] ?? '+ story')}
+        </button>
+      )}
     </li>
   );
 }
@@ -88,13 +92,15 @@ export default function DragList({
   accent,
   storiesFor,
   onStory,
+  actionLabels,
 }: {
   members: Map<string, DragItem>;
   order: string[];
   onReorder: (next: string[]) => void;
   accent: string;
-  storiesFor: Set<string>;
-  onStory: (member: DragItem) => void;
+  storiesFor?: Set<string>;
+  onStory?: (member: DragItem) => void;
+  actionLabels?: [string, string];
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -123,8 +129,9 @@ export default function DragList({
                 index={i}
                 total={order.length}
                 accent={accent}
-                hasStory={storiesFor.has(id)}
-                onStory={() => onStory(m)}
+                hasStory={!!storiesFor?.has(id)}
+                onStory={onStory ? () => onStory(m) : undefined}
+                actionLabels={actionLabels}
               />
             );
           })}

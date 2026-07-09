@@ -89,7 +89,7 @@ function buildGraph(game: Game, nominations: Nomination[]) {
           nomination: m,
           quorum: m.quorumThreshold,
           theme: game.themes[m.themeIndex ?? 0] ?? '',
-          live: m.status === 'confirmed' && !!m.activityId,
+          live: m.status === 'confirmed' && !!m.mapState,
         },
         draggable: false,
       });
@@ -114,17 +114,23 @@ function buildGraph(game: Game, nominations: Nomination[]) {
   return { nodes, edges };
 }
 
+interface GraphProps {
+  game: Game;
+  nominations: Nomination[];
+  userId: string;
+  balance: number | null;
+  onOpenMap: (mapId: string) => void;
+  onProposeMap: (subtopicId: string) => void;
+}
+
 function GraphInner({
   game,
   nominations,
   userId,
   balance,
-}: {
-  game: Game;
-  nominations: Nomination[];
-  userId: string;
-  balance: number | null;
-}) {
+  onOpenMap,
+  onProposeMap,
+}: GraphProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { nodes, edges } = useMemo(() => buildGraph(game, nominations), [game, nominations]);
 
@@ -163,17 +169,14 @@ function GraphInner({
         userId={userId}
         balance={balance}
         onClose={() => setSelectedId(null)}
+        onOpenMap={onOpenMap}
+        onProposeMap={onProposeMap}
       />
     </div>
   );
 }
 
-export default function GameGraph(props: {
-  game: Game;
-  nominations: Nomination[];
-  userId: string;
-  balance: number | null;
-}) {
+export default function GameGraph(props: GraphProps) {
   return (
     <ReactFlowProvider>
       <GraphInner {...props} />

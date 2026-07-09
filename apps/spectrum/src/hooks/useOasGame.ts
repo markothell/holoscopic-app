@@ -5,7 +5,8 @@ import { OasService } from '@/services/oasService';
 import { oasSocket } from '@/services/socket';
 import { useAuth } from '@/contexts/AuthContext';
 import type {
-  Game, MapRef, MyMapState, Nomination, Participant, PhaseChangedPayload, Proposal, Snapshot,
+  Game, MapRef, MapStagePayload, MyMapState, Nomination, Participant,
+  PhaseChangedPayload, Proposal, RankingDone, Snapshot,
 } from '@/lib/types';
 
 // One hook owns the whole live game: fetch the snapshot, join the socket
@@ -28,6 +29,8 @@ type Action =
   | { type: 'nomination'; nomination: Nomination }
   | { type: 'phase_changed'; payload: PhaseChangedPayload }
   | { type: 'map_opened'; map: MapRef; nomination: Nomination }
+  | { type: 'map_stage'; payload: MapStagePayload }
+  | { type: 'map_ranked'; mapId: string; rankingDone: RankingDone[] }
   | { type: 'proposal'; proposal: Proposal }
   | { type: 'balance'; balance: number };
 
@@ -82,13 +85,40 @@ function reducer(state: GameState, action: Action): GameState {
     }
     case 'map_opened': {
       if (!state.game) return state;
-      const exists = state.game.maps.some(m => m.activityId === action.map.activityId);
+      const exists = state.game.maps.some(m => m.nominationId === action.map.nominationId);
       return {
         ...state,
         game: exists ? state.game : { ...state.game, maps: [...state.game.maps, action.map] },
         nominations: upsertNomination(state.nominations, action.nomination),
       };
     }
+    case 'map_stage': {
+      const p = action.payload;
+      return {
+        ...state,
+        nominations: state.nominations.map(n =>
+          n.id === p.mapId && n.mapState
+            ? {
+                ...n,
+                mapState: {
+                  ...n.mapState,
+                  stage: p.stage,
+                  stageDeadline: p.stageDeadline,
+                  winningAxes: p.winningAxes,
+                  items: p.items,
+                },
+              }
+            : n),
+      };
+    }
+    case 'map_ranked':
+      return {
+        ...state,
+        nominations: state.nominations.map(n =>
+          n.id === action.mapId && n.mapState
+            ? { ...n, mapState: { ...n.mapState, rankingDone: action.rankingDone } }
+            : n),
+      };
     case 'proposal': {
       if (!state.game) return state;
       const i = state.game.proposals.findIndex(p => p.id === action.proposal.id);
@@ -138,6 +168,12 @@ export function useOasGame(code: string) {
       oasSocket.on('oas_map_opened', (p) => {
         const { map, nomination } = p as { map: MapRef; nomination: Nomination };
         dispatch({ type: 'map_opened', map, nomination });
+      }),
+      oasSocket.on('oas_map_stage', (p) =>
+        dispatch({ type: 'map_stage', payload: p as MapStagePayload })),
+      oasSocket.on('oas_map_ranked', (p) => {
+        const { mapId, rankingDone } = p as { mapId: string; rankingDone: RankingDone[] };
+        dispatch({ type: 'map_ranked', mapId, rankingDone });
       }),
       oasSocket.on('oas_proposal_added', (p) =>
         dispatch({ type: 'proposal', proposal: (p as { proposal: Proposal }).proposal })),
