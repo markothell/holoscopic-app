@@ -32,12 +32,15 @@ const holonTransactionSchema = new mongoose.Schema({
       // Pattern economy
       'entry_seed_reward',
       'pattern_activity_reward',
+      // On a Spectrum token locks — stakes always lock and return, never burn
+      'oas_stake',
+      'oas_stake_return',
     ],
   },
   amount: { type: Number, required: true }, // positive = earn, negative = spend
   balanceAfter: { type: Number, required: true },
   // Reference to the entity that triggered this transaction
-  refType: { type: String, enum: ['topic', 'inquiry', 'algorithm', 'algorithmSession', 'activity', 'sequence', 'frame', null] },
+  refType: { type: String, enum: ['topic', 'inquiry', 'algorithm', 'algorithmSession', 'activity', 'sequence', 'frame', 'oas_nomination', null] },
   refId: { type: String, default: null },
   createdAt: { type: Date, default: Date.now, index: true },
 }, { id: false });

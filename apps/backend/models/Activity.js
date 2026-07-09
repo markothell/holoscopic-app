@@ -187,6 +187,11 @@ const ActivitySchema = new mongoose.Schema({
     default: true
   },
 
+  // Lifecycle owned by an external state machine (e.g. the On a Spectrum
+  // round engine): the generic close rule and expiry sweep never settle
+  // these — their owner completes them.
+  externallyManaged: { type: Boolean, default: false },
+
   // Frame of Reference this activity uses (references FrameOfReference.id)
   frameId: { type: String, default: null },
 

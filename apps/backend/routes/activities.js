@@ -86,6 +86,7 @@ async function settleActivityStakes(activity, activityEntries, instanceId) {
 // Solo trackers (maxEntries 0) and the instance's topics activity never auto-close.
 
 function isComplete(activity, activityEntries) {
+  if (activity.externallyManaged) return false; // owner's state machine closes it
   if (!activity.maxEntries || activity.maxEntries === 0) return false;
   const participants = activity.participants || [];
   if (participants.length < activity.maxEntries) return false;
@@ -122,6 +123,7 @@ async function sweepExpiredActivities(req) {
     status: 'active',
     isDraft: { $ne: true },
     maxEntries: { $gt: 0 },
+    externallyManaged: { $ne: true },
     createdAt: { $lte: cutoff },
     ...(topicsActivityId ? { id: { $ne: topicsActivityId } } : {}),
   });
