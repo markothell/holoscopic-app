@@ -126,7 +126,9 @@ const io = new Server(server, {
 require('./utils/holons').setIO(io);
 require('./utils/notify').setIO(io);
 require('./utils/spectrumGames').setIO(io);
+require('./utils/oasGames').setIO(io);
 const { registerSpectrumHandlers } = require('./sockets/spectrum');
+const { registerOasHandlers } = require('./sockets/oas');
 
 // Store active connections and activity participants
 const connections = new Map(); // socketId -> { userId, activityIds }
@@ -238,6 +240,11 @@ function loadAPIRoutes() {
       // (guest JWTs from the join route) but no blockIfInstanceEnded.
       const spectrumRoutes = require('./routes/spectrum')(io);
       app.use('/api/spectrum', enforceVerifiedUser, spectrumRoutes);
+      // On a Spectrum — account holders; rooms own their instances, so
+      // blockIfInstanceEnded (which reads the parent from the header) is
+      // deliberately absent here.
+      const oasRoutes = require('./routes/oas')(io);
+      app.use('/api/oas', enforceVerifiedUser, oasRoutes);
       apiRoutesLoaded = true;
       console.log('✅ API routes loaded successfully');
     } catch (error) {
@@ -386,6 +393,7 @@ io.on('connection', (socket) => {
   }
 
   registerSpectrumHandlers(io, socket);
+  registerOasHandlers(io, socket);
 
   // Join user room for personal events (holon updates, notifications)
   socket.on('join_user_room', ({ userId }) => {

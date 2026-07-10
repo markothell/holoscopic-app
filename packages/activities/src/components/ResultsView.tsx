@@ -74,7 +74,7 @@ export default function ResultsView({
                 <button
                   onClick={() => setActiveTab('map')}
                   className={`px-4 py-2 rounded-md transition-colors ${
-                    activeTab === 'map' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    activeTab === 'map' ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                   style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                 >
@@ -83,7 +83,7 @@ export default function ResultsView({
                 <button
                   onClick={() => setActiveTab('comments')}
                   className={`px-4 py-2 rounded-md transition-colors ${
-                    activeTab === 'comments' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    activeTab === 'comments' ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                   style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                 >
@@ -188,7 +188,7 @@ export default function ResultsView({
                         <div>
                           <h3 className="text-[var(--text-primary)] font-bold text-lg" style={{ fontFamily: 'var(--font-barlow), sans-serif', textTransform: 'uppercase' }}>{displayName}</h3>
                           {isOwnComment && (
-                            <span className="text-[#C83B50]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>(Your response)</span>
+                            <span className="text-[var(--accent)]" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.55rem', letterSpacing: '0.08em' }}>(Your response)</span>
                           )}
                         </div>
                         <button
@@ -214,7 +214,7 @@ export default function ResultsView({
                             onClick={async () => {
                               try { await onCommentVote!(comment.id); } catch (e) { console.error('Vote failed:', e); }
                             }}
-                            className={`px-4 py-2 rounded-lg font-medium transition ${hasVoted ? 'bg-emerald-600 text-white hover:bg-red-600' : 'bg-[#C83B50] hover:bg-[#B03248] text-white'}`}
+                            className={`px-4 py-2 rounded-lg font-medium transition ${hasVoted ? 'bg-emerald-600 text-white hover:bg-red-600' : 'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white'}`}
                             style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', fontWeight: 300, letterSpacing: '0.1em', textTransform: 'uppercase' }}
                           >
                             {hasVoted ? '\u2713 Voted' : 'Vote'}

@@ -26,8 +26,11 @@ router.get('/mine', async (req, res) => {
     if (memberships.length === 0) return res.json({ instances: [] });
 
     const byInstance = new Map(memberships.map(m => [m.instanceId, m]));
+    // Per-room instances (On a Spectrum games) are not editions — keep them
+    // out of the dashboard's Games list.
     const instances = await Instance.find({
       id: { $in: [...byInstance.keys()] },
+      parentInstanceId: null,
     });
 
     const shaped = instances
@@ -74,10 +77,12 @@ router.get('/resolve/:slugOrId', async (req, res) => {
 // All routes below require admin
 router.use(requireAdmin);
 
-// GET /api/instances — list all instances
+// GET /api/instances — list all instances. Per-room instances (On a
+// Spectrum games) are hidden unless ?includeRooms=1.
 router.get('/', async (req, res) => {
   try {
-    const instances = await Instance.find().sort({ createdAt: -1 });
+    const filter = req.query.includeRooms === '1' ? {} : { parentInstanceId: null };
+    const instances = await Instance.find(filter).sort({ createdAt: -1 });
     res.json({ instances });
   } catch (err) {
     res.status(500).json({ error: err.message });

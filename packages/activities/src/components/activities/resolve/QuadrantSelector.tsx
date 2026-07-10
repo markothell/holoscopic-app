@@ -65,7 +65,7 @@ export default function QuadrantSelector({ activity, onQuadrantSelect, userRatin
                   className={`
                     aspect-square rounded-lg border-2 transition-all duration-150 flex items-center justify-center p-2
                     ${isSelected
-                      ? 'bg-[#C83B50] border-[#C83B50] text-white'
+                      ? 'bg-[var(--accent)] border-[var(--accent)] text-white'
                       : 'bg-[var(--bg-primary)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-[rgba(15,13,11,0.3)] hover:text-[var(--text-secondary)]'
                     }
                   `}

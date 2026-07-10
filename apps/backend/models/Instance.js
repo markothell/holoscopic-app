@@ -59,6 +59,11 @@ const instanceSchema = new mongoose.Schema({
   gameVersion: { type: String, default: '1.0' },
   gameNumber:  { type: Number, default: null },
 
+  // Set on per-room instances (e.g. On a Spectrum game rooms) so they can be
+  // excluded from edition lists and admin views. Rooms also keep
+  // gameNumber null, which already bars them from getDefault().
+  parentInstanceId: { type: String, default: null, index: true },
+
   config: { type: instanceConfigSchema, default: () => ({}) },
 
   createdAt: { type: Date, default: Date.now },

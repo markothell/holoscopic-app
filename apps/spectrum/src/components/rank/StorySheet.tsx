@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import BottomSheet from '@/components/ui/BottomSheet';
 import Button from '@/components/ui/Button';
-import type { RosterMember } from '@/lib/types';
+import type { DragItem } from '@/components/rank/DragList';
 
 // "Add a story" — the optional memory behind a placement.
 export default function StorySheet({
@@ -13,7 +13,7 @@ export default function StorySheet({
   onSave,
   onClose,
 }: {
-  subject: RosterMember | null;
+  subject: DragItem | null;
   axisLabel: string;
   initialText: string;
   onSave: (text: string) => Promise<void>;

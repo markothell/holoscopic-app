@@ -229,7 +229,7 @@ export default function CommentSection({
               value={commentText}
               onChange={handleTextChange}
               placeholder="Share your thoughts..."
-              className="w-full p-3 border border-[var(--border-default)] rounded-lg focus:ring-2 focus:ring-[#C83B50] focus:border-transparent resize-none text-[var(--text-primary)] bg-[var(--bg-primary)]"
+              className="w-full p-3 border border-[var(--border-default)] rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent resize-none text-[var(--text-primary)] bg-[var(--bg-primary)]"
               style={{
                 height: isKeyboardVisible ? '120px' : '150px', // Smaller when keyboard is visible
                 fontSize: '16px', // Prevents zoom on iOS
@@ -245,7 +245,7 @@ export default function CommentSection({
 
           {/* Validation Error */}
           {validationError && (
-            <p className="text-[#C83B50] text-sm">{validationError}</p>
+            <p className="text-[var(--accent)] text-sm">{validationError}</p>
           )}
 
           {/* Submit Button */}
@@ -253,7 +253,7 @@ export default function CommentSection({
             <button
               type="submit"
               disabled={isSubmitting || !commentText.trim()}
-              className="px-6 py-2 bg-[#C83B50] text-white rounded-lg hover:bg-[#B03248] disabled:bg-[var(--bg-tertiary)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-2 bg-[var(--accent)] text-white rounded-lg hover:bg-[var(--accent-hover)] disabled:bg-[var(--bg-tertiary)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed transition-colors"
               style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', fontWeight: 300, letterSpacing: '0.1em', textTransform: 'uppercase' }}
             >
               {isSubmitting ? 'Submitting...' : userComment ? 'Update Comment' : 'Submit Comment'}
@@ -276,7 +276,7 @@ export default function CommentSection({
               return (
                 <div
                   className={`px-3 py-1 rounded text-sm font-medium ${
-                    remainingVotes > 0 ? 'bg-[#C83B50] text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
+                    remainingVotes > 0 ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
                   }`}
                   style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem', letterSpacing: '0.08em' }}
                 >
@@ -301,7 +301,7 @@ export default function CommentSection({
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as CommentSortOrder)}
-                className="px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-[#C83B50] bg-[var(--bg-primary)] border-[var(--border-default)] text-[var(--text-secondary)]"
+                className="px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--accent)] bg-[var(--bg-primary)] border-[var(--border-default)] text-[var(--text-secondary)]"
                 style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.6rem' }}
               >
                 <option value="newest">Newest</option>
@@ -319,7 +319,7 @@ export default function CommentSection({
                   <div
                     key={comment.id}
                     ref={(el) => { commentRefs.current[comment.id] = el; }}
-                    className={`p-3 rounded-lg border-l-4 border border-[var(--border-default)] shadow-sm transition-all duration-200 bg-[var(--bg-secondary)] ${selectedCommentId === comment.id ? 'ring-2 ring-[#C83B50]' : ''}`}
+                    className={`p-3 rounded-lg border-l-4 border border-[var(--border-default)] shadow-sm transition-all duration-200 bg-[var(--bg-secondary)] ${selectedCommentId === comment.id ? 'ring-2 ring-[var(--accent)]' : ''}`}
                     style={{ borderLeftColor: getUserColor(comment) }}
                     onMouseEnter={() => onCommentHover?.(comment.id)}
                     onMouseLeave={() => onCommentHover?.(null)}
@@ -353,7 +353,7 @@ export default function CommentSection({
                             onClick={() => handleVote(comment.id)}
                             className={`flex items-center space-x-1 px-2 py-1 rounded text-xs transition-colors ${
                               hasUserVoted(comment)
-                                ? "bg-[rgba(200,59,80,0.2)] text-[#C83B50] hover:bg-[rgba(200,59,80,0.3)]"
+                                ? "bg-[rgba(200,59,80,0.2)] text-[var(--accent)] hover:bg-[rgba(200,59,80,0.3)]"
                                 : "bg-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--border-strong)]"
                             }`}
                             disabled={!currentUserId}

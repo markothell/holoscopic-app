@@ -1,0 +1,1001 @@
+const crypto = require('crypto');
+const OasGame = require('../models/OasGame');
+const OasNomination = require('../models/OasNomination');
+const Instance = require('../models/Instance');
+const InstanceMembership = require('../models/InstanceMembership');
+const Entry = require('../models/Entry');
+const entryUtils = require('./entries');
+const { transact, spend } = require('./holons');
+
+// The single funnel for On a Spectrum game-state transitions, mirroring the
+// utils/entries.js philosophy: routes and timers are thin wrappers over
+// these functions.
+//
+// Economy: each game room owns a dedicated Instance whose
+// config.holons.startingStake is the game's token grant, so
+// InstanceMembership.getOrCreate seeds every player on first touch and all
+// token movement goes through utils/holons.js against the room instance.
+// Tokens lock on stake (oas_stake) and always return (oas_stake_return) —
+// on map completion, no-quorum expiry, or the round-end sweep. Never burned.
+//
+// A confirmed map nomination runs an On-the-Spectrum-style activity with
+// the nomination duck-typed as the entries.js "activity". Entry addressing:
+//   items      — questionId 'item', slotNumber = per-player 1..MAX_ITEMS
+//   axis ideas — questionId 'axis', slotNumber = per-player 1..MAX_AXES,
+//                voterIds = spectrum votes (budget = config.votesPerUser)
+//   rankings   — questionId 'rank-x'|'rank-y', userId = rater,
+//                slotNumber = the item's frozen mapState index,
+//                position.x = spectrum score (1 = most, 0 = least)
+
+let io = null;
+function setIO(ioInstance) { io = ioInstance; }
+
+function emitToGame(gameId, event, payload) {
+  if (io) io.to(`oasgame:${gameId}`).emit(event, payload);
+}
+
+const STAKE_TYPE = 'oas_stake';
+const RETURN_TYPE = 'oas_stake_return';
+
+const ITEM_QUESTION = 'item';
+const AXIS_IDEA_QUESTION = 'axis';
+const RANK_QUESTION = { x: 'rank-x', y: 'rank-y' };
+const MAX_ITEMS_PER_PLAYER = 3;
+const MAX_AXES_PER_PLAYER = 2;
+
+const TIMED_PHASES = ['round1', 'round2', 'round3', 'round4', 'revise'];
+const PHASE_ORDER = ['lobby', 'round1', 'round2', 'round3', 'round4', 'revise', 'complete'];
+
+function nextPhase(phase) {
+  const i = PHASE_ORDER.indexOf(phase);
+  return i >= 0 && i < PHASE_ORDER.length - 1 ? PHASE_ORDER[i + 1] : null;
+}
+
+function roundNumber(phase) {
+  return /^round[1-4]$/.test(phase) ? Number(phase.slice(5)) : null;
+}
+
+// Room codes: unambiguous alphabet (no I/O/0/1), 5 chars.
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function randomCode() {
+  let code = '';
+  for (let i = 0; i < 5; i++) {
+    code += CODE_ALPHABET[crypto.randomInt(CODE_ALPHABET.length)];
+  }
+  return code;
+}
+
+async function generateUniqueCode() {
+  for (let i = 0; i < 10; i++) {
+    const code = randomCode();
+    const clash = await OasGame.findOne({ code });
+    if (!clash) return code;
+  }
+  throw new Error('Could not generate a unique room code');
+}
+
+function newId() {
+  return crypto.randomUUID().substring(0, 8);
+}
+
+// What entries.js needs an "activity" to be, for a map nomination.
+function duckActivity(game, nom) {
+  return {
+    id: nom.id,
+    topicId: nom.subtopicId,
+    votesPerUser: game.config.votesPerUser,
+    // maxEntries deliberately absent (undefined !== 0, so solo-tracker mode
+    // never triggers).
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Serializers
+
+function toClientNomination(nom) {
+  return {
+    id: nom.id,
+    kind: nom.kind,
+    round: nom.round,
+    themeIndex: nom.themeIndex,
+    title: nom.title,
+    subtopicId: nom.subtopicId,
+    dimensions: nom.kind === 'map' ? nom.dimensions : null,
+    mapState: nom.mapState ? {
+      stage: nom.mapState.stage,
+      stageDeadline: nom.mapState.stageDeadline,
+      winningAxes: nom.mapState.winningAxes.map(a => ({ entryId: a.entryId, label: a.label })),
+      items: nom.mapState.items.map(m => ({
+        entryId: m.entryId, index: m.index, label: m.label, authorId: m.authorId,
+      })),
+      rankingDone: nom.mapState.rankingDone.map(d => ({ userId: d.userId, axis: d.axis })),
+    } : null,
+    nominatedBy: nom.nominatedBy,
+    nominatedByName: nom.nominatedByName,
+    stakes: nom.stakes.map(s => ({ userId: s.userId, returned: s.returned })),
+    quorumThreshold: nom.quorumThreshold,
+    status: nom.status,
+    createdAt: nom.createdAt,
+  };
+}
+
+function toClient(game) {
+  return {
+    id: game.id,
+    instanceId: game.instanceId,
+    code: game.code,
+    phase: game.phase,
+    phaseDeadline: game.phaseDeadline,
+    serverNow: new Date(),
+    hostId: game.hostId,
+    topic: game.topic,
+    themes: [...game.themes],
+    participants: game.participants.map(p => ({
+      id: p.id, name: p.name, joinedAt: p.joinedAt, isHost: p.isHost,
+    })),
+    config: {
+      roundSeconds: {
+        round1: game.config.roundSeconds.round1,
+        round2: game.config.roundSeconds.round2,
+        round3: game.config.roundSeconds.round3,
+        round4: game.config.roundSeconds.round4,
+        revise: game.config.roundSeconds.revise,
+      },
+      startingTokens: game.config.startingTokens,
+      quorum: game.config.quorum,
+      votesPerUser: game.config.votesPerUser,
+      maxPlayers: game.config.maxPlayers,
+    },
+    maps: game.maps.map(m => ({
+      nominationId: m.nominationId,
+      subtopicId: m.subtopicId,
+      round: m.round,
+      themeIndex: m.themeIndex,
+    })),
+    proposals: game.proposals.map(p => ({
+      id: p.id,
+      proposedBy: p.proposedBy,
+      proposedByName: p.proposedByName,
+      topic: p.topic,
+      themes: [...p.themes],
+      childGameId: p.childGameId,
+      createdAt: p.createdAt,
+    })),
+    parentGameId: game.parentGameId,
+    createdAt: game.createdAt,
+  };
+}
+
+function phasePayload(game, extra = {}) {
+  return {
+    phase: game.phase,
+    phaseDeadline: game.phaseDeadline,
+    serverNow: new Date(),
+    ...extra,
+  };
+}
+
+function mapStagePayload(nom, extra = {}) {
+  return {
+    mapId: nom.id,
+    stage: nom.mapState.stage,
+    stageDeadline: nom.mapState.stageDeadline,
+    serverNow: new Date(),
+    winningAxes: nom.mapState.winningAxes.map(a => ({ entryId: a.entryId, label: a.label })),
+    items: nom.mapState.items.map(m => ({
+      entryId: m.entryId, index: m.index, label: m.label, authorId: m.authorId,
+    })),
+    ...extra,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Game creation / membership
+
+// Every room gets its own Instance: per-room token ledger (startingStake =
+// startingTokens grants on first membership touch) and per-room entry
+// scoping in the shared collections.
+async function createRoomInstance({ parentInstanceId, topic, code, startingTokens }) {
+  return Instance.create({
+    id: newId(),
+    name: topic.slice(0, 80),
+    slug: `oas-${code.toLowerCase()}`,
+    domains: [],
+    access: { mode: 'public', inviteCodes: [] },
+    parentInstanceId,
+    gameNumber: null,
+    config: {
+      holons: { startingStake: startingTokens, dailyBonus: 0 },
+      quorum: { activityWindowHours: 8760 },
+    },
+  });
+}
+
+async function createGame({ parentInstanceId, userId, username, topic, themes, config = {}, parentGameId = null }) {
+  const code = await generateUniqueCode();
+  const startingTokens = config.startingTokens || 4;
+  const roomInstance = await createRoomInstance({
+    parentInstanceId, topic, code, startingTokens,
+  });
+
+  const game = new OasGame({
+    instanceId: roomInstance.id,
+    code,
+    hostId: userId,
+    topic,
+    participants: [{ id: userId, name: username, isHost: true }],
+    parentGameId,
+  });
+  if (Array.isArray(themes) && themes.length === 3) game.themes = themes;
+  if (config.roundSeconds) {
+    for (const key of TIMED_PHASES) {
+      if (config.roundSeconds[key] !== undefined) {
+        game.config.roundSeconds[key] = config.roundSeconds[key];
+      }
+    }
+  }
+  game.config.startingTokens = startingTokens;
+  if (config.quorum !== undefined) game.config.quorum = config.quorum;
+  if (config.votesPerUser !== undefined) game.config.votesPerUser = config.votesPerUser;
+  if (config.maxPlayers !== undefined) game.config.maxPlayers = config.maxPlayers;
+  await game.save();
+
+  // First touch grants the host their tokens (join_bonus of startingStake).
+  await InstanceMembership.getOrCreate(userId, roomInstance.id);
+
+  return game;
+}
+
+async function joinGame({ game, userId, username }) {
+  if (game.phase === 'complete') throw new Error('Game is over');
+  const existing = game.participants.find(p => p.id === userId);
+  if (existing) {
+    // Rejoin: refresh the display name, no new grant (getOrCreate is a no-op).
+    existing.name = username;
+    await game.save();
+    return existing;
+  }
+  if (game.participants.length >= game.config.maxPlayers) {
+    throw new Error('Game is full');
+  }
+  const participant = { id: userId, name: username, isHost: false, joinedAt: new Date() };
+  game.participants.push(participant);
+  await game.save();
+  await InstanceMembership.getOrCreate(userId, game.instanceId);
+  emitToGame(game.id, 'oas_player_joined', { participant });
+  return participant;
+}
+
+async function balanceFor(userId, instanceId) {
+  const m = await InstanceMembership.findOne({ userId, instanceId });
+  return m ? m.holonBalance : 0;
+}
+
+// ---------------------------------------------------------------------------
+// Phase machine
+
+// In-memory timers for round deadlines and map gather stages. Lost on
+// restart; sweepGame() on read is the durable fallback (same lazy pattern
+// as activityWindowHours / the old spectrum game).
+const timers = new Map(); // key: gameId | `map:<nominationId>` -> Timeout
+
+function armTimer(key, deadline, fn) {
+  clearTimer(key);
+  if (!deadline) return;
+  const ms = new Date(deadline).getTime() - Date.now();
+  if (ms <= 0) return;
+  const t = setTimeout(async () => {
+    timers.delete(key);
+    try {
+      await fn();
+    } catch (err) {
+      console.error(`[oas] timer ${key} failed:`, err.message);
+    }
+  }, ms + 250); // small grace so client countdowns visibly reach zero
+  if (t.unref) t.unref();
+  timers.set(key, t);
+}
+
+function clearTimer(key) {
+  const t = timers.get(key);
+  if (t) clearTimeout(t);
+  timers.delete(key);
+}
+
+function armPhaseTimer(game) {
+  armTimer(game.id, game.phaseDeadline, async () => {
+    const fresh = await OasGame.findOne({ id: game.id });
+    if (fresh) await expirePhase(fresh);
+  });
+}
+
+async function startGame(game) {
+  if (game.phase !== 'lobby') throw new Error('Game already started');
+  await enterPhase(game, 'round1');
+  return game;
+}
+
+async function enterPhase(game, phase) {
+  game.phase = phase;
+  game.phaseDeadline = TIMED_PHASES.includes(phase)
+    ? new Date(Date.now() + game.config.roundSeconds[phase] * 1000)
+    : null;
+  await game.save();
+  if (game.phaseDeadline) armPhaseTimer(game);
+  else clearTimer(game.id);
+  emitToGame(game.id, 'oas_phase_changed', phasePayload(game));
+}
+
+// Deadline expiry (timer, sweep-on-read, or host force-advance): close out
+// the current phase's economy, then enter the next phase.
+async function expirePhase(game, { forced = false } = {}) {
+  if (!TIMED_PHASES.includes(game.phase)) return game;
+  if (!forced && game.phaseDeadline && new Date(game.phaseDeadline).getTime() > Date.now()) {
+    return game;
+  }
+  const closing = game.phase;
+  const round = roundNumber(closing);
+  if (round) await closeRound(game, round);
+  await enterPhase(game, nextPhase(closing));
+  return game;
+}
+
+// End-of-round economy sweep. Guarantees no token stays locked past the
+// round it was staked in:
+//   - un-confirmed nominations expire and refund every stake
+//   - round 1 also refunds confirmed-subtopic stakes (their job is done;
+//     players need liquidity for the mapping rounds)
+//   - rounds 2–4 close the round's live maps and refund whatever map stakes
+//     were never claimed through completion
+async function closeRound(game, round) {
+  const noms = await OasNomination.find({ gameId: game.id, round });
+
+  for (const nom of noms) {
+    if (nom.status === 'nominated') {
+      nom.status = 'expired';
+      await refundStakes(game, nom);
+      await nom.save();
+      emitToGame(game.id, 'oas_nomination_upserted', { nomination: toClientNomination(nom) });
+    } else if (nom.status === 'confirmed') {
+      if (nom.kind === 'subtopic') {
+        await refundStakes(game, nom);
+        await nom.save();
+      } else if (nom.kind === 'map' && nom.mapState) {
+        if (nom.mapState.stage !== 'closed') {
+          nom.mapState.stage = 'closed';
+          nom.mapState.stageDeadline = null;
+          clearTimer(`map:${nom.id}`);
+        }
+        await refundStakes(game, nom);
+        await nom.save();
+        emitToGame(game.id, 'oas_map_stage', mapStagePayload(nom));
+      }
+    }
+  }
+}
+
+async function refundStakes(game, nom) {
+  for (const stake of nom.stakes) {
+    if (stake.returned) continue;
+    stake.returned = true;
+    stake.returnedAt = new Date();
+    await transact({
+      userId: stake.userId,
+      instanceId: game.instanceId,
+      type: RETURN_TYPE,
+      amount: stake.amount,
+      refType: 'oas_nomination',
+      refId: nom.id,
+    });
+    emitToGame(game.id, 'oas_stake_returned', { userId: stake.userId, nominationId: nom.id });
+  }
+}
+
+// Durable fallback for the in-memory timers — call before serving any read.
+async function sweepGame(game) {
+  if (TIMED_PHASES.includes(game.phase) && game.phaseDeadline &&
+      new Date(game.phaseDeadline).getTime() <= Date.now()) {
+    return expirePhase(game);
+  }
+  // Map gather stages inside the current round.
+  const round = roundNumber(game.phase);
+  if (round) {
+    const gathering = await OasNomination.find({
+      gameId: game.id, round, kind: 'map', status: 'confirmed',
+      'mapState.stage': 'gather',
+      'mapState.stageDeadline': { $lte: new Date() },
+    });
+    for (const nom of gathering) {
+      await closeGather(game, nom);
+    }
+  }
+  return game;
+}
+
+// ---------------------------------------------------------------------------
+// Nominations & stakes
+
+async function listNominations(game) {
+  return OasNomination.find({ gameId: game.id }).sort({ createdAt: 1 });
+}
+
+function requirePhaseRound(game, expectedKind) {
+  const round = roundNumber(game.phase);
+  if (!round) throw new Error('Not in a nominating round');
+  const kind = round === 1 ? 'subtopic' : 'map';
+  if (kind !== expectedKind) {
+    throw new Error(round === 1
+      ? 'Only subtopics can be nominated in round 1'
+      : 'Subtopic nominations closed after round 1');
+  }
+  return round;
+}
+
+async function nominateSubtopic({ game, userId, username, title }) {
+  const round = requirePhaseRound(game, 'subtopic');
+  const clash = await OasNomination.findOne({
+    gameId: game.id, kind: 'subtopic',
+    title: new RegExp(`^${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
+  });
+  if (clash) throw new Error('That subtopic is already nominated');
+
+  const nom = new OasNomination({
+    instanceId: game.instanceId,
+    gameId: game.id,
+    kind: 'subtopic',
+    round,
+    title,
+    nominatedBy: userId,
+    nominatedByName: username,
+    quorumThreshold: game.config.quorum,
+    stakes: [],
+  });
+  await addStake(game, nom, userId);
+  emitToGame(game.id, 'oas_nomination_upserted', { nomination: toClientNomination(nom) });
+  return nom;
+}
+
+async function nominateMap({ game, userId, username, subtopicId, dimensions }) {
+  const round = requirePhaseRound(game, 'map');
+  if (dimensions !== 1 && dimensions !== 2) throw new Error('dimensions must be 1 or 2');
+  const subtopic = await OasNomination.findOne({
+    id: subtopicId, gameId: game.id, kind: 'subtopic', status: 'confirmed',
+  });
+  if (!subtopic) throw new Error('Subtopic not found');
+  const clash = await OasNomination.findOne({
+    gameId: game.id, kind: 'map', round, subtopicId,
+    status: { $in: ['nominated', 'confirmed'] },
+  });
+  if (clash) throw new Error('That subtopic is already nominated this round');
+
+  const nom = new OasNomination({
+    instanceId: game.instanceId,
+    gameId: game.id,
+    kind: 'map',
+    round,
+    themeIndex: round - 2,
+    title: subtopic.title,
+    subtopicId,
+    dimensions,
+    nominatedBy: userId,
+    nominatedByName: username,
+    quorumThreshold: game.config.quorum,
+    stakes: [],
+  });
+  await addStake(game, nom, userId);
+  emitToGame(game.id, 'oas_nomination_upserted', { nomination: toClientNomination(nom) });
+  return nom;
+}
+
+// Lock one token behind a nomination; confirm the moment quorum is reached.
+// spend() throws 'Insufficient Holons' — the supply throttle (HTTP 402).
+async function addStake(game, nom, userId) {
+  if (nom.stakes.some(s => s.userId === userId && !s.returned)) {
+    throw new Error('Already staked');
+  }
+  await spend({
+    userId,
+    instanceId: game.instanceId,
+    type: STAKE_TYPE,
+    amount: 1,
+    refType: 'oas_nomination',
+    refId: nom.id,
+  });
+  nom.stakes.push({ userId, amount: 1 });
+  if (nom.status === 'nominated' &&
+      nom.stakes.filter(s => !s.returned).length >= nom.quorumThreshold) {
+    nom.status = 'confirmed';
+    if (nom.kind === 'map') {
+      await openMap(game, nom);
+    } else {
+      await nom.save();
+    }
+  } else {
+    await nom.save();
+  }
+  return nom;
+}
+
+async function stakeOn({ game, nomination, userId }) {
+  const round = roundNumber(game.phase);
+  if (nomination.round !== round) throw new Error('That nomination is not in the current round');
+  if (nomination.status === 'expired') throw new Error('Nomination expired');
+  // Post-quorum stakes on maps are joins — route through joinMap so the
+  // player enters the live activity.
+  if (nomination.status === 'confirmed' && nomination.kind === 'map') {
+    throw new Error('Map already live — join it instead');
+  }
+  if (nomination.status === 'confirmed') throw new Error('Already confirmed');
+  await addStake(game, nomination, userId);
+  emitToGame(game.id, 'oas_nomination_staked', { nomination: toClientNomination(nomination) });
+  return nomination;
+}
+
+// Withdraw a pre-quorum support stake. Nominators stay locked in — a
+// nomination never outlives its own proposer's commitment silently.
+async function unstake({ game, nomination, userId }) {
+  if (nomination.status !== 'nominated') throw new Error('Stakes are locked once confirmed');
+  if (nomination.nominatedBy === userId) throw new Error('Nominators cannot withdraw');
+  const idx = nomination.stakes.findIndex(s => s.userId === userId && !s.returned);
+  if (idx === -1) throw new Error('No stake to withdraw');
+  nomination.stakes.splice(idx, 1);
+  await nomination.save();
+  await transact({
+    userId,
+    instanceId: game.instanceId,
+    type: RETURN_TYPE,
+    amount: 1,
+    refType: 'oas_nomination',
+    refId: nomination.id,
+  });
+  emitToGame(game.id, 'oas_nomination_staked', { nomination: toClientNomination(nomination) });
+  return nomination;
+}
+
+// ---------------------------------------------------------------------------
+// Live maps — an On-the-Spectrum-style activity per confirmed nomination:
+// gather (items + spectrum ideas + votes) → rank (drag-order the frozen
+// items along the winning spectra) → done (everyone ranked) / closed
+// (round over).
+
+// The gather stage gets a proportional slice of the time left in the round
+// (floored so even late spawns get a usable window; capped by round end).
+function gatherDeadline(game) {
+  const roundEnd = game.phaseDeadline ? new Date(game.phaseDeadline).getTime() : null;
+  if (!roundEnd) return null;
+  const remaining = Math.max(0, roundEnd - Date.now());
+  const slice = Math.min(remaining, Math.max(45 * 1000, remaining * 0.25));
+  return new Date(Date.now() + slice);
+}
+
+async function openMap(game, nom) {
+  nom.mapState = {
+    stage: 'gather',
+    stageDeadline: gatherDeadline(game),
+    winningAxes: [],
+    items: [],
+    rankingDone: [],
+  };
+  await nom.save();
+  armMapTimer(game, nom);
+  game.maps.push({
+    nominationId: nom.id,
+    subtopicId: nom.subtopicId,
+    round: nom.round,
+    themeIndex: nom.themeIndex,
+  });
+  await game.save();
+  emitToGame(game.id, 'oas_map_opened', {
+    map: game.maps[game.maps.length - 1].toObject
+      ? game.maps[game.maps.length - 1].toObject()
+      : game.maps[game.maps.length - 1],
+    nomination: toClientNomination(nom),
+  });
+}
+
+function armMapTimer(game, nom) {
+  armTimer(`map:${nom.id}`, nom.mapState && nom.mapState.stageDeadline, async () => {
+    const freshGame = await OasGame.findOne({ id: game.id });
+    const freshNom = await OasNomination.findOne({ id: nom.id });
+    if (freshGame && freshNom) await closeGather(freshGame, freshNom);
+  });
+}
+
+function requireLiveMap(game, nom, stage = null) {
+  if (!nom || nom.kind !== 'map' || nom.status !== 'confirmed' || !nom.mapState) {
+    throw new Error('Map not found');
+  }
+  if (nom.round !== roundNumber(game.phase)) throw new Error("That map's round is over");
+  if (stage && nom.mapState.stage !== stage) {
+    throw new Error(stage === 'gather' ? 'Gathering is over' : 'Not in the ranking stage');
+  }
+}
+
+function requireMapMember(nom, userId) {
+  if (!nom.stakes.some(s => s.userId === userId)) {
+    throw new Error('Join the map first');
+  }
+}
+
+// Late join on a live map: same 1-token lock as a support stake.
+async function joinMap({ game, nomination, userId }) {
+  requireLiveMap(game, nomination);
+  if (nomination.stakes.some(s => s.userId === userId && !s.returned)) {
+    return nomination; // already in — idempotent
+  }
+  await spend({
+    userId,
+    instanceId: game.instanceId,
+    type: STAKE_TYPE,
+    amount: 1,
+    refType: 'oas_nomination',
+    refId: nomination.id,
+  });
+  nomination.stakes.push({ userId, amount: 1 });
+  await nomination.save();
+  emitToGame(game.id, 'oas_nomination_staked', { nomination: toClientNomination(nomination) });
+  return nomination;
+}
+
+async function listMapEntries(nom) {
+  return Entry.find({ activityId: nom.id }).sort({ createdAt: 1 });
+}
+
+async function submitMapItem({ game, nom, userId, username, text }) {
+  requireLiveMap(game, nom, 'gather');
+  requireMapMember(nom, userId);
+  const mine = await Entry.find({
+    activityId: nom.id, userId, questionId: ITEM_QUESTION,
+  });
+  if (mine.length >= MAX_ITEMS_PER_PLAYER) {
+    throw new Error(`You can add up to ${MAX_ITEMS_PER_PLAYER} items`);
+  }
+  const entry = await entryUtils.upsertEntry({
+    activity: duckActivity(game, nom),
+    instanceId: game.instanceId,
+    userId,
+    username,
+    slotNumber: mine.length + 1,
+    questionId: ITEM_QUESTION,
+    text,
+  });
+  const wire = entryUtils.toClient(entry);
+  emitToGame(game.id, 'oas_map_entry', { mapId: nom.id, kind: 'item', entry: wire });
+  return entry;
+}
+
+async function nominateMapAxis({ game, nom, userId, username, label }) {
+  requireLiveMap(game, nom, 'gather');
+  requireMapMember(nom, userId);
+  const mine = await Entry.find({
+    activityId: nom.id, userId, questionId: AXIS_IDEA_QUESTION,
+  });
+  if (mine.length >= MAX_AXES_PER_PLAYER) {
+    throw new Error(`You can suggest up to ${MAX_AXES_PER_PLAYER} spectra`);
+  }
+  const entry = await entryUtils.upsertEntry({
+    activity: duckActivity(game, nom),
+    instanceId: game.instanceId,
+    userId,
+    username,
+    slotNumber: mine.length + 1,
+    questionId: AXIS_IDEA_QUESTION,
+    text: label,
+  });
+  const wire = entryUtils.toClient(entry);
+  emitToGame(game.id, 'oas_map_entry', { mapId: nom.id, kind: 'axis', entry: wire });
+  return entry;
+}
+
+async function voteMapAxis({ game, nom, entryId, userId }) {
+  requireLiveMap(game, nom, 'gather');
+  requireMapMember(nom, userId);
+  const entry = await entryUtils.voteEntry({
+    activity: duckActivity(game, nom),
+    entryId,
+    userId,
+  });
+  if (entry.questionId !== AXIS_IDEA_QUESTION) throw new Error('Entry not found');
+  const wire = entryUtils.toClient(entry);
+  emitToGame(game.id, 'oas_map_entry', { mapId: nom.id, kind: 'axis', entry: wire });
+  return entry;
+}
+
+// Gather expiry (timer, sweep, or nominator/host force). Resolves the
+// winning spectra and freezes the item roster; too little material extends
+// the clock instead of producing an unrankable map.
+async function closeGather(game, nom, { forced = false } = {}) {
+  if (!nom.mapState || nom.mapState.stage !== 'gather') return nom;
+  if (!forced && nom.mapState.stageDeadline &&
+      new Date(nom.mapState.stageDeadline).getTime() > Date.now()) {
+    return nom;
+  }
+
+  const entries = await listMapEntries(nom);
+  const items = entries.filter(e => e.questionId === ITEM_QUESTION && e.text && e.text.trim());
+  const axisIdeas = entries.filter(e => e.questionId === AXIS_IDEA_QUESTION && e.text && e.text.trim());
+
+  if (items.length < 2 || axisIdeas.length < nom.dimensions) {
+    // Not enough to rank: extend one minute, bounded by the round itself.
+    const roundEnd = game.phaseDeadline ? new Date(game.phaseDeadline).getTime() : Date.now();
+    const next = Math.min(Date.now() + 60 * 1000, roundEnd);
+    if (next > Date.now()) {
+      nom.mapState.stageDeadline = new Date(next);
+      await nom.save();
+      armMapTimer(game, nom);
+      emitToGame(game.id, 'oas_map_stage', mapStagePayload(nom, { reason: 'need_material' }));
+    }
+    return nom;
+  }
+
+  const rankedIdeas = [...axisIdeas].sort((a, b) =>
+    (b.voteCount || 0) - (a.voteCount || 0) || a.createdAt - b.createdAt);
+  nom.mapState.winningAxes = rankedIdeas.slice(0, nom.dimensions).map(e => ({
+    entryId: e.id, label: e.text,
+  }));
+  nom.mapState.items = items.map((e, i) => ({
+    entryId: e.id, index: i + 1, label: e.text.slice(0, 80), authorId: e.userId,
+  }));
+  nom.mapState.stage = 'rank';
+  nom.mapState.stageDeadline = null;
+  await nom.save();
+  clearTimer(`map:${nom.id}`);
+  emitToGame(game.id, 'oas_map_stage', mapStagePayload(nom));
+  return nom;
+}
+
+// order: array of item entryIds, index 0 = MOST <axis label>. Scores are
+// rank-normalized so "most" plots at 1.0 (the OtS convention).
+async function submitMapRanking({ game, nom, userId, username, axis, order }) {
+  requireLiveMap(game, nom, 'rank');
+  requireMapMember(nom, userId);
+  if (!RANK_QUESTION[axis]) throw new Error('Unknown axis');
+  if (axis === 'y' && nom.dimensions === 1) throw new Error('Unknown axis');
+
+  const itemIds = nom.mapState.items.map(m => m.entryId).sort();
+  const orderIds = [...order].sort();
+  if (itemIds.length !== orderIds.length ||
+      itemIds.some((id, i) => id !== orderIds[i])) {
+    throw new Error('Order must include every item exactly once');
+  }
+
+  const byEntryId = new Map(nom.mapState.items.map(m => [m.entryId, m]));
+  const n = order.length;
+  for (let r = 0; r < n; r++) {
+    const item = byEntryId.get(order[r]);
+    const score = n === 1 ? 0.5 : 1 - r / (n - 1);
+    await entryUtils.upsertEntry({
+      activity: duckActivity(game, nom),
+      instanceId: game.instanceId,
+      userId,
+      username,
+      slotNumber: item.index,
+      questionId: RANK_QUESTION[axis],
+      position: { x: score, y: 0.5 },
+      objectName: item.label.slice(0, 25),
+    });
+  }
+  return nom;
+}
+
+async function markMapRankingDone(game, nom, userId, axis) {
+  if (!nom.mapState.rankingDone.some(d => d.userId === userId && d.axis === axis)) {
+    nom.mapState.rankingDone.push({ userId, axis });
+  }
+  const axes = nom.dimensions === 2 ? ['x', 'y'] : ['x'];
+  const done = new Set(nom.mapState.rankingDone.map(d => `${d.userId}:${d.axis}`));
+  const stakerIds = [...new Set(nom.stakes.map(s => s.userId))];
+  const allDone = stakerIds.every(id => axes.every(a => done.has(`${id}:${a}`)));
+  if (allDone) {
+    nom.mapState.stage = 'done';
+  }
+  await nom.save();
+  emitToGame(game.id, 'oas_map_ranked', {
+    mapId: nom.id,
+    userId,
+    axis,
+    allDone,
+    rankingDone: nom.mapState.rankingDone.map(d => ({ userId: d.userId, axis: d.axis })),
+  });
+  if (allDone) emitToGame(game.id, 'oas_map_stage', mapStagePayload(nom));
+  return nom;
+}
+
+// Aggregate view: per item per axis, mean spectrum score over every rater
+// who submitted that axis. Partial rankings simply contribute nothing.
+async function computeMapResults(nom) {
+  const rankEntries = await Entry.find({
+    activityId: nom.id,
+    questionId: { $in: [RANK_QUESTION.x, RANK_QUESTION.y] },
+  });
+  return nom.mapState.items.map(item => {
+    const forItem = rankEntries.filter(e => e.slotNumber === item.index);
+    const axisMean = (qid) => {
+      const scores = forItem
+        .filter(e => e.questionId === qid && e.position)
+        .map(e => e.position.x);
+      if (!scores.length) return 0.5;
+      return scores.reduce((a, b) => a + b, 0) / scores.length;
+    };
+    return {
+      entryId: item.entryId,
+      label: item.label,
+      authorId: item.authorId,
+      x: axisMean(RANK_QUESTION.x),
+      y: nom.dimensions === 2 ? axisMean(RANK_QUESTION.y) : 0.5,
+    };
+  });
+}
+
+// Everything a player's map sheet needs, in one payload.
+async function mapDetail(game, nom, userId = null) {
+  const entries = await listMapEntries(nom);
+  const detail = {
+    nomination: toClientNomination(nom),
+    items: entries.filter(e => e.questionId === ITEM_QUESTION).map(entryUtils.toClient),
+    axisIdeas: entries.filter(e => e.questionId === AXIS_IDEA_QUESTION).map(entryUtils.toClient),
+    serverNow: new Date(),
+  };
+  if (nom.mapState && (nom.mapState.stage === 'done' || nom.mapState.stage === 'closed')) {
+    detail.results = await computeMapResults(nom);
+  }
+  if (userId && nom.mapState && nom.mapState.stage === 'rank') {
+    // The rater's current orderings, so a reload resumes where they left off.
+    detail.myRankings = {};
+    for (const axis of nom.dimensions === 2 ? ['x', 'y'] : ['x']) {
+      const mine = entries
+        .filter(e => e.questionId === RANK_QUESTION[axis] && e.userId === userId && e.position)
+        .sort((a, b) => b.position.x - a.position.x);
+      if (mine.length) {
+        const byIndex = new Map(nom.mapState.items.map(m => [m.index, m.entryId]));
+        detail.myRankings[axis] = mine.map(e => byIndex.get(e.slotNumber)).filter(Boolean);
+      }
+    }
+  }
+  return detail;
+}
+
+// A player has "completed" a map when they contributed an item and ranked
+// every axis. Computed server-side, never client-asserted.
+async function mapCompletion({ game, nom, userId }) {
+  const axes = nom.dimensions === 2 ? ['x', 'y'] : ['x'];
+  const done = new Set((nom.mapState ? nom.mapState.rankingDone : []).map(d => `${d.userId}:${d.axis}`));
+  const hasItem = await Entry.exists({
+    activityId: nom.id, userId, questionId: ITEM_QUESTION, text: { $ne: '' },
+  });
+  const rankedAxes = axes.filter(a => done.has(`${userId}:${a}`)).length;
+  return {
+    hasItem: !!hasItem,
+    rankedAxes,
+    axesRequired: axes.length,
+    complete: !!hasItem && rankedAxes === axes.length,
+  };
+}
+
+// Completion claim: verify against Entries, then return the caller's stake.
+// Idempotent via stake.returned.
+async function claimMapStake({ game, nom, userId }) {
+  if (!nom || nom.kind !== 'map') throw new Error('Map not found');
+  const stake = nom.stakes.find(s => s.userId === userId);
+  if (!stake) throw new Error('No stake on this map');
+  if (stake.returned) return { nomination: nom, alreadyReturned: true };
+
+  const completion = await mapCompletion({ game, nom, userId });
+  if (!completion.complete) {
+    const err = new Error('Map not complete');
+    err.completion = completion;
+    throw err;
+  }
+  stake.returned = true;
+  stake.returnedAt = new Date();
+  await nom.save();
+  await transact({
+    userId,
+    instanceId: game.instanceId,
+    type: RETURN_TYPE,
+    amount: stake.amount,
+    refType: 'oas_nomination',
+    refId: nom.id,
+  });
+  emitToGame(game.id, 'oas_stake_returned', { userId, nominationId: nom.id });
+  return { nomination: nom, completion };
+}
+
+// ---------------------------------------------------------------------------
+// Revise & proposals
+
+async function submitProposal({ game, userId, username, topic, themes }) {
+  if (game.phase !== 'revise' && game.phase !== 'complete') {
+    throw new Error('Revisions open after the last round');
+  }
+  const proposal = {
+    id: newId(),
+    proposedBy: userId,
+    proposedByName: username,
+    topic,
+    themes,
+    childGameId: null,
+    createdAt: new Date(),
+  };
+  game.proposals.push(proposal);
+  await game.save();
+  emitToGame(game.id, 'oas_proposal_added', { proposal: game.proposals[game.proposals.length - 1] });
+  return proposal;
+}
+
+// Joining a proposal lazily creates its lobby (host = proposer, so the
+// variation stays theirs to start), then joins the caller into it.
+async function joinProposal({ game, proposalId, userId, username }) {
+  const proposal = game.proposals.find(p => p.id === proposalId);
+  if (!proposal) throw new Error('Proposal not found');
+
+  let child = proposal.childGameId
+    ? await OasGame.findOne({ id: proposal.childGameId })
+    : null;
+
+  if (!child) {
+    const roomInstance = await Instance.findOne({ id: game.instanceId });
+    const proposer = game.participants.find(p => p.id === proposal.proposedBy);
+    child = await createGame({
+      parentInstanceId: roomInstance ? roomInstance.parentInstanceId : null,
+      userId: proposal.proposedBy,
+      username: proposer ? proposer.name : proposal.proposedByName,
+      topic: proposal.topic,
+      themes: [...proposal.themes],
+      config: {
+        roundSeconds: game.config.roundSeconds.toObject
+          ? game.config.roundSeconds.toObject()
+          : { ...game.config.roundSeconds },
+        startingTokens: game.config.startingTokens,
+        quorum: game.config.quorum,
+        votesPerUser: game.config.votesPerUser,
+        maxPlayers: game.config.maxPlayers,
+      },
+      parentGameId: game.id,
+    });
+    proposal.childGameId = child.id;
+    await game.save();
+    emitToGame(game.id, 'oas_proposal_added', {
+      proposal: game.proposals.find(p => p.id === proposalId),
+    });
+  }
+
+  if (userId !== child.hostId) {
+    await joinGame({ game: child, userId, username });
+  }
+  return child;
+}
+
+module.exports = {
+  setIO,
+  emitToGame,
+  toClient,
+  toClientNomination,
+  createGame,
+  joinGame,
+  balanceFor,
+  startGame,
+  expirePhase,
+  sweepGame,
+  listNominations,
+  nominateSubtopic,
+  nominateMap,
+  stakeOn,
+  unstake,
+  joinMap,
+  submitMapItem,
+  nominateMapAxis,
+  voteMapAxis,
+  closeGather,
+  submitMapRanking,
+  markMapRankingDone,
+  computeMapResults,
+  mapDetail,
+  mapCompletion,
+  claimMapStake,
+  submitProposal,
+  joinProposal,
+  roundNumber,
+  STAKE_TYPE,
+  RETURN_TYPE,
+};

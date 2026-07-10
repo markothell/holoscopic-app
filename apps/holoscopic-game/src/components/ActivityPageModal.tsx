@@ -262,8 +262,8 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
     return (
       <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center p-4">
         <div className="text-center">
-          <p className="text-[#C83B50] mb-4">{error || 'Activity not found'}</p>
-          <Link href="/" className="text-[#C83B50] hover:text-[#e04d63] transition-colors" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          <p className="text-[var(--accent)] mb-4">{error || 'Activity not found'}</p>
+          <Link href="/" className="text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors" style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
             Return to Home
           </Link>
         </div>
@@ -385,17 +385,17 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
           <div className="flex-1 min-h-0 flex flex-col px-4">
             {/* Tab bar */}
             <div className="flex-shrink-0 flex justify-center mb-2">
-              <div className="flex bg-[#111827] rounded-lg p-1 border border-white/10">
+              <div className="flex bg-[var(--bg-tertiary)] rounded-lg p-1 border border-[var(--border-default)]">
                 <button
                   onClick={() => setResolveTab('map')}
-                  className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'map' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
+                  className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'map' ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                   style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                 >
                   Map View
                 </button>
                 <button
                   onClick={() => setResolveTab('comments')}
-                  className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'comments' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
+                  className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'comments' ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                   style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                 >
                   Comments
@@ -556,17 +556,17 @@ export default function ActivityPageModal({ activityId, sequenceId }: ActivityPa
               <>
                 {/* Tab bar for sm-lg range */}
                 <div className="lg:hidden flex-shrink-0 flex justify-center mb-3">
-                  <div className="flex bg-[#111827] rounded-lg p-1 border border-white/10">
+                  <div className="flex bg-[var(--bg-tertiary)] rounded-lg p-1 border border-[var(--border-default)]">
                     <button
                       onClick={() => setResolveTab('map')}
-                      className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'map' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
+                      className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'map' ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                       style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                     >
                       Map View
                     </button>
                     <button
                       onClick={() => setResolveTab('comments')}
-                      className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'comments' ? 'bg-[#C83B50] text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
+                      className={`px-4 py-2 rounded-md transition-colors ${resolveTab === 'comments' ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                       style={{ fontFamily: 'var(--font-dm-mono), monospace', fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}
                     >
                       Comments

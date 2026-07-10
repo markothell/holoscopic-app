@@ -1,6 +1,13 @@
 {
   "name": "holoscopic",
+  "description": "Games that help groups see what they collectively think",
   "private": true,
+  "license": "MIT",
+  "author": "Mark Othell",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/markothell/holoscopic-app.git"
+  },
   "packageManager": "npm@11.5.2",
   "workspaces": [
     "apps/*",

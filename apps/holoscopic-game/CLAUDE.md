@@ -101,6 +101,7 @@ Admin routes pass `userId` via `apiFetch({ userId })` which sets the `x-user-id`
 - Activity payloads carry `entries[]` (see `packages/activities/CLAUDE.md`); live play updates arrive as `entry_upserted`/`entry_voted`/`entries_cleared` socket events
 - Player profiles are game-scoped: `/profile/[userId]` = cross-game history; `/profile/[userId]?game={slug}` = redacted personal map (`components/graph/PlayerMap.tsx`)
 - Tailwind v4 — CSS vars in globals.css, `@source` directive scans `packages/activities/src`
-- Warm dark theme: bg `#1A1714`, cards `#252120`, accent `#C83B50`
-- Use CSS vars for colors (`var(--accent)` etc.), not Tailwind color utilities
+- Warm light theme: bg `var(--bg-primary)` #F7F4EF, accent `var(--accent)` #C83B50 (+ `--accent-hover` #B03248)
+- Use CSS vars for colors (`var(--accent)` etc.), not Tailwind color utilities or raw hex
+- Known debt: many `*.module.css` files and the CreatePanel components still repeat palette values as literal hex instead of the globals.css vars — migrate opportunistically when touching those files, don't boil the ocean
 - `NEXT_PUBLIC_SERVER_URL` must be set in production `.env` for Socket.IO to connect (defaults to `http://localhost:3001`)
