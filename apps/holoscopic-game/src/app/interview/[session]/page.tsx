@@ -22,80 +22,74 @@ const CARD_BG = '#D8D3C5'; // warm taupe, a shade under the cream page
 const SUB_SIZE = 'clamp(0.62rem, 3.55vw, 1.45rem)';
 const WORDMARK_SIZE = `calc(${SUB_SIZE} * 6.3)`;
 
-/* ── Sample map preview ──────────────────────────────────────────────────
-   A generated dataset rendered as a miniature game map, so first-time
-   visitors see what play produces before they enter. Static and
-   self-contained — no backend involved. */
+/* ── The topic web ───────────────────────────────────────────────────────
+   The game's main view in miniature: the directed graph of nominated
+   topics around the hub, with one conversation's path — topic to map to
+   map — lit in the accent. Purely decorative, drawn in the card's own
+   palette. */
 
-const SAMPLE_MAP = {
-  question: 'What makes hard conversations possible?',
-  xAxis: { label: 'Presence', min: 'Rare', max: 'Common' },
-  yAxis: { label: 'Cost', min: 'Light', max: 'Heavy' },
-  entries: [
-    { x: 0.55, y: 0.62, objectName: 'Naming the stakes', comment: 'Saying why the conversation matters before diving in.', color: '#C83B50' },
-    { x: 0.72, y: 0.25, objectName: 'A shared meal', comment: 'Food first. Everything lands softer.', color: '#0E8F66' },
-    { x: 0.38, y: 0.70, objectName: 'Someone goes first', comment: 'One person risking honesty gives everyone else permission.', color: '#3D6FA3' },
-    { x: 0.60, y: 0.35, objectName: 'Time limits', comment: 'Knowing it ends makes it enterable.', color: '#9A7B2F' },
-    { x: 0.25, y: 0.80, objectName: 'A neutral third', comment: 'Rare but transformative — someone with no stake holding the frame.', color: '#C83B50' },
-    { x: 0.68, y: 0.20, objectName: 'Laughing early', comment: 'One good laugh in the first five minutes changes the whole thing.', color: '#3D6FA3' },
-    { x: 0.30, y: 0.45, objectName: 'Writing before talking', comment: 'Two minutes of silence with paper beats an hour of reaction.', color: '#0E8F66' },
-    { x: 0.42, y: 0.55, objectName: 'Follow-up ritual', comment: 'Checking back a week later is where the change actually sticks.', color: '#9A7B2F' },
-  ],
-};
+function TopicWebGraphic() {
+  const ACCENT = '#C83B50';
+  const MUTED = 'rgba(15,13,11,0.28)';
 
-function SampleMapPreview() {
-  const axisLabel: React.CSSProperties = {
-    position: 'absolute', fontFamily: mono, fontSize: '0.55rem',
-    letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)',
-  };
+  // A small topic card: two text bars inside a rounded rect.
+  const node = (x: number, y: number, hot = false) => (
+    <g key={`${x}-${y}`}>
+      <rect
+        x={x - 44} y={y - 17} width={88} height={34} rx={8}
+        fill={hot ? '#FCFAF6' : 'rgba(252,250,246,0.55)'}
+        stroke={hot ? ACCENT : MUTED}
+        strokeWidth={hot ? 1.6 : 1}
+      />
+      <rect x={x - 32} y={y - 7} width={48} height={4} rx={2} fill={hot ? ACCENT : MUTED} opacity={hot ? 0.85 : 0.7} />
+      <rect x={x - 32} y={y + 2} width={30} height={4} rx={2} fill={MUTED} opacity={0.6} />
+    </g>
+  );
+
   return (
-    <div>
-      <div
-        style={{
-          position: 'relative', width: '100%', aspectRatio: '1.15',
-          background: 'var(--bg-primary)', border: '1px solid var(--border-default)',
-          borderRadius: 10,
-        }}
-      >
-        <div style={{ position: 'absolute', left: '50%', top: 10, bottom: 10, width: 1, background: 'var(--border-default)' }} />
-        <div style={{ position: 'absolute', top: '50%', left: 10, right: 10, height: 1, background: 'var(--border-default)' }} />
-        <span style={{ ...axisLabel, right: 8, top: '52%' }}>{SAMPLE_MAP.xAxis.max}</span>
-        <span style={{ ...axisLabel, left: 8, top: '52%' }}>{SAMPLE_MAP.xAxis.min}</span>
-        <span style={{ ...axisLabel, left: '50%', top: 6, transform: 'translateX(-50%)' }}>{SAMPLE_MAP.yAxis.max}</span>
-        <span style={{ ...axisLabel, left: '50%', bottom: 6, transform: 'translateX(-50%)' }}>{SAMPLE_MAP.yAxis.min}</span>
-        {SAMPLE_MAP.entries.map((e, i) => (
-          <span
-            key={i}
-            title={`${e.objectName} — ${e.comment}`}
-            style={{
-              position: 'absolute',
-              left: `${6 + e.x * 88}%`, top: `${6 + (1 - e.y) * 88}%`,
-              width: 11, height: 11, borderRadius: '50%',
-              background: e.color, opacity: 0.8,
-              transform: 'translate(-50%, -50%)',
-              border: '2px solid var(--bg-secondary)',
-            }}
-          />
-        ))}
-      </div>
-      {SAMPLE_MAP.entries.slice(0, 2).map((e, i) => (
-        <div
-          key={i}
-          style={{
-            marginTop: '0.5rem', padding: '0.5rem 0.7rem',
-            background: 'var(--bg-elevated)', borderRadius: 8,
-            borderLeft: `3px solid ${e.color}`,
-            fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5,
-          }}
-        >
-          <span style={{ fontFamily: mono, color: e.color, fontSize: 'var(--text-2xs)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            {e.objectName}
-          </span>
-          <br />
-          {e.comment}
-        </div>
-      ))}
-    </div>
+    <svg
+      viewBox="0 0 720 250"
+      style={{ width: '100%', height: 'auto', display: 'block' }}
+      aria-hidden
+    >
+      <defs>
+        <marker id="ivArrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L8,4 L0,8 z" fill={ACCENT} />
+        </marker>
+      </defs>
+
+      {/* quiet edges from the hub to the rest of the web */}
+      <path d="M100,125 C150,125 160,52 208,46" stroke={MUTED} strokeWidth="1" fill="none" />
+      <path d="M100,125 C150,125 158,198 206,206" stroke={MUTED} strokeWidth="1" fill="none" />
+      <path d="M100,125 C170,125 240,190 336,196" stroke={MUTED} strokeWidth="1" fill="none" />
+      <path d="M100,125 C160,125 180,86 250,78" stroke={MUTED} strokeWidth="1" fill="none" />
+      {/* the lit path: nomination → confirmed topic → map → next map */}
+      <path d="M100,125 C150,125 170,152 216,155" stroke={ACCENT} strokeWidth="1.6" fill="none" markerEnd="url(#ivArrow)" />
+      <path d="M310,150 C360,144 372,110 416,104" stroke={ACCENT} strokeWidth="1.6" fill="none" markerEnd="url(#ivArrow)" />
+      <path d="M510,104 C560,106 574,140 616,146" stroke={ACCENT} strokeWidth="1.6" fill="none" markerEnd="url(#ivArrow)" />
+
+      {/* the hub */}
+      <circle cx="70" cy="125" r="31" fill="rgba(252,250,246,0.6)" stroke={ACCENT} strokeWidth="1.6" />
+      <text x="70" y="129" textAnchor="middle" fill={ACCENT} fontSize="9" fontFamily="var(--font-dm-mono), monospace" letterSpacing="1.6">TOPICS</text>
+
+      {/* the quiet web */}
+      {node(255, 46)}
+      {node(298, 78)}
+      {node(253, 206)}
+      {node(384, 196)}
+      {/* dot satellites — depth without noise */}
+      <circle cx="322" cy="34" r="3.5" fill={MUTED} />
+      <circle cx="342" cy="56" r="3.5" fill={MUTED} />
+      <circle cx="446" cy="206" r="3.5" fill={MUTED} />
+
+      {/* the lit conversation: topic → map → map */}
+      {node(262, 155, true)}
+      {node(462, 104, true)}
+      {node(662, 146, true)}
+      <text x="262" y="130" textAnchor="middle" fill={ACCENT} fontSize="8.5" fontFamily="var(--font-dm-mono), monospace" letterSpacing="1.4">TOPIC</text>
+      <text x="462" y="80" textAnchor="middle" fill={ACCENT} fontSize="8.5" fontFamily="var(--font-dm-mono), monospace" letterSpacing="1.4">MAP 1</text>
+      <text x="662" y="122" textAnchor="middle" fill={ACCENT} fontSize="8.5" fontFamily="var(--font-dm-mono), monospace" letterSpacing="1.4">MAP 2</text>
+    </svg>
   );
 }
 
@@ -214,33 +208,36 @@ export default function InterViewLandingPage() {
               <NavLink href="/start">Start your own</NavLink>
             </nav>
 
-            {/* What the game is + what it produces */}
+            {/* What the game is, with the topic web beneath */}
             <div
               style={{
-                marginTop: 'clamp(2rem, 6vw, 3rem)', width: '100%',
+                marginTop: 'clamp(2rem, 6vw, 3rem)', width: '100%', maxWidth: 760,
+                marginLeft: 'auto', marginRight: 'auto',
                 borderTop: '1px solid rgba(15,13,11,0.12)', paddingTop: 'clamp(1.5rem, 4vw, 2rem)',
-                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                gap: 'clamp(1.25rem, 4vw, 2.5rem)', alignItems: 'start',
                 textAlign: 'left',
               }}
             >
-              <div>
-                <p style={{ ...eyebrowCss, margin: 0 }}>The game</p>
-                <p style={{ margin: '0.75rem 0 0', fontSize: 'var(--text-base)', lineHeight: 1.65, color: 'var(--text-secondary)', maxWidth: '46ch' }}>
-                  interView is a slow game of collective sensemaking. Players
-                  nominate the topics that matter to them, stake tokens on the
-                  conversations they want to see, and meet on shared maps —
-                  each perspective a point, each point a comment, each comment
-                  votable. The best questions get replayed, refined, and
-                  passed on.
-                </p>
-                <p style={{ margin: '0.75rem 0 0', fontSize: 'var(--text-sm)', lineHeight: 1.6, color: 'var(--text-muted)', maxWidth: '46ch' }}>
-                  To the right: a finished map from the sample question
-                  &ldquo;{SAMPLE_MAP.question}&rdquo; — hover a dot for its
-                  story.
-                </p>
+              <p style={{ ...eyebrowCss, margin: 0 }}>The game</p>
+              <p style={{ margin: '0.75rem 0 0', fontSize: 'var(--text-base)', lineHeight: 1.7, color: 'var(--text-secondary)', maxWidth: '62ch' }}>
+                interView is a slow game of collective sensemaking. Players
+                nominate the topics that matter to them, stake tokens on the
+                conversations they want to see, and meet on shared maps — each
+                perspective a point, each point a comment, each comment
+                votable. The best questions get replayed, refined, and passed
+                on.
+              </p>
+              <div style={{ marginTop: 'clamp(1.5rem, 4vw, 2.25rem)' }}>
+                <TopicWebGraphic />
               </div>
-              <SampleMapPreview />
+              <p
+                style={{
+                  margin: '0.6rem 0 0', textAlign: 'right', fontFamily: mono, fontWeight: 300,
+                  fontSize: 'var(--text-2xs)', letterSpacing: '0.14em', textTransform: 'uppercase',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                the topic web · one conversation&apos;s path
+              </p>
             </div>
           </div>
 
