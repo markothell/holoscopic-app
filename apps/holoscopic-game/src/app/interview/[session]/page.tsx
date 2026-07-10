@@ -11,24 +11,17 @@ import { mono, eyebrowCss } from '@/lib/ui';
 
 /**
  * interView landing page — where people arrive from the Holoscopic homepage.
- * A single striking card: the outlined wordmark, one way in (ENTER → Topics),
- * and three quiet nav links below it.
+ * An open editorial page, no container card: wordmark, an invitation, one
+ * strong way in, and the game's signature graphic — the theme web with a
+ * single conversation's path lit.
  */
 
-const CARD_BG = '#D8D3C5'; // warm taupe, a shade under the cream page
+/* ── The theme web ───────────────────────────────────────────────────────
+   The game's main view in miniature: nominated topics around the theme,
+   one conversation's path — topic to map to map — lit in the accent.
+   Purely decorative, drawn in the page's own palette. */
 
-// The subtitle sets the width; the wordmark is sized as a fixed multiple of it
-// so "INTERVIEW" always spans the same width as the tagline at every breakpoint.
-const SUB_SIZE = 'clamp(0.62rem, 3.55vw, 1.45rem)';
-const WORDMARK_SIZE = `calc(${SUB_SIZE} * 6.3)`;
-
-/* ── The topic web ───────────────────────────────────────────────────────
-   The game's main view in miniature: the directed graph of nominated
-   topics around the hub, with one conversation's path — topic to map to
-   map — lit in the accent. Purely decorative, drawn in the card's own
-   palette. */
-
-function TopicWebGraphic() {
+function ThemeWebGraphic() {
   const ACCENT = '#C83B50';
   const MUTED = 'rgba(15,13,11,0.28)';
 
@@ -37,7 +30,7 @@ function TopicWebGraphic() {
     <g key={`${x}-${y}`}>
       <rect
         x={x - 44} y={y - 17} width={88} height={34} rx={8}
-        fill={hot ? '#FCFAF6' : 'rgba(252,250,246,0.55)'}
+        fill={hot ? '#FCFAF6' : 'rgba(252,250,246,0.7)'}
         stroke={hot ? ACCENT : MUTED}
         strokeWidth={hot ? 1.6 : 1}
       />
@@ -58,7 +51,7 @@ function TopicWebGraphic() {
         </marker>
       </defs>
 
-      {/* quiet edges from the hub to the rest of the web */}
+      {/* quiet edges from the theme to the rest of the web */}
       <path d="M100,125 C150,125 160,52 208,46" stroke={MUTED} strokeWidth="1" fill="none" />
       <path d="M100,125 C150,125 158,198 206,206" stroke={MUTED} strokeWidth="1" fill="none" />
       <path d="M100,125 C170,125 240,190 336,196" stroke={MUTED} strokeWidth="1" fill="none" />
@@ -68,9 +61,9 @@ function TopicWebGraphic() {
       <path d="M310,150 C360,144 372,110 416,104" stroke={ACCENT} strokeWidth="1.6" fill="none" markerEnd="url(#ivArrow)" />
       <path d="M510,104 C560,106 574,140 616,146" stroke={ACCENT} strokeWidth="1.6" fill="none" markerEnd="url(#ivArrow)" />
 
-      {/* the hub */}
-      <circle cx="70" cy="125" r="31" fill="rgba(252,250,246,0.6)" stroke={ACCENT} strokeWidth="1.6" />
-      <text x="70" y="129" textAnchor="middle" fill={ACCENT} fontSize="9" fontFamily="var(--font-dm-mono), monospace" letterSpacing="1.6">TOPICS</text>
+      {/* the theme at the center of the web */}
+      <circle cx="70" cy="125" r="31" fill="rgba(252,250,246,0.75)" stroke={ACCENT} strokeWidth="1.6" />
+      <text x="70" y="129" textAnchor="middle" fill={ACCENT} fontSize="9" fontFamily="var(--font-dm-mono), monospace" letterSpacing="1.6">THEME</text>
 
       {/* the quiet web */}
       {node(255, 46)}
@@ -93,7 +86,7 @@ function TopicWebGraphic() {
   );
 }
 
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+function QuietLink({ href, children }: { href: string; children: React.ReactNode }) {
   const [hovered, setHovered] = useState(false);
   return (
     <Link
@@ -101,7 +94,6 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        // Matches the dashboard nav label: DM Mono, light, wide tracking.
         fontFamily: mono, fontWeight: 300, fontSize: 'var(--text-sm)',
         letterSpacing: '0.16em', textTransform: 'uppercase',
         textDecoration: 'none', whiteSpace: 'nowrap',
@@ -127,131 +119,98 @@ export default function InterViewLandingPage() {
         <UserMenu />
       </header>
 
-      {/* Body — the striking card */}
-      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem clamp(0.75rem, 4vw, 4rem) 3rem' }}>
-        <section
+      <main
+        style={{
+          flex: 1, width: '100%', maxWidth: 1000, margin: '0 auto',
+          padding: 'clamp(2rem, 6vw, 4.5rem) clamp(1.25rem, 4vw, 2.5rem) 3rem',
+          display: 'flex', flexDirection: 'column',
+        }}
+      >
+        {/* Who this is */}
+        <p style={{ ...eyebrowCss, margin: 0 }}>
+          A holoscopic game · Edition {editionLabel(instance)}
+          {instance?.name && instance.name.toLowerCase() !== 'interview' ? ` · ${instance.name}` : ''}
+        </p>
+
+        <h1
+          aria-label={GAME_NAME}
           style={{
-            position: 'relative', width: '100%', maxWidth: 1100,
-            background: CARD_BG, borderRadius: 4,
-            padding: 'clamp(2rem, 5vw, 3rem) clamp(1.25rem, 4vw, 3rem) clamp(3.5rem, 6vw, 4rem)',
+            margin: '1rem 0 0', display: 'flex', alignItems: 'baseline', flexWrap: 'wrap',
+            fontFamily: 'var(--font-barlow), system-ui, sans-serif', fontWeight: 800,
+            textTransform: 'uppercase', letterSpacing: '-0.01em',
+            fontSize: 'clamp(3.4rem, 11vw, 7rem)', lineHeight: 0.92,
           }}
         >
-          {/* Hero — wordmark, way in, links */}
-          <div
-            style={{
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <h1
-              aria-label="interView"
-              style={{
-                margin: 0, display: 'flex', justifyContent: 'center', alignItems: 'baseline',
-                fontFamily: 'var(--font-barlow), system-ui, sans-serif', fontWeight: 800,
-                textTransform: 'uppercase', letterSpacing: '-0.01em',
-                fontSize: WORDMARK_SIZE, lineHeight: 0.95,
-              }}
-            >
-              <span
-                style={{
-                  color: 'transparent',
-                  WebkitTextStroke: '3px var(--text-primary)',
-                  paintOrder: 'stroke fill',
-                }}
-              >
-                Inter
-              </span>
-              <span style={{ color: 'var(--accent)' }}>View</span>
-            </h1>
-
-            <p
-              style={{
-                margin: '0.1rem 0 0', fontFamily: mono,
-                color: 'var(--accent)', fontWeight: 500,
-                fontSize: SUB_SIZE, letterSpacing: '0.005em',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              collaborative.conversation.design.game
-            </p>
-
-            {/* ENTER */}
-            <Link
-              href={gamePath(slug, 'topics')}
-              onMouseEnter={() => setEnterHover(true)}
-              onMouseLeave={() => setEnterHover(false)}
-              style={{
-                marginTop: 'clamp(2.5rem, 7vw, 4rem)',
-                fontFamily: 'var(--font-barlow), system-ui, sans-serif', fontWeight: 400,
-                textTransform: 'uppercase', letterSpacing: '0.18em',
-                fontSize: 'clamp(1.5rem, 5vw, 2rem)', textDecoration: 'none',
-                color: enterHover ? 'var(--accent)' : 'var(--text-primary)',
-                borderBottom: `2px solid ${enterHover ? 'var(--accent)' : 'var(--text-primary)'}`,
-                paddingBottom: '0.15em', transition: 'color 0.15s ease, border-color 0.15s ease',
-              }}
-            >
-              Enter
-            </Link>
-
-            {/* Quiet nav, below the way in */}
-            <nav
-              aria-label={`${GAME_NAME} links`}
-              style={{
-                marginTop: 'clamp(2.5rem, 7vw, 3.5rem)', width: '100%',
-                borderTop: '1px solid rgba(15,13,11,0.12)', paddingTop: 'clamp(1.25rem, 4vw, 1.75rem)',
-                display: 'flex', justifyContent: 'center', alignItems: 'center',
-                gap: 'clamp(1.1rem, 5vw, 3rem)', flexWrap: 'wrap', textAlign: 'center',
-              }}
-            >
-              <NavLink href={gamePath(slug, 'rules')}>The Rules</NavLink>
-              <NavLink href={`${gamePath(slug, 'rules')}#economy`}>Economic Model</NavLink>
-              <NavLink href="/start">Start your own</NavLink>
-            </nav>
-
-            {/* What the game is, with the topic web beneath */}
-            <div
-              style={{
-                marginTop: 'clamp(2rem, 6vw, 3rem)', width: '100%', maxWidth: 760,
-                marginLeft: 'auto', marginRight: 'auto',
-                borderTop: '1px solid rgba(15,13,11,0.12)', paddingTop: 'clamp(1.5rem, 4vw, 2rem)',
-                textAlign: 'left',
-              }}
-            >
-              <p style={{ ...eyebrowCss, margin: 0 }}>The game</p>
-              <p style={{ margin: '0.75rem 0 0', fontSize: 'var(--text-base)', lineHeight: 1.7, color: 'var(--text-secondary)', maxWidth: '62ch' }}>
-                interView is a slow game of collective sensemaking. Players
-                nominate the topics that matter to them, stake tokens on the
-                conversations they want to see, and meet on shared maps — each
-                perspective a point, each point a comment, each comment
-                votable. The best questions get replayed, refined, and passed
-                on.
-              </p>
-              <div style={{ marginTop: 'clamp(1.5rem, 4vw, 2.25rem)' }}>
-                <TopicWebGraphic />
-              </div>
-              <p
-                style={{
-                  margin: '0.6rem 0 0', textAlign: 'right', fontFamily: mono, fontWeight: 300,
-                  fontSize: 'var(--text-2xs)', letterSpacing: '0.14em', textTransform: 'uppercase',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                the topic web · one conversation&apos;s path
-              </p>
-            </div>
-          </div>
-
-          {/* Edition tag, bottom-right */}
-          <span
-            style={{
-              position: 'absolute', right: 'clamp(1.25rem, 4vw, 2.5rem)', bottom: 'clamp(1rem, 3vw, 1.5rem)',
-              fontFamily: mono, fontWeight: 300, fontSize: 'var(--text-2xs)',
-              letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-muted)',
-            }}
-          >
-            Edition {editionLabel(instance)}{instance?.name && instance.name.toLowerCase() !== 'interview' ? ` · ${instance.name}` : ''}
+          <span style={{ color: 'transparent', WebkitTextStroke: '3px var(--text-primary)', paintOrder: 'stroke fill' }}>
+            Inter
           </span>
-        </section>
+          <span style={{ color: 'var(--accent)' }}>View</span>
+        </h1>
+
+        <p
+          style={{
+            margin: '0.6rem 0 0', fontFamily: mono,
+            color: 'var(--accent)', fontWeight: 500,
+            fontSize: 'clamp(0.68rem, 2vw, 1.05rem)', letterSpacing: '0.02em',
+          }}
+        >
+          collaborative.conversation.design.game
+        </p>
+
+        {/* The invitation */}
+        <p
+          style={{
+            margin: 'clamp(1.75rem, 4vw, 2.5rem) 0 0',
+            fontSize: 'clamp(1rem, 2.2vw, 1.2rem)', lineHeight: 1.7,
+            color: 'var(--text-secondary)', maxWidth: '56ch',
+          }}
+        >
+          interView is a slow game of collective sensemaking. Players nominate
+          the topics that matter to them, stake tokens on the conversations
+          they want to see, and meet on shared maps — each perspective a point,
+          each point a comment, each comment votable. The best questions get
+          replayed, refined, and passed on.
+        </p>
+
+        {/* One strong way in, one quiet one */}
+        <div style={{ marginTop: 'clamp(1.75rem, 4vw, 2.5rem)', display: 'flex', alignItems: 'center', gap: '1.75rem', flexWrap: 'wrap' }}>
+          <Link
+            href={gamePath(slug, 'topics')}
+            onMouseEnter={() => setEnterHover(true)}
+            onMouseLeave={() => setEnterHover(false)}
+            style={{
+              fontFamily: 'var(--font-barlow), system-ui, sans-serif', fontWeight: 600,
+              textTransform: 'uppercase', letterSpacing: '0.14em', fontSize: '1.05rem',
+              textDecoration: 'none', color: '#fff',
+              background: enterHover ? 'var(--accent-hover)' : 'var(--accent)',
+              borderRadius: 999, padding: '0.9rem 2.4rem',
+              transition: 'background 0.15s ease',
+            }}
+          >
+            Enter the game
+          </Link>
+          <QuietLink href={gamePath(slug, 'rules')}>How to play →</QuietLink>
+        </div>
+
+        {/* The signature: the theme web, one conversation lit */}
+        <div style={{ marginTop: 'clamp(2.5rem, 6vw, 4rem)' }}>
+          <ThemeWebGraphic />
+        </div>
+
+        {/* Quiet footer links */}
+        <nav
+          aria-label={`${GAME_NAME} links`}
+          style={{
+            marginTop: 'auto', paddingTop: 'clamp(2rem, 5vw, 3rem)',
+            borderTop: '1px solid rgba(15,13,11,0.12)',
+            display: 'flex', alignItems: 'center', gap: 'clamp(1.1rem, 4vw, 2.5rem)',
+            flexWrap: 'wrap',
+          }}
+        >
+          <QuietLink href={gamePath(slug, 'rules')}>The Rules</QuietLink>
+          <QuietLink href={`${gamePath(slug, 'rules')}#economy`}>Economic Model</QuietLink>
+          <QuietLink href="/start">Start your own</QuietLink>
+        </nav>
       </main>
     </div>
   );
