@@ -109,18 +109,18 @@
   font-weight: 300;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--ink) !important;
-  text-decoration: none !important;
+  color: var(--ink);
+  text-decoration: none;
   border-bottom: 1px solid var(--rule);
   padding-bottom: 0.3rem;
-  transition: color 0.3s, border-color 0.3s;
+  transition: color 0.3s, border-color 0.3s, background 0.3s;
   width: fit-content;
 }
 
 .heroCta:hover {
-  color: var(--accent) !important;
+  color: var(--accent);
   border-color: var(--accent);
-  text-decoration: none !important;
+  text-decoration: none;
 }
 
 .heroCta::after {
@@ -130,6 +130,19 @@
 
 .heroCta:hover::after {
   transform: translateY(3px);
+}
+
+.heroCtaPrimary {
+  background: var(--accent);
+  color: #FCFAF6;
+  border: none;
+  border-radius: 999px;
+  padding: 0.85rem 1.5rem 0.8rem;
+}
+
+.heroCtaPrimary:hover {
+  background: #B03248;
+  color: #FCFAF6;
 }
 
 /* ---- DIVIDER ---- */
@@ -150,11 +163,12 @@
   transition: opacity 0.9s ease, transform 0.9s ease;
 }
 
+/* Same mono-label spec as .heroEyebrow — keep the two in sync */
 .sectionLabel {
   font-family: var(--font-dm-mono), monospace;
-  font-size: 0.62rem;
+  font-size: 0.65rem;
   font-weight: 300;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
   color: var(--ink-light);
   margin-bottom: 2rem;
@@ -369,6 +383,16 @@
   color: var(--accent);
 }
 
+.gameCardMeta {
+  position: relative;
+  font-family: var(--font-dm-mono), monospace;
+  font-weight: 300;
+  font-size: clamp(0.55rem, 2vw, 0.75rem);
+  letter-spacing: 0.08em;
+  color: var(--ink-light);
+  margin-top: 0.15rem;
+}
+
 /* On a Spectrum — its own paper + duotone wordmark */
 .gameCardOas {
   background: #faf6ee;
@@ -423,7 +447,7 @@
 
 .footerText {
   font-family: var(--font-dm-mono), monospace;
-  font-size: 0.62rem;
+  font-size: 0.65rem;
   font-weight: 300;
   letter-spacing: 0.18em;
   text-transform: uppercase;

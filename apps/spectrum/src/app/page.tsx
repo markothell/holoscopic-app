@@ -184,6 +184,33 @@ export default function Home() {
           {error && <p className="mt-3 text-sm text-ax">{error}</p>}
         </section>
       )}
+
+      <footer className="mt-12 border-t border-line pt-4">
+        <p className="text-xs text-ink-faint">
+          A{' '}
+          <a href="https://holoscopic.io" className="underline" target="_blank" rel="noopener noreferrer">
+            Holoscopic
+          </a>{' '}
+          game &middot;{' '}
+          <a
+            href="https://github.com/markothell/holoscopic-app"
+            className="underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            open source
+          </a>{' '}
+          &middot;{' '}
+          <a
+            href="https://markothell.substack.com"
+            className="underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Seeing Wholes
+          </a>
+        </p>
+      </footer>
     </main>
   );
 }

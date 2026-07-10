@@ -25,9 +25,10 @@ Holoscopic is a collective-sensemaking platform where groups map their perspecti
 ```
 holoscopic/
 ├── apps/
-│   ├── holoscopic-game/   Next.js game frontend (port 3000)  → see apps/holoscopic-game/CLAUDE.md
-│   ├── platform/          Next.js admin UI for instance mgmt (port 3002)  → see apps/platform/CLAUDE.md
-│   └── backend/           Express + Socket.IO API server (port 3001)  → see apps/backend/CLAUDE.md
+│   ├── spectrum/          On a Spectrum — Next.js frontend (port 4000)  → see apps/spectrum/CLAUDE.md
+│   ├── holoscopic-game/   Next.js game frontend (port 4003)  → see apps/holoscopic-game/CLAUDE.md
+│   ├── platform/          Next.js admin UI for instance mgmt (port 4002)  → see apps/platform/CLAUDE.md
+│   └── backend/           Express + Socket.IO API server (port 4001)  → see apps/backend/CLAUDE.md
 ├── packages/
 │   └── activities/        Shared activity engine, types, and UI components  → see packages/activities/CLAUDE.md
 ├── package.json           npm workspaces root
@@ -38,9 +39,10 @@ holoscopic/
 ## Running Locally
 
 ```bash
-npm run dev:backend     # port 3001
-npm run dev:game        # port 3000
-npm run dev:platform    # port 3002
+npm run dev:backend     # port 4001
+npm run dev:spectrum    # port 4000
+npm run dev:game        # port 4003
+npm run dev:platform    # port 4002
 ```
 
 ## Multi-Tenancy
