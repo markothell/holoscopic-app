@@ -23,14 +23,17 @@ async function uniqueUrlName(base, Model) {
 }
 
 // POST /api/import/sequence
-// Body: { sequence: { title, urlName?, description }, activities: [...] }
+// Body: { sequence: { title, urlName?, description }, activities: [...],
+//         publish?: boolean }
+// publish: true imports straight to public — activities leave draft mode
+// and the sequence arrives active (for demo/sample content).
 router.post('/sequence', async (req, res) => {
   const userId = req.headers['x-user-id'];
   if (!userId) {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
-  const { sequence: seqData, activities: activitiesData } = req.body;
+  const { sequence: seqData, activities: activitiesData, publish = false } = req.body;
 
   if (!seqData?.title || !Array.isArray(activitiesData)) {
     return res.status(400).json({ error: 'sequence.title and activities array are required' });
@@ -85,6 +88,7 @@ router.post('/sequence', async (req, res) => {
         author: { userId },
         status: 'active',
         participants: [],
+        ...(publish && { isDraft: false, isPublic: true }),
       });
 
       const saved = await activity.save();
@@ -156,7 +160,7 @@ router.post('/sequence', async (req, res) => {
       urlName: seqUrlName,
       description: seqData.description ? seqData.description.trim() : '',
       createdBy: userId,
-      status: 'draft',
+      status: publish ? 'active' : 'draft',
       activities: seqActivities,
       members: [],
       invitedEmails: [],

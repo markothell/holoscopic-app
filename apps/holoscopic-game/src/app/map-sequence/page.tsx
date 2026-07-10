@@ -109,9 +109,14 @@ export default function MapSequencePage() {
         </div>
 
         <p className={styles.note}>
-          Published sequences live at <code>/sequence/&lt;name&gt;</code> — send
-          that link and players need nothing else. Signing in is all it takes to
-          start building.
+          See it in use:{' '}
+          <Link href="/sequence/relationship-blueprint" className={styles.noteLink}>
+            the Relationship Blueprint
+          </Link>{' '}
+          — a real sequence with example data, open to explore. Published
+          sequences live at <code>/sequence/&lt;name&gt;</code>; send that link
+          and players need nothing else. Signing in is all it takes to start
+          building.
         </p>
 
         <Link href="/" className={styles.back}>← all games</Link>
