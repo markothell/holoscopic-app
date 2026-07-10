@@ -78,6 +78,101 @@ function ExpandItem({
   );
 }
 
+/* ── Game-card motifs — one quiet gradient mark per game ────────────────── */
+
+// On a Spectrum: rounded bars rising and falling like a distribution,
+// crimson → cobalt → emerald across its three theme accents.
+function SpectrumBarsArt() {
+  const heights = [36, 64, 104, 148, 190, 148, 92, 72, 40];
+  const w = 26, gap = 14, baseline = 200;
+  return (
+    <svg
+      className={styles.gameCardArt}
+      viewBox="0 0 360 210"
+      aria-hidden
+      preserveAspectRatio="xMaxYMid meet"
+    >
+      <defs>
+        <linearGradient id="oasBars" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#E0344E" />
+          <stop offset="55%" stopColor="#2B49D8" />
+          <stop offset="100%" stopColor="#0E8F66" />
+        </linearGradient>
+      </defs>
+      {heights.map((h, i) => (
+        <rect
+          key={i}
+          x={i * (w + gap)}
+          y={baseline - h}
+          width={w}
+          height={h}
+          rx={w / 2}
+          fill="url(#oasBars)"
+          opacity={0.24 + (h / 190) * 0.3}
+        />
+      ))}
+    </svg>
+  );
+}
+
+// interView: the 2×2 map with a scatter of perspectives.
+function QuadrantArt() {
+  const dots: [number, number, number][] = [
+    [52, 44, 5], [96, 78, 4], [70, 122, 6], [128, 52, 4],
+    [156, 96, 5], [118, 148, 4], [178, 138, 7], [44, 168, 4],
+    [148, 178, 4], [190, 62, 4],
+  ];
+  return (
+    <svg
+      className={styles.gameCardArt}
+      viewBox="0 0 230 210"
+      aria-hidden
+      preserveAspectRatio="xMaxYMid meet"
+    >
+      <defs>
+        <linearGradient id="ivDots" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#C83B50" />
+          <stop offset="100%" stopColor="#7A2231" />
+        </linearGradient>
+      </defs>
+      <line x1="115" y1="8" x2="115" y2="202" stroke="#C83B50" strokeOpacity="0.28" strokeWidth="1.5" />
+      <line x1="12" y1="105" x2="218" y2="105" stroke="#C83B50" strokeOpacity="0.28" strokeWidth="1.5" />
+      {dots.map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill="url(#ivDots)" opacity={0.26 + (r - 4) * 0.09} />
+      ))}
+    </svg>
+  );
+}
+
+// Map + Sequence: maps chained into rounds.
+function SequenceChainArt() {
+  return (
+    <svg
+      className={styles.gameCardArt}
+      viewBox="0 0 320 210"
+      aria-hidden
+      preserveAspectRatio="xMaxYMid meet"
+    >
+      <defs>
+        <linearGradient id="msChain" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#0E8F66" />
+          <stop offset="100%" stopColor="#3D6FA3" />
+        </linearGradient>
+      </defs>
+      <path d="M60,62 C110,62 110,105 160,105" stroke="url(#msChain)" strokeOpacity="0.45" strokeWidth="1.5" fill="none" />
+      <path d="M60,160 C110,160 110,105 160,105" stroke="url(#msChain)" strokeOpacity="0.45" strokeWidth="1.5" fill="none" />
+      <path d="M160,105 C215,105 215,70 268,70" stroke="url(#msChain)" strokeOpacity="0.45" strokeWidth="1.5" fill="none" />
+      <path d="M160,105 C215,105 215,148 268,148" stroke="url(#msChain)" strokeOpacity="0.45" strokeWidth="1.5" fill="none" />
+      {[[60, 62, 26], [60, 160, 26], [160, 105, 32], [268, 70, 24], [268, 148, 24]].map(([x, y, r], i) => (
+        <g key={i}>
+          <circle cx={x} cy={y} r={r} fill="#FCFAF6" fillOpacity="0.6" stroke="url(#msChain)" strokeOpacity="0.55" strokeWidth="1.5" />
+          <circle cx={x} cy={y} r={3} fill="url(#msChain)" opacity="0.5" />
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 function MappingVisual() {
   return (
     <svg
@@ -353,19 +448,22 @@ export default function HomePage() {
 
         <div className={styles.divider} />
 
-        {/* ── Join a Game — newest first, the origin last ─────────────── */}
+        {/* ── Join a Game — newest first, the origin last. Each card wears
+               its game's own palette and a quiet gradient motif. ─────────── */}
         <RevealSection id="game" className={styles.invitation}>
           <p className={styles.sectionLabel}>Join a Game</p>
           <div className={styles.gameCardStack}>
-            <a href="https://spectrum.holoscopic.io" className={styles.gameCard}>
+            <a href="https://spectrum.holoscopic.io" className={`${styles.gameCard} ${styles.gameCardOas}`}>
+              <SpectrumBarsArt />
               <span className={styles.gameCardTitle}>
-                On&nbsp;a&nbsp;<span className={styles.gameCardAccent}>Spectrum</span>
+                On&nbsp;a&nbsp;<span className={styles.oasAx}>Spec</span><span className={styles.oasAy}>trum</span>
               </span>
-              <span className={styles.gameCardSub}>
+              <span className={`${styles.gameCardSub} ${styles.gameCardSubOas}`}>
                 a game for organizing collective minds
               </span>
             </a>
-            <Link href="/interview" className={styles.gameCard}>
+            <Link href="/interview" className={`${styles.gameCard} ${styles.gameCardIv}`}>
+              <QuadrantArt />
               <span className={styles.gameCardTitle}>
                 inter<span className={styles.gameCardAccent}>View</span>
               </span>
@@ -373,11 +471,12 @@ export default function HomePage() {
                 collaborative.conversation.design.game
               </span>
             </Link>
-            <Link href="/map-sequence" className={styles.gameCard}>
+            <Link href="/map-sequence" className={`${styles.gameCard} ${styles.gameCardMs}`}>
+              <SequenceChainArt />
               <span className={styles.gameCardTitle}>
-                Map&nbsp;+&nbsp;<span className={styles.gameCardAccent}>Sequence</span>
+                Map&nbsp;+&nbsp;<span className={styles.msAccent}>Sequence</span>
               </span>
-              <span className={styles.gameCardSub}>
+              <span className={`${styles.gameCardSub} ${styles.gameCardSubMs}`}>
                 the original holoscopic mapping tools
               </span>
             </Link>
@@ -403,6 +502,15 @@ export default function HomePage() {
                 className={styles.footerLink}
               >
                 Open source
+              </a>
+              &nbsp;&middot;&nbsp;{' '}
+              <a
+                href="https://markothell.substack.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.footerLink}
+              >
+                Seeing Wholes
               </a>
               &nbsp;&middot;&nbsp; Evolving
             </span>

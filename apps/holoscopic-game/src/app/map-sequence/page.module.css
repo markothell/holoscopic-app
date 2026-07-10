@@ -70,6 +70,12 @@
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
+.pathArt {
+  width: 100%;
+  height: auto;
+  margin-bottom: 0.75rem;
+}
+
 .pathCard:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 30px rgba(15, 13, 11, 0.1);

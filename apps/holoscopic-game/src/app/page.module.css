@@ -304,15 +304,20 @@
   transition: opacity 0.9s ease, transform 0.9s ease;
 }
 
-/* ---- JOIN A GAME CARDS ---- */
+/* ---- JOIN A GAME CARDS ----
+   One card per game, each wearing its own palette: On a Spectrum on its
+   paper/crimson/cobalt, interView on the warm taupe it owns, Map + Sequence
+   on soft emerald. The motif SVG sits behind the type, anchored right. */
 
 .gameCardStack {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .gameCard {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -330,7 +335,18 @@
   text-decoration: none !important;
 }
 
+.gameCardArt {
+  position: absolute;
+  right: -1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 130%;
+  max-width: 55%;
+  pointer-events: none;
+}
+
 .gameCardTitle {
+  position: relative;
   font-family: var(--font-barlow), sans-serif;
   font-weight: 800;
   text-transform: uppercase;
@@ -345,11 +361,41 @@
 }
 
 .gameCardSub {
+  position: relative;
   font-family: var(--font-dm-mono), monospace;
   font-weight: 500;
   font-size: clamp(0.62rem, 2.4vw, 1rem);
   letter-spacing: 0.01em;
   color: var(--accent);
+}
+
+/* On a Spectrum — its own paper + duotone wordmark */
+.gameCardOas {
+  background: #faf6ee;
+  border: 1px solid #e5decf;
+}
+
+.oasAx { color: #e0344e; }
+.oasAy { color: #2b49d8; }
+
+.gameCardSubOas {
+  color: #2b49d8;
+}
+
+/* interView keeps the taupe it has always owned */
+.gameCardIv {
+  background: #d8d3c5;
+}
+
+/* Map + Sequence — soft emerald, the sequence-node color */
+.gameCardMs {
+  background: #e4ece6;
+}
+
+.msAccent { color: #0e8f66; }
+
+.gameCardSubMs {
+  color: #0e8f66;
 }
 
 /* ---- REVEAL STATE (must follow all animated elements) ---- */
