@@ -207,8 +207,10 @@ module.exports = function (io) {
       if (game.phase === 'round1') {
         const title = String(req.body.title || '').trim().slice(0, 80);
         if (!title) return res.status(400).json({ error: 'Subtopic is required' });
+        const parentSubtopicId = req.body.parentSubtopicId
+          ? String(req.body.parentSubtopicId) : null;
         nom = await games.nominateSubtopic({
-          game, userId: player.id, username: player.name, title,
+          game, userId: player.id, username: player.name, title, parentSubtopicId,
         });
       } else {
         const { subtopicId } = req.body;
@@ -229,6 +231,7 @@ module.exports = function (io) {
         'Subtopic nominations closed after round 1',
         'That subtopic is already nominated',
         'That subtopic is already nominated this round',
+        'Only confirmed subtopics can branch',
         'Subtopic not found',
         'dimensions must be 1 or 2',
         'Already staked',
@@ -272,7 +275,6 @@ module.exports = function (io) {
     } catch (error) {
       fail(res, error, [
         'Stakes are locked once confirmed',
-        'Nominators cannot withdraw',
         'No stake to withdraw',
       ]);
     }

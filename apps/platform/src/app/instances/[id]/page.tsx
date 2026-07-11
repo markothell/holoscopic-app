@@ -8,12 +8,13 @@ import { apiFetch } from '@/lib/api';
 
 interface HolonConfig { startingStake: number; nominationCost: number; supportCost: number; algorithmPublishCost: number; sessionHostReward: number; sessionParticipantReward: number; topicQuorumReward: number; algorithmRoyaltyPercent: number; forkRoyaltyDecayPercent: number; forkDepthCap: number; }
 interface QuorumConfig { topicSupportThreshold: number; topicWindowHours: number; inquiryMinParticipants: number; frameVoteThreshold: number; algorithmSessionQuorum: number; algorithmProposalWindowHours: number; }
+interface OasConfig { startingTokens: number; quorum: number; votesPerUser: number; maxPlayers: number; }
 interface InstanceData {
   id: string; name: string; slug: string; domains: string[];
   gameVersion: string | null; gameNumber: number | null; active: boolean;
   access: { mode: string; inviteCodes: string[] };
   startDate: string | null; endDate: string | null;
-  config: { mode?: 'normal' | 'explore'; holons: HolonConfig; quorum: QuorumConfig };
+  config: { mode?: 'normal' | 'explore'; holons: HolonConfig; quorum: QuorumConfig; oas: OasConfig };
 }
 
 type Tab = 'basic' | 'config';
@@ -43,10 +44,15 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
   const [mode, setMode] = useState<'normal' | 'explore'>('normal');
   const [holons, setHolons] = useState<HolonConfig | null>(null);
   const [quorum, setQuorum] = useState<QuorumConfig | null>(null);
+  const [oas, setOas] = useState<OasConfig | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // On a Spectrum (the `spectrum` instance) exposes only its room defaults;
+  // interView editions expose the holon/quorum economy.
+  const isOas = instance?.slug === 'spectrum';
 
   useEffect(() => {
     if (!authLoading && !user) router.replace('/login');
@@ -71,6 +77,7 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
         setMode((inst.config.mode as 'normal' | 'explore') || 'normal');
         setHolons(inst.config.holons);
         setQuorum(inst.config.quorum);
+        setOas(inst.config.oas);
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
@@ -89,8 +96,15 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
         startDate: startDate || null,
         endDate: endDate || null,
       };
-      if (tab === 'config' && holons && quorum) {
-        body.config = { mode, holons, quorum };
+      if (tab === 'config') {
+        // On a Spectrum only edits its own room defaults; interView editions
+        // edit the holon economy. Send just the relevant slice so neither
+        // rewrites the other's untouched values.
+        if (isOas) {
+          if (oas) body.config = { oas };
+        } else if (holons && quorum) {
+          body.config = { mode, holons, quorum };
+        }
       }
       await apiFetch(`/instances/${id}`, { method: 'PUT', userId: user.id, body: JSON.stringify(body) });
       setSaved(true);
@@ -189,44 +203,68 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
 
         {tab === 'config' && holons && quorum && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            <Section title="Economy Mode">
-              <FieldGroup label="mode">
-                <select value={mode} onChange={e => setMode(e.target.value as 'normal' | 'explore')} style={inputStyle}>
-                  <option value="normal">Normal — holon economy on</option>
-                  <option value="explore">Explore — free, no economy, instant create</option>
-                </select>
-              </FieldGroup>
-              {mode === 'explore' && (
-                <p style={{ fontSize: '0.75rem', color: 'var(--ink-light)', margin: '0.5rem 0 0', maxWidth: '32rem' }}>
-                  Explore turns the economy off: no costs, no rewards, balances show ∞, and topics/sessions open instantly.
-                  The holon and quorum values below are kept but bypassed, so switching back to Normal restores them exactly.
-                </p>
-              )}
-            </Section>
-
-            <Section title="Holon Amounts">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(13rem, 1fr))', gap: '0.75rem' }}>
-                {(Object.keys(holons) as (keyof HolonConfig)[]).map(key => (
-                  <FieldGroup key={key} label={key.replace(/([A-Z])/g, ' $1').toLowerCase()}>
-                    <input type="number" value={holons[key]}
-                      onChange={e => setHolons(h => h && { ...h, [key]: Number(e.target.value) })}
-                      style={inputStyle} />
+            {isOas ? (
+              oas && (
+                <Section title="On a Spectrum — Room Defaults">
+                  <p style={{ fontSize: '0.75rem', color: 'var(--ink-light)', margin: '0 0 0.75rem', maxWidth: '32rem' }}>
+                    Defaults for every new game room. A room only falls back to these when its
+                    creation request doesn&apos;t set the value itself. On a Spectrum runs its own
+                    per-room economy — the holon and quorum settings used by interView editions
+                    don&apos;t apply here.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(13rem, 1fr))', gap: '0.75rem' }}>
+                    {(Object.keys(oas) as (keyof OasConfig)[]).map(key => (
+                      <FieldGroup key={key} label={key.replace(/([A-Z])/g, ' $1').toLowerCase()}>
+                        <input type="number" value={oas[key]}
+                          onChange={e => setOas(o => o && { ...o, [key]: Number(e.target.value) })}
+                          style={inputStyle} />
+                      </FieldGroup>
+                    ))}
+                  </div>
+                </Section>
+              )
+            ) : (
+              <>
+                <Section title="Economy Mode">
+                  <FieldGroup label="mode">
+                    <select value={mode} onChange={e => setMode(e.target.value as 'normal' | 'explore')} style={inputStyle}>
+                      <option value="normal">Normal — holon economy on</option>
+                      <option value="explore">Explore — free, no economy, instant create</option>
+                    </select>
                   </FieldGroup>
-                ))}
-              </div>
-            </Section>
+                  {mode === 'explore' && (
+                    <p style={{ fontSize: '0.75rem', color: 'var(--ink-light)', margin: '0.5rem 0 0', maxWidth: '32rem' }}>
+                      Explore turns the economy off: no costs, no rewards, balances show ∞, and topics/sessions open instantly.
+                      The holon and quorum values below are kept but bypassed, so switching back to Normal restores them exactly.
+                    </p>
+                  )}
+                </Section>
 
-            <Section title="Quorum Settings">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(13rem, 1fr))', gap: '0.75rem' }}>
-                {(Object.keys(quorum) as (keyof QuorumConfig)[]).map(key => (
-                  <FieldGroup key={key} label={key.replace(/([A-Z])/g, ' $1').toLowerCase()}>
-                    <input type="number" value={quorum[key]}
-                      onChange={e => setQuorum(q => q && { ...q, [key]: Number(e.target.value) })}
-                      style={inputStyle} />
-                  </FieldGroup>
-                ))}
-              </div>
-            </Section>
+                <Section title="Holon Amounts">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(13rem, 1fr))', gap: '0.75rem' }}>
+                    {(Object.keys(holons) as (keyof HolonConfig)[]).map(key => (
+                      <FieldGroup key={key} label={key.replace(/([A-Z])/g, ' $1').toLowerCase()}>
+                        <input type="number" value={holons[key]}
+                          onChange={e => setHolons(h => h && { ...h, [key]: Number(e.target.value) })}
+                          style={inputStyle} />
+                      </FieldGroup>
+                    ))}
+                  </div>
+                </Section>
+
+                <Section title="Quorum Settings">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(13rem, 1fr))', gap: '0.75rem' }}>
+                    {(Object.keys(quorum) as (keyof QuorumConfig)[]).map(key => (
+                      <FieldGroup key={key} label={key.replace(/([A-Z])/g, ' $1').toLowerCase()}>
+                        <input type="number" value={quorum[key]}
+                          onChange={e => setQuorum(q => q && { ...q, [key]: Number(e.target.value) })}
+                          style={inputStyle} />
+                      </FieldGroup>
+                    ))}
+                  </div>
+                </Section>
+              </>
+            )}
           </div>
         )}
       </main>

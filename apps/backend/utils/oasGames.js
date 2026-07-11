@@ -99,6 +99,7 @@ function toClientNomination(nom) {
     round: nom.round,
     themeIndex: nom.themeIndex,
     title: nom.title,
+    parentSubtopicId: nom.kind === 'subtopic' ? nom.parentSubtopicId : null,
     subtopicId: nom.subtopicId,
     dimensions: nom.kind === 'map' ? nom.dimensions : null,
     mapState: nom.mapState ? {
@@ -204,16 +205,27 @@ async function createRoomInstance({ parentInstanceId, topic, code, startingToken
     access: { mode: 'public', inviteCodes: [] },
     parentInstanceId,
     gameNumber: null,
+    // Rooms never resolve activityWindowHours (no Activity documents; OaS
+    // is fully duck-typed), so only the token grant is worth mirroring here.
     config: {
       holons: { startingStake: startingTokens, dailyBonus: 0 },
-      quorum: { activityWindowHours: 8760 },
     },
   });
 }
 
+// Platform-configured defaults (Instance.config.oas on the `spectrum`
+// parent) for whichever of startingTokens/quorum/votesPerUser/maxPlayers
+// the room-creation request doesn't explicitly set.
+async function oasDefaults(parentInstanceId) {
+  if (!parentInstanceId) return {};
+  const parent = await Instance.findOne({ id: parentInstanceId });
+  return parent?.config?.oas || {};
+}
+
 async function createGame({ parentInstanceId, userId, username, topic, themes, config = {}, parentGameId = null }) {
   const code = await generateUniqueCode();
-  const startingTokens = config.startingTokens || 4;
+  const defaults = await oasDefaults(parentInstanceId);
+  const startingTokens = config.startingTokens ?? defaults.startingTokens ?? 4;
   const roomInstance = await createRoomInstance({
     parentInstanceId, topic, code, startingTokens,
   });
@@ -235,9 +247,9 @@ async function createGame({ parentInstanceId, userId, username, topic, themes, c
     }
   }
   game.config.startingTokens = startingTokens;
-  if (config.quorum !== undefined) game.config.quorum = config.quorum;
-  if (config.votesPerUser !== undefined) game.config.votesPerUser = config.votesPerUser;
-  if (config.maxPlayers !== undefined) game.config.maxPlayers = config.maxPlayers;
+  game.config.quorum = config.quorum ?? defaults.quorum ?? game.config.quorum;
+  game.config.votesPerUser = config.votesPerUser ?? defaults.votesPerUser ?? game.config.votesPerUser;
+  game.config.maxPlayers = config.maxPlayers ?? defaults.maxPlayers ?? game.config.maxPlayers;
   await game.save();
 
   // First touch grants the host their tokens (join_bonus of startingStake).
@@ -343,8 +355,8 @@ async function expirePhase(game, { forced = false } = {}) {
 // End-of-round economy sweep. Guarantees no token stays locked past the
 // round it was staked in:
 //   - un-confirmed nominations expire and refund every stake
-//   - round 1 also refunds confirmed-subtopic stakes (their job is done;
-//     players need liquidity for the mapping rounds)
+//   - confirmed subtopics were already refunded at confirmation; the refund
+//     here is an idempotent safety net (returned stakes are skipped)
 //   - rounds 2–4 close the round's live maps and refund whatever map stakes
 //     were never claimed through completion
 async function closeRound(game, round) {
@@ -374,11 +386,29 @@ async function closeRound(game, round) {
   }
 }
 
+// Atomically flip one of a user's unreturned stakes to returned, straight in
+// the DB. Returns true only for the caller that actually made the flip — so
+// even when two triggers refund the same nomination concurrently (the phase
+// timer racing a sweep-on-read), the token is credited exactly once. The
+// in-memory `stake.returned` guard alone can't see a concurrent loader's
+// write, which is what minted extra tokens at round close.
+async function claimStakeReturn(nomId, userId) {
+  const res = await OasNomination.updateOne(
+    { id: nomId, stakes: { $elemMatch: { userId, returned: false } } },
+    { $set: { 'stakes.$.returned': true, 'stakes.$.returnedAt': new Date() } },
+  );
+  return res.modifiedCount === 1;
+}
+
 async function refundStakes(game, nom) {
   for (const stake of nom.stakes) {
     if (stake.returned) continue;
+    // Only credit if THIS call won the atomic flip; a racing refund of the
+    // same stake loses and skips, so no double-return.
+    const won = await claimStakeReturn(nom.id, stake.userId);
     stake.returned = true;
     stake.returnedAt = new Date();
+    if (!won) continue;
     await transact({
       userId: stake.userId,
       instanceId: game.instanceId,
@@ -431,10 +461,23 @@ function requirePhaseRound(game, expectedKind) {
   return round;
 }
 
-async function nominateSubtopic({ game, userId, username, title }) {
+async function nominateSubtopic({ game, userId, username, title, parentSubtopicId = null }) {
   const round = requirePhaseRound(game, 'subtopic');
+
+  // A branch must hang off a CONFIRMED subtopic in this game; null = a
+  // top-level facet of the game topic. Depth is unlimited.
+  if (parentSubtopicId) {
+    const parent = await OasNomination.findOne({
+      id: parentSubtopicId, gameId: game.id, kind: 'subtopic', status: 'confirmed',
+    });
+    if (!parent) throw new Error('Only confirmed subtopics can branch');
+  }
+
+  // Titles are unique among siblings, so the same label can recur on
+  // different branches of the web.
   const clash = await OasNomination.findOne({
     gameId: game.id, kind: 'subtopic',
+    parentSubtopicId: parentSubtopicId || null,
     title: new RegExp(`^${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
   });
   if (clash) throw new Error('That subtopic is already nominated');
@@ -445,6 +488,7 @@ async function nominateSubtopic({ game, userId, username, title }) {
     kind: 'subtopic',
     round,
     title,
+    parentSubtopicId: parentSubtopicId || null,
     nominatedBy: userId,
     nominatedByName: username,
     quorumThreshold: game.config.quorum,
@@ -505,10 +549,16 @@ async function addStake(game, nom, userId) {
   if (nom.status === 'nominated' &&
       nom.stakes.filter(s => !s.returned).length >= nom.quorumThreshold) {
     nom.status = 'confirmed';
+    // Persist the new stake + confirmed status BEFORE any refund: refundStakes
+    // claims each stake with an atomic DB update, so the just-pushed stake must
+    // already be in the DB or its return is silently skipped (a lost token).
+    await nom.save();
     if (nom.kind === 'map') {
       await openMap(game, nom);
     } else {
-      await nom.save();
+      // Subtopic confirmed: its job is done, so return every staked token
+      // now — players keep the liquidity to branch it and to map later.
+      await refundStakes(game, nom);
     }
   } else {
     await nom.save();
@@ -531,14 +581,19 @@ async function stakeOn({ game, nomination, userId }) {
   return nomination;
 }
 
-// Withdraw a pre-quorum support stake. Nominators stay locked in — a
-// nomination never outlives its own proposer's commitment silently.
+// Withdraw a stake from a still-unconfirmed nomination — anyone who staked,
+// the nominator included. If that empties the nomination, it expires (an
+// idea with zero backers leaves the board rather than lingering un-quorumed).
 async function unstake({ game, nomination, userId }) {
   if (nomination.status !== 'nominated') throw new Error('Stakes are locked once confirmed');
-  if (nomination.nominatedBy === userId) throw new Error('Nominators cannot withdraw');
   const idx = nomination.stakes.findIndex(s => s.userId === userId && !s.returned);
   if (idx === -1) throw new Error('No stake to withdraw');
+  // Claim the return atomically so a concurrent round-close refund can't also
+  // credit it. Losing the flip means it was already returned elsewhere.
+  const won = await claimStakeReturn(nomination.id, userId);
+  if (!won) throw new Error('No stake to withdraw');
   nomination.stakes.splice(idx, 1);
+  if (nomination.stakes.length === 0) nomination.status = 'expired';
   await nomination.save();
   await transact({
     userId,
@@ -801,8 +856,10 @@ async function markMapRankingDone(game, nom, userId, axis) {
   return nom;
 }
 
-// Aggregate view: per item per axis, mean spectrum score over every rater
-// who submitted that axis. Partial rankings simply contribute nothing.
+// Aggregate view: per item per axis, the mean spectrum score plus how much
+// the raters disagreed (population std dev, 0 = consensus) over everyone who
+// ranked that axis. Partial rankings simply contribute nothing. `spread`
+// drives the 1D reveal's bar heights.
 async function computeMapResults(nom) {
   const rankEntries = await Entry.find({
     activityId: nom.id,
@@ -810,19 +867,25 @@ async function computeMapResults(nom) {
   });
   return nom.mapState.items.map(item => {
     const forItem = rankEntries.filter(e => e.slotNumber === item.index);
-    const axisMean = (qid) => {
+    const axisStats = (qid) => {
       const scores = forItem
         .filter(e => e.questionId === qid && e.position)
         .map(e => e.position.x);
-      if (!scores.length) return 0.5;
-      return scores.reduce((a, b) => a + b, 0) / scores.length;
+      if (!scores.length) return { mean: 0.5, spread: 0, count: 0 };
+      const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+      const variance = scores.reduce((a, b) => a + (b - mean) ** 2, 0) / scores.length;
+      return { mean, spread: Math.sqrt(variance), count: scores.length };
     };
+    const xs = axisStats(RANK_QUESTION.x);
+    const ys = nom.dimensions === 2 ? axisStats(RANK_QUESTION.y) : null;
     return {
       entryId: item.entryId,
       label: item.label,
       authorId: item.authorId,
-      x: axisMean(RANK_QUESTION.x),
-      y: nom.dimensions === 2 ? axisMean(RANK_QUESTION.y) : 0.5,
+      x: xs.mean,
+      y: ys ? ys.mean : 0.5,
+      spread: xs.spread,
+      count: xs.count,
     };
   });
 }
@@ -886,9 +949,11 @@ async function claimMapStake({ game, nom, userId }) {
     err.completion = completion;
     throw err;
   }
+  // Claim atomically so a concurrent round-close refund can't also credit it.
+  const won = await claimStakeReturn(nom.id, userId);
   stake.returned = true;
   stake.returnedAt = new Date();
-  await nom.save();
+  if (!won) return { nomination: nom, alreadyReturned: true };
   await transact({
     userId,
     instanceId: game.instanceId,

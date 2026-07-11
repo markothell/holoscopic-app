@@ -102,6 +102,8 @@ export interface Nomination {
   round: number;
   themeIndex: number | null;
   title: string;
+  // kind 'subtopic': parent in the round-1 tree (null = child of game topic).
+  parentSubtopicId: string | null;
   subtopicId: string | null;
   dimensions: 1 | 2 | null;
   mapState: MapState | null;
@@ -166,6 +168,10 @@ export interface MapResultDot {
   authorId: string;
   x: number;
   y: number;
+  // Rater disagreement on the x axis (population std dev, 0 = consensus).
+  // Drives the 1D reveal's bar heights. count = how many ranked it.
+  spread: number;
+  count: number;
 }
 
 export interface MapDetail {

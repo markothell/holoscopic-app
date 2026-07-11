@@ -46,9 +46,9 @@ export const OasService = {
     });
   },
 
-  nominateSubtopic(code: string, title: string, userId: string) {
+  nominateSubtopic(code: string, title: string, userId: string, parentSubtopicId?: string | null) {
     return apiFetch<{ nomination: Nomination }>(`/oas/games/${code}/nominations`, {
-      method: 'POST', body: { title }, userId,
+      method: 'POST', body: { title, parentSubtopicId: parentSubtopicId ?? null }, userId,
     });
   },
 

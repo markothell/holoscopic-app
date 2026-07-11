@@ -4,8 +4,57 @@ import { useState } from 'react';
 import type { MapResultDot, WinningAxis } from '@/lib/types';
 
 // The aggregate view of a finished map: every item at its mean position.
-// 1D — a horizontal spectrum strip; 2D — the quadrant grid. "Most" plots
-// right (x) and top (y), the On-the-Spectrum convention.
+// 1D — a spectrum of rounded bars (x = mean rank, height = group
+// disagreement), echoing the game-card art; 2D — the quadrant grid. "Most"
+// plots right (x) and top (y), the On-the-Spectrum convention.
+
+// 1D bar-chart geometry (SVG viewBox units).
+const VB = { w: 320, h: 132, pad: 24, base: 112 };
+const BAR_W = 22;
+// Min height = bar width, so a consensus item reads as a clean circle on the
+// axis rather than a squished pill; disagreement grows it upward.
+const BAR_MIN_H = BAR_W;
+const BAR_MAX_H = VB.base - 14;
+// Scores live in [0,1]; the largest possible std dev (a 0/1 split) is 0.5,
+// so heights stay comparable across maps.
+const MAX_SPREAD = 0.5;
+
+interface PlacedBar { dot: MapResultDot; cx: number; h: number; }
+
+// Position each item at its mean, then nudge overlapping bars apart so a
+// cluster (or the all-tied default) doesn't collapse into a single bar. The
+// plot range is inset by half a bar so extreme items sit fully on the axis.
+function layoutBars(results: MapResultDot[]): PlacedBar[] {
+  const left = VB.pad + BAR_W / 2;
+  const right = VB.w - VB.pad - BAR_W / 2;
+  const usable = right - left;
+  const bars: PlacedBar[] = results.map(dot => ({
+    dot,
+    cx: left + dot.x * usable,
+    h: BAR_MIN_H + Math.min(1, dot.spread / MAX_SPREAD) * (BAR_MAX_H - BAR_MIN_H),
+  })).sort((a, b) => a.cx - b.cx);
+
+  const minGap = BAR_W + 6;
+  for (let i = 1; i < bars.length; i++) {
+    if (bars[i].cx - bars[i - 1].cx < minGap) bars[i].cx = bars[i - 1].cx + minGap;
+  }
+  // If pushing right ran past the edge, slide the row back, then keep the
+  // leftmost on-axis (a very dense row just packs from the left).
+  if (bars.length) {
+    const overflow = bars[bars.length - 1].cx - right;
+    if (overflow > 0) for (const b of bars) b.cx -= overflow;
+    const underflow = left - bars[0].cx;
+    if (underflow > 0) for (const b of bars) b.cx += underflow;
+  }
+  return bars;
+}
+
+function spreadWord(spread: number): string {
+  const norm = spread / MAX_SPREAD;
+  if (norm < 0.12) return 'near-consensus';
+  if (norm < 0.35) return 'some spread';
+  return 'wide disagreement';
+}
 
 function Dot({ dot, accent, active, onTap, style }: {
   dot: MapResultDot;
@@ -50,33 +99,73 @@ export default function MapReveal({
   const yLabel = winningAxes[1]?.label ?? '';
 
   if (dimensions === 1) {
-    // Sorted list under the strip doubles as the legend.
+    // Each item is a bar: x = the group's mean ranking, height = how much
+    // the group disagreed (std dev). Consensus reads flat; a contested item
+    // rises. Bars nudge apart horizontally so clustered items stay legible.
+    const bars = layoutBars(results);
+    const active = bars.find(b => b.dot.entryId === activeId) ?? null;
+    // Sorted list under the strip doubles as the legend (most → least).
     const sorted = [...results].sort((a, b) => b.x - a.x);
     return (
       <div>
         <p className="eyebrow text-center" style={{ color: accent }}>{xLabel}</p>
-        <div className="relative mt-6 h-10">
-          <div className="absolute inset-x-2 top-1/2 h-px bg-line-strong" />
-          <span className="eyebrow absolute left-0 top-full mt-1 !text-ink-faint">least</span>
-          <span className="eyebrow absolute right-0 top-full mt-1 !text-ink-faint">most</span>
-          {results.map((d, i) => (
-            <Dot
-              key={d.entryId}
-              dot={d}
-              accent={accent}
-              active={activeId === d.entryId}
-              onTap={() => setActiveId(a => (a === d.entryId ? null : d.entryId))}
-              style={{ left: `${8 + d.x * 84}%`, top: '50%', animationDelay: `${i * 0.07}s` }}
-            />
-          ))}
+
+        <svg viewBox={`0 0 ${VB.w} ${VB.h}`} className="mt-5 w-full" role="img" aria-label={`${xLabel} spectrum`}>
+          <line x1={VB.pad} y1={VB.base} x2={VB.w - VB.pad} y2={VB.base} stroke="var(--line-strong)" strokeWidth={1} />
+          {bars.map((b, i) => {
+            const on = activeId === b.dot.entryId;
+            const norm = Math.min(1, b.dot.spread / MAX_SPREAD);
+            return (
+              <g
+                key={b.dot.entryId}
+                className="dot-in cursor-pointer"
+                style={{ animationDelay: `${i * 0.07}s` }}
+                onClick={() => setActiveId(a => (a === b.dot.entryId ? null : b.dot.entryId))}
+              >
+                {/* full-height hit target */}
+                <rect x={b.cx - BAR_W / 2 - 4} y={0} width={BAR_W + 8} height={VB.base} fill="transparent" />
+                <rect
+                  x={b.cx - BAR_W / 2}
+                  y={VB.base - b.h}
+                  width={BAR_W}
+                  height={b.h}
+                  rx={BAR_W / 2}
+                  fill={accent}
+                  opacity={on ? 1 : 0.28 + norm * 0.34}
+                  stroke={on ? accent : 'none'}
+                  strokeWidth={on ? 2 : 0}
+                />
+              </g>
+            );
+          })}
+        </svg>
+        <div className="mt-1 flex justify-between">
+          <span className="eyebrow !text-ink-faint">least</span>
+          <span className="eyebrow !text-ink-faint">most</span>
         </div>
-        <ol className="mt-10 space-y-1.5">
-          {sorted.map((d, i) => (
-            <li key={d.entryId} className="flex items-baseline gap-3 rounded-xl bg-paper-raised px-3 py-2">
-              <span className="eyebrow w-5 text-center" style={{ color: i === 0 ? accent : undefined }}>{i + 1}</span>
-              <span className="min-w-0 flex-1 truncate text-base">{d.label}</span>
-            </li>
-          ))}
+
+        <p className="mt-4 text-center text-sm text-ink-soft">
+          {active
+            ? <><span className="text-ink">{active.dot.label}</span>{' — '}{spreadWord(active.dot.spread)} ({active.dot.count} ranked)</>
+            : 'Height shows how much the group disagreed. Tap a bar for its item.'}
+        </p>
+
+        <ol className="mt-6 space-y-1.5">
+          {sorted.map((d, i) => {
+            const on = activeId === d.entryId;
+            return (
+              <li key={d.entryId}>
+                <button
+                  onClick={() => setActiveId(a => (a === d.entryId ? null : d.entryId))}
+                  className="flex w-full items-baseline gap-3 rounded-xl px-3 py-2 text-left transition-colors"
+                  style={{ background: on ? `color-mix(in srgb, ${accent} 14%, transparent)` : 'var(--paper-raised)' }}
+                >
+                  <span className="eyebrow w-5 text-center" style={{ color: on || i === 0 ? accent : undefined }}>{i + 1}</span>
+                  <span className="min-w-0 flex-1 truncate text-base">{d.label}</span>
+                </button>
+              </li>
+            );
+          })}
         </ol>
       </div>
     );

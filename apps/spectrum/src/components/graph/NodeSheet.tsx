@@ -25,6 +25,7 @@ export default function NodeSheet({
   onClose,
   onOpenMap,
   onProposeMap,
+  onBranchSubtopic,
 }: {
   game: Game;
   nomination: Nomination | null;
@@ -33,6 +34,7 @@ export default function NodeSheet({
   onClose: () => void;
   onOpenMap: (mapId: string) => void;
   onProposeMap: (subtopicId: string) => void;
+  onBranchSubtopic: (parentSubtopicId: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,21 +98,31 @@ export default function NodeSheet({
               disabled={busy || (balance !== null && balance < 1)}
               onClick={() => act(() => OasService.stake(game.code, nom.id, userId))}
             >
-              {busy ? 'Staking…' : 'Stake a token'}
+              {/* Your token is the deciding vote when it reaches quorum. */}
+              {(() => {
+                const willConfirm = nom.stakes.length + 1 >= nom.quorumThreshold;
+                if (busy) return willConfirm ? 'Confirming…' : 'Supporting…';
+                return willConfirm ? 'Confirm · ● 1' : 'Support · ● 1';
+              })()}
             </Button>
-          ) : isNominator ? (
-            <p className="mt-6 text-center text-sm text-ink-soft">
-              Your nomination — your token rides until the round ends.
-            </p>
           ) : (
-            <Button
-              variant="ghost"
-              className="mt-6"
-              disabled={busy}
-              onClick={() => act(() => OasService.unstake(game.code, nom.id, userId))}
-            >
-              {busy ? 'Withdrawing…' : 'Withdraw my token'}
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                className="mt-6"
+                disabled={busy}
+                onClick={() => act(() => OasService.unstake(game.code, nom.id, userId))}
+              >
+                {busy ? 'Withdrawing…' : 'Withdraw my token'}
+              </Button>
+              {nom.stakes.length === 1 && (
+                <p className="mt-2 text-center text-xs text-ink-faint">
+                  {isNominator
+                    ? 'You’re its only backer — withdrawing removes this nomination.'
+                    : 'You’re its only backer — withdrawing removes it.'}
+                </p>
+              )}
+            </>
           )}
         </>
       )}
@@ -150,6 +162,18 @@ export default function NodeSheet({
         <p className="mt-6 text-center text-sm text-ink-soft">
           Never reached quorum — every staked token went home.
         </p>
+      )}
+
+      {/* Round 1: branch a deeper subtopic — only confirmed nodes grow. */}
+      {currentRound === 1 && nom.kind === 'subtopic' && nom.status === 'confirmed' && (
+        <Button
+          variant="ghost"
+          className="mt-3"
+          disabled={busy || (balance !== null && balance < 1)}
+          onClick={() => { onBranchSubtopic(nom.id); onClose(); }}
+        >
+          {balance !== null && balance < 1 ? 'Out of tokens' : '+ Subtopic here · ● 1'}
+        </Button>
       )}
 
       {error && <p className="mt-3 text-sm text-ax">{error}</p>}

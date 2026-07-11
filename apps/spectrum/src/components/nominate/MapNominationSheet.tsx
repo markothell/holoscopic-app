@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import BottomSheet from '@/components/ui/BottomSheet';
 import Button from '@/components/ui/Button';
 import { THEME_ACCENT } from '@/components/graph/nodes';
@@ -28,8 +28,14 @@ export default function MapNominationSheet({
 }) {
   const [subtopicId, setSubtopicId] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState<1 | 2>(2);
+  const [changing, setChanging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fresh each open: fall back to whatever node the player came in from.
+  useEffect(() => {
+    if (open) { setSubtopicId(null); setChanging(false); }
+  }, [open]);
 
   const round = Number((/^round([2-4])$/.exec(game.phase) || [])[1] || 0);
   const themeIndex = round - 2;
@@ -38,12 +44,22 @@ export default function MapNominationSheet({
 
   const confirmedSubtopics = nominations.filter(
     n => n.kind === 'subtopic' && n.status === 'confirmed');
+  // Parent titles, so a branched subtopic reads unambiguously even when a
+  // label recurs on another branch.
+  const subtopicTitles = new Map(
+    nominations.filter(n => n.kind === 'subtopic').map(n => [n.id, n.title]));
   // A subtopic already nominated or live this round can't be re-proposed.
   const takenThisRound = new Set(nominations
     .filter(n => n.kind === 'map' && n.round === round && n.status !== 'expired')
     .map(n => n.subtopicId));
 
   const effectiveSubtopicId = subtopicId ?? preselectedSubtopicId ?? null;
+  const selectedSub = confirmedSubtopics.find(s => s.id === effectiveSubtopicId) ?? null;
+  // Arrived from a node? Show the chosen subtopic, not the whole list — the
+  // list only reappears if they tap "change".
+  const showList = !selectedSub || changing;
+  const selectedParent = selectedSub?.parentSubtopicId
+    ? subtopicTitles.get(selectedSub.parentSubtopicId) : null;
 
   async function submit() {
     if (!effectiveSubtopicId) { setError('Pick a subtopic first'); return; }
@@ -73,34 +89,58 @@ export default function MapNominationSheet({
         and votes the spectra.
       </p>
 
-      <p className="eyebrow mb-2 mt-5">Subtopic</p>
-      <ul className="max-h-56 space-y-1.5 overflow-y-auto">
-        {confirmedSubtopics.map(s => {
-          const taken = takenThisRound.has(s.id);
-          const selected = effectiveSubtopicId === s.id;
-          return (
-            <li key={s.id}>
-              <button
-                disabled={taken}
-                onClick={() => setSubtopicId(s.id)}
-                className={`w-full rounded-xl border px-3 py-2.5 text-left text-base transition-colors ${
-                  selected ? 'border-ink bg-ink text-paper'
-                  : taken ? 'border-line text-ink-faint'
-                  : 'border-line-strong bg-paper-raised active:bg-paper-dim'
-                }`}
-              >
-                {s.title}
-                {taken && <span className="eyebrow ml-2 !text-ink-faint">already this round</span>}
-              </button>
-            </li>
-          );
-        })}
-        {confirmedSubtopics.length === 0 && (
-          <li className="rounded-xl border border-dashed border-line-strong px-3 py-2 text-sm text-ink-soft">
-            No subtopics survived round 1.
-          </li>
-        )}
-      </ul>
+      {!showList && selectedSub ? (
+        <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-line-strong bg-paper-raised px-3 py-2.5">
+          <div className="min-w-0">
+            <p className="eyebrow !text-ink-faint">Mapping</p>
+            {selectedParent && (
+              <span className="eyebrow block !text-ink-faint opacity-60">{selectedParent} ›</span>
+            )}
+            <p className="truncate text-base">{selectedSub.title}</p>
+          </div>
+          <button
+            onClick={() => setChanging(true)}
+            className="shrink-0 text-sm text-ink-soft underline"
+          >
+            change
+          </button>
+        </div>
+      ) : (
+        <>
+          <p className="eyebrow mb-2 mt-5">Subtopic</p>
+          <ul className="max-h-56 space-y-1.5 overflow-y-auto">
+            {confirmedSubtopics.map(s => {
+              const taken = takenThisRound.has(s.id);
+              const selected = effectiveSubtopicId === s.id;
+              const parentTitle = s.parentSubtopicId ? subtopicTitles.get(s.parentSubtopicId) : null;
+              return (
+                <li key={s.id}>
+                  <button
+                    disabled={taken}
+                    onClick={() => { setSubtopicId(s.id); setChanging(false); }}
+                    className={`w-full rounded-xl border px-3 py-2.5 text-left text-base transition-colors ${
+                      selected ? 'border-ink bg-ink text-paper'
+                      : taken ? 'border-line text-ink-faint'
+                      : 'border-line-strong bg-paper-raised active:bg-paper-dim'
+                    }`}
+                  >
+                    {parentTitle && (
+                      <span className="eyebrow block !text-inherit opacity-60">{parentTitle} ›</span>
+                    )}
+                    {s.title}
+                    {taken && <span className="eyebrow ml-2 !text-ink-faint">already this round</span>}
+                  </button>
+                </li>
+              );
+            })}
+            {confirmedSubtopics.length === 0 && (
+              <li className="rounded-xl border border-dashed border-line-strong px-3 py-2 text-sm text-ink-soft">
+                No subtopics survived round 1.
+              </li>
+            )}
+          </ul>
+        </>
+      )}
 
       <p className="eyebrow mb-2 mt-5">Format</p>
       <div className="flex gap-2">

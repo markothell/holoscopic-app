@@ -81,6 +81,11 @@ const oasNominationSchema = new mongoose.Schema({
   // Subtopic title, copied onto map nominations for display.
   title: { type: String, required: true, trim: true, maxlength: 80 },
 
+  // kind 'subtopic': the subtopic this one branches off, forming the round-1
+  // tree. null = a top-level facet of the game topic. Children can outlive an
+  // expired parent (each node stands on its own quorum).
+  parentSubtopicId: { type: String, default: null },
+
   // kind 'map': the confirmed round-1 subtopic this map is about.
   subtopicId: { type: String, default: null },
 

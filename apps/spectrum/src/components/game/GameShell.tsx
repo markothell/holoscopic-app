@@ -13,6 +13,7 @@ import ReviseFlow from '@/components/revise/ReviseFlow';
 import ProposalsScreen from '@/components/final/ProposalsScreen';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOasGame } from '@/hooks/useOasGame';
+import { useHistoryBackClose } from '@/hooks/useHistoryBackClose';
 import { OasService } from '@/services/oasService';
 import type { Game, Nomination } from '@/lib/types';
 
@@ -111,9 +112,14 @@ function RoundStage({
 }) {
   const [nominateOpen, setNominateOpen] = useState(false);
   const [proposeSubtopicId, setProposeSubtopicId] = useState<string | null>(null);
+  const [branchParentId, setBranchParentId] = useState<string | null>(null);
   const [openMapId, setOpenMapId] = useState<string | null>(null);
   const isRound1 = game.phase === 'round1';
   const noTokens = balance !== null && balance < 1;
+  const branchParent = branchParentId
+    ? nominations.find(n => n.id === branchParentId) ?? null : null;
+  // Back button closes the map sheet, returning to the graph (not the landing).
+  useHistoryBackClose(!!openMapId, () => setOpenMapId(null));
 
   return (
     <main className="flex h-dvh w-full flex-col">
@@ -128,13 +134,14 @@ function RoundStage({
           balance={balance}
           onOpenMap={setOpenMapId}
           onProposeMap={(subtopicId) => { setProposeSubtopicId(subtopicId); setNominateOpen(true); }}
+          onBranchSubtopic={(parentId) => { setBranchParentId(parentId); setNominateOpen(true); }}
         />
       </div>
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto w-full max-w-md px-5">
           <Button
             className="pointer-events-auto shadow-lg"
-            onClick={() => { setProposeSubtopicId(null); setNominateOpen(true); }}
+            onClick={() => { setProposeSubtopicId(null); setBranchParentId(null); setNominateOpen(true); }}
             disabled={noTokens}
           >
             {noTokens ? 'Out of tokens' : isRound1 ? '+ Subtopic · ● 1' : '+ Propose a map · ● 1'}
@@ -146,7 +153,8 @@ function RoundStage({
           game={game}
           userId={userId}
           open={nominateOpen}
-          onClose={() => setNominateOpen(false)}
+          parent={branchParent}
+          onClose={() => { setNominateOpen(false); setBranchParentId(null); }}
         />
       ) : (
         <MapNominationSheet
@@ -164,7 +172,7 @@ function RoundStage({
           game={game}
           mapId={openMapId}
           userId={userId}
-          onClose={() => setOpenMapId(null)}
+          onClose={() => window.history.back()}
         />
       )}
     </main>
@@ -187,6 +195,8 @@ function EndedStage({
   const [view, setView] = useState<'main' | 'map'>('main');
   const [openMapId, setOpenMapId] = useState<string | null>(null);
   const mainLabel = game.phase === 'revise' ? 'Revise' : 'Next games';
+  // Back button closes the map sheet, returning to the graph (not the landing).
+  useHistoryBackClose(!!openMapId, () => setOpenMapId(null));
 
   const tabs = (
     <div className="mt-3 flex gap-2">
@@ -219,6 +229,7 @@ function EndedStage({
             balance={balance}
             onOpenMap={setOpenMapId}
             onProposeMap={() => {}}
+            onBranchSubtopic={() => {}}
           />
         </div>
       ) : game.phase === 'revise' ? (
@@ -232,7 +243,7 @@ function EndedStage({
           game={game}
           mapId={openMapId}
           userId={userId}
-          onClose={() => setOpenMapId(null)}
+          onClose={() => window.history.back()}
         />
       )}
     </main>
