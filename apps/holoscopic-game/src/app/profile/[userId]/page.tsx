@@ -8,6 +8,7 @@ import UserMenu from '@/components/UserMenu';
 import PlayerMap from '@/components/graph/PlayerMap';
 import { UserService, PlayerGamesResponse, GameMapResponse } from '@/services/userService';
 import { STR } from '@/lib/strings';
+import { collectiveMapUrl, isSpectrum, gameProductName } from '@/lib/games';
 import styles from './page.module.css';
 
 function gameLabel(game: { name: string; gameNumber: number | null }) {
@@ -44,6 +45,7 @@ function PlayerHistory({ data, targetUserId, isOwnProfile }: {
           <h2 className={styles.sectionTitle}>Player History</h2>
           {data.games.map((game) => (
             <div key={game.instanceId} className={styles.activityCard}>
+              <div className={styles.gameEyebrow}>{gameProductName(game)}</div>
               <div className={styles.activityTitle}>
                 {gameLabel(game)}
                 {!game.active && (
@@ -60,18 +62,31 @@ function PlayerHistory({ data, targetUserId, isOwnProfile }: {
                 {game.stats.patterns > 0 && <> &middot; {game.stats.patterns} {game.stats.patterns === 1 ? STR.pattern.toLowerCase() : STR.patterns.toLowerCase()}</>}
               </div>
               <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.6rem' }}>
-                <Link
-                  href={`/interview/${game.slug}/topics`}
-                  className={styles.footerLink}
-                >
-                  Collective map &rarr;
-                </Link>
-                <Link
-                  href={`/profile/${targetUserId}?game=${game.slug}`}
-                  className={styles.footerLink}
-                >
-                  {isOwnProfile ? 'Your map' : 'Their map'} &rarr;
-                </Link>
+                {isSpectrum(game) ? (
+                  // On a Spectrum lives in its own app and has no interView-shaped
+                  // personal map — link straight into the room.
+                  <a
+                    href={collectiveMapUrl(game)}
+                    className={styles.footerLink}
+                  >
+                    Open &rarr;
+                  </a>
+                ) : (
+                  <>
+                    <Link
+                      href={collectiveMapUrl(game)}
+                      className={styles.footerLink}
+                    >
+                      Collective map &rarr;
+                    </Link>
+                    <Link
+                      href={`/profile/${targetUserId}?game=${game.slug}`}
+                      className={styles.footerLink}
+                    >
+                      {isOwnProfile ? 'Your map' : 'Their map'} &rarr;
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           ))}
@@ -188,9 +203,9 @@ export default function ProfilePage() {
                 <span className={styles.profileMeta} style={{ margin: 0 }}>
                   in {gameLabel(gameMap.instance)}
                 </span>
-                <Link href={`/interview/${gameMap.instance.slug}/topics`} className={styles.footerLink}>
+                <a href={collectiveMapUrl(gameMap.instance)} className={styles.footerLink}>
                   Collective map &rarr;
-                </Link>
+                </a>
               </>
             )}
           </div>

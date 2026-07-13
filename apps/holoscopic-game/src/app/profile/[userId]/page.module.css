@@ -168,6 +168,16 @@
   border-top: 1px solid var(--rule);
 }
 
+.gameEyebrow {
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.58rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.3rem;
+}
+
 .activityTitle {
   font-weight: 600;
   font-size: 1.1rem;

@@ -89,6 +89,10 @@ router.get('/:userId/games', async (req, res) => {
         instanceId: inst.id,
         name: inst.name,
         slug: inst.slug,
+        // Per-room instances (parentInstanceId set) are On a Spectrum rooms;
+        // everything else is an interView edition. Lets the profile route each
+        // history row to the app that owns it.
+        gameType: inst.parentInstanceId ? 'spectrum' : 'interview',
         gameNumber: inst.gameNumber ?? null,
         active: inst.active !== false && !(inst.endDate && new Date(inst.endDate) < new Date()),
         startDate: inst.startDate,
@@ -161,7 +165,11 @@ router.get('/:userId/game-map', async (req, res) => {
     res.json({
       user: { id: user.id, name: user.name },
       instance: instance
-        ? { id: instance.id, name: instance.name, slug: instance.slug, gameNumber: instance.gameNumber ?? null }
+        ? {
+            id: instance.id, name: instance.name, slug: instance.slug,
+            gameType: instance.parentInstanceId ? 'spectrum' : 'interview',
+            gameNumber: instance.gameNumber ?? null,
+          }
         : null,
       topics,
       activities: activities.map(a => ({ ...a, _id: undefined })),
