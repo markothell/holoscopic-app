@@ -6,10 +6,16 @@ const mongoose = require('mongoose');
 //   map      — rounds 2–4: "map this confirmed subtopic through this round's
 //              theme" as a 1D or 2D spectrum activity
 //
+// A map nomination proposes its frames up front: frameSlate[] carries the
+// nominator's 1–2 seed spectrums (which set `dimensions`) plus any rival
+// frames stakers add pre-quorum, each with its per-map votes. The slate
+// resolves at confirmation — top-voted frames become mapState.winningAxes —
+// so the lens is locked before gathering starts and gather is items-only.
+//
 // A confirmed map nomination runs its own mini state machine (mapState):
-// gather (submit items + nominate/vote spectra) → rank (drag-order the
-// frozen items along the winning spectra) → done/closed. Its content lives
-// in the Entry collection with THIS document duck-typed as the activity
+// gather (submit items) → rank (drag-order the frozen items along the
+// winning frames) → done/closed. Item and ranking content lives in the
+// Entry collection with THIS document duck-typed as the activity
 // (entries.js reads id, topicId, votesPerUser, maxEntries) — no Activity
 // document is involved.
 //
@@ -25,9 +31,24 @@ const stakeSchema = new mongoose.Schema({
   returnedAt: { type: Date, default: null },
 }, { _id: false, id: false });
 
+// One frame on a map nomination's slate. poleA/poleB are denormalized from
+// the OasFrame doc (frozen at propose time) so slates render without joins;
+// voterIds is this map's contest — the same frame can win here and lose on
+// another nomination.
+const frameSlateSchema = new mongoose.Schema({
+  frameId:        { type: String, required: true },
+  poleA:          { type: String, required: true },
+  poleB:          { type: String, required: true },
+  proposedBy:     { type: String, required: true },
+  proposedByName: { type: String, required: true },
+  proposedAt:     { type: Date, default: Date.now },
+  voterIds:       { type: [String], default: [] },
+}, { _id: false, id: false });
+
 const winningAxisSchema = new mongoose.Schema({
-  entryId: { type: String, required: true },
-  label:   { type: String, required: true },
+  frameId: { type: String, required: true },
+  poleA:   { type: String, required: true },
+  poleB:   { type: String, required: true },
 }, { _id: false, id: false });
 
 const itemSchema = new mongoose.Schema({
@@ -51,7 +72,8 @@ const mapStateSchema = new mongoose.Schema({
   // Server-authoritative gather deadline: a proportional slice of the time
   // left in the game round when the map went live.
   stageDeadline: { type: Date, default: null },
-  // Resolved at gather→rank: [0] = x axis, plus [1] = y axis for 2D maps.
+  // Resolved from frameSlate at confirmation: [0] = x axis, plus [1] = y
+  // axis for 2D maps. Locked before gather opens.
   winningAxes: [winningAxisSchema],
   // The item roster frozen at gather→rank; rankings address items by index.
   items: [itemSchema],
@@ -81,12 +103,22 @@ const oasNominationSchema = new mongoose.Schema({
   // Subtopic title, copied onto map nominations for display.
   title: { type: String, required: true, trim: true, maxlength: 80 },
 
+  // kind 'subtopic': the subtopic this one branches off, forming the round-1
+  // tree. null = a top-level facet of the game topic. Children can outlive an
+  // expired parent (each node stands on its own quorum).
+  parentSubtopicId: { type: String, default: null },
+
   // kind 'map': the confirmed round-1 subtopic this map is about.
   subtopicId: { type: String, default: null },
 
-  // kind 'map': one spectrum or two — the nominator's call, visible before
-  // supporters stake.
+  // kind 'map': one spectrum or two — set by how many frames the nominator
+  // seeds, visible before supporters stake.
   dimensions: { type: Number, enum: [1, 2], default: 2 },
+
+  // kind 'map': the frame contest — nominator's seed frames plus any rival
+  // frames stakers add pre-quorum. Resolved into mapState.winningAxes at
+  // confirmation; frozen afterward.
+  frameSlate: [frameSlateSchema],
 
   // kind 'map': the live activity's state machine; null until confirmed.
   mapState: { type: mapStateSchema, default: null },

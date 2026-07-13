@@ -39,6 +39,15 @@ const instanceConfigSchema = new mongoose.Schema({
     // Festival editions: 24. Ongoing async: 168.
     activityWindowHours:          { type: Number, default: 168 },
   },
+  // On a Spectrum room defaults. Read by utils/oasGames.js#createGame off the
+  // `spectrum` parent instance whenever a new room doesn't explicitly
+  // override a value — irrelevant to interView editions.
+  oas: {
+    startingTokens: { type: Number, default: 4, min: 1 },
+    quorum:         { type: Number, default: 3, min: 1 },
+    votesPerUser:   { type: Number, default: 3, min: 1 },
+    maxPlayers:     { type: Number, default: 40, min: 2 },
+  },
 }, { _id: false });
 
 const instanceSchema = new mongoose.Schema({

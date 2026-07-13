@@ -65,7 +65,7 @@ Each app has a `CLAUDE.md` with deeper architecture notes.
 
 ## Status & roadmap
 
-Actively developed by a solo builder. Current focus: shipping the new On a Spectrum, guest (no-signup) play, and running facilitated games with real groups. Ideas, playtests, and conversation are welcome — open an issue or reach out.
+Actively developed by a solo builder. Current focus: guest (no-signup) play and running facilitated games with real groups. Ideas, playtests, and conversation are welcome — open an issue or reach out.
 
 ## License
 

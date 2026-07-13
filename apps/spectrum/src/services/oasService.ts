@@ -1,6 +1,7 @@
 import { apiFetch } from './api';
 import type {
-  Axis, Game, MapDetail, MapEntry, Nomination, Proposal, RoundSeconds, Snapshot,
+  Axis, FrameSpec, Game, MapDetail, MapEntry, MeGames, Nomination, Proposal,
+  Pulse, RoundSeconds, Snapshot,
 } from '@/lib/types';
 
 export interface CreateGameInput {
@@ -28,6 +29,16 @@ export const OasService = {
     return apiFetch<Snapshot>(`/oas/games/${code}`, { userId: userId ?? undefined });
   },
 
+  // Self-only: identity rides the verified bearer token.
+  myGames(userId: string) {
+    return apiFetch<MeGames>('/oas/me/games', { userId });
+  },
+
+  // Public — no auth needed, no names in the payload.
+  pulse() {
+    return apiFetch<Pulse>('/oas/pulse');
+  },
+
   join(code: string, userId: string) {
     return apiFetch<{ game: Game; balance: number }>(`/oas/games/${code}/join`, {
       method: 'POST', userId,
@@ -46,16 +57,33 @@ export const OasService = {
     });
   },
 
-  nominateSubtopic(code: string, title: string, userId: string) {
+  nominateSubtopic(code: string, title: string, userId: string, parentSubtopicId?: string | null) {
     return apiFetch<{ nomination: Nomination }>(`/oas/games/${code}/nominations`, {
-      method: 'POST', body: { title }, userId,
+      method: 'POST', body: { title, parentSubtopicId: parentSubtopicId ?? null }, userId,
     });
   },
 
-  nominateMap(code: string, subtopicId: string, dimensions: 1 | 2, userId: string) {
+  // Rounds 2–4: the lens rides the proposal — 1 frame = a ranked line,
+  // 2 frames = a 2×2 map.
+  nominateMap(code: string, subtopicId: string, frames: FrameSpec[], userId: string) {
     return apiFetch<{ nomination: Nomination }>(`/oas/games/${code}/nominations`, {
-      method: 'POST', body: { subtopicId, dimensions }, userId,
+      method: 'POST', body: { subtopicId, frames }, userId,
     });
+  },
+
+  // Pre-quorum frame contest on a map nomination's slate.
+  proposeFrame(code: string, nominationId: string, frame: FrameSpec, userId: string) {
+    return apiFetch<{ nomination: Nomination }>(
+      `/oas/games/${code}/nominations/${nominationId}/frames`,
+      { method: 'POST', body: frame, userId },
+    );
+  },
+
+  voteFrame(code: string, nominationId: string, frameId: string, userId: string) {
+    return apiFetch<{ nomination: Nomination }>(
+      `/oas/games/${code}/nominations/${nominationId}/frames/${frameId}/vote`,
+      { method: 'POST', userId },
+    );
   },
 
   stake(code: string, nominationId: string, userId: string) {
@@ -89,19 +117,6 @@ export const OasService = {
     return apiFetch<{ entry: MapEntry }>(`/oas/games/${code}/maps/${mapId}/items`, {
       method: 'POST', body: { text }, userId,
     });
-  },
-
-  nominateMapAxis(code: string, mapId: string, label: string, userId: string) {
-    return apiFetch<{ entry: MapEntry }>(`/oas/games/${code}/maps/${mapId}/axes`, {
-      method: 'POST', body: { label }, userId,
-    });
-  },
-
-  voteMapAxis(code: string, mapId: string, entryId: string, userId: string) {
-    return apiFetch<{ entry: MapEntry }>(
-      `/oas/games/${code}/maps/${mapId}/axes/${entryId}/vote`,
-      { method: 'POST', userId },
-    );
   },
 
   advanceMap(code: string, mapId: string, userId: string) {

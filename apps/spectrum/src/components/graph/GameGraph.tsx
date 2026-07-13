@@ -15,21 +15,22 @@ import { NODE_TYPES, THEME_ACCENT } from '@/components/graph/nodes';
 import NodeSheet from '@/components/graph/NodeSheet';
 import type { Game, Nomination } from '@/lib/types';
 
-// The main view: the topic web. Center = the game topic; ring = subtopics
-// sized by stakes; satellites = per-theme maps. Adapted from interView's
-// hub graph, restyled paper/ink. Tap a node for its action sheet.
+// The main view: the topic web. Center = the game topic; subtopics branch
+// out as a recursive tree (round 1 lets you nominate subtopics on subtopics
+// to any depth), sized by stakes; per-theme maps orbit each subtopic.
+// Adapted from interView's hub graph, restyled paper/ink. Tap a node for its
+// action sheet.
 
-function radialPos(i: number, total: number, radius: number) {
-  const angle = total === 1 ? -Math.PI / 2 : (2 * Math.PI * i) / total - Math.PI / 2;
-  return { x: Math.round(Math.cos(angle) * radius), y: Math.round(Math.sin(angle) * radius) };
-}
+const ROOT = 'topic';
+const RING0 = 240;      // radius of the first subtopic ring
+const RING_STEP = 175;  // added radius per extra level of depth
 
 function buildGraph(game: Game, nominations: Nomination[]) {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
   nodes.push({
-    id: 'topic',
+    id: ROOT,
     type: 'topic',
     position: { x: -58, y: -58 }, // center the 116px circle on the origin
     data: { label: game.topic },
@@ -40,6 +41,30 @@ function buildGraph(game: Game, nominations: Nomination[]) {
   const inRound1 = game.phase === 'round1';
   const subtopics = nominations.filter(n =>
     n.kind === 'subtopic' && (inRound1 || n.status === 'confirmed'));
+  const visible = new Set(subtopics.map(s => s.id));
+
+  // A subtopic hangs off its parent only when that parent is itself visible;
+  // otherwise (e.g. a confirmed child whose parent expired) it reconnects to
+  // the root topic so nothing dangles.
+  const childrenOf = new Map<string, Nomination[]>();
+  for (const sub of subtopics) {
+    const key = sub.parentSubtopicId && visible.has(sub.parentSubtopicId)
+      ? sub.parentSubtopicId : ROOT;
+    if (!childrenOf.has(key)) childrenOf.set(key, []);
+    childrenOf.get(key)!.push(sub);
+  }
+
+  // Leaf count drives each subtree's angular share, so dense branches get
+  // proportionally more of the circle.
+  const leafCache = new Map<string, number>();
+  function leaves(id: string): number {
+    if (leafCache.has(id)) return leafCache.get(id)!;
+    const kids = childrenOf.get(id) || [];
+    const n = kids.length === 0 ? 1 : kids.reduce((s, k) => s + leaves(k.id), 0);
+    leafCache.set(id, n);
+    return n;
+  }
+
   const maps = nominations.filter(n => n.kind === 'map');
   const mapsBySubtopic = new Map<string, Nomination[]>();
   for (const m of maps) {
@@ -48,38 +73,18 @@ function buildGraph(game: Game, nominations: Nomination[]) {
     mapsBySubtopic.get(m.subtopicId)!.push(m);
   }
 
-  const ringRadius = Math.max(240, 60 * subtopics.length);
-
-  subtopics.forEach((sub, i) => {
-    const pos = radialPos(i, subtopics.length, ringRadius);
-    nodes.push({
-      id: sub.id,
-      type: 'subtopic',
-      position: { x: pos.x - 70, y: pos.y - 28 },
-      data: { nomination: sub, quorum: sub.quorumThreshold },
-      draggable: false,
-    });
-    edges.push({
-      id: `topic-${sub.id}`,
-      source: 'topic',
-      target: sub.id,
-      sourceHandle: 'out-c',
-      targetHandle: 'in-c',
-      type: 'straight',
-      style: {
-        stroke: sub.status === 'confirmed' ? 'var(--line-strong)' : 'var(--line)',
-        strokeWidth: sub.status === 'confirmed' ? 1.5 : 1,
-        strokeDasharray: sub.status === 'confirmed' ? undefined : '4 4',
-      },
-    });
-
-    // Maps orbit their subtopic, fanned outward from the center.
+  function attachMaps(sub: Nomination, x: number, y: number) {
     const subMaps = mapsBySubtopic.get(sub.id) || [];
+    // A subtopic's children extend radially outward, so a map fanned outward
+    // would land on top of a child. When this node has children, fan the map
+    // tangentially (to the side) instead; leaf nodes still fan straight out.
+    const radial = Math.atan2(y, x);
+    const hasChildren = (childrenOf.get(sub.id)?.length ?? 0) > 0;
+    const baseAngle = hasChildren ? radial + Math.PI / 2 : radial;
     subMaps.forEach((m, j) => {
-      const baseAngle = Math.atan2(pos.y, pos.x);
-      const spread = (j - (subMaps.length - 1) / 2) * 0.45;
-      const mx = pos.x + Math.round(Math.cos(baseAngle + spread) * 150);
-      const my = pos.y + Math.round(Math.sin(baseAngle + spread) * 150);
+      const spread = (j - (subMaps.length - 1) / 2) * 0.5;
+      const mx = x + Math.round(Math.cos(baseAngle + spread) * 155);
+      const my = y + Math.round(Math.sin(baseAngle + spread) * 155);
       const accent = THEME_ACCENT[m.themeIndex ?? 0];
       nodes.push({
         id: m.id,
@@ -110,7 +115,55 @@ function buildGraph(game: Game, nominations: Nomination[]) {
         },
       });
     });
-  });
+  }
+
+  // Lay a parent's children out across its angular sector, recursing so each
+  // grandchild fans out around its own parent's outward ray.
+  function layout(parentKey: string, depth: number, a0: number, a1: number) {
+    const kids = childrenOf.get(parentKey) || [];
+    if (kids.length === 0) return;
+    const totalLeaves = kids.reduce((s, k) => s + leaves(k.id), 0);
+    const span = a1 - a0;
+    let cursor = a0;
+    const radius = RING0 + (depth - 1) * RING_STEP;
+
+    for (const sub of kids) {
+      const frac = leaves(sub.id) / totalLeaves;
+      const secStart = cursor;
+      const secEnd = cursor + span * frac;
+      cursor = secEnd;
+      const mid = (secStart + secEnd) / 2;
+      const x = Math.round(Math.cos(mid) * radius);
+      const y = Math.round(Math.sin(mid) * radius);
+
+      nodes.push({
+        id: sub.id,
+        type: 'subtopic',
+        position: { x: x - 70, y: y - 28 },
+        data: { nomination: sub, quorum: sub.quorumThreshold },
+        draggable: false,
+      });
+      edges.push({
+        id: `${parentKey}-${sub.id}`,
+        source: parentKey,
+        target: sub.id,
+        sourceHandle: 'out-c',
+        targetHandle: 'in-c',
+        type: 'straight',
+        style: {
+          stroke: sub.status === 'confirmed' ? 'var(--line-strong)' : 'var(--line)',
+          strokeWidth: sub.status === 'confirmed' ? 1.5 : 1,
+          strokeDasharray: sub.status === 'confirmed' ? undefined : '4 4',
+        },
+      });
+
+      attachMaps(sub, x, y);
+      layout(sub.id, depth + 1, secStart, secEnd);
+    }
+  }
+
+  // Top-level subtopics span the full circle, starting from the top.
+  layout(ROOT, 1, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI);
 
   return { nodes, edges };
 }
@@ -122,6 +175,7 @@ interface GraphProps {
   balance: number | null;
   onOpenMap: (mapId: string) => void;
   onProposeMap: (subtopicId: string) => void;
+  onBranchSubtopic: (parentSubtopicId: string) => void;
 }
 
 function GraphInner({
@@ -131,6 +185,7 @@ function GraphInner({
   balance,
   onOpenMap,
   onProposeMap,
+  onBranchSubtopic,
 }: GraphProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { nodes, edges } = useMemo(() => buildGraph(game, nominations), [game, nominations]);
@@ -166,12 +221,14 @@ function GraphInner({
 
       <NodeSheet
         game={game}
+        nominations={nominations}
         nomination={selected}
         userId={userId}
         balance={balance}
         onClose={() => setSelectedId(null)}
         onOpenMap={onOpenMap}
         onProposeMap={onProposeMap}
+        onBranchSubtopic={onBranchSubtopic}
       />
     </div>
   );

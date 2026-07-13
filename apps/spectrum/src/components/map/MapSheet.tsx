@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
 import TextField from '@/components/ui/TextField';
 import DragList, { type DragItem } from '@/components/rank/DragList';
 import MapReveal from '@/components/map/MapReveal';
+import { FramePreview } from '@/components/frames/FrameGlyph';
 import { THEME_ACCENT } from '@/components/graph/nodes';
 import { useMapDetail } from '@/hooks/useMapDetail';
 import { useCountdown } from '@/hooks/useCountdown';
@@ -12,12 +13,12 @@ import { OasService } from '@/services/oasService';
 import { ApiError } from '@/services/api';
 import type { Axis, Game, MapEntry } from '@/lib/types';
 
-// One live map, full screen: gather (add items, suggest + vote the
-// spectra) → rank (drag-order the items, axis by axis) → reveal (the
-// aggregate map) with the token claim.
+// One live map, full screen. The lens locked at confirmation leads every
+// stage: gather (the empty frame is the prompt — add items that belong on
+// it) → rank (drag-order the items between each frame's poles) → reveal
+// (the same frame, filled) with the token claim.
 
 const MAX_ITEMS = 3;
-const MAX_AXES = 2;
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -48,7 +49,6 @@ export default function MapSheet({
 }) {
   const { loading, error, detail, refresh } = useMapDetail(code, mapId);
   const [itemText, setItemText] = useState('');
-  const [axisText, setAxisText] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Ranking state: current axis + my order per axis.
@@ -111,7 +111,6 @@ export default function MapSheet({
 
   const myStake = nom.stakes.find(s => s.userId === userId);
   const myItems = detail!.items.filter(e => e.userId === userId);
-  const myAxes = detail!.axisIdeas.filter(e => e.userId === userId);
   const doneSet = new Set(ms.rankingDone.map(d => `${d.userId}:${d.axis}`));
   const myDoneAxes = axes.filter(a => doneSet.has(`${userId}:${a}`));
   const complete = myItems.length > 0 && myDoneAxes.length === axes.length;
@@ -143,9 +142,9 @@ export default function MapSheet({
   );
 
   // ── Gather ────────────────────────────────────────────────────────────
+  // One job: add items. The lens is already locked — drawn up top as the
+  // empty map, it's the prompt for what belongs here.
   if (ms.stage === 'gather') {
-    const sortedAxes = [...detail!.axisIdeas].sort((a, b) =>
-      b.voteCount - a.voteCount || a.createdAt.localeCompare(b.createdAt));
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto bg-paper pb-24">
         {header}
@@ -160,8 +159,16 @@ export default function MapSheet({
             </Button>
           )}
 
+          <section className="mt-5">
+            <FramePreview axes={ms.winningAxes} accent={accent} compact />
+            <p className="mt-2 text-sm text-ink-soft">
+              Add {theme.toLowerCase()} of <span className="text-ink">{nom.title}</span> that
+              belong somewhere on this map — you&apos;ll place everything next.
+            </p>
+          </section>
+
           <section className="mt-6">
-            <p className="eyebrow">{theme} of {nom.title} — the things to map</p>
+            <p className="eyebrow">The things to map</p>
             <ul className="mt-2 space-y-1.5">
               {detail!.items.map((e: MapEntry) => (
                 <li key={e.id} className="rise-in rounded-xl bg-paper-raised px-3 py-2">
@@ -199,72 +206,11 @@ export default function MapSheet({
             )}
           </section>
 
-          <section className="mt-8">
-            <p className="eyebrow">Spectra — vote for the lens{nom.dimensions === 2 ? 'es' : ''} ({game.config.votesPerUser} votes)</p>
-            <ul className="mt-2 space-y-1.5">
-              {sortedAxes.map((e, i) => {
-                const mine = e.voterIds.includes(userId);
-                const winning = i < (nom.dimensions ?? 2);
-                return (
-                  <li
-                    key={e.id}
-                    className="tally-row flex items-center gap-3 rounded-xl border bg-paper-raised px-3 py-2"
-                    style={{ borderColor: winning && e.voteCount > 0 ? accent : 'var(--line)' }}
-                  >
-                    <span className="min-w-0 flex-1 truncate text-base">{e.text}</span>
-                    <span className="eyebrow" style={{ color: e.voteCount > 0 ? accent : undefined }}>
-                      {e.voteCount}
-                    </span>
-                    {isMember && e.userId !== userId && (
-                      <button
-                        disabled={busy}
-                        onClick={() => act(() => OasService.voteMapAxis(code, mapId, e.id, userId))}
-                        className={`shrink-0 rounded-full border px-3 py-1.5 text-xs ${
-                          mine ? 'border-transparent text-white' : 'border-line-strong text-ink-soft'
-                        }`}
-                        style={mine ? { background: accent } : undefined}
-                      >
-                        {mine ? 'voted ✓' : 'vote'}
-                      </button>
-                    )}
-                  </li>
-                );
-              })}
-              {sortedAxes.length === 0 && (
-                <li className="rounded-xl border border-dashed border-line-strong px-3 py-2 text-sm text-ink-soft">
-                  Suggest a spectrum to rank along — “calm — heated”.
-                </li>
-              )}
-            </ul>
-            {isMember && myAxes.length < MAX_AXES && (
-              <div className="mt-2 flex gap-2">
-                <TextField
-                  value={axisText}
-                  maxLength={60}
-                  placeholder="strict — lenient"
-                  onChange={e => setAxisText(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && axisText.trim()) {
-                      act(() => OasService.nominateMapAxis(code, mapId, axisText.trim(), userId), () => setAxisText(''));
-                    }
-                  }}
-                />
-                <button
-                  disabled={busy || !axisText.trim()}
-                  onClick={() => act(() => OasService.nominateMapAxis(code, mapId, axisText.trim(), userId), () => setAxisText(''))}
-                  className="display shrink-0 rounded-2xl border border-line-strong px-5 text-xl disabled:opacity-30"
-                >
-                  Add
-                </button>
-              </div>
-            )}
-          </section>
-
           {canForce && (
             <Button
               variant="ghost"
               className="mt-8"
-              disabled={busy || detail!.items.length < 2 || detail!.axisIdeas.length < (nom.dimensions ?? 2)}
+              disabled={busy || detail!.items.length < 2}
               onClick={() => act(() => OasService.advanceMap(code, mapId, userId))}
             >
               Start ranking now
@@ -322,15 +268,22 @@ export default function MapSheet({
       );
     }
 
-    const axisLabel = ms.winningAxes[nextAxis === 'x' ? 0 : 1]?.label ?? '';
+    const frame = ms.winningAxes[nextAxis === 'x' ? 0 : 1];
     const order = orders[nextAxis] ?? ms.items.map(i => i.entryId);
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto bg-paper pb-28">
         {header}
         <div className="mx-auto w-full max-w-md px-5">
-          <p className="eyebrow mt-4" style={{ color: accent }}>
-            {axes.length > 1 ? `Spectrum ${nextAxis === 'x' ? 1 : 2} of ${axes.length} — ` : ''}
-            most “{axisLabel}” at the top
+          {axes.length > 1 && (
+            <p className="eyebrow mt-4 !text-ink-faint">
+              Spectrum {nextAxis === 'x' ? 1 : 2} of {axes.length}
+            </p>
+          )}
+          {/* The frame's poles bracket the list: most poleA up top (filled
+              dot, like every glyph), poleB at the bottom. */}
+          <p className={`eyebrow flex items-center justify-center gap-2 ${axes.length > 1 ? 'mt-2' : 'mt-4'}`} style={{ color: accent }}>
+            <span className="h-2 w-2 rounded-full" style={{ background: accent }} aria-hidden />
+            most {frame?.poleA} ↑
           </p>
           <div className="mt-3">
             <DragList
@@ -340,6 +293,10 @@ export default function MapSheet({
               accent={accent}
             />
           </div>
+          <p className="eyebrow mt-3 flex items-center justify-center gap-2 !text-ink-soft">
+            <span className="h-2 w-2 rounded-full border border-ink-soft" aria-hidden />
+            most {frame?.poleB} ↓
+          </p>
           {myItems.length === 0 && (
             <p className="mt-3 text-sm text-ink-soft">
               You didn’t add an item during gathering — you can still rank, but the
@@ -354,7 +311,7 @@ export default function MapSheet({
               refresh,
             )}
           >
-            {busy ? 'Saving…' : `Lock in “${axisLabel}”`}
+            {busy ? 'Saving…' : `Lock in “${frame?.poleB} — ${frame?.poleA}”`}
           </Button>
           {actionError && <p className="mt-3 text-sm text-ax">{actionError}</p>}
         </div>

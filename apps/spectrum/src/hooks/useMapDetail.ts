@@ -19,7 +19,7 @@ interface MapDetailState {
 type Action =
   | { type: 'detail'; detail: MapDetail }
   | { type: 'error'; message: string }
-  | { type: 'entry'; kind: 'item' | 'axis'; entry: MapEntry }
+  | { type: 'entry'; entry: MapEntry }
   | { type: 'ranked'; rankingDone: RankingDone[] };
 
 function upsert(list: MapEntry[], entry: MapEntry): MapEntry[] {
@@ -38,10 +38,9 @@ function reducer(state: MapDetailState, action: Action): MapDetailState {
       return { ...state, loading: false, error: action.message };
     case 'entry': {
       if (!state.detail) return state;
-      const key = action.kind === 'item' ? 'items' : 'axisIdeas';
       return {
         ...state,
-        detail: { ...state.detail, [key]: upsert(state.detail[key], action.entry) },
+        detail: { ...state.detail, items: upsert(state.detail.items, action.entry) },
       };
     }
     case 'ranked': {
@@ -80,8 +79,8 @@ export function useMapDetail(code: string, mapId: string | null) {
     refresh();
     const subs = [
       oasSocket.on('oas_map_entry', (p) => {
-        const { mapId: id, kind, entry } = p as { mapId: string; kind: 'item' | 'axis'; entry: MapEntry };
-        if (id === mapId) dispatch({ type: 'entry', kind, entry });
+        const { mapId: id, entry } = p as { mapId: string; entry: MapEntry };
+        if (id === mapId) dispatch({ type: 'entry', entry });
       }),
       oasSocket.on('oas_map_stage', (p) => {
         if ((p as MapStagePayload).mapId === mapId) refresh();

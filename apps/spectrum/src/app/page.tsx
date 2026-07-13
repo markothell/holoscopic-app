@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import TextField from '@/components/ui/TextField';
+import BottomSheet from '@/components/ui/BottomSheet';
 import { OasService } from '@/services/oasService';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -26,6 +27,7 @@ export default function Home() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   async function createGame() {
     if (!userId) return;
@@ -61,7 +63,18 @@ export default function Home() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-6 pb-10 pt-[max(3rem,env(safe-area-inset-top))]">
       <header className="rise-in">
-        <p className="eyebrow">A game for organizing collective minds</p>
+        <div className="flex items-start justify-between gap-3">
+          <p className="eyebrow">A game for revealing nuance</p>
+          <button
+            onClick={() => setMenuOpen(true)}
+            aria-label="Menu"
+            className="-mt-1 -mr-1 flex h-9 w-9 shrink-0 flex-col items-center justify-center gap-[5px] rounded-lg active:bg-paper-dim"
+          >
+            <span className="block h-0.5 w-5 rounded-full bg-ink" />
+            <span className="block h-0.5 w-5 rounded-full bg-ink" />
+            <span className="block h-0.5 w-5 rounded-full bg-ink" />
+          </button>
+        </div>
         <h1 className="display mt-3 text-[4.2rem] leading-[0.88]">
           On<br />a<br />
           <span className="text-ax">Spec</span><span className="text-ay">trum</span>
@@ -71,6 +84,46 @@ export default function Home() {
           per round, tokens keep it honest.
         </p>
       </header>
+
+      <BottomSheet open={menuOpen} onClose={() => setMenuOpen(false)}>
+        {isAuthenticated && (
+          <p className="eyebrow">Playing as {userName}</p>
+        )}
+        <nav className="mt-2 flex flex-col">
+          {isAuthenticated && (
+            <Link
+              href="/me"
+              onClick={() => setMenuOpen(false)}
+              className="display border-b border-line py-3 text-2xl"
+            >
+              My games
+            </Link>
+          )}
+          <Link
+            href="/games"
+            onClick={() => setMenuOpen(false)}
+            className="display border-b border-line py-3 text-2xl"
+          >
+            What&apos;s moving
+          </Link>
+          {isAuthenticated ? (
+            <button
+              onClick={() => { setMenuOpen(false); logout(); }}
+              className="py-3 text-left text-sm text-ink-soft underline"
+            >
+              Sign out
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              onClick={() => setMenuOpen(false)}
+              className="py-3 text-left text-sm text-ink-soft underline"
+            >
+              Sign in
+            </Link>
+          )}
+        </nav>
+      </BottomSheet>
 
       {isLoading ? null : !isAuthenticated ? (
         <section className="rise-in mt-auto pt-12" style={{ animationDelay: '0.1s' }}>
@@ -108,14 +161,7 @@ export default function Home() {
         </section>
       ) : (
         <section className="rise-in mt-10" style={{ animationDelay: '0.1s' }}>
-          <div className="flex items-baseline justify-between">
-            <p className="eyebrow">Playing as {userName}</p>
-            <button onClick={logout} className="text-xs text-ink-faint underline">
-              sign out
-            </button>
-          </div>
-
-          <label className="eyebrow mb-2 mt-6 block">Topic</label>
+          <label className="eyebrow mb-2 block">Topic</label>
           <TextField
             value={topic}
             maxLength={80}

@@ -71,10 +71,26 @@ export type NominationStatus = 'nominated' | 'confirmed' | 'expired';
 export type MapStage = 'gather' | 'rank' | 'done' | 'closed';
 export type Axis = 'x' | 'y';
 
-export interface WinningAxis {
-  entryId: string;
-  label: string;
+// A frame = one spectrum with durable identity in this game: two poles the
+// group ranks between. "Most" is always poleA (plots right on x, top on y).
+export interface FrameRef {
+  frameId: string;
+  poleA: string;
+  poleB: string;
 }
+
+// One frame on a map nomination's slate — the pre-quorum lens contest.
+export interface SlateFrame extends FrameRef {
+  proposedBy: string;
+  proposedByName: string;
+  voterIds: string[];
+}
+
+// What a nominate/propose call sends: borrow an existing lens by id, or
+// coin a new one by its poles.
+export type FrameSpec = { frameId: string } | { poleA: string; poleB: string };
+
+export type WinningAxis = FrameRef;
 
 export interface MapItem {
   entryId: string;
@@ -102,8 +118,13 @@ export interface Nomination {
   round: number;
   themeIndex: number | null;
   title: string;
+  // kind 'subtopic': parent in the round-1 tree (null = child of game topic).
+  parentSubtopicId: string | null;
   subtopicId: string | null;
   dimensions: 1 | 2 | null;
+  // kind 'map': the frame contest (nominator's seeds + rivals). Frozen at
+  // confirmation, when its tally becomes mapState.winningAxes.
+  frameSlate: SlateFrame[] | null;
   mapState: MapState | null;
   nominatedBy: string;
   nominatedByName: string;
@@ -166,14 +187,109 @@ export interface MapResultDot {
   authorId: string;
   x: number;
   y: number;
+  // Rater disagreement on the x axis (population std dev, 0 = consensus).
+  // Drives the 1D reveal's bar heights. count = how many ranked it.
+  spread: number;
+  count: number;
 }
 
 export interface MapDetail {
   nomination: Nomination;
   items: MapEntry[];
-  axisIdeas: MapEntry[];
   myRankings?: Partial<Record<Axis, string[]>>;
   results?: MapResultDot[];
+  serverNow: string;
+}
+
+// ---------------------------------------------------------------------------
+// Aggregates — /oas/me/games (self-only history) and /oas/pulse (the public
+// instance view). Pulse payloads carry no user identity by design.
+
+export interface GameSummary {
+  players: number;
+  subtopicsConfirmed: number;
+  mapsProposed: number;
+  mapsRevealed: number;
+  items: number;
+  spectrums: number;
+  // Mean rater disagreement across revealed maps (0 = consensus, 0.5 =
+  // maximal split); null when nothing was ranked.
+  spread: number | null;
+}
+
+export interface GameCard {
+  id: string;
+  code: string;
+  topic: string;
+  themes: string[];
+  phase: Phase;
+  phaseDeadline: string | null;
+  players: number;
+  rootGameId: string | null;
+  parentGameId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  summary: GameSummary | null;
+}
+
+export interface MyGameStats {
+  hosted: boolean;
+  items: number;
+  axesRanked: number;
+  mapsCompleted: number;
+  framesProposed: number;
+}
+
+export interface MySpectrum {
+  key: string;
+  poleA: string;
+  poleB: string;
+  games: number;
+  firstUsedAt: string;
+}
+
+export interface MeGames {
+  active: (GameCard & { hostedByMe: boolean })[];
+  history: (GameCard & { my: MyGameStats })[];
+  spectrums: MySpectrum[];
+  serverNow: string;
+}
+
+export interface PulseConversation {
+  rootGameId: string;
+  rootTopic: string;
+  latestTopic: string;
+  latestThemes: string[];
+  latestCode: string;
+  latestPhase: Phase;
+  games: number;
+  generations: number;
+  live: number;
+  mapsRevealed: number;
+  lastActiveAt: string;
+  startedAt: string;
+}
+
+export interface PulseSpectrum {
+  key: string;
+  poleA: string;
+  poleB: string;
+  games: number;
+  recent: boolean;
+  lastUsedAt: string;
+  subtopics: string[];
+}
+
+export interface Pulse {
+  stats: {
+    games: number;
+    conversations: number;
+    live: number;
+    mapsRevealed: number;
+    spectrums: number;
+  };
+  conversations: PulseConversation[];
+  spectrums: PulseSpectrum[];
   serverNow: string;
 }
 
