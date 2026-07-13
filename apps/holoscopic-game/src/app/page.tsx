@@ -461,7 +461,7 @@ export default function HomePage() {
                 On&nbsp;a&nbsp;<span className={styles.oasAx}>Spec</span><span className={styles.oasAy}>trum</span>
               </span>
               <span className={`${styles.gameCardSub} ${styles.gameCardSubOas}`}>
-                a game for organizing collective minds
+                a game for revealing nuance
               </span>
               <span className={styles.gameCardMeta}>
                 2&ndash;10 players &middot; 20 min&ndash;4 days

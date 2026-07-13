@@ -1,5 +1,6 @@
 const express = require('express');
 const games = require('../utils/oasGames');
+const stats = require('../utils/oasStats');
 const entryUtils = require('../utils/entries');
 const OasGame = require('../models/OasGame');
 const OasNomination = require('../models/OasNomination');
@@ -82,6 +83,34 @@ module.exports = function (io) {
     const themes = raw.map(t => String(t || '').trim().slice(0, 40));
     return themes.every(Boolean) ? themes : null;
   }
+
+  // ── Aggregate reads (scoped to the resolved deployment instance) ──────
+
+  // The requesting player's own games: active rooms to jump back into,
+  // completed history with their per-game slice, and the spectrums they've
+  // coined (anonymous cross-game usage counts). Identity comes from the
+  // verified bearer token — never from a bare header — so this stays
+  // strictly self-only.
+  router.get('/me/games', async (req, res) => {
+    try {
+      if (!req.authedUserId) {
+        return res.status(401).json({ error: 'Sign in to see your games' });
+      }
+      res.json(await stats.userGames(req.instanceId, req.authedUserId));
+    } catch (error) {
+      fail(res, error);
+    }
+  });
+
+  // The public pulse: which conversations (game threads) and spectrums are
+  // moving across the whole deployment. Carries no user ids or names.
+  router.get('/pulse', async (req, res) => {
+    try {
+      res.json(await stats.pulse(req.instanceId));
+    } catch (error) {
+      fail(res, error);
+    }
+  });
 
   // Create a game — creator is host and first participant, and gets the
   // room's starting tokens on the spot.
@@ -194,8 +223,33 @@ module.exports = function (io) {
     }
   });
 
-  // Nominate: round 1 takes {title}; rounds 2–4 take {subtopicId,
-  // dimensions: 1|2}. Costs 1 token (the nominator's stake).
+  // One frame spec from a request body: {frameId} borrows a lens already in
+  // this game, {poleA, poleB} coins a new one.
+  function frameSpec(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    if (raw.frameId) return { frameId: String(raw.frameId) };
+    const poleA = String(raw.poleA || '').trim();
+    const poleB = String(raw.poleB || '').trim();
+    return poleA && poleB ? { poleA, poleB } : null;
+  }
+
+  const FRAME_ERRORS = [
+    'Propose one spectrum or two',
+    'A spectrum needs both poles',
+    'The poles must differ',
+    'The two spectrums must differ',
+    'Spectrum not found',
+    'That spectrum is already mapping this subtopic — bring a different one',
+    'That spectrum is already on the slate',
+    'The spectrums are locked once the map confirms',
+    'That nomination is not in the current round',
+    'Cannot vote on your own spectrum',
+    'Join the map first',
+  ];
+
+  // Nominate: round 1 takes {title}; rounds 2–4 take {subtopicId, frames:
+  // [1–2 frame specs]} — the lens rides the proposal. Costs 1 token (the
+  // nominator's stake).
   router.post('/games/:code/nominations', async (req, res) => {
     try {
       const game = await loadGame(req, res);
@@ -214,13 +268,14 @@ module.exports = function (io) {
         });
       } else {
         const { subtopicId } = req.body;
-        const dimensions = Number(req.body.dimensions);
-        if (!subtopicId || (dimensions !== 1 && dimensions !== 2)) {
-          return res.status(400).json({ error: 'Subtopic and dimensions (1 or 2) are required' });
+        const frames = Array.isArray(req.body.frames)
+          ? req.body.frames.map(frameSpec) : null;
+        if (!subtopicId || !frames || frames.some(f => !f)) {
+          return res.status(400).json({ error: 'Subtopic and 1–2 frames are required' });
         }
         nom = await games.nominateMap({
           game, userId: player.id, username: player.name,
-          subtopicId, dimensions,
+          subtopicId, frames,
         });
       }
       res.status(201).json({ nomination: games.toClientNomination(nom) });
@@ -230,12 +285,55 @@ module.exports = function (io) {
         'Only subtopics can be nominated in round 1',
         'Subtopic nominations closed after round 1',
         'That subtopic is already nominated',
-        'That subtopic is already nominated this round',
         'Only confirmed subtopics can branch',
         'Subtopic not found',
-        'dimensions must be 1 or 2',
         'Already staked',
+        ...FRAME_ERRORS,
       ]);
+    }
+  });
+
+  // Pre-quorum frame contest: a staker floats a rival frame onto the slate.
+  router.post('/games/:code/nominations/:id/frames', async (req, res) => {
+    try {
+      const game = await loadGame(req, res);
+      if (!game) return;
+      const player = requireParticipant(req, res, game);
+      if (!player) return;
+      const nomination = await OasNomination.findOne({ id: req.params.id, gameId: game.id });
+      if (!nomination) return res.status(404).json({ error: 'Nomination not found' });
+      const frame = frameSpec(req.body);
+      if (!frame) return res.status(400).json({ error: 'A spectrum needs both poles' });
+      await games.proposeSlateFrame({
+        game, nomination, userId: player.id, username: player.name, frame,
+      });
+      res.status(201).json({ nomination: games.toClientNomination(nomination) });
+    } catch (error) {
+      if (error.message.startsWith('You can propose')) {
+        return res.status(400).json({ error: error.message });
+      }
+      fail(res, error, ['Nomination not found', ...FRAME_ERRORS]);
+    }
+  });
+
+  // Pre-quorum frame contest: toggle a vote on a slate frame.
+  router.post('/games/:code/nominations/:id/frames/:frameId/vote', async (req, res) => {
+    try {
+      const game = await loadGame(req, res);
+      if (!game) return;
+      const player = requireParticipant(req, res, game);
+      if (!player) return;
+      const nomination = await OasNomination.findOne({ id: req.params.id, gameId: game.id });
+      if (!nomination) return res.status(404).json({ error: 'Nomination not found' });
+      await games.voteSlateFrame({
+        game, nomination, userId: player.id, frameId: req.params.frameId,
+      });
+      res.json({ nomination: games.toClientNomination(nomination) });
+    } catch (error) {
+      if (error.message.startsWith('Vote limit')) {
+        return res.status(400).json({ error: error.message });
+      }
+      fail(res, error, ['Nomination not found', ...FRAME_ERRORS]);
     }
   });
 
@@ -281,8 +379,9 @@ module.exports = function (io) {
   });
 
   // ── Live map surface — each confirmed map nomination runs an
-  //    On-the-Spectrum-style activity: gather (items + spectrum ideas +
-  //    votes) → rank → done/closed. mapId = the nomination id.
+  //    On-the-Spectrum-style activity: gather (items, against the frames
+  //    locked at confirmation) → rank → done/closed. mapId = the
+  //    nomination id.
 
   async function loadMap(req, res, game) {
     const nom = await OasNomination.findOne({
@@ -299,10 +398,9 @@ module.exports = function (io) {
     'Map not found', "That map's round is over", 'Join the map first',
     'Gathering is over', 'Not in the ranking stage', 'Unknown axis',
     'Order must include every item exactly once', 'Entry not found',
-    'Cannot vote on your own entry',
   ];
 
-  // Everything a map sheet needs: nomination + items + spectrum ideas
+  // Everything a map sheet needs: nomination (frames included) + items
   // (+ my rankings mid-rank, + results once done/closed).
   router.get('/games/:code/maps/:mapId', async (req, res) => {
     try {
@@ -350,50 +448,6 @@ module.exports = function (io) {
       res.status(201).json({ entry: entryUtils.toClient(entry) });
     } catch (error) {
       if (error.message.startsWith('You can add')) {
-        return res.status(400).json({ error: error.message });
-      }
-      fail(res, error, MAP_ERRORS);
-    }
-  });
-
-  // Gather stage: suggest a spectrum to rank along.
-  router.post('/games/:code/maps/:mapId/axes', async (req, res) => {
-    try {
-      const game = await loadGame(req, res);
-      if (!game) return;
-      const player = requireParticipant(req, res, game);
-      if (!player) return;
-      const nom = await loadMap(req, res, game);
-      if (!nom) return;
-      const label = String(req.body.label || '').trim().slice(0, 60);
-      if (!label) return res.status(400).json({ error: 'Spectrum label is required' });
-      const entry = await games.nominateMapAxis({
-        game, nom, userId: player.id, username: player.name, label,
-      });
-      res.status(201).json({ entry: entryUtils.toClient(entry) });
-    } catch (error) {
-      if (error.message.startsWith('You can suggest')) {
-        return res.status(400).json({ error: error.message });
-      }
-      fail(res, error, MAP_ERRORS);
-    }
-  });
-
-  // Gather stage: toggle a vote on a spectrum idea (budget = votesPerUser).
-  router.post('/games/:code/maps/:mapId/axes/:entryId/vote', async (req, res) => {
-    try {
-      const game = await loadGame(req, res);
-      if (!game) return;
-      const player = requireParticipant(req, res, game);
-      if (!player) return;
-      const nom = await loadMap(req, res, game);
-      if (!nom) return;
-      const entry = await games.voteMapAxis({
-        game, nom, entryId: req.params.entryId, userId: player.id,
-      });
-      res.json({ entry: entryUtils.toClient(entry) });
-    } catch (error) {
-      if (error.message.startsWith('Vote limit')) {
         return res.status(400).json({ error: error.message });
       }
       fail(res, error, MAP_ERRORS);

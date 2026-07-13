@@ -6,7 +6,8 @@ import type { MapResultDot, WinningAxis } from '@/lib/types';
 // The aggregate view of a finished map: every item at its mean position.
 // 1D — a spectrum of rounded bars (x = mean rank, height = group
 // disagreement), echoing the game-card art; 2D — the quadrant grid. "Most"
-// plots right (x) and top (y), the On-the-Spectrum convention.
+// = poleA, plotting right (x) and top (y) — the same orientation as the
+// frame glyph and the empty-frame preview this map grew from.
 
 // 1D bar-chart geometry (SVG viewBox units).
 const VB = { w: 320, h: 132, pad: 24, base: 112 };
@@ -95,8 +96,8 @@ export default function MapReveal({
   accent: string;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const xLabel = winningAxes[0]?.label ?? '';
-  const yLabel = winningAxes[1]?.label ?? '';
+  const x = winningAxes[0] ?? null;
+  const y = winningAxes[1] ?? null;
 
   if (dimensions === 1) {
     // Each item is a bar: x = the group's mean ranking, height = how much
@@ -108,9 +109,11 @@ export default function MapReveal({
     const sorted = [...results].sort((a, b) => b.x - a.x);
     return (
       <div>
-        <p className="eyebrow text-center" style={{ color: accent }}>{xLabel}</p>
+        <p className="eyebrow text-center" style={{ color: accent }}>
+          {x?.poleB} — {x?.poleA}
+        </p>
 
-        <svg viewBox={`0 0 ${VB.w} ${VB.h}`} className="mt-5 w-full" role="img" aria-label={`${xLabel} spectrum`}>
+        <svg viewBox={`0 0 ${VB.w} ${VB.h}`} className="mt-5 w-full" role="img" aria-label={`${x?.poleB} to ${x?.poleA} spectrum`}>
           <line x1={VB.pad} y1={VB.base} x2={VB.w - VB.pad} y2={VB.base} stroke="var(--line-strong)" strokeWidth={1} />
           {bars.map((b, i) => {
             const on = activeId === b.dot.entryId;
@@ -139,9 +142,9 @@ export default function MapReveal({
             );
           })}
         </svg>
-        <div className="mt-1 flex justify-between">
-          <span className="eyebrow !text-ink-faint">least</span>
-          <span className="eyebrow !text-ink-faint">most</span>
+        <div className="mt-1 flex justify-between gap-4">
+          <span className="eyebrow max-w-[45%] truncate !text-ink-faint">{x?.poleB}</span>
+          <span className="eyebrow max-w-[45%] truncate" style={{ color: accent }}>{x?.poleA}</span>
         </div>
 
         <p className="mt-4 text-center text-sm text-ink-soft">
@@ -174,13 +177,20 @@ export default function MapReveal({
   return (
     <div>
       <div className="relative mx-auto aspect-square w-full max-w-sm rounded-2xl border border-line bg-paper-raised">
-        {/* axes */}
+        {/* axes — same skeleton as the empty-frame preview, now inhabited */}
         <div className="absolute inset-y-3 left-1/2 w-px bg-line" />
         <div className="absolute inset-x-3 top-1/2 h-px bg-line" />
-        <span className="eyebrow absolute bottom-2 right-3 !text-ink-faint">most {xLabel}</span>
-        <span className="eyebrow absolute bottom-2 left-3 !text-ink-faint">least</span>
-        <span className="eyebrow absolute left-1/2 top-2 -translate-x-1/2" style={{ color: accent }}>
-          most {yLabel}
+        <span className="eyebrow absolute right-2 top-1/2 max-w-[38%] -translate-y-1/2 truncate" style={{ color: accent }}>
+          {x?.poleA}
+        </span>
+        <span className="eyebrow absolute left-2 top-1/2 max-w-[38%] -translate-y-1/2 truncate !text-ink-faint">
+          {x?.poleB}
+        </span>
+        <span className="eyebrow absolute left-1/2 top-2 max-w-[80%] -translate-x-1/2 truncate" style={{ color: accent }}>
+          {y?.poleA}
+        </span>
+        <span className="eyebrow absolute bottom-2 left-1/2 max-w-[80%] -translate-x-1/2 truncate !text-ink-faint">
+          {y?.poleB}
         </span>
         {results.map((d, i) => (
           <Dot
@@ -197,7 +207,9 @@ export default function MapReveal({
           />
         ))}
       </div>
-      <p className="eyebrow mt-3 text-center">{xLabel} → · {yLabel} ↑</p>
+      <p className="eyebrow mt-3 text-center">
+        {x?.poleB} — {x?.poleA} → · {y?.poleB} — {y?.poleA} ↑
+      </p>
       <p className="mt-2 text-center text-sm text-ink-soft">Tap a dot for its item.</p>
     </div>
   );

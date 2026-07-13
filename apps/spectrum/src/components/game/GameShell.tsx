@@ -124,7 +124,7 @@ function RoundStage({
   return (
     <main className="flex h-dvh w-full flex-col">
       <div className="mx-auto w-full max-w-md px-5">
-        <GameHeader game={game} balance={balance} />
+        <GameHeader game={game} balance={balance} nominations={nominations} />
       </div>
       <div className="min-h-0 flex-1">
         <GameGraph
@@ -217,7 +217,7 @@ function EndedStage({
   return (
     <main className={view === 'map' ? 'flex h-dvh w-full flex-col' : 'min-h-dvh w-full'}>
       <div className="mx-auto w-full max-w-md px-5 pb-2">
-        <GameHeader game={game} balance={balance} />
+        <GameHeader game={game} balance={balance} nominations={nominations} />
         {tabs}
       </div>
       {view === 'map' ? (

@@ -221,6 +221,7 @@ function GraphInner({
 
       <NodeSheet
         game={game}
+        nominations={nominations}
         nomination={selected}
         userId={userId}
         balance={balance}

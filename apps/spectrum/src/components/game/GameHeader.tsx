@@ -1,12 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import CountdownBar from '@/components/game/CountdownBar';
 import TokenChip from '@/components/game/TokenChip';
+import FramesSheet from '@/components/frames/FramesSheet';
+import { framesInPlay } from '@/components/frames/FrameGlyph';
 import { useCountdown } from '@/hooks/useCountdown';
-import type { Game } from '@/lib/types';
+import type { Game, Nomination } from '@/lib/types';
 
 // "PARENTING: EXPERIENCES // INTENTIONS // ACTIONS" — the game's standing
-// masthead, plus the round eyebrow, countdown, and token balance.
+// masthead, plus the round eyebrow, countdown, token balance, and (once
+// mapping rounds begin) the door to the frames shelf.
 
 const PHASE_LABEL: Record<string, string> = {
   round1: 'Round 1 — map the territory',
@@ -26,10 +30,14 @@ function roundTheme(game: Game): string | null {
 export default function GameHeader({
   game,
   balance,
+  nominations,
 }: {
   game: Game;
   balance: number | null;
+  nominations?: Nomination[];
 }) {
+  const [framesOpen, setFramesOpen] = useState(false);
+  const frameCount = nominations ? framesInPlay(nominations).length : 0;
   const secondsLeft = useCountdown(game.phaseDeadline, game.serverNow);
   const phaseSeconds =
     game.phase in game.config.roundSeconds
@@ -59,7 +67,32 @@ export default function GameHeader({
         </h1>
         <TokenChip balance={balance} />
       </div>
-      {label && <p className="eyebrow mt-2">{label}</p>}
+      {(label || frameCount > 0) && (
+        <div className="mt-2 flex items-center justify-between gap-3">
+          {label && <p className="eyebrow">{label}</p>}
+          {frameCount > 0 && (
+            <button
+              onClick={() => setFramesOpen(true)}
+              className="eyebrow flex shrink-0 items-center gap-1.5 rounded-full border border-line-strong px-2.5 py-1 !text-ink-soft"
+            >
+              <span className="flex w-4 items-center" aria-hidden>
+                <span className="h-1 w-1 rounded-full border border-current" />
+                <span className="h-px flex-1 bg-current" />
+                <span className="h-1 w-1 rounded-full bg-current" />
+              </span>
+              {frameCount} spectrum{frameCount > 1 ? 's' : ''}
+            </button>
+          )}
+        </div>
+      )}
+      {nominations && (
+        <FramesSheet
+          game={game}
+          nominations={nominations}
+          open={framesOpen}
+          onClose={() => setFramesOpen(false)}
+        />
+      )}
     </header>
   );
 }

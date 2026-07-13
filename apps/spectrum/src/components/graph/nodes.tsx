@@ -1,6 +1,7 @@
 'use client';
 
 import { Handle, Position } from '@xyflow/react';
+import { nominationAxes } from '@/components/frames/FrameGlyph';
 import type { Nomination } from '@/lib/types';
 
 // Graph node components — paper/ink editorial takes on the interView hub
@@ -119,8 +120,36 @@ export function SubtopicNode({ data }: { data: SubtopicNodeData }) {
   );
 }
 
+// One lens on a map node: pole—pole as a tiny glyph line, so scanning the
+// web shows which spectrums are in play where.
+function NodeFrameLine({ poleA, poleB, accent, locked }: {
+  poleA: string; poleB: string; accent: string; locked: boolean;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+      <span style={{
+        fontSize: '0.62rem', lineHeight: 1.3, color: 'var(--ink)',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '45%',
+      }}>
+        {poleB}
+      </span>
+      <span aria-hidden style={{
+        flex: 1, minWidth: 8, height: 1,
+        background: locked ? accent : 'var(--line-strong)',
+      }} />
+      <span style={{
+        fontSize: '0.62rem', lineHeight: 1.3, color: 'var(--ink)',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '45%',
+      }}>
+        {poleA}
+      </span>
+    </div>
+  );
+}
+
 // A proposed, live, or revealed map hanging off its subtopic — colored by
-// theme.
+// theme, wearing its lens (locked axes once live, the slate's leaders
+// while the frame contest runs).
 export function MapNode({ data }: { data: MapNodeData }) {
   const nom = data.nomination;
   const accent = THEME_ACCENT[nom.themeIndex ?? 0];
@@ -133,11 +162,12 @@ export function MapNode({ data }: { data: MapNodeData }) {
     : data.live ? 'map · live'
     : 'map?';
   const filled = data.live || revealed;
+  const axes = nominationAxes(nom);
 
   return (
     <div
       style={{
-        width: 112,
+        width: 124,
         background: filled ? `linear-gradient(${soft}, ${soft}), var(--paper-raised)` : 'var(--paper-raised)',
         border: filled ? `1.5px solid ${accent}` : `1px dashed ${accent}`,
         borderRadius: 12,
@@ -154,11 +184,23 @@ export function MapNode({ data }: { data: MapNodeData }) {
       </div>
       <div style={{
         fontSize: '0.75rem', lineHeight: 1.25, color: 'var(--ink)', marginTop: 2,
-        display: '-webkit-box', WebkitLineClamp: 2,
-        WebkitBoxOrient: 'vertical' as const, overflow: 'hidden', wordBreak: 'break-word' as const,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>
         {data.theme}
       </div>
+      {axes.length > 0 && (
+        <div style={{ marginTop: 3, display: 'grid', gap: 2 }}>
+          {axes.map(a => (
+            <NodeFrameLine
+              key={a.frameId}
+              poleA={a.poleA}
+              poleB={a.poleB}
+              accent={accent}
+              locked={filled}
+            />
+          ))}
+        </div>
+      )}
       <CenterHandles />
     </div>
   );
