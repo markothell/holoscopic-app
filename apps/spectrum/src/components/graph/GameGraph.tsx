@@ -13,7 +13,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { NODE_TYPES, THEME_ACCENT } from '@/components/graph/nodes';
 import NodeSheet from '@/components/graph/NodeSheet';
-import type { Game, Nomination } from '@/lib/types';
+import type { Game, MapItem, Nomination } from '@/lib/types';
 
 // The main view: the topic web. Center = the game topic; subtopics branch
 // out as a recursive tree (round 1 lets you nominate subtopics on subtopics
@@ -65,24 +65,30 @@ function buildGraph(game: Game, nominations: Nomination[]) {
     return n;
   }
 
+  // A carried map (round 3–4) hangs off the map it was carried from, not off
+  // the subtopic directly — so the web reads as subtopic → round-2 map →
+  // round-3 map → round-4 map, the actual lineage. A fresh map (no
+  // sourceMapId) roots straight on its subtopic, same as before.
   const maps = nominations.filter(n => n.kind === 'map');
-  const mapsBySubtopic = new Map<string, Nomination[]>();
+  const mapsByParent = new Map<string, Nomination[]>();
   for (const m of maps) {
-    if (!m.subtopicId) continue;
-    if (!mapsBySubtopic.has(m.subtopicId)) mapsBySubtopic.set(m.subtopicId, []);
-    mapsBySubtopic.get(m.subtopicId)!.push(m);
+    const parentId = m.sourceMapId || m.subtopicId;
+    if (!parentId) continue;
+    if (!mapsByParent.has(parentId)) mapsByParent.set(parentId, []);
+    mapsByParent.get(parentId)!.push(m);
   }
 
-  function attachMaps(sub: Nomination, x: number, y: number) {
-    const subMaps = mapsBySubtopic.get(sub.id) || [];
+  function attachMaps(parentId: string, x: number, y: number, avoidRadial: boolean) {
+    const kids = mapsByParent.get(parentId) || [];
     // A subtopic's children extend radially outward, so a map fanned outward
-    // would land on top of a child. When this node has children, fan the map
-    // tangentially (to the side) instead; leaf nodes still fan straight out.
+    // would land on top of a child. When the parent has subtopic children,
+    // fan the map tangentially (to the side) instead; a carried map's own
+    // children (it has none) never compete for that ray, so they fan straight
+    // out from their source map.
     const radial = Math.atan2(y, x);
-    const hasChildren = (childrenOf.get(sub.id)?.length ?? 0) > 0;
-    const baseAngle = hasChildren ? radial + Math.PI / 2 : radial;
-    subMaps.forEach((m, j) => {
-      const spread = (j - (subMaps.length - 1) / 2) * 0.5;
+    const baseAngle = avoidRadial ? radial + Math.PI / 2 : radial;
+    kids.forEach((m, j) => {
+      const spread = (j - (kids.length - 1) / 2) * 0.5;
       const mx = x + Math.round(Math.cos(baseAngle + spread) * 155);
       const my = y + Math.round(Math.sin(baseAngle + spread) * 155);
       const accent = THEME_ACCENT[m.themeIndex ?? 0];
@@ -100,8 +106,8 @@ function buildGraph(game: Game, nominations: Nomination[]) {
         draggable: false,
       });
       edges.push({
-        id: `${sub.id}-${m.id}`,
-        source: sub.id,
+        id: `${parentId}-${m.id}`,
+        source: parentId,
         target: m.id,
         sourceHandle: 'out-c',
         targetHandle: 'in-c',
@@ -114,6 +120,7 @@ function buildGraph(game: Game, nominations: Nomination[]) {
           opacity: m.status === 'expired' ? 0.3 : 1,
         },
       });
+      attachMaps(m.id, mx, my, false);
     });
   }
 
@@ -157,7 +164,8 @@ function buildGraph(game: Game, nominations: Nomination[]) {
         },
       });
 
-      attachMaps(sub, x, y);
+      const hasChildren = (childrenOf.get(sub.id)?.length ?? 0) > 0;
+      attachMaps(sub.id, x, y, hasChildren);
       layout(sub.id, depth + 1, secStart, secEnd);
     }
   }
@@ -176,6 +184,7 @@ interface GraphProps {
   onOpenMap: (mapId: string) => void;
   onProposeMap: (subtopicId: string) => void;
   onBranchSubtopic: (parentSubtopicId: string) => void;
+  onCarry?: (source: { mapNom: Nomination; item: MapItem }) => void;
 }
 
 function GraphInner({
@@ -186,6 +195,7 @@ function GraphInner({
   onOpenMap,
   onProposeMap,
   onBranchSubtopic,
+  onCarry,
 }: GraphProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { nodes, edges } = useMemo(() => buildGraph(game, nominations), [game, nominations]);
@@ -229,6 +239,7 @@ function GraphInner({
         onOpenMap={onOpenMap}
         onProposeMap={onProposeMap}
         onBranchSubtopic={onBranchSubtopic}
+        onCarry={onCarry}
       />
     </div>
   );

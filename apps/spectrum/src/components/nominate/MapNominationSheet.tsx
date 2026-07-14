@@ -79,10 +79,10 @@ export default function MapNominationSheet({
     ? subtopicTitles.get(selectedSub.parentSubtopicId) : null;
 
   const shelf = framesInPlay(nominations);
-  // Frames already mapping (or contesting) the selected subtopic this round
-  // — a rival map needs a genuinely different lens — plus the ones already
-  // on this proposal. A confirmed map only claims its locked axes; a frame
-  // that lost its slate vote is fair game again.
+  // Frames already mapping the selected subtopic this round — a rival map
+  // needs a genuinely different lens — plus the ones already on this
+  // proposal. A confirmed map only claims its locked axes; a frame a
+  // nominator swapped out is fair game again.
   const unavailable = new Set<string>();
   if (effectiveSubtopicId) {
     for (const rival of mapsOnSubtopic.get(effectiveSubtopicId) ?? []) {
@@ -102,7 +102,7 @@ export default function MapNominationSheet({
     try {
       const frames: FrameSpec[] = chosen.map(c =>
         c.frameId ? { frameId: c.frameId } : { poleA: c.poleA, poleB: c.poleB });
-      await OasService.nominateMap(game.code, effectiveSubtopicId, frames, userId);
+      await OasService.nominateMap(game.code, { subtopicId: effectiveSubtopicId }, frames, userId);
       setSubtopicId(null);
       setChosen([]);
       onClose();
@@ -122,8 +122,8 @@ export default function MapNominationSheet({
       <p className="eyebrow" style={{ color: accent }}>Round {round} · {theme} · costs 1 token</p>
       <h2 className="display mt-1 text-3xl">Propose a map</h2>
       <p className="mt-1 text-sm text-ink-soft">
-        {game.config.quorum} tokens make it live. Your spectrum{chosen.length === 2 ? 's' : ''} can
-        be challenged until then — supporters vote before it locks.
+        {game.config.quorum} tokens make it live. You can still swap your
+        spectrum{chosen.length === 2 ? 's' : ''} for a different one until then.
       </p>
 
       {!showList && selectedSub ? (

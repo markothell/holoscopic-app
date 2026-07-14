@@ -45,7 +45,6 @@ const RETURN_TYPE = 'oas_stake_return';
 const ITEM_QUESTION = 'item';
 const RANK_QUESTION = { x: 'rank-x', y: 'rank-y' };
 const MAX_ITEMS_PER_PLAYER = 3;
-const MAX_FRAMES_PER_PLAYER = 2; // slate proposals per player per map
 const POLE_MAX = 40;
 
 const TIMED_PHASES = ['round1', 'round2', 'round3', 'round4', 'revise'];
@@ -123,6 +122,8 @@ function toClientNomination(nom) {
     title: nom.title,
     parentSubtopicId: nom.kind === 'subtopic' ? nom.parentSubtopicId : null,
     subtopicId: nom.subtopicId,
+    sourceEntryId: nom.sourceEntryId || null,
+    sourceMapId: nom.sourceMapId || null,
     dimensions: nom.kind === 'map' ? nom.dimensions : null,
     frameSlate: nom.kind === 'map' ? toClientFrameSlate(nom) : null,
     mapState: nom.mapState ? {
@@ -130,7 +131,8 @@ function toClientNomination(nom) {
       stageDeadline: nom.mapState.stageDeadline,
       winningAxes: toClientWinningAxes(nom.mapState),
       items: nom.mapState.items.map(m => ({
-        entryId: m.entryId, index: m.index, label: m.label, authorId: m.authorId,
+        entryId: m.entryId, index: m.index, label: m.label,
+        comment: m.comment || '', authorId: m.authorId,
       })),
       rankingDone: nom.mapState.rankingDone.map(d => ({ userId: d.userId, axis: d.axis })),
     } : null,
@@ -165,6 +167,7 @@ function toClient(game) {
         round4: game.config.roundSeconds.round4,
         revise: game.config.roundSeconds.revise,
       },
+      roundMode: game.config.roundMode,
       startingTokens: game.config.startingTokens,
       quorum: game.config.quorum,
       votesPerUser: game.config.votesPerUser,
@@ -207,7 +210,8 @@ function mapStagePayload(nom, extra = {}) {
     serverNow: new Date(),
     winningAxes: toClientWinningAxes(nom.mapState),
     items: nom.mapState.items.map(m => ({
-      entryId: m.entryId, index: m.index, label: m.label, authorId: m.authorId,
+      entryId: m.entryId, index: m.index, label: m.label,
+      comment: m.comment || '', authorId: m.authorId,
     })),
     ...extra,
   };
@@ -283,6 +287,9 @@ async function createGame({ parentInstanceId, userId, username, topic, themes, c
   game.config.quorum = config.quorum ?? defaults.quorum ?? game.config.quorum;
   game.config.votesPerUser = config.votesPerUser ?? defaults.votesPerUser ?? game.config.votesPerUser;
   game.config.maxPlayers = config.maxPlayers ?? defaults.maxPlayers ?? game.config.maxPlayers;
+  if (config.roundMode === 'manual' || config.roundMode === 'timed') {
+    game.config.roundMode = config.roundMode;
+  }
   await game.save();
 
   // First touch grants the host their tokens (join_bonus of startingStake).
@@ -362,7 +369,7 @@ async function startGame(game) {
 
 async function enterPhase(game, phase) {
   game.phase = phase;
-  game.phaseDeadline = TIMED_PHASES.includes(phase)
+  game.phaseDeadline = TIMED_PHASES.includes(phase) && game.config.roundMode !== 'manual'
     ? new Date(Date.now() + game.config.roundSeconds[phase] * 1000)
     : null;
   await game.save();
@@ -604,30 +611,89 @@ async function frameIdsOnSubtopic(game, subtopicId, round, excludeNomId = null) 
   return used;
 }
 
-// Slate order at confirmation: votes first, then proposal order (the
-// nominator's seeds sit at the front, so an uncontested slate resolves to
-// exactly what supporters staked on). Highest support takes the x axis.
+// The slate is just the nominator's chosen frames, in the order they
+// currently sit — first is the x axis, second (if any) is y.
 function resolveSlate(nom) {
-  const ranked = [...nom.frameSlate]
-    .map((f, i) => ({ f, i }))
-    .sort((a, b) => (b.f.voterIds.length - a.f.voterIds.length) || (a.i - b.i));
-  return ranked.slice(0, nom.dimensions).map(({ f }) => ({
+  return nom.frameSlate.map(f => ({
     frameId: f.frameId, poleA: f.poleA, poleB: f.poleB,
   }));
 }
 
-// Rounds 2–4: propose mapping a confirmed subtopic through this round's
-// theme, with the lens up front — 1 frame = a ranked line, 2 = a 2×2 map.
-// Supporters see (and stake on) the slate; rivals join it pre-quorum.
-async function nominateMap({ game, userId, username, subtopicId, frames }) {
-  const round = requirePhaseRound(game, 'map');
-  if (!Array.isArray(frames) || frames.length < 1 || frames.length > 2) {
-    throw new Error('Propose one spectrum or two');
+// A map can only confirm once its slate is complete — guards the window
+// where the nominator has removed a frame and not yet replaced it.
+function mapReadyToConfirm(nom) {
+  return nom.kind !== 'map' || nom.frameSlate.length === nom.dimensions;
+}
+
+// Frames already claimed on a carried entry this round — the (sourceEntry ×
+// frame) analog of frameIdsOnSubtopic, so the same item can be re-mapped under
+// several lenses but never the same lens twice.
+async function frameIdsOnSource(game, sourceEntryId, round, excludeNomId = null) {
+  const rivals = await OasNomination.find({
+    gameId: game.id, kind: 'map', round, sourceEntryId,
+    status: { $in: ['nominated', 'confirmed'] },
+  });
+  const used = new Set();
+  for (const rival of rivals) {
+    if (excludeNomId && rival.id === excludeNomId) continue;
+    const claimed = rival.status === 'confirmed' && rival.mapState
+      ? rival.mapState.winningAxes
+      : rival.frameSlate || [];
+    for (const f of claimed) used.add(f.frameId);
+  }
+  return used;
+}
+
+// Resolve the map's subject. Round 2 seeds from the round-1 subtopic tree;
+// rounds 3–4 carry forward a revealed previous-round map item (sourceEntryId),
+// inheriting that map's subtopic so the new map still hangs in the right
+// branch. Returns { title, subtopicId, sourceEntryId, sourceMapId } plus the
+// set of frameIds already claimed on this subject this round.
+async function resolveMapSubject({ game, round, subtopicId, sourceEntryId }) {
+  if (sourceEntryId) {
+    const entry = await Entry.findOne({ id: sourceEntryId, questionId: ITEM_QUESTION });
+    if (!entry) throw new Error('Source item not found');
+    const sourceMap = await OasNomination.findOne({
+      id: entry.activityId, gameId: game.id, kind: 'map',
+    });
+    if (!sourceMap || sourceMap.round !== round - 1) {
+      throw new Error('Can only carry items from the previous round');
+    }
+    const stage = sourceMap.mapState && sourceMap.mapState.stage;
+    if (stage !== 'done' && stage !== 'closed') {
+      throw new Error('That map has not revealed yet');
+    }
+    return {
+      title: (entry.objectName || entry.text || 'item').slice(0, 80),
+      subtopicId: sourceMap.subtopicId,
+      sourceEntryId,
+      sourceMapId: sourceMap.id,
+      taken: await frameIdsOnSource(game, sourceEntryId, round),
+    };
   }
   const subtopic = await OasNomination.findOne({
     id: subtopicId, gameId: game.id, kind: 'subtopic', status: 'confirmed',
   });
   if (!subtopic) throw new Error('Subtopic not found');
+  return {
+    title: subtopic.title,
+    subtopicId,
+    sourceEntryId: null,
+    sourceMapId: null,
+    taken: await frameIdsOnSubtopic(game, subtopicId, round),
+  };
+}
+
+// Rounds 2–4: propose a map through this round's theme, with the lens up front
+// — 1 frame = a ranked line, 2 = a 2×2 map. Round 2's subject is a confirmed
+// subtopic; rounds 3–4 carry a previous-round item forward (sourceEntryId).
+// Supporters see (and stake on) the slate; rivals join it pre-quorum.
+async function nominateMap({ game, userId, username, subtopicId, sourceEntryId, frames }) {
+  const round = requirePhaseRound(game, 'map');
+  if (!Array.isArray(frames) || frames.length < 1 || frames.length > 2) {
+    throw new Error('Propose one spectrum or two');
+  }
+  const subject = await resolveMapSubject({ game, round, subtopicId, sourceEntryId });
 
   const resolved = [];
   for (const spec of frames) {
@@ -636,8 +702,7 @@ async function nominateMap({ game, userId, username, subtopicId, frames }) {
   if (resolved.length === 2 && resolved[0].id === resolved[1].id) {
     throw new Error('The two spectrums must differ');
   }
-  const taken = await frameIdsOnSubtopic(game, subtopicId, round);
-  if (resolved.some(f => taken.has(f.id))) {
+  if (resolved.some(f => subject.taken.has(f.id))) {
     throw new Error('That spectrum is already mapping this subtopic — bring a different one');
   }
 
@@ -647,8 +712,10 @@ async function nominateMap({ game, userId, username, subtopicId, frames }) {
     kind: 'map',
     round,
     themeIndex: round - 2,
-    title: subtopic.title,
-    subtopicId,
+    title: subject.title,
+    subtopicId: subject.subtopicId,
+    sourceEntryId: subject.sourceEntryId,
+    sourceMapId: subject.sourceMapId,
     dimensions: resolved.length,
     frameSlate: resolved.map(f => ({
       frameId: f.id,
@@ -668,9 +735,9 @@ async function nominateMap({ game, userId, username, subtopicId, frames }) {
   return nom;
 }
 
-// A staker floats a rival frame onto a still-unconfirmed map's slate. Free —
-// lens ideas are the cheapest thing in the game; the stake already paid for
-// the seat at this table.
+// The nominator's own edit to their slate — add a spectrum once a slot is
+// open (the initial pick, or a replacement after removeSlateFrame). Others
+// just support the proposal as staked; only the nominator shapes the lens.
 async function proposeSlateFrame({ game, nomination, userId, username, frame }) {
   if (nomination.kind !== 'map') throw new Error('Nomination not found');
   if (nomination.round !== roundNumber(game.phase)) {
@@ -679,16 +746,19 @@ async function proposeSlateFrame({ game, nomination, userId, username, frame }) 
   if (nomination.status !== 'nominated') {
     throw new Error('The spectrums are locked once the map confirms');
   }
-  requireMapMember(nomination, userId);
-  const mine = nomination.frameSlate.filter(f => f.proposedBy === userId);
-  if (mine.length >= MAX_FRAMES_PER_PLAYER) {
-    throw new Error(`You can propose up to ${MAX_FRAMES_PER_PLAYER} spectrums here`);
+  if (userId !== nomination.nominatedBy) {
+    throw new Error('Only the nominator can change the spectrums');
+  }
+  if (nomination.frameSlate.length >= nomination.dimensions) {
+    throw new Error('This map already has its spectrum(s)');
   }
   const resolved = await resolveFrameSpec(game, frame, userId, username);
   if (nomination.frameSlate.some(f => f.frameId === resolved.id)) {
     throw new Error('That spectrum is already on the slate');
   }
-  const taken = await frameIdsOnSubtopic(game, nomination.subtopicId, nomination.round, nomination.id);
+  const taken = nomination.sourceEntryId
+    ? await frameIdsOnSource(game, nomination.sourceEntryId, nomination.round, nomination.id)
+    : await frameIdsOnSubtopic(game, nomination.subtopicId, nomination.round, nomination.id);
   if (taken.has(resolved.id)) {
     throw new Error('That spectrum is already mapping this subtopic — bring a different one');
   }
@@ -698,17 +768,24 @@ async function proposeSlateFrame({ game, nomination, userId, username, frame }) 
     poleB: resolved.poleB,
     proposedBy: userId,
     proposedByName: username,
-    voterIds: [],
   });
-  await nomination.save();
-  emitToGame(game.id, 'oas_nomination_upserted', { nomination: toClientNomination(nomination) });
+  // Completing the slate can itself cross quorum, if stakers already met it
+  // while a slot sat open.
+  if (mapReadyToConfirm(nomination) &&
+      nomination.stakes.filter(s => !s.returned).length >= nomination.quorumThreshold) {
+    nomination.status = 'confirmed';
+    await nomination.save();
+    await openMap(game, nomination);
+  } else {
+    await nomination.save();
+    emitToGame(game.id, 'oas_nomination_upserted', { nomination: toClientNomination(nomination) });
+  }
   return nomination;
 }
 
-// Toggle a vote on a slate frame (budget = config.votesPerUser per map, no
-// self-votes). Open while the nomination gathers quorum; the tally decides
-// the winning axes the moment it confirms.
-async function voteSlateFrame({ game, nomination, userId, frameId }) {
+// Nominator pulls one of their own slate frames pre-confirmation, opening a
+// slot that proposeSlateFrame can fill with a replacement.
+async function removeSlateFrame({ game, nomination, userId, frameId }) {
   if (nomination.kind !== 'map') throw new Error('Nomination not found');
   if (nomination.round !== roundNumber(game.phase)) {
     throw new Error('That nomination is not in the current round');
@@ -716,21 +793,12 @@ async function voteSlateFrame({ game, nomination, userId, frameId }) {
   if (nomination.status !== 'nominated') {
     throw new Error('The spectrums are locked once the map confirms');
   }
-  requireMapMember(nomination, userId);
-  const slot = nomination.frameSlate.find(f => f.frameId === frameId);
-  if (!slot) throw new Error('Spectrum not found');
-  const i = slot.voterIds.indexOf(userId);
-  if (i >= 0) {
-    slot.voterIds.splice(i, 1);
-  } else {
-    if (slot.proposedBy === userId) throw new Error('Cannot vote on your own spectrum');
-    const cast = nomination.frameSlate.reduce(
-      (n, f) => n + (f.voterIds.includes(userId) ? 1 : 0), 0);
-    if (cast >= game.config.votesPerUser) {
-      throw new Error(`Vote limit reached (${game.config.votesPerUser})`);
-    }
-    slot.voterIds.push(userId);
+  if (userId !== nomination.nominatedBy) {
+    throw new Error('Only the nominator can change the spectrums');
   }
+  const idx = nomination.frameSlate.findIndex(f => f.frameId === frameId);
+  if (idx === -1) throw new Error('Spectrum not found');
+  nomination.frameSlate.splice(idx, 1);
   await nomination.save();
   emitToGame(game.id, 'oas_nomination_upserted', { nomination: toClientNomination(nomination) });
   return nomination;
@@ -751,7 +819,7 @@ async function addStake(game, nom, userId) {
     refId: nom.id,
   });
   nom.stakes.push({ userId, amount: 1 });
-  if (nom.status === 'nominated' &&
+  if (nom.status === 'nominated' && mapReadyToConfirm(nom) &&
       nom.stakes.filter(s => !s.returned).length >= nom.quorumThreshold) {
     nom.status = 'confirmed';
     // Persist the new stake + confirmed status BEFORE any refund: refundStakes
@@ -903,7 +971,10 @@ async function listMapEntries(nom) {
   return Entry.find({ activityId: nom.id }).sort({ createdAt: 1 });
 }
 
-async function submitMapItem({ game, nom, userId, username, text }) {
+// A map item is a comment: a short `label` (Entry.objectName, the rankable
+// handle) plus an optional `comment` body (Entry.text, the substance the map
+// ranks). Label carries the item; comment is encouraged but not required.
+async function submitMapItem({ game, nom, userId, username, label, comment }) {
   requireLiveMap(game, nom, 'gather');
   requireMapMember(nom, userId);
   const mine = await Entry.find({
@@ -919,7 +990,8 @@ async function submitMapItem({ game, nom, userId, username, text }) {
     username,
     slotNumber: mine.length + 1,
     questionId: ITEM_QUESTION,
-    text,
+    objectName: label,
+    text: comment || '',
   });
   const wire = entryUtils.toClient(entry);
   emitToGame(game.id, 'oas_map_entry', { mapId: nom.id, kind: 'item', entry: wire });
@@ -937,7 +1009,9 @@ async function closeGather(game, nom, { forced = false } = {}) {
   }
 
   const entries = await listMapEntries(nom);
-  const items = entries.filter(e => e.questionId === ITEM_QUESTION && e.text && e.text.trim());
+  // An item counts if it has a label (objectName); the comment is optional.
+  const items = entries.filter(
+    e => e.questionId === ITEM_QUESTION && e.objectName && e.objectName.trim());
 
   if (items.length < 2) {
     // Not enough to rank: extend one minute, bounded by the round itself.
@@ -953,7 +1027,10 @@ async function closeGather(game, nom, { forced = false } = {}) {
   }
 
   nom.mapState.items = items.map((e, i) => ({
-    entryId: e.id, index: i + 1, label: e.text.slice(0, 80), authorId: e.userId,
+    entryId: e.id, index: i + 1,
+    label: e.objectName.slice(0, 80),
+    comment: e.text || '',
+    authorId: e.userId,
   }));
   nom.mapState.stage = 'rank';
   nom.mapState.stageDeadline = null;
@@ -1042,14 +1119,20 @@ async function computeMapResults(nom) {
     };
     const xs = axisStats(RANK_QUESTION.x);
     const ys = nom.dimensions === 2 ? axisStats(RANK_QUESTION.y) : null;
+    // 2D: combine both axes (root-mean-square, so a max split on either axis
+    // still reads as max disagreement) — a dot sitting at the dead center
+    // isn't automatically "consensus" if raters split hard on just one axis.
+    const spread = ys ? Math.sqrt((xs.spread ** 2 + ys.spread ** 2) / 2) : xs.spread;
+    const count = ys ? Math.min(xs.count, ys.count) : xs.count;
     return {
       entryId: item.entryId,
       label: item.label,
+      comment: item.comment || '',
       authorId: item.authorId,
       x: xs.mean,
       y: ys ? ys.mean : 0.5,
-      spread: xs.spread,
-      count: xs.count,
+      spread,
+      count,
     };
   });
 }
@@ -1087,7 +1170,7 @@ async function mapCompletion({ game, nom, userId }) {
   const axes = nom.dimensions === 2 ? ['x', 'y'] : ['x'];
   const done = new Set((nom.mapState ? nom.mapState.rankingDone : []).map(d => `${d.userId}:${d.axis}`));
   const hasItem = await Entry.exists({
-    activityId: nom.id, userId, questionId: ITEM_QUESTION, text: { $ne: '' },
+    activityId: nom.id, userId, questionId: ITEM_QUESTION, objectName: { $ne: '' },
   });
   const rankedAxes = axes.filter(a => done.has(`${userId}:${a}`)).length;
   return {
@@ -1174,6 +1257,7 @@ async function joinProposal({ game, proposalId, userId, username }) {
         roundSeconds: game.config.roundSeconds.toObject
           ? game.config.roundSeconds.toObject()
           : { ...game.config.roundSeconds },
+        roundMode: game.config.roundMode,
         startingTokens: game.config.startingTokens,
         quorum: game.config.quorum,
         votesPerUser: game.config.votesPerUser,
@@ -1209,7 +1293,7 @@ module.exports = {
   nominateSubtopic,
   nominateMap,
   proposeSlateFrame,
-  voteSlateFrame,
+  removeSlateFrame,
   stakeOn,
   unstake,
   joinMap,

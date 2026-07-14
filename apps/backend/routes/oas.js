@@ -243,7 +243,8 @@ module.exports = function (io) {
     'That spectrum is already on the slate',
     'The spectrums are locked once the map confirms',
     'That nomination is not in the current round',
-    'Cannot vote on your own spectrum',
+    'Only the nominator can change the spectrums',
+    'This map already has its spectrum(s)',
     'Join the map first',
   ];
 
@@ -267,15 +268,18 @@ module.exports = function (io) {
           game, userId: player.id, username: player.name, title, parentSubtopicId,
         });
       } else {
-        const { subtopicId } = req.body;
+        // Round 2 seeds a subject from the subtopic tree; rounds 3–4 carry a
+        // previous-round item forward via sourceEntryId. Frames ride either.
+        const subtopicId = req.body.subtopicId ? String(req.body.subtopicId) : null;
+        const sourceEntryId = req.body.sourceEntryId ? String(req.body.sourceEntryId) : null;
         const frames = Array.isArray(req.body.frames)
           ? req.body.frames.map(frameSpec) : null;
-        if (!subtopicId || !frames || frames.some(f => !f)) {
-          return res.status(400).json({ error: 'Subtopic and 1–2 frames are required' });
+        if ((!subtopicId && !sourceEntryId) || !frames || frames.some(f => !f)) {
+          return res.status(400).json({ error: 'A subject and 1–2 frames are required' });
         }
         nom = await games.nominateMap({
           game, userId: player.id, username: player.name,
-          subtopicId, frames,
+          subtopicId, sourceEntryId, frames,
         });
       }
       res.status(201).json({ nomination: games.toClientNomination(nom) });
@@ -287,13 +291,17 @@ module.exports = function (io) {
         'That subtopic is already nominated',
         'Only confirmed subtopics can branch',
         'Subtopic not found',
+        'Source item not found',
+        'Can only carry items from the previous round',
+        'That map has not revealed yet',
         'Already staked',
         ...FRAME_ERRORS,
       ]);
     }
   });
 
-  // Pre-quorum frame contest: a staker floats a rival frame onto the slate.
+  // Nominator only: fill an open slot in their own slate (the initial pick,
+  // or a replacement after the DELETE below).
   router.post('/games/:code/nominations/:id/frames', async (req, res) => {
     try {
       const game = await loadGame(req, res);
@@ -309,15 +317,13 @@ module.exports = function (io) {
       });
       res.status(201).json({ nomination: games.toClientNomination(nomination) });
     } catch (error) {
-      if (error.message.startsWith('You can propose')) {
-        return res.status(400).json({ error: error.message });
-      }
       fail(res, error, ['Nomination not found', ...FRAME_ERRORS]);
     }
   });
 
-  // Pre-quorum frame contest: toggle a vote on a slate frame.
-  router.post('/games/:code/nominations/:id/frames/:frameId/vote', async (req, res) => {
+  // Nominator only: pull one of their own spectrums pre-confirmation, so
+  // they can swap it for a different one via the POST above.
+  router.delete('/games/:code/nominations/:id/frames/:frameId', async (req, res) => {
     try {
       const game = await loadGame(req, res);
       if (!game) return;
@@ -325,14 +331,11 @@ module.exports = function (io) {
       if (!player) return;
       const nomination = await OasNomination.findOne({ id: req.params.id, gameId: game.id });
       if (!nomination) return res.status(404).json({ error: 'Nomination not found' });
-      await games.voteSlateFrame({
+      await games.removeSlateFrame({
         game, nomination, userId: player.id, frameId: req.params.frameId,
       });
       res.json({ nomination: games.toClientNomination(nomination) });
     } catch (error) {
-      if (error.message.startsWith('Vote limit')) {
-        return res.status(400).json({ error: error.message });
-      }
       fail(res, error, ['Nomination not found', ...FRAME_ERRORS]);
     }
   });
@@ -440,10 +443,13 @@ module.exports = function (io) {
       if (!player) return;
       const nom = await loadMap(req, res, game);
       if (!nom) return;
-      const text = String(req.body.text || '').trim().slice(0, 80);
-      if (!text) return res.status(400).json({ error: 'Item text is required' });
+      // A map item is a comment: a short label (the rankable handle) plus an
+      // optional comment body. `text` accepted as a fallback for the label.
+      const label = String(req.body.label || req.body.text || '').trim().slice(0, 80);
+      const comment = String(req.body.comment || '').trim().slice(0, 500);
+      if (!label) return res.status(400).json({ error: 'Item label is required' });
       const entry = await games.submitMapItem({
-        game, nom, userId: player.id, username: player.name, text,
+        game, nom, userId: player.id, username: player.name, label, comment,
       });
       res.status(201).json({ entry: entryUtils.toClient(entry) });
     } catch (error) {

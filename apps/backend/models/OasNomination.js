@@ -54,7 +54,11 @@ const winningAxisSchema = new mongoose.Schema({
 const itemSchema = new mongoose.Schema({
   entryId:  { type: String, required: true },
   index:    { type: Number, required: true, min: 1 }, // Entry.slotNumber ≥ 1
+  // The short handle used to rank/reveal (Entry.objectName). The full comment
+  // — the substance the map ranks — rides `comment` (Entry.text), frozen here
+  // at gather→rank alongside the label so reveals need no Entry join.
   label:    { type: String, required: true },
+  comment:  { type: String, default: '' },
   authorId: { type: String, required: true },
 }, { _id: false, id: false });
 
@@ -108,8 +112,18 @@ const oasNominationSchema = new mongoose.Schema({
   // expired parent (each node stands on its own quorum).
   parentSubtopicId: { type: String, default: null },
 
-  // kind 'map': the confirmed round-1 subtopic this map is about.
+  // kind 'map': the confirmed round-1 subtopic this map sits under. For a
+  // carried map (round 3–4) this is inherited from the source map, so the map
+  // still hangs in the right branch of the web.
   subtopicId: { type: String, default: null },
+
+  // kind 'map', rounds 3–4 (carry-forward): the previous round's map item this
+  // map re-maps through the new theme. sourceEntryId = the carried Entry;
+  // sourceMapId = the map it came from (for the provenance breadcrumb and the
+  // (sourceEntryId × frame) uniqueness rule). Null for round-2 maps, which
+  // seed their subject from the round-1 subtopic tree instead.
+  sourceEntryId: { type: String, default: null },
+  sourceMapId:   { type: String, default: null },
 
   // kind 'map': one spectrum or two — set by how many frames the nominator
   // seeds, visible before supporters stake.

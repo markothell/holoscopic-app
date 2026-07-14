@@ -4,11 +4,11 @@ import { useState } from 'react';
 import BottomSheet from '@/components/ui/BottomSheet';
 import Button from '@/components/ui/Button';
 import { StakeDots, THEME_ACCENT } from '@/components/graph/nodes';
-import { FrameLine, FramePreview, framesInPlay, leadingAxes } from '@/components/frames/FrameGlyph';
+import { FrameLine, FramePreview, framesInPlay } from '@/components/frames/FrameGlyph';
 import FrameComposer from '@/components/frames/FrameComposer';
 import { OasService } from '@/services/oasService';
 import { ApiError } from '@/services/api';
-import type { Game, Nomination } from '@/lib/types';
+import type { Game, MapItem, Nomination } from '@/lib/types';
 
 // Tap a graph node → its action sheet: who staked, and what a token can do
 // here right now. For a map still seeking quorum this is also the frame
@@ -32,6 +32,7 @@ export default function NodeSheet({
   onOpenMap,
   onProposeMap,
   onBranchSubtopic,
+  onCarry,
 }: {
   game: Game;
   nominations: Nomination[];
@@ -42,10 +43,10 @@ export default function NodeSheet({
   onOpenMap: (mapId: string) => void;
   onProposeMap: (subtopicId: string) => void;
   onBranchSubtopic: (parentSubtopicId: string) => void;
+  onCarry?: (source: { mapNom: Nomination; item: MapItem }) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [challenging, setChallenging] = useState(false);
 
   if (!nomination) return null;
   const nom = nomination;
@@ -58,6 +59,25 @@ export default function NodeSheet({
   const inItsRound = currentRound === nom.round;
   const accent = nom.kind === 'map' ? THEME_ACCENT[nom.themeIndex ?? 0] : 'var(--ink)';
   const theme = nom.kind === 'map' ? game.themes[nom.themeIndex ?? 0] : null;
+
+  // Rounds 3–4: a revealed map from the previous round is a source of items to
+  // carry forward. Its frozen roster (with comments) drives the carry list.
+  const canCarryFrom = nom.kind === 'map' && !!nom.mapState &&
+    (nom.mapState.stage === 'done' || nom.mapState.stage === 'closed') &&
+    currentRound !== null && currentRound >= 3 && nom.round === currentRound - 1;
+  const carryAccent = THEME_ACCENT[(currentRound ?? 2) - 2] ?? 'var(--ink)';
+  const carryTheme = currentRound ? game.themes[currentRound - 2] ?? '' : '';
+  // The leading current-round carry of an item (confirmed first, else most
+  // staked), so each row shows one honest progress state.
+  const leadingCarry = (entryId: string): Nomination | null => {
+    const carries = nominations.filter(
+      n => n.kind === 'map' && n.round === currentRound && n.sourceEntryId === entryId
+        && n.status !== 'expired');
+    if (!carries.length) return null;
+    return carries.sort((a, b) =>
+      (a.status === 'confirmed' ? -1 : 0) - (b.status === 'confirmed' ? -1 : 0)
+      || b.stakes.length - a.stakes.length)[0];
+  };
 
   async function act(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -82,6 +102,11 @@ export default function NodeSheet({
         {nom.status === 'confirmed' ? ' · confirmed' : nom.status === 'expired' ? ' · expired' : ''}
       </p>
       <h2 className="display mt-1 text-3xl">{nom.title}</h2>
+      {nom.kind === 'map' && nom.sourceEntryId && (nom.themeIndex ?? 0) > 0 && (
+        <p className="eyebrow mt-0.5 !text-ink-faint">
+          carried forward from {game.themes[(nom.themeIndex ?? 0) - 1]}
+        </p>
+      )}
       <p className="mt-1 text-sm text-ink-soft">
         nominated by {isNominator ? 'you' : nom.nominatedByName}
       </p>
@@ -98,15 +123,13 @@ export default function NodeSheet({
         <p className="mt-2 text-sm text-ink-faint">{stakers.join(' · ')}</p>
       )}
 
-      {/* The frame contest — live while the map seeks quorum, then locked. */}
+      {/* The nominator's own slate — theirs to shape until the map confirms.
+          Everyone else just supports (or doesn't) what's proposed. */}
       {nom.kind === 'map' && nom.frameSlate && nom.status === 'nominated' && (() => {
         const slate = nom.frameSlate;
-        const leaders = leadingAxes(slate, nom.dimensions ?? 2);
-        const leaderIds = new Set(leaders.map(f => f.frameId));
-        const myVotes = slate.reduce((n, f) => n + (f.voterIds.includes(userId) ? 1 : 0), 0);
-        const myProposed = slate.filter(f => f.proposedBy === userId).length;
-        const canChallenge = myStake && inItsRound && myProposed < 2;
-        // Lenses this composer can't offer: already on the slate, or already
+        const dims = nom.dimensions ?? 2;
+        const openSlots = dims - slate.length;
+        // Lenses the composer can't offer: already on this slate, or already
         // claimed on this subtopic by a rival nomination this round (a
         // confirmed rival only claims its locked axes).
         const unavailable = new Set(slate.map(f => f.frameId));
@@ -122,83 +145,53 @@ export default function NodeSheet({
         return (
           <section className="mt-5">
             <p className="eyebrow" style={{ color: accent }}>
-              The spectrum{(nom.dimensions ?? 2) === 2 ? 's — lock' : ' — locks'} when the map confirms
+              The spectrum{dims === 2 ? 's' : ''} — locks when the map confirms
             </p>
-            <div className="mt-2">
-              <FramePreview axes={leaders} accent={accent} compact />
-            </div>
-            {slate.length > (nom.dimensions ?? 2) || slate.some(f => f.voterIds.length > 0) ? (
-              <p className="mt-1.5 text-xs text-ink-faint">
-                {myStake
-                  ? `Vote for the spectrums you want${slate.length > 1 ? ` — ${game.config.votesPerUser - myVotes} of ${game.config.votesPerUser} votes left` : ''}.`
-                  : 'Stakers pick the spectrums by vote.'}
-              </p>
-            ) : null}
-            <ul className="mt-2 space-y-1.5">
-              {slate.map(f => {
-                const mine = f.voterIds.includes(userId);
-                const leading = leaderIds.has(f.frameId);
-                return (
-                  <li
-                    key={f.frameId}
-                    className="flex items-center gap-3 rounded-xl border bg-paper-raised px-3 py-2"
-                    style={{ borderColor: leading ? accent : 'var(--line)' }}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <FrameLine poleA={f.poleA} poleB={f.poleB} accent={leading ? accent : 'var(--ink-soft)'} />
-                      <span className="eyebrow !text-ink-faint">
-                        {f.proposedBy === userId ? 'yours' : f.proposedByName}
-                      </span>
-                    </div>
-                    {f.voterIds.length > 0 && (
-                      <span className="eyebrow" style={{ color: accent }}>{f.voterIds.length}</span>
-                    )}
-                    {myStake && f.proposedBy !== userId && (
-                      <button
-                        disabled={busy}
-                        onClick={() => act(() => OasService.voteFrame(game.code, nom.id, f.frameId, userId))}
-                        className={`shrink-0 rounded-full border px-3 py-1.5 text-xs ${
-                          mine ? 'border-transparent text-white' : 'border-line-strong text-ink-soft'
-                        }`}
-                        style={mine ? { background: accent } : undefined}
-                      >
-                        {mine ? 'voted ✓' : 'vote'}
-                      </button>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-            {canChallenge && (
-              challenging ? (
-                <div className="mt-3">
-                  <FrameComposer
-                    accent={accent}
-                    shelf={framesInPlay(nominations)}
-                    disabledFrameIds={unavailable}
-                    busy={busy}
-                    onPick={pick => act(async () => {
-                      await OasService.proposeFrame(
-                        game.code, nom.id,
-                        pick.frameId ? { frameId: pick.frameId } : { poleA: pick.poleA, poleB: pick.poleB },
-                        userId,
-                      );
-                      setChallenging(false);
-                    })}
-                  />
-                </div>
-              ) : (
-                <button
-                  onClick={() => setChallenging(true)}
-                  className="mt-2 text-sm text-ink-soft underline"
-                >
-                  + challenge with a different spectrum
-                </button>
-              )
+            {slate.length > 0 && (
+              <div className="mt-2">
+                <FramePreview axes={slate} accent={accent} compact />
+              </div>
             )}
-            {!myStake && inItsRound && (
+            <ul className="mt-2 space-y-1.5">
+              {slate.map(f => (
+                <li
+                  key={f.frameId}
+                  className="flex items-center gap-3 rounded-xl border border-line bg-paper-raised px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <FrameLine poleA={f.poleA} poleB={f.poleB} accent={accent} />
+                  </div>
+                  {isNominator && (
+                    <button
+                      disabled={busy}
+                      aria-label="Remove this spectrum"
+                      onClick={() => act(() => OasService.removeFrame(game.code, nom.id, f.frameId, userId))}
+                      className="shrink-0 rounded-full border border-line-strong px-2.5 py-1 text-xs text-ink-soft"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {isNominator && openSlots > 0 && (
+              <div className="mt-3">
+                <FrameComposer
+                  accent={accent}
+                  shelf={framesInPlay(nominations)}
+                  disabledFrameIds={unavailable}
+                  busy={busy}
+                  onPick={pick => act(() => OasService.proposeFrame(
+                    game.code, nom.id,
+                    pick.frameId ? { frameId: pick.frameId } : { poleA: pick.poleA, poleB: pick.poleB },
+                    userId,
+                  ))}
+                />
+              </div>
+            )}
+            {!isNominator && (
               <p className="mt-2 text-xs text-ink-faint">
-                Stake a token to vote on the spectrums or float your own.
+                Set by {nom.nominatedByName} — support the proposal as staked, or bring your own on a different lens.
               </p>
             )}
           </section>
@@ -210,6 +203,68 @@ export default function NodeSheet({
         <div className="mt-5">
           <FramePreview axes={nom.mapState.winningAxes} accent={accent} compact />
         </div>
+      )}
+
+      {/* Rounds 3–4: carry this map's comments forward into new maps. Vote (a
+          1-token stake) here, or open the map to read them in full. */}
+      {canCarryFrom && nom.mapState && (
+        <section className="mt-5">
+          <p className="eyebrow" style={{ color: carryAccent }}>
+            Carry forward → {carryTheme}
+          </p>
+          <p className="mt-1 text-sm text-ink-soft">
+            Stake a token on the comments worth mapping through {carryTheme.toLowerCase()} —
+            top picks become new maps.
+          </p>
+          <ul className="mt-3 space-y-1.5">
+            {nom.mapState.items.map(item => {
+              const carry = leadingCarry(item.entryId);
+              const live = carry?.status === 'confirmed';
+              const iBacked = !!carry?.stakes.some(s => s.userId === userId);
+              return (
+                <li key={item.entryId} className="rounded-xl border border-line bg-paper-raised px-3 py-2">
+                  <p className="text-base">{item.label}</p>
+                  {item.comment && (
+                    <p className="mt-0.5 text-sm text-ink-soft">{item.comment}</p>
+                  )}
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    {carry ? (
+                      <StakeDots count={carry.stakes.length} quorum={carry.quorumThreshold} accent={carryAccent} />
+                    ) : (
+                      <span className="eyebrow !text-ink-faint">not carried yet</span>
+                    )}
+                    {live && carry ? (
+                      <button
+                        onClick={() => { onOpenMap(carry.id); onClose(); }}
+                        className="shrink-0 rounded-full px-3 py-1.5 text-xs text-white"
+                        style={{ background: carryAccent }}
+                      >
+                        open map
+                      </button>
+                    ) : carry ? (
+                      <button
+                        disabled={busy || iBacked || (balance !== null && balance < 1)}
+                        onClick={() => act(() => OasService.stake(game.code, carry.id, userId))}
+                        className="shrink-0 rounded-full border border-line-strong px-3 py-1.5 text-xs text-ink-soft disabled:opacity-40"
+                      >
+                        {iBacked ? 'backing ✓' : 'support · ● 1'}
+                      </button>
+                    ) : (
+                      <button
+                        disabled={balance !== null && balance < 1}
+                        onClick={() => { onCarry?.({ mapNom: nom, item }); onClose(); }}
+                        className="shrink-0 rounded-full px-3 py-1.5 text-xs text-white disabled:opacity-40"
+                        style={{ background: carryAccent }}
+                      >
+                        carry · ● 1
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
 
       {nom.status === 'nominated' && inItsRound && (

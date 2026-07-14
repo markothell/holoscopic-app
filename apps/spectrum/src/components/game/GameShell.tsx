@@ -8,6 +8,8 @@ import GameHeader from '@/components/game/GameHeader';
 import GameGraph from '@/components/graph/GameGraph';
 import SubtopicSheet from '@/components/nominate/SubtopicSheet';
 import MapNominationSheet from '@/components/nominate/MapNominationSheet';
+import CarrySheet from '@/components/nominate/CarrySheet';
+import CarryTally from '@/components/nominate/CarryTally';
 import MapSheet from '@/components/map/MapSheet';
 import ReviseFlow from '@/components/revise/ReviseFlow';
 import ProposalsScreen from '@/components/final/ProposalsScreen';
@@ -15,7 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOasGame } from '@/hooks/useOasGame';
 import { useHistoryBackClose } from '@/hooks/useHistoryBackClose';
 import { OasService } from '@/services/oasService';
-import type { Game, Nomination } from '@/lib/types';
+import type { Game, MapItem, Nomination } from '@/lib/types';
 
 // The single game URL. Gates (auth → membership) first, then switches on
 // the server-authoritative phase. Completed games are open to any signed-in
@@ -114,7 +116,12 @@ function RoundStage({
   const [proposeSubtopicId, setProposeSubtopicId] = useState<string | null>(null);
   const [branchParentId, setBranchParentId] = useState<string | null>(null);
   const [openMapId, setOpenMapId] = useState<string | null>(null);
+  const [carrySource, setCarrySource] = useState<{ mapNom: Nomination; item: MapItem } | null>(null);
+  const [tallyOpen, setTallyOpen] = useState(false);
   const isRound1 = game.phase === 'round1';
+  // Rounds 3–4 carry the previous round's comments forward: the graph stays
+  // primary, carry-votes ride the node popups, and the tally gathers them.
+  const isCarryRound = game.phase === 'round3' || game.phase === 'round4';
   const noTokens = balance !== null && balance < 1;
   const branchParent = branchParentId
     ? nominations.find(n => n.id === branchParentId) ?? null : null;
@@ -124,7 +131,7 @@ function RoundStage({
   return (
     <main className="flex h-dvh w-full flex-col">
       <div className="mx-auto w-full max-w-md px-5">
-        <GameHeader game={game} balance={balance} nominations={nominations} />
+        <GameHeader game={game} balance={balance} nominations={nominations} userId={userId} />
       </div>
       <div className="min-h-0 flex-1">
         <GameGraph
@@ -135,12 +142,22 @@ function RoundStage({
           onOpenMap={setOpenMapId}
           onProposeMap={(subtopicId) => { setProposeSubtopicId(subtopicId); setNominateOpen(true); }}
           onBranchSubtopic={(parentId) => { setBranchParentId(parentId); setNominateOpen(true); }}
+          onCarry={setCarrySource}
         />
       </div>
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="mx-auto w-full max-w-md px-5">
+        <div className="mx-auto flex w-full max-w-md gap-2 px-5">
+          {isCarryRound && (
+            <Button
+              variant="ghost"
+              className="pointer-events-auto shrink-0 !w-auto bg-paper px-4 shadow-lg"
+              onClick={() => setTallyOpen(true)}
+            >
+              Running votes
+            </Button>
+          )}
           <Button
-            className="pointer-events-auto shadow-lg"
+            className="pointer-events-auto !w-auto flex-1 shadow-lg"
             onClick={() => { setProposeSubtopicId(null); setBranchParentId(null); setNominateOpen(true); }}
             disabled={noTokens}
           >
@@ -173,6 +190,24 @@ function RoundStage({
           mapId={openMapId}
           userId={userId}
           onClose={() => window.history.back()}
+        />
+      )}
+      <CarrySheet
+        game={game}
+        nominations={nominations}
+        userId={userId}
+        source={carrySource}
+        onClose={() => setCarrySource(null)}
+      />
+      {isCarryRound && (
+        <CarryTally
+          game={game}
+          nominations={nominations}
+          userId={userId}
+          balance={balance}
+          open={tallyOpen}
+          onClose={() => setTallyOpen(false)}
+          onOpenMap={setOpenMapId}
         />
       )}
     </main>
@@ -217,7 +252,7 @@ function EndedStage({
   return (
     <main className={view === 'map' ? 'flex h-dvh w-full flex-col' : 'min-h-dvh w-full'}>
       <div className="mx-auto w-full max-w-md px-5 pb-2">
-        <GameHeader game={game} balance={balance} nominations={nominations} />
+        <GameHeader game={game} balance={balance} nominations={nominations} userId={userId} />
         {tabs}
       </div>
       {view === 'map' ? (

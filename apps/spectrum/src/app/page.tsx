@@ -12,7 +12,6 @@ import { useAuth } from '@/contexts/AuthContext';
 const DEFAULT_THEMES = ['Experiences', 'Intentions', 'Actions'];
 
 const ROUND_LENGTHS = [
-  { label: '5 min', seconds: 300 },
   { label: '20 min', seconds: 1200 },
   { label: '1 hour', seconds: 3600 },
   { label: '1 day', seconds: 86400 },
@@ -23,7 +22,8 @@ export default function Home() {
   const { userId, userName, isAuthenticated, isLoading, logout } = useAuth();
   const [topic, setTopic] = useState('');
   const [themes, setThemes] = useState<string[]>([...DEFAULT_THEMES]);
-  const [roundSeconds, setRoundSeconds] = useState(300);
+  const [roundSeconds, setRoundSeconds] = useState(1200);
+  const [roundMode, setRoundMode] = useState<'timed' | 'manual'>('timed');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +45,7 @@ export default function Home() {
             round1: roundSeconds, round2: roundSeconds, round3: roundSeconds,
             round4: roundSeconds, revise: roundSeconds,
           },
+          roundMode,
         },
       }, userId);
       router.push(`/g/${game.code}?new=1`);
@@ -188,9 +189,9 @@ export default function Home() {
             {ROUND_LENGTHS.map(r => (
               <button
                 key={r.seconds}
-                onClick={() => setRoundSeconds(r.seconds)}
+                onClick={() => { setRoundMode('timed'); setRoundSeconds(r.seconds); }}
                 className={`display flex-1 rounded-2xl border px-2 py-3 text-lg transition-colors ${
-                  roundSeconds === r.seconds
+                  roundMode === 'timed' && roundSeconds === r.seconds
                     ? 'border-ink bg-ink text-paper'
                     : 'border-line-strong text-ink active:bg-paper-dim'
                 }`}
@@ -198,7 +199,22 @@ export default function Home() {
                 {r.label}
               </button>
             ))}
+            <button
+              onClick={() => setRoundMode('manual')}
+              className={`display flex-1 rounded-2xl border px-2 py-3 text-lg transition-colors ${
+                roundMode === 'manual'
+                  ? 'border-ink bg-ink text-paper'
+                  : 'border-line-strong text-ink active:bg-paper-dim'
+              }`}
+            >
+              Manual
+            </button>
           </div>
+          {roundMode === 'manual' && (
+            <p className="mt-2 text-sm text-ink-soft">
+              No clock — you&apos;ll move the room to the next round yourself.
+            </p>
+          )}
 
           <Button className="mt-6" onClick={createGame} disabled={busy}>
             {busy ? 'Setting up…' : 'Start a game'}

@@ -41,7 +41,7 @@ const entrySchema = new mongoose.Schema({
 
   // Content — position and text arrive in either order during play,
   // so both are optional; the entry is the union of what's been submitted.
-  objectName: { type: String, default: '', trim: true, maxlength: 25 },
+  objectName: { type: String, default: '', trim: true, maxlength: 80 },
   position:   { type: positionSchema, default: null },
   text:       { type: String, default: '', trim: true, maxlength: 500 },
 

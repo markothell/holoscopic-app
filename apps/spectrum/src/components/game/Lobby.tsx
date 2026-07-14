@@ -59,7 +59,7 @@ export default function Lobby({
           ))}
         </p>
         <p className="eyebrow mt-3">
-          {ROUND_LABEL(game.config.roundSeconds.round1)} rounds · {game.config.startingTokens} tokens each · quorum {game.config.quorum}
+          {game.config.roundMode === 'manual' ? 'Manual' : ROUND_LABEL(game.config.roundSeconds.round1)} rounds · {game.config.startingTokens} tokens each · quorum {game.config.quorum}
         </p>
       </header>
 

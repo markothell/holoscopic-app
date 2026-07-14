@@ -120,6 +120,9 @@ const oasGameSchema = new mongoose.Schema({
       round4: { type: Number, default: 300, min: 60, max: 86400 },
       revise: { type: Number, default: 300, min: 60, max: 86400 },
     },
+    // 'manual': no phaseDeadline is ever set — the host advances each round
+    // by hand (POST /games/:code/advance) instead of a clock.
+    roundMode: { type: String, enum: ['timed', 'manual'], default: 'timed' },
     // Mirrored into the room Instance's config.holons.startingStake so
     // InstanceMembership.getOrCreate grants it on first touch.
     startingTokens: { type: Number, default: 4, min: 1 },

@@ -18,7 +18,7 @@ export default function BottomSheet({
     <div className="fixed inset-0 z-50">
       <div className="fade-in absolute inset-0 bg-ink/40" onClick={onClose} />
       <div
-        className="sheet-up absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-paper-raised px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3"
+        className="sheet-up absolute inset-x-0 bottom-0 mx-auto max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-paper-raised px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3"
         style={{ boxShadow: 'var(--shadow-sheet)' }}
       >
         <button

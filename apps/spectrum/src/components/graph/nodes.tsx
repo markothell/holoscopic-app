@@ -163,6 +163,7 @@ export function MapNode({ data }: { data: MapNodeData }) {
     : 'map?';
   const filled = data.live || revealed;
   const axes = nominationAxes(nom);
+  const itemCount = nom.mapState?.items.length ?? 0;
 
   return (
     <div
@@ -180,6 +181,9 @@ export function MapNode({ data }: { data: MapNodeData }) {
         <span>{label}</span>
         {!filled && !expired && (
           <StakeDots count={nom.stakes.length} quorum={data.quorum} accent={accent} />
+        )}
+        {revealed && itemCount > 0 && (
+          <span style={{ fontWeight: 700 }}>{itemCount} ●</span>
         )}
       </div>
       <div style={{
