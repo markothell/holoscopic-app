@@ -8,6 +8,7 @@ export interface PlayerGame {
   instanceId: string;
   name: string;
   slug: string;
+  gameType: 'interview' | 'spectrum';
   gameNumber: number | null;
   active: boolean;
   startDate: string | null;
@@ -46,7 +47,7 @@ export interface GameMapEntry {
 
 export interface GameMapResponse {
   user: { id: string; name: string };
-  instance: { id: string; name: string; slug: string; gameNumber: number | null } | null;
+  instance: { id: string; name: string; slug: string; gameType: 'interview' | 'spectrum'; gameNumber: number | null } | null;
   topics: { id: string; title: string; status: string }[];
   activities: {
     id: string; title: string; urlName: string; activityType: string;

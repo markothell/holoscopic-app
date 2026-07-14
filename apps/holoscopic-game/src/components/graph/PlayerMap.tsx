@@ -23,6 +23,7 @@ import '@xyflow/react/dist/style.css';
 import type { GameMapResponse, GameMapEntry } from '@/services/userService';
 import { STR } from '@/lib/strings';
 import { btn, mono } from '@/lib/ui';
+import { collectiveMapUrl } from '@/lib/games';
 
 type PMData = {
   label: string;
@@ -357,6 +358,46 @@ function PlayerMapInner({ map }: { map: GameMapResponse }) {
 
   const isEmpty = map.activities.length === 0 && map.frames.length === 0 && map.patterns.length === 0;
 
+  // Nothing to plot: skip the radial canvas entirely and show a single, calm
+  // centered panel over the paper dots — no player node to collide with.
+  if (isEmpty) {
+    return (
+      <div style={{
+        position: 'relative', width: '100%', height: '100%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        backgroundImage: 'radial-gradient(rgba(15,13,11,0.12) 1px, transparent 1px)',
+        backgroundSize: '26px 26px',
+      }}>
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem',
+          textAlign: 'center', padding: '2rem',
+        }}>
+          <div style={{
+            width: 88, height: 88, borderRadius: '50%',
+            background: 'var(--bg-secondary)', border: '2px solid var(--accent)',
+            boxShadow: '0 0 0 5px rgba(200,59,80,0.06), 0 1px 4px rgba(15,13,11,0.08)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{
+              fontSize: 'var(--text-lg)', fontFamily: mono, letterSpacing: '0.08em',
+              textTransform: 'uppercase' as const, color: 'var(--accent)',
+            }}>
+              {(map.user.name || 'Player').charAt(0).toUpperCase()}
+            </span>
+          </div>
+          <p style={{ margin: 0, fontFamily: mono, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+            No activity in this game yet.
+          </p>
+          {map.instance && (
+            <Link href={collectiveMapUrl(map.instance)} style={{ ...btn('outline'), textDecoration: 'none' }}>
+              Open the collective map →
+            </Link>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <ReactFlow
@@ -393,22 +434,6 @@ function PlayerMapInner({ map }: { map: GameMapResponse }) {
       </div>
 
       {popup && <EntryPopup entry={popup.entry} own={popup.own} onClose={() => setPopup(null)} />}
-
-      {isEmpty && (
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          pointerEvents: 'none',
-        }}>
-          <div style={{ textAlign: 'center', fontFamily: mono, fontSize: 'var(--text-xs)', color: 'var(--text-muted)', lineHeight: 1.6, pointerEvents: 'auto' }}>
-            <p style={{ margin: 0 }}>No activity in this game yet.</p>
-            {map.instance && (
-              <Link href={`/interview/${map.instance.slug}/topics`} style={{ ...btn('outline'), textDecoration: 'none', display: 'inline-block', marginTop: '0.75rem' }}>
-                Open the collective map →
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

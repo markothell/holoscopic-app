@@ -1,7 +1,7 @@
 import { apiFetch } from './api';
 import type {
   Axis, FrameSpec, Game, MapDetail, MapEntry, MeGames, Nomination, Proposal,
-  Pulse, RoundSeconds, Snapshot,
+  Pulse, RoundMode, RoundSeconds, Snapshot,
 } from '@/lib/types';
 
 export interface CreateGameInput {
@@ -9,6 +9,7 @@ export interface CreateGameInput {
   themes?: string[];
   config?: {
     roundSeconds?: Partial<RoundSeconds>;
+    roundMode?: RoundMode;
     startingTokens?: number;
     quorum?: number;
     votesPerUser?: number;
@@ -64,14 +65,20 @@ export const OasService = {
   },
 
   // Rounds 2–4: the lens rides the proposal — 1 frame = a ranked line,
-  // 2 frames = a 2×2 map.
-  nominateMap(code: string, subtopicId: string, frames: FrameSpec[], userId: string) {
+  // 2 frames = a 2×2 map. The subject is a subtopic (round 2) or a carried
+  // previous-round item (rounds 3–4, sourceEntryId).
+  nominateMap(
+    code: string,
+    subject: { subtopicId?: string; sourceEntryId?: string },
+    frames: FrameSpec[],
+    userId: string,
+  ) {
     return apiFetch<{ nomination: Nomination }>(`/oas/games/${code}/nominations`, {
-      method: 'POST', body: { subtopicId, frames }, userId,
+      method: 'POST', body: { ...subject, frames }, userId,
     });
   },
 
-  // Pre-quorum frame contest on a map nomination's slate.
+  // Nominator only: fill an open slot in their own slate.
   proposeFrame(code: string, nominationId: string, frame: FrameSpec, userId: string) {
     return apiFetch<{ nomination: Nomination }>(
       `/oas/games/${code}/nominations/${nominationId}/frames`,
@@ -79,10 +86,11 @@ export const OasService = {
     );
   },
 
-  voteFrame(code: string, nominationId: string, frameId: string, userId: string) {
+  // Nominator only: pull one of their own spectrums pre-confirmation.
+  removeFrame(code: string, nominationId: string, frameId: string, userId: string) {
     return apiFetch<{ nomination: Nomination }>(
-      `/oas/games/${code}/nominations/${nominationId}/frames/${frameId}/vote`,
-      { method: 'POST', userId },
+      `/oas/games/${code}/nominations/${nominationId}/frames/${frameId}`,
+      { method: 'DELETE', userId },
     );
   },
 
@@ -113,9 +121,11 @@ export const OasService = {
     );
   },
 
-  submitMapItem(code: string, mapId: string, text: string, userId: string) {
+  submitMapItem(
+    code: string, mapId: string, label: string, comment: string, userId: string,
+  ) {
     return apiFetch<{ entry: MapEntry }>(`/oas/games/${code}/maps/${mapId}/items`, {
-      method: 'POST', body: { text }, userId,
+      method: 'POST', body: { label, comment }, userId,
     });
   },
 

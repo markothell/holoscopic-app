@@ -57,6 +57,21 @@ function spreadWord(spread: number): string {
   return 'wide disagreement';
 }
 
+// A halo of spread — a dot sitting dead center could mean real consensus or
+// a dead-even split (see computeMapResults). The ring makes the difference
+// visible at a glance, same job the 1D bar's height does.
+function haloShadow(accent: string, spread: number, active: boolean): string {
+  const norm = Math.min(1, spread / MAX_SPREAD);
+  const ring = norm < 0.08 ? 0 : 3 + norm * 9;
+  if (active) {
+    // Selected reads as the same halo the spread already earned, just fully
+    // saturated — not a smaller ring that erases the spread cue.
+    return `0 0 0 ${Math.max(ring, 4)}px color-mix(in srgb, ${accent} 32%, transparent)`;
+  }
+  if (ring === 0) return 'var(--shadow-card)';
+  return `0 0 0 ${ring}px color-mix(in srgb, ${accent} ${10 + norm * 20}%, transparent)`;
+}
+
 function Dot({ dot, accent, active, onTap, style }: {
   dot: MapResultDot;
   accent: string;
@@ -73,7 +88,7 @@ function Dot({ dot, accent, active, onTap, style }: {
     >
       <span
         className="block h-4 w-4 rounded-full border-2 border-paper-raised"
-        style={{ background: accent, boxShadow: active ? `0 0 0 4px color-mix(in srgb, ${accent} 25%, transparent)` : 'var(--shadow-card)' }}
+        style={{ background: accent, boxShadow: haloShadow(accent, dot.spread, active) }}
       />
       {active && (
         <span className="absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-2.5 py-1 text-xs text-paper">
@@ -160,11 +175,16 @@ export default function MapReveal({
               <li key={d.entryId}>
                 <button
                   onClick={() => setActiveId(a => (a === d.entryId ? null : d.entryId))}
-                  className="flex w-full items-baseline gap-3 rounded-xl px-3 py-2 text-left transition-colors"
+                  className="w-full rounded-xl px-3 py-2 text-left transition-colors"
                   style={{ background: on ? `color-mix(in srgb, ${accent} 14%, transparent)` : 'var(--paper-raised)' }}
                 >
-                  <span className="eyebrow w-5 text-center" style={{ color: on || i === 0 ? accent : undefined }}>{i + 1}</span>
-                  <span className="min-w-0 flex-1 truncate text-base">{d.label}</span>
+                  <div className="flex items-baseline gap-3">
+                    <span className="eyebrow w-5 text-center" style={{ color: on || i === 0 ? accent : undefined }}>{i + 1}</span>
+                    <span className={`min-w-0 flex-1 text-base ${on ? '' : 'truncate'}`}>{d.label}</span>
+                  </div>
+                  {on && d.comment && (
+                    <p className="mt-1 pl-8 text-sm text-ink-soft">{d.comment}</p>
+                  )}
                 </button>
               </li>
             );
@@ -210,7 +230,25 @@ export default function MapReveal({
       <p className="eyebrow mt-3 text-center">
         {x?.poleB} — {x?.poleA} → · {y?.poleB} — {y?.poleA} ↑
       </p>
-      <p className="mt-2 text-center text-sm text-ink-soft">Tap a dot for its item.</p>
+      {(() => {
+        const active = results.find(d => d.entryId === activeId) ?? null;
+        if (!active) {
+          return (
+            <p className="mt-2 text-center text-sm text-ink-soft">
+              A wider halo means raters split hard on where this sits. Tap a dot for its item.
+            </p>
+          );
+        }
+        return (
+          <div className="mt-3 rounded-xl bg-paper-raised px-3 py-2 text-center">
+            <p className="text-base text-ink">{active.label}</p>
+            {active.comment && <p className="mt-1 text-sm text-ink-soft">{active.comment}</p>}
+            <p className="mt-1 text-xs text-ink-faint">
+              {spreadWord(active.spread)} ({active.count} ranked)
+            </p>
+          </div>
+        );
+      })()}
     </div>
   );
 }

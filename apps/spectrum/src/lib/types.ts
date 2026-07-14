@@ -23,8 +23,11 @@ export interface RoundSeconds {
   revise: number;
 }
 
+export type RoundMode = 'timed' | 'manual';
+
 export interface GameConfig {
   roundSeconds: RoundSeconds;
+  roundMode: RoundMode;
   startingTokens: number;
   quorum: number;
   votesPerUser: number;
@@ -95,7 +98,9 @@ export type WinningAxis = FrameRef;
 export interface MapItem {
   entryId: string;
   index: number;
+  // Short handle used to rank/reveal; `comment` is the substance being ranked.
   label: string;
+  comment: string;
   authorId: string;
 }
 
@@ -121,6 +126,10 @@ export interface Nomination {
   // kind 'subtopic': parent in the round-1 tree (null = child of game topic).
   parentSubtopicId: string | null;
   subtopicId: string | null;
+  // kind 'map', rounds 3–4: the carried previous-round item and the map it came
+  // from. Null for round-2 maps (which seed from the subtopic tree).
+  sourceEntryId: string | null;
+  sourceMapId: string | null;
   dimensions: 1 | 2 | null;
   // kind 'map': the frame contest (nominator's seeds + rivals). Frozen at
   // confirmation, when its tally becomes mapState.winningAxes.
@@ -184,11 +193,14 @@ export interface MapEntry {
 export interface MapResultDot {
   entryId: string;
   label: string;
+  comment: string;
   authorId: string;
   x: number;
   y: number;
-  // Rater disagreement on the x axis (population std dev, 0 = consensus).
-  // Drives the 1D reveal's bar heights. count = how many ranked it.
+  // Rater disagreement (population std dev, 0 = consensus; 1D = the single
+  // axis, 2D = both axes combined so a split on either one still shows).
+  // Drives the 1D reveal's bar heights and the 2D reveal's dot halo.
+  // count = how many ranked it.
   spread: number;
   count: number;
 }

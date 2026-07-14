@@ -48,7 +48,8 @@ export default function MapSheet({
   onClose: () => void;
 }) {
   const { loading, error, detail, refresh } = useMapDetail(code, mapId);
-  const [itemText, setItemText] = useState('');
+  const [label, setLabel] = useState('');
+  const [comment, setComment] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Ranking state: current axis + my order per axis.
@@ -124,6 +125,11 @@ export default function MapSheet({
             {ms.stage === 'gather' ? 'gathering' : ms.stage === 'rank' ? 'ranking' : 'revealed'}
           </p>
           <h2 className="display mt-1 truncate text-3xl">{nom.title}</h2>
+          {nom.sourceEntryId && (nom.themeIndex ?? 0) > 0 && (
+            <p className="eyebrow mt-0.5 !text-ink-faint">
+              carried forward from {game.themes[(nom.themeIndex ?? 0) - 1]}
+            </p>
+          )}
         </div>
         <button
           onClick={onClose}
@@ -172,8 +178,13 @@ export default function MapSheet({
             <ul className="mt-2 space-y-1.5">
               {detail!.items.map((e: MapEntry) => (
                 <li key={e.id} className="rise-in rounded-xl bg-paper-raised px-3 py-2">
-                  <span className="text-base">{e.text}</span>
-                  <span className="eyebrow ml-2 !text-ink-faint">{e.username}</span>
+                  <div>
+                    <span className="text-base">{e.objectName || e.text}</span>
+                    <span className="eyebrow ml-2 !text-ink-faint">{e.username}</span>
+                  </div>
+                  {e.objectName && e.text && (
+                    <p className="mt-0.5 text-sm text-ink-soft">{e.text}</p>
+                  )}
                 </li>
               ))}
               {detail!.items.length === 0 && (
@@ -182,28 +193,42 @@ export default function MapSheet({
                 </li>
               )}
             </ul>
-            {isMember && myItems.length < MAX_ITEMS && (
-              <div className="mt-2 flex gap-2">
-                <TextField
-                  value={itemText}
-                  maxLength={80}
-                  placeholder={`An ${theme.toLowerCase().replace(/s$/, '')}…`}
-                  onChange={e => setItemText(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && itemText.trim()) {
-                      act(() => OasService.submitMapItem(code, mapId, itemText.trim(), userId), () => setItemText(''));
-                    }
-                  }}
-                />
-                <button
-                  disabled={busy || !itemText.trim()}
-                  onClick={() => act(() => OasService.submitMapItem(code, mapId, itemText.trim(), userId), () => setItemText(''))}
-                  className="display shrink-0 rounded-2xl border border-line-strong px-5 text-xl disabled:opacity-30"
-                >
-                  Add
-                </button>
-              </div>
-            )}
+            {isMember && myItems.length < MAX_ITEMS && (() => {
+              const submit = () => act(
+                () => OasService.submitMapItem(code, mapId, label.trim(), comment.trim(), userId),
+                () => { setLabel(''); setComment(''); },
+              );
+              return (
+                <div className="mt-2">
+                  <div className="flex gap-2">
+                    <TextField
+                      value={label}
+                      maxLength={80}
+                      placeholder={`An ${theme.toLowerCase().replace(/s$/, '')}…`}
+                      onChange={e => setLabel(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && label.trim()) submit();
+                      }}
+                    />
+                    <button
+                      disabled={busy || !label.trim()}
+                      onClick={submit}
+                      className="display shrink-0 rounded-2xl border border-line-strong px-5 text-xl disabled:opacity-30"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <textarea
+                    value={comment}
+                    maxLength={500}
+                    placeholder="Why? Add a comment — this is what gets ranked (optional)"
+                    onChange={e => setComment(e.target.value)}
+                    rows={2}
+                    className="mt-2 w-full resize-none rounded-2xl border border-line-strong bg-paper-raised px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ink focus:outline-none"
+                  />
+                </div>
+              );
+            })()}
           </section>
 
           {canForce && (
