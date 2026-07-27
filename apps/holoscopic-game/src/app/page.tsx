@@ -409,7 +409,7 @@ export default function HomePage() {
         <RevealSection id="practice" className={styles.section}>
           <p className={styles.sectionLabel}>The Practice</p>
           <h2 className={styles.sectionHeadline}>
-            <em>Conversations</em> that&hellip;
+            <em>Conversations </em> that&hellip;
           </h2>
 
           <div className={styles.expandGroup}>
