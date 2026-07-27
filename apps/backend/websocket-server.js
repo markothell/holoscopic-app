@@ -127,8 +127,10 @@ require('./utils/holons').setIO(io);
 require('./utils/notify').setIO(io);
 require('./utils/spectrumGames').setIO(io);
 require('./utils/oasGames').setIO(io);
+require('./utils/unisonNodes').setIO(io);
 const { registerSpectrumHandlers } = require('./sockets/spectrum');
 const { registerOasHandlers } = require('./sockets/oas');
+const { registerUnisonHandlers } = require('./sockets/unison');
 
 // Store active connections and activity participants
 const connections = new Map(); // socketId -> { userId, activityIds }
@@ -245,6 +247,13 @@ function loadAPIRoutes() {
       // deliberately absent here.
       const oasRoutes = require('./routes/oas')(io);
       app.use('/api/oas', enforceVerifiedUser, oasRoutes);
+      // Unison — account holders; communities own their instances (like OaS
+      // rooms), so blockIfInstanceEnded is deliberately absent here too. The
+      // router stays a plain (non-factory) router: M1 broadcasts are emitted
+      // from the funnel (utils/unisonNodes.js#setIO), not from the routes, so
+      // no io needs to be threaded through here.
+      const unisonRoutes = require('./routes/unison');
+      app.use('/api/unison', enforceVerifiedUser, unisonRoutes);
       apiRoutesLoaded = true;
       console.log('✅ API routes loaded successfully');
     } catch (error) {
@@ -394,6 +403,7 @@ io.on('connection', (socket) => {
 
   registerSpectrumHandlers(io, socket);
   registerOasHandlers(io, socket);
+  registerUnisonHandlers(io, socket);
 
   // Join user room for personal events (holon updates, notifications)
   socket.on('join_user_room', ({ userId }) => {

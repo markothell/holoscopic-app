@@ -1,0 +1,139 @@
+@import "tailwindcss";
+
+/* Unison — "dusk & tuning fork".
+   A private map of layered thought, tuned into a collective. Deep
+   violet-charcoal canvas (not OaS's paper, not interView's warm-light) —
+   the map is the one full-bleed surface and reads best as a night studio,
+   thought-nodes catching light like struck tones. Fraunces carries the
+   voice (thought claims, headlines) with its wonky, hand-set warmth;
+   Space Grotesk is the UI's working hand; IBM Plex Mono tags handles,
+   topics, and structure — the "who said this, where does it sit" layer. */
+
+:root {
+  --dusk: #1B1826;
+  --dusk-raised: #262233;
+  --dusk-soft: #332D42;
+  --dusk-deep: #14121C;
+
+  --mist: #ECE7F5;
+  --mist-soft: #B3ABC9;
+  --mist-faint: #726A87;
+
+  --line: rgba(236, 231, 245, 0.12);
+  --line-strong: rgba(236, 231, 245, 0.24);
+
+  /* color = origin */
+  --own: #E3A548;       /* brass — a node authored here */
+  --own-soft: #4A3A22;
+  --borrowed: #8D90E3;  /* periwinkle — a node carried in from elsewhere */
+  --borrowed-soft: #2B2C47;
+
+  --synthesis: #55C2A8; /* teal — a marriage / synthesis node */
+  --synthesis-soft: #1D3A34;
+  --live: #E2735A;      /* coral — published / live state */
+  --live-soft: #3D241E;
+
+  --shadow-sheet: 0 -16px 48px rgba(10, 8, 16, 0.5);
+  --shadow-card: 0 1px 2px rgba(10, 8, 16, 0.3), 0 10px 28px rgba(10, 8, 16, 0.35);
+}
+
+@theme inline {
+  --color-dusk: var(--dusk);
+  --color-dusk-raised: var(--dusk-raised);
+  --color-dusk-soft: var(--dusk-soft);
+  --color-dusk-deep: var(--dusk-deep);
+  --color-mist: var(--mist);
+  --color-mist-soft: var(--mist-soft);
+  --color-mist-faint: var(--mist-faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-own: var(--own);
+  --color-own-soft: var(--own-soft);
+  --color-borrowed: var(--borrowed);
+  --color-borrowed-soft: var(--borrowed-soft);
+  --color-synthesis: var(--synthesis);
+  --color-synthesis-soft: var(--synthesis-soft);
+  --color-live: var(--live);
+  --color-live-soft: var(--live-soft);
+  --font-display: var(--font-fraunces);
+  --font-mono-ui: var(--font-plex-mono);
+  --font-ui: var(--font-space-grotesk);
+}
+
+html, body {
+  background: var(--dusk);
+  color: var(--mist);
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-space-grotesk), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* IBM Plex Mono tracked uppercase — handles, topic tags, structural labels */
+.eyebrow {
+  font-family: var(--font-plex-mono), monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mist-soft);
+}
+
+/* Fraunces display — the voice. Used sparingly: headlines + thought claims. */
+.display {
+  font-family: var(--font-fraunces), serif;
+  font-weight: 560;
+  font-style: normal;
+  letter-spacing: -0.01em;
+  line-height: 0.98;
+}
+
+.voice-serif {
+  font-family: var(--font-fraunces), serif;
+  font-optical-sizing: auto;
+}
+
+/* Concentric "tuning" rings — the signature backdrop watermark behind the
+   map's root, evoking a struck tone spreading outward. Rendered once, static
+   (no orbiting/pulsing — settle, don't perform). */
+.tuning-rings {
+  background-image:
+    radial-gradient(circle, transparent 0, transparent 59px, rgba(236,231,245,0.05) 60px, rgba(236,231,245,0.05) 61px, transparent 62px),
+    radial-gradient(circle, transparent 0, transparent 119px, rgba(236,231,245,0.04) 120px, rgba(236,231,245,0.04) 121px, transparent 122px),
+    radial-gradient(circle, transparent 0, transparent 179px, rgba(236,231,245,0.03) 180px, rgba(236,231,245,0.03) 181px, transparent 182px);
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Entrance choreography — a tone landing: settle, never pulse. */
+@keyframes tone-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.tone-in { animation: tone-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.rise-in { animation: rise-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.sheet-up { animation: sheet-up 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fade-in { animation: fade-in 0.25s ease-out both; }
+
+input, textarea, button { font: inherit; }
+button { cursor: pointer; }
+
+/* React Flow overrides — dusk canvas, no default chrome */
+.react-flow__attribution { display: none; }

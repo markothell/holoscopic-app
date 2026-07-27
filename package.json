@@ -18,6 +18,7 @@
     "dev:game": "npm run dev --workspace=apps/holoscopic-game",
     "dev:backend": "npm run dev --workspace=apps/backend",
     "dev:platform": "npm run dev --workspace=apps/platform",
+    "dev:unison": "npm run dev --workspace=apps/unison",
     "build": "turbo build",
     "dev": "turbo dev"
   },
