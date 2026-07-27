@@ -1,5 +1,5 @@
-import { apiFetch } from './api';
-import type { Community, FrameSpec, Membership, NodeContent, NodeKind, UnisonFrame, UnisonNode, UnisonReply } from '@/lib/types';
+import { apiFetch, apiStream } from './api';
+import type { ChatTurn, Community, FrameSpec, Membership, NodeContent, NodeKind, UnisonFrame, UnisonNode, UnisonReply } from '@/lib/types';
 
 // Typed wrappers for the live M0b REST surface (routes/unison.js). Matches
 // its two addressing schemes (apps/unison/PLAN.md §5):
@@ -132,5 +132,21 @@ export const UnisonService = {
     return apiFetch<{ reply: UnisonReply }>(`/unison/nodes/${nodeId}/replies/${entryId}/upvote`, {
       method: 'POST', instanceId, userId,
     });
+  },
+
+  // ── M3: the collective LLM — "Ask the Group" ────────────────────────────
+
+  // Rehydrates the caller's persisted thread (AskOverlay, on open).
+  thread(instanceId: string, userId: string) {
+    return apiFetch<{ turns: ChatTurn[] }>('/unison/thread', { instanceId, userId });
+  },
+
+  // The SSE POST (routes/unison.js's STREAMING CONTRACT). Returns the raw
+  // Response — apiStream already turned a non-2xx (e.g. 503 "LLM not
+  // configured") into an ApiError before this resolves, so a caller only
+  // needs to read the body stream on success. AskOverlay owns the
+  // event:/data: frame parsing since EventSource can't POST.
+  askStream(instanceId: string, message: string, userId: string, signal?: AbortSignal) {
+    return apiStream('/unison/chat', { instanceId, userId, body: { message }, signal });
   },
 };

@@ -40,6 +40,23 @@ function emitToCommunity(instanceId, event, payload) {
   if (io && instanceId) io.to(`unison:${instanceId}`).emit(event, payload);
 }
 
+// ── LLM embedding-index refresh hooks (M3) ──────────────────────────────────
+// The funnel notifies the index when the PUBLISHED corpus changes — on publish,
+// on a content edit / promote of a published node, and on a public reply. The
+// hook module is injected (setIndex, from websocket-server.js) so the funnel
+// stays decoupled and its unit tests run with no LLM wired. Calls are
+// fire-and-forget and fully swallowed: a slow or unconfigured embeddings API
+// must NEVER block or fail a write. When no index is registered (tests), this
+// is a no-op.
+let indexHooks = null;
+function setIndex(hooks) { indexHooks = hooks; }
+function fireIndex(method, ...args) {
+  if (!indexHooks || typeof indexHooks[method] !== 'function') return;
+  Promise.resolve()
+    .then(() => indexHooks[method](...args))
+    .catch(err => console.error('[unison-index]', method, err && err.message));
+}
+
 // ── Store: default Mongoose-backed implementation ───────────────────────────
 const mongoStore = {
   async getNode(id) {
@@ -316,7 +333,11 @@ async function editContent({ store = mongoStore, nodeId, content = {} }) {
   };
   node.content = normContent(node.kind, merged);
   promoteIfBorrowed(node);
-  return store.saveNode(node);
+  const saved = await store.saveNode(node);
+  // A content edit / promote of a PUBLISHED thought must refresh its embedding
+  // (refreshNode no-ops for private nodes, so private edits stay uncorpused).
+  fireIndex('onNodeChanged', saved);
+  return saved;
 }
 
 // ── Promote (M2) — the single "make it mine" gesture ────────────────────────
@@ -358,6 +379,8 @@ async function publish({ store = mongoStore, nodeId }) {
     await store.saveNode(node);
     // The post entered the feed — the reader-side of the loop wakes here.
     emitToCommunity(node.instanceId, 'node_published', { node: toClient(node) });
+    // A published thought joins the LLM corpus (M3).
+    fireIndex('onNodeChanged', node);
   }
   return node;
 }
@@ -369,6 +392,8 @@ async function unpublish({ store = mongoStore, nodeId }) {
     node.visibility = 'private';
     node.publishedAt = null;
     await store.saveNode(node);
+    // Left the feed — drop it from the LLM corpus (M3).
+    fireIndex('onNodeChanged', node);
   }
   return node;
 }
@@ -543,6 +568,8 @@ async function respond({
   }
 
   emitToCommunity(instanceId, 'reply_upserted', { postId: source.id, reply: entries.toClient(reply) });
+  // A public reply joins the LLM corpus (M3).
+  fireIndex('onReply', reply, source);
   return { reply, borrowed };
 }
 
@@ -596,6 +623,7 @@ module.exports = {
   upvoteReply,
   feed,
   setIO,
+  setIndex,
   // serializer
   toClient,
   // pure guards / helpers (exported for tests and reuse)

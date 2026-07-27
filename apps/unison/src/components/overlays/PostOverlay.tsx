@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import OverlayShell from './OverlayShell';
 import ResolveGrid, { type ResolvePoint } from '@/components/resolve/ResolveGrid';
 import ResolveComposer from '@/components/resolve/ResolveComposer';
@@ -38,6 +38,7 @@ export default function PostOverlay({
   canPromote = false,
   viewerId,
   live,
+  highlightReplyId = null,
   onClose,
   onEdit,
   onOpenSource,
@@ -51,6 +52,10 @@ export default function PostOverlay({
   canPromote?: boolean;
   viewerId: string;
   live: boolean;
+  // Set when this post was opened from a reply-citation chip (Ask the
+  // Group) — scrolls to and briefly highlights that one reply row so a
+  // deep-linked answer lands on the actual quoted reply, not just the post.
+  highlightReplyId?: string | null;
   onClose: () => void;
   onEdit: () => void;
   onOpenSource: (sourceNodeId: string) => void;
@@ -60,6 +65,12 @@ export default function PostOverlay({
   const [stance, setStance] = useState<ResolvePosition | null>(null);
   const [context, setContext] = useState('');
   const [savedNotice, setSavedNotice] = useState(false);
+  const highlightRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!highlightReplyId) return;
+    highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightReplyId]);
 
   const points: ResolvePoint[] = replies
     .filter(r => r.position)
@@ -124,7 +135,14 @@ export default function PostOverlay({
           <div className="mt-5 space-y-2">
             {replies.length === 0 && <p className="text-sm italic text-mist-faint">No replies yet.</p>}
             {replies.map(r => (
-              <div key={r.id} className="flex items-start gap-3 rounded-xl border border-line px-3 py-2.5">
+              <div
+                key={r.id}
+                ref={r.id === highlightReplyId ? highlightRef : undefined}
+                className="flex items-start gap-3 rounded-xl border px-3 py-2.5 transition-colors duration-300"
+                style={r.id === highlightReplyId
+                  ? { borderColor: 'var(--own)', background: 'var(--own-soft)' }
+                  : { borderColor: 'var(--line)' }}
+              >
                 <button
                   onClick={() => onToggleUpvote(r.id)}
                   className="eyebrow shrink-0 rounded-full border border-line-strong px-2 py-1"

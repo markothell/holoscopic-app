@@ -38,15 +38,7 @@ export function clearGameToken() {
   cachedToken = null;
 }
 
-export async function apiFetch<T>(
-  path: string,
-  options: {
-    method?: string;
-    body?: unknown;
-    userId?: string | null;
-    instanceId?: string;
-  } = {},
-): Promise<T> {
+async function buildHeaders(options: { userId?: string | null; instanceId?: string }): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'x-instance-id': options.instanceId || PARENT_INSTANCE_ID,
@@ -56,6 +48,19 @@ export async function apiFetch<T>(
     const token = await getGameToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
+  return headers;
+}
+
+export async function apiFetch<T>(
+  path: string,
+  options: {
+    method?: string;
+    body?: unknown;
+    userId?: string | null;
+    instanceId?: string;
+  } = {},
+): Promise<T> {
+  const headers = await buildHeaders(options);
   const res = await fetch(`${API_BASE}${path}`, {
     method: options.method || 'GET',
     headers,
@@ -66,4 +71,33 @@ export async function apiFetch<T>(
     throw new ApiError(res.status, (json as { error?: string }).error || `Request failed (${res.status})`);
   }
   return json as T;
+}
+
+// A `text/event-stream` POST (unison chat, PLAN §6) — EventSource can't POST,
+// so the caller reads `res.body` itself and parses `event:`/`data:` frames
+// (see AskOverlay). Throws ApiError on a non-2xx status BEFORE any stream
+// reading starts (e.g. 503 `{ error: 'LLM not configured' }`), same failure
+// shape as apiFetch, so callers can share one catch path for "not set up yet"
+// vs. a mid-stream `event: error`.
+export async function apiStream(
+  path: string,
+  options: {
+    body?: unknown;
+    userId?: string | null;
+    instanceId?: string;
+    signal?: AbortSignal;
+  } = {},
+): Promise<Response> {
+  const headers = await buildHeaders(options);
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers,
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    signal: options.signal,
+  });
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, (json as { error?: string }).error || `Request failed (${res.status})`);
+  }
+  return res;
 }

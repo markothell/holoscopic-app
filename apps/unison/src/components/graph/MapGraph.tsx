@@ -76,7 +76,7 @@ function GraphInner({
   instanceId, userId, ownerHandle, useMock, openPostRequest, onOpenPostRequestHandled,
 }: {
   instanceId: string; userId: string; ownerHandle: string; useMock: boolean;
-  openPostRequest: string | null;
+  openPostRequest: { nodeId: string; replyId?: string } | null;
   onOpenPostRequestHandled: () => void;
 }) {
   const [frames, setFrames] = useState<UnisonFrame[]>(useMock ? MOCK_FRAMES : []);
@@ -121,6 +121,11 @@ function GraphInner({
   // (openPostRequest, forwarded from page.tsx since Feed is a sibling
   // overlay, not nested under the map).
   const [postNodeId, setPostNodeId] = useState<string | null>(null);
+  // A citation chip's replyId (task item: Ask citation deep-link) — set
+  // alongside postNodeId only when the open request named a specific reply,
+  // so PostOverlay can scroll to and highlight that one reply row. Cleared
+  // whenever the post itself is closed or a new open request lands without one.
+  const [highlightReplyId, setHighlightReplyId] = useState<string | null>(null);
   // Mock path: repliesByPost seeds MOCK_POST's thread from the mock corpus;
   // any other post (most of the viewer's own map) starts with an empty
   // thread — both are real states the read-first view needs to handle.
@@ -134,7 +139,8 @@ function GraphInner({
 
   useEffect(() => {
     if (openPostRequest) {
-      setPostNodeId(openPostRequest);
+      setPostNodeId(openPostRequest.nodeId);
+      setHighlightReplyId(openPostRequest.replyId ?? null);
       onOpenPostRequestHandled();
     }
   }, [openPostRequest, onOpenPostRequestHandled]);
@@ -189,6 +195,7 @@ function GraphInner({
   const openSource = useCallback((sourceNodeId: string) => {
     setPopupNodeId(null);
     setPostNodeId(sourceNodeId);
+    setHighlightReplyId(null);
   }, []);
 
   const { flowNodes, flowEdges } = useMemo(
@@ -418,7 +425,8 @@ function GraphInner({
           canPromote={postCanPromote}
           viewerId={userId}
           live={!useMock}
-          onClose={() => setPostNodeId(null)}
+          highlightReplyId={highlightReplyId}
+          onClose={() => { setPostNodeId(null); setHighlightReplyId(null); }}
           onEdit={() => { setSheetNodeId(postNode.id); setPostNodeId(null); }}
           onOpenSource={openSource}
           onToggleUpvote={replyId => toggleUpvote(postNode.id, replyId)}
@@ -454,7 +462,7 @@ function GraphInner({
 
 export default function MapGraph(props: {
   instanceId: string; userId: string; ownerHandle: string; useMock: boolean;
-  openPostRequest: string | null;
+  openPostRequest: { nodeId: string; replyId?: string } | null;
   onOpenPostRequestHandled: () => void;
 }) {
   return (

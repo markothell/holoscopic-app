@@ -99,3 +99,29 @@ export interface UnisonReply {
   createdAt: string;
   updatedAt: string;
 }
+
+// M3 — "Ask the Group" (PLAN §6). Mirrors routes/unison.js's SSE contract and
+// UnisonThread's citationSchema. Assembled server-side from the retrieval set
+// (never parsed from model output), so `nodeId`/`replyId` are trustworthy
+// deep-link targets — AskOverlay routes a click through those, not anchorUrl.
+// `layer` is only ever present on a fresh `kind:'node'` citation off the live
+// stream (assembleCitations sets it, but UnisonThread's schema doesn't persist
+// it) — rehydrated turns from GET /thread won't carry it back.
+export interface Citation {
+  kind: 'node' | 'reply';
+  nodeId: string;
+  layer?: string;
+  replyId?: string;
+  ownerHandle: string;
+  anchorUrl: string;
+}
+
+// A single persisted turn off UnisonThread.turns (GET /unison/thread) — a
+// flat alternating user/assistant list, not pre-paired; citations only ever
+// appear on an assistant turn.
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+  citations?: Citation[];
+  createdAt: string;
+}

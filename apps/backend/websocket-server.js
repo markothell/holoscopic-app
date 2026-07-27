@@ -128,6 +128,10 @@ require('./utils/notify').setIO(io);
 require('./utils/spectrumGames').setIO(io);
 require('./utils/oasGames').setIO(io);
 require('./utils/unisonNodes').setIO(io);
+// M3 — the collective LLM's embedding-index refresh hooks. Injected here so the
+// funnel stays decoupled; the hooks no-op when the LLM is unconfigured, so this
+// never blocks route loading or writes.
+require('./utils/unisonNodes').setIndex(require('./utils/unisonIndexHooks'));
 const { registerSpectrumHandlers } = require('./sockets/spectrum');
 const { registerOasHandlers } = require('./sockets/oas');
 const { registerUnisonHandlers } = require('./sockets/unison');

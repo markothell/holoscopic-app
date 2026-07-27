@@ -9,6 +9,8 @@ const Entry = require('../models/Entry');
 const nodeFunnel = require('../utils/unisonNodes');
 const entryUtils = require('../utils/entries');
 const communityFunnel = require('../utils/unisonCommunities');
+const chat = require('../utils/unisonChat');
+const { getChatModel } = require('../llm/chatModel');
 
 // Unison — M0 REST surface: community/membership plumbing (create/join a
 // community, the ≤50-member gate, pseudonymous handles) plus a member's own
@@ -112,6 +114,8 @@ const BAD_REQUEST_ERRORS = new Set([
   'sourceNodeId is required',
   'A response needs a stance in [0,1]',
   'Cannot vote on your own entry',
+  // M3 LLM
+  'A question is required',
 ]);
 
 const NOT_FOUND_ERRORS = new Set(['Node not found', 'Spectrum not found', 'Community not found', 'Entry not found']);
@@ -444,6 +448,112 @@ router.post('/nodes/:id/replies/:entryId/upvote', async (req, res) => {
   } catch (error) {
     fail(res, error);
   }
+});
+
+// ── M3: the collective LLM — "Ask the Group" ───────────────────────────
+// Retrieval-augmented chat over the community's PUBLISHED corpus (published
+// thoughts + public replies), instanceId-scoped. Answers in the group's voice
+// and cites specific thoughts by handle. Private nodes are never indexed or
+// retrievable (utils/unisonIndex.js). If the LLM isn't configured the endpoints
+// fail cleanly with 503 — they never crash the server or block route loading.
+//
+// STREAMING CONTRACT (Server-Sent Events) for the AskOverlay frontend:
+//   POST /api/unison/chat   body: { message: string }
+//   Response: text/event-stream, events in order:
+//     event: meta      data: { citations: Citation[] }   // once, up front
+//     event: token     data: { text: string }            // 0..N answer chunks
+//     event: done      data: { citations: Citation[] }   // once, on success
+//     event: error     data: { error: string }           // instead of done, on failure
+//   Citation = { kind:'node'|'reply', nodeId, layer?, replyId?, ownerHandle, anchorUrl }
+//   Citations are assembled from the retrieval set (never parsed from model
+//   output) and sent BEFORE the answer so chips can render immediately. When
+//   the corpus is silent on the question, `meta.citations` is [] and the single
+//   token is a deflection (the model is not called — no hallucinated opinion).
+
+router.get('/thread', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const thread = await chat.getThread({ instanceId: req.instanceId, userId: membership.userId });
+    res.json({ turns: thread ? thread.turns : [] });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+router.post('/chat', async (req, res) => {
+  const membership = await requireMember(req, res);
+  if (!membership) return;
+
+  const model = getChatModel();
+  // configured === chat AND embed both wired (retrieval needs the query embed).
+  if (!model.configured) {
+    return res.status(503).json({ error: 'LLM not configured' });
+  }
+
+  const query = String((req.body && req.body.message) || '').trim();
+  if (!query) return res.status(400).json({ error: 'A question is required' });
+
+  // Retrieve + assemble citations + silence decision BEFORE opening the stream,
+  // so a retrieval error surfaces as a normal JSON error, not a broken stream.
+  let prepared;
+  try {
+    const history = await chat.recentTurns({ instanceId: req.instanceId, userId: membership.userId });
+    prepared = await chat.prepareAnswer({ model, instanceId: req.instanceId, query, history });
+  } catch (error) {
+    return fail(res, error);
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // don't let a proxy buffer the stream
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
+
+  const send = (event, data) => {
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const ac = new AbortController();
+  req.on('close', () => ac.abort());
+
+  send('meta', { citations: prepared.citations });
+
+  let answer = '';
+  try {
+    if (prepared.silent) {
+      answer = prepared.refusal;
+      send('token', { text: answer });
+    } else {
+      for await (const chunk of model.stream({ system: prepared.system, messages: prepared.messages, signal: ac.signal })) {
+        answer += chunk;
+        send('token', { text: chunk });
+      }
+    }
+  } catch (error) {
+    if (ac.signal.aborted) return res.end();
+    console.error('[unison chat]', error && error.message);
+    send('error', { error: 'The group could not be reached right now.' });
+    return res.end();
+  }
+
+  // Persist the exchange for continuity (best-effort — never fails the response).
+  try {
+    await chat.appendExchange({
+      instanceId: req.instanceId,
+      userId: membership.userId,
+      handle: membership.handle,
+      userText: query,
+      assistantText: answer,
+      citations: prepared.citations,
+    });
+  } catch (error) {
+    console.error('[unison thread]', error && error.message);
+  }
+
+  send('done', { citations: prepared.citations });
+  res.end();
 });
 
 // ── Frames — the community's shared axis vocabulary ────────────────────

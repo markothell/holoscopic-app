@@ -54,7 +54,10 @@ export default function HomePage() {
     clearError, selectCommunity, leaveActive, create, join,
   } = useCommunity(userId);
   const [overlay, setOverlay] = useState<OverlayKey>(null);
-  const [openPostRequest, setOpenPostRequest] = useState<string | null>(null);
+  // nodeId always set; replyId only present when the request came from a
+  // reply citation chip (AskOverlay) — MapGraph forwards it to PostOverlay
+  // so the specific reply can be scrolled to and highlighted.
+  const [openPostRequest, setOpenPostRequest] = useState<{ nodeId: string; replyId?: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
 
@@ -174,10 +177,18 @@ export default function HomePage() {
           userId={effectiveUserId}
           useMock={useMock}
           onClose={() => setOverlay(null)}
-          onOpenPost={id => { setOverlay(null); setOpenPostRequest(id); }}
+          onOpenPost={id => { setOverlay(null); setOpenPostRequest({ nodeId: id }); }}
         />
       )}
-      {overlay === 'ask' && <AskOverlay onClose={() => setOverlay(null)} />}
+      {overlay === 'ask' && (
+        <AskOverlay
+          instanceId={instanceId}
+          userId={effectiveUserId}
+          useMock={useMock}
+          onClose={() => setOverlay(null)}
+          onOpenPost={(nodeId, replyId) => { setOverlay(null); setOpenPostRequest({ nodeId, replyId }); }}
+        />
+      )}
 
       <OverlayDock active={overlay} onSelect={setOverlay} />
     </main>
