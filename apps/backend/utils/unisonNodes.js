@@ -10,7 +10,8 @@ const entriesUtil = require('./entries');
 // M0 scope (private map only): create root, create child, marry (synthesis
 // node with two parents), reparent, publish/unpublish, and frame dedupe. The
 // CYCLE GUARD and the same-owner parentIds invariant are enforced here and
-// only here. Networking (publish feed, respond/borrow, promote, LLM) is M1+.
+// only here. Networking (publish feed, respond/borrow) is M1; promote is M2
+// (wired into editContent, see promoteIfBorrowed below); the LLM is M3+.
 //
 // ── Node model (settled 2026-07-24) ────────────────────────────────────────
 // Two node KINDS. `topic` is a hub (a label many thoughts attach to as DAG
@@ -314,7 +315,27 @@ async function editContent({ store = mongoStore, nodeId, content = {} }) {
     context: content.context !== undefined ? content.context : node.content.context,
   };
   node.content = normContent(node.kind, merged);
+  promoteIfBorrowed(node);
   return store.saveNode(node);
+}
+
+// ── Promote (M2) — the single "make it mine" gesture ────────────────────────
+// D2/plan §3: adding your OWN thought/context to a borrowed node promotes it —
+// there is no separate "adopt" step. Wired into editContent (the one content-
+// edit funnel) rather than as a standalone route: an owner editing a borrowed
+// node's content IS the promotion gesture. Flips origin in place and stamps
+// promotedAt; provenance (sourceNodeId/sourceEntryId/sourceOwnerHandle) is
+// RETAINED, never cleared — the node still remembers where it came from.
+// Idempotent: a node that's already 'own' just edits, promotedAt doesn't move.
+// Ownership is the caller's concern (routes/unison.js's loadOwnedNode 404s a
+// non-owner before this ever runs — see PATCH /nodes/:id), so there is no
+// owner check here; only the owner can ever reach an editContent() call for
+// their own node in the first place.
+function promoteIfBorrowed(node) {
+  if (node.origin === 'borrowed') {
+    node.origin = 'own';
+    node.promotedAt = new Date();
+  }
 }
 
 // axisFrameIds only make sense on a thought (a topic hub has none) — this is
@@ -581,6 +602,7 @@ module.exports = {
   assertAcyclic,
   assertSameOwner,
   deriveTopicId,
+  promoteIfBorrowed,
   frameKey,
   newId,
   // default store (production); tests inject their own

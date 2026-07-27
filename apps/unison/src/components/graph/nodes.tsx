@@ -87,10 +87,11 @@ export function ThoughtNode({ data }: NodeProps & { data: UnisonNodeData }) {
           </span>
         )}
       </div>
-      {n.origin === 'borrowed' && n.sourceNodeId && (
+      {n.sourceNodeId && (
         <ProvenanceBreadcrumb
           handle={n.sourceOwnerHandle ?? 'someone'}
           onOpenReplyMap={() => onOpenSource?.(n.sourceNodeId!)}
+          promoted={n.origin === 'own'}
           compact
         />
       )}

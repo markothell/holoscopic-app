@@ -15,17 +15,27 @@ import type { ResolveAxis, ResolvePosition } from '@/lib/resolveLogic';
 // feed item, or a borrowed node's provenance link) — never a blank dock
 // destination (task item 1). Editing is a secondary action, shown only when
 // the viewer owns this exact node (isMine) — a borrowed/other-author node
-// is read + reply only. The response composer is wired to callbacks so the
-// caller (MapGraph) owns the reply state and picks the real vs. mock path;
-// `live` (M1) just drives the footnote/button copy below — MapGraph's
-// onSubmitReply/onToggleUpvote already call the real respond()/upvoteReply()
-// funnel when `live` is true, writing the reply Entry and dropping the
-// borrowed node onto My Map (D2/D8).
+// is read + reply only.
+//
+// M2 (promotion, D2/§3): a BORROWED node that's on the viewer's own map
+// (`canPromote`) is neither "mine" (it hasn't been made-own yet) nor someone
+// else's live post to reply to — it's a private draft mirroring the source.
+// Its entry point is "make it mine": opens the same editor as Edit
+// (onEdit -> NodeSheet), and saving a thought/context edit there IS the
+// promote gesture (utils/unisonNodes.js#editContent / useMyMap.ts#editNode
+// flip origin borrowed -> own). Once promoted, `isMine` becomes true and
+// `canPromote` false on the next render — the color/gate flips in place.
+// The response composer is wired to callbacks so the caller (MapGraph) owns
+// the reply state and picks the real vs. mock path; `live` (M1) just drives
+// the footnote/button copy below — MapGraph's onSubmitReply/onToggleUpvote
+// already call the real respond()/upvoteReply() funnel when `live` is true,
+// writing the reply Entry and dropping the borrowed node onto My Map (D2/D8).
 export default function PostOverlay({
   node,
   axes,
   replies,
   isMine,
+  canPromote = false,
   viewerId,
   live,
   onClose,
@@ -38,6 +48,7 @@ export default function PostOverlay({
   axes: ResolveAxis[];
   replies: UnisonReply[];
   isMine: boolean;
+  canPromote?: boolean;
   viewerId: string;
   live: boolean;
   onClose: () => void;
@@ -66,11 +77,12 @@ export default function PostOverlay({
 
   return (
     <OverlayShell title="A thought" eyebrow={`by ${node.ownerHandle}`} onClose={onClose}>
-      {node.origin === 'borrowed' && node.sourceNodeId && (
+      {node.sourceNodeId && (
         <div className="mb-4">
           <ProvenanceBreadcrumb
             handle={node.sourceOwnerHandle ?? 'someone'}
             onOpenReplyMap={() => onOpenSource(node.sourceNodeId!)}
+            promoted={node.origin === 'own'}
           />
         </div>
       )}
@@ -84,6 +96,22 @@ export default function PostOverlay({
 
       {isMine && (
         <Button variant="ghost" className="mb-6" onClick={onEdit}>Edit this thought</Button>
+      )}
+
+      {canPromote && (
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            style={{ borderColor: 'var(--borrowed)', color: 'var(--borrowed)' }}
+            onClick={onEdit}
+          >
+            + Add your own thought — make it mine
+          </Button>
+          <p className="mt-2 text-center text-xs text-mist-faint">
+            Borrowed from {node.sourceOwnerHandle ?? 'someone'}. Adding your own thought or context makes this
+            yours — the link back to the source stays.
+          </p>
+        </div>
       )}
 
       {axes.length > 0 ? (
@@ -112,7 +140,7 @@ export default function PostOverlay({
             ))}
           </div>
 
-          {!isMine && (
+          {!isMine && !canPromote && (
             <div className="mt-6 border-t border-line pt-5">
               <p className="eyebrow mb-2">Place your stance</p>
               <ResolveComposer axes={axes} value={stance} onChange={setStance} />

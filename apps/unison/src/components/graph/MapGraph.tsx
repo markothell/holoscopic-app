@@ -217,7 +217,17 @@ function GraphInner({
   // under this owner — not just origin:'own' relative to some other
   // author's map (MOCK_POST/MOCK_FEED entries are also origin:'own' on
   // their own author's map, so byId membership is the real test).
-  const postIsMine = !!postNode && byId.has(postNode.id) && postNode.origin === 'own';
+  const postOnMyMap = !!postNode && byId.has(postNode.id);
+  const postIsMine = postOnMyMap && postNode!.origin === 'own';
+  // M2: a BORROWED node that's on my own map gets the "make it mine"
+  // affordance instead of the reply composer — it's a private draft on my
+  // map, not someone else's live post, so replying to it makes no sense; the
+  // real entry point is promoting it (editNode flips origin borrowed->own,
+  // see useMyMap.ts). A borrowed node NOT on my map (i.e. viewed via a
+  // provenance breadcrumb / feed — impossible today since sourceNodeId
+  // always points to someone else's ORIGINAL thought, which is origin:'own'
+  // on its author's map) would fall through to the normal reply composer.
+  const postCanPromote = postOnMyMap && postNode!.origin === 'borrowed';
 
   function coinFrame(poleA: string, poleB: string): string {
     const id = 'local_fr_' + Math.random().toString(36).slice(2, 8);
@@ -405,6 +415,7 @@ function GraphInner({
           axes={postAxes}
           replies={useMock ? repliesByPost[postNode.id] ?? [] : remotePost?.replies ?? []}
           isMine={postIsMine}
+          canPromote={postCanPromote}
           viewerId={userId}
           live={!useMock}
           onClose={() => setPostNodeId(null)}

@@ -37,8 +37,12 @@ const communityFunnel = require('../utils/unisonCommunities');
 // mutation paths remain owner-scoped, and the only cross-member READ paths
 // (/feed, /nodes/:id/post) return published nodes exclusively.
 //
-// DEFERRED TO M2+ (not built here): promote (borrowed → own on first
-// owner-authored layer) and anything LLM.
+// M2 (built here): promote (borrowed -> own) is wired into the EXISTING
+// content-edit path — PATCH /nodes/:id with a `content` body is the single
+// "make it mine" gesture (utils/unisonNodes.js#editContent calls
+// promoteIfBorrowed internally). No separate promote route.
+//
+// DEFERRED TO M3+ (not built here): anything LLM.
 
 function userIdFrom(req) {
   return req.headers['x-user-id'] || null;

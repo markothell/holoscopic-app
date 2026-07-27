@@ -63,12 +63,21 @@ export default function NodeSheet({
               {isTopic ? 'Topic hub' : 'Thought'}
               {node.origin !== 'borrowed' && ` · ${node.ownerHandle}`}
             </span>
-            {node.origin === 'borrowed' && node.sourceNodeId && (
+            {node.sourceNodeId && (
               <ProvenanceBreadcrumb
                 handle={node.sourceOwnerHandle ?? 'someone'}
                 onOpenReplyMap={() => onOpenSource?.(node.sourceNodeId!)}
+                promoted={node.origin === 'own'}
                 compact
               />
+            )}
+            {node.origin === 'borrowed' && node.sourceNodeId && (
+              /* M2: the promote hint — editing thought/context below is the
+                 single "make it mine" gesture (no separate adopt step);
+                 origin flips borrowed -> own on save, provenance stays. */
+              <p className="mt-1 text-[0.65rem] italic" style={{ color: 'var(--mist-faint)' }}>
+                Add your own thought or context below to make this yours.
+              </p>
             )}
           </div>
           {node.edgeKind === 'marriage' && <span className="eyebrow shrink-0" style={{ color: 'var(--synthesis)' }}>◆ synthesis</span>}

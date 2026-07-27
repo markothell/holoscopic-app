@@ -223,11 +223,32 @@ export function useMyMap(instanceId: string, userId: string, ownerHandle: string
     return draft;
   }, [byId, nodes, instanceId, userId, ownerHandle, seedMock, resolveLocalFrame, refreshFrames]);
 
+  // Promotion (M2, D2/§3): adding your own thought/context to a BORROWED node
+  // is the single "make it mine" gesture — no separate adopt step. editNode
+  // is the one content-edit path (mirrors utils/unisonNodes.js#editContent,
+  // which calls promoteIfBorrowed internally), so this is the whole wiring:
+  // flip origin + stamp promotedAt optimistically here, then reconcile with
+  // the server's authoritative copy once it answers (like setAxes below) —
+  // provenance (sourceNodeId/sourceEntryId/sourceOwnerHandle) is never
+  // touched, so the flip never disturbs the link back to the source.
+  // Idempotent by construction: an already-'own' node just edits.
   const editNode = useCallback((nodeId: string, content: Partial<NodeContent>) => {
-    setNodes(prev => prev.map(n => (n.id === nodeId
-      ? { ...n, content: { ...n.content, ...content }, updatedAt: new Date().toISOString() }
-      : n)));
-    UnisonService.editContent(instanceId, nodeId, content, userId).catch(err => console.debug('[unison] edit not synced', err));
+    setNodes(prev => prev.map(n => {
+      if (n.id !== nodeId) return n;
+      const next = { ...n, content: { ...n.content, ...content }, updatedAt: new Date().toISOString() };
+      if (next.origin === 'borrowed') {
+        next.origin = 'own';
+        next.promotedAt = new Date().toISOString();
+      }
+      return next;
+    }));
+    UnisonService.editContent(instanceId, nodeId, content, userId)
+      .then(({ node: serverNode }) => {
+        // The server is the source of truth for origin/promotedAt — fold its
+        // response back over the optimistic flip.
+        setNodes(prev => prev.map(n => (n.id === nodeId ? { ...serverNode } : n)));
+      })
+      .catch(err => console.debug('[unison] edit not synced', err));
   }, [instanceId, userId]);
 
   const setAxes = useCallback((nodeId: string, axisFrameIds: string[]) => {

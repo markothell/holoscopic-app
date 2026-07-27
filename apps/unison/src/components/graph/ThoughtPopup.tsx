@@ -36,10 +36,11 @@ export default function ThoughtPopup({
         onClick={e => e.stopPropagation()}
       >
         <div className="mb-1 flex items-start justify-between gap-2">
-          {node.origin === 'borrowed' && node.sourceNodeId ? (
+          {node.sourceNodeId ? (
             <ProvenanceBreadcrumb
               handle={node.sourceOwnerHandle ?? 'someone'}
               onOpenReplyMap={() => onOpenSource(node.sourceNodeId!)}
+              promoted={node.origin === 'own'}
               compact
             />
           ) : (

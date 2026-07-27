@@ -218,6 +218,74 @@ test('editContent: rejects a missing node', async () => {
   await assert.rejects(() => funnel.editContent({ store, nodeId: 'nope', content: {} }), /Node not found/);
 });
 
+test('promote (M2): editing a borrowed node\'s content flips origin, stamps promotedAt, RETAINS provenance', async () => {
+  const store = memStore();
+  // A borrowed node, as respond()/borrowNode() would create it.
+  const borrowed = await store.insertNode({
+    id: 'nB1', instanceId: COMM, ownerId: bob.ownerId, ownerHandle: bob.ownerHandle,
+    kind: 'thought', content: { topic: '', thought: 'Mirrored claim', context: 'Mirrored context' },
+    axisFrameIds: [], topicId: null, parentIds: [], edgeKind: 'root',
+    origin: 'borrowed', sourceNodeId: 'post1', sourceEntryId: 'entry1', sourceOwnerHandle: 'Alice',
+    visibility: 'private', publishedAt: null, promotedAt: null,
+  });
+  assert.equal(borrowed.origin, 'borrowed');
+
+  const promoted = await funnel.editContent({ store, nodeId: borrowed.id, content: { thought: 'My own take' } });
+  assert.equal(promoted.origin, 'own', 'origin flips borrowed -> own');
+  assert.ok(promoted.promotedAt instanceof Date, 'promotedAt is stamped');
+  assert.equal(promoted.content.thought, 'My own take', 'owner-authored content is saved');
+  // Provenance is RETAINED, not erased.
+  assert.equal(promoted.sourceNodeId, 'post1');
+  assert.equal(promoted.sourceEntryId, 'entry1');
+  assert.equal(promoted.sourceOwnerHandle, 'Alice');
+});
+
+test('promote (M2): idempotent — re-editing an already-own node does not re-flip or re-stamp', async () => {
+  const store = memStore();
+  const borrowed = await store.insertNode({
+    id: 'nB2', instanceId: COMM, ownerId: bob.ownerId, ownerHandle: bob.ownerHandle,
+    kind: 'thought', content: { topic: '', thought: 'Mirrored claim', context: '' },
+    axisFrameIds: [], topicId: null, parentIds: [], edgeKind: 'root',
+    origin: 'borrowed', sourceNodeId: 'post1', sourceEntryId: 'entry1', sourceOwnerHandle: 'Alice',
+    visibility: 'private', publishedAt: null, promotedAt: null,
+  });
+
+  const firstEdit = await funnel.editContent({ store, nodeId: borrowed.id, content: { thought: 'First own take' } });
+  assert.equal(firstEdit.origin, 'own');
+  const firstPromotedAt = firstEdit.promotedAt;
+
+  const secondEdit = await funnel.editContent({ store, nodeId: borrowed.id, content: { thought: 'Second own take' } });
+  assert.equal(secondEdit.origin, 'own', 'stays own — never toggles back to borrowed');
+  assert.equal(secondEdit.promotedAt.getTime(), firstPromotedAt.getTime(), 'promotedAt does not move on a later edit');
+  assert.equal(secondEdit.content.thought, 'Second own take');
+});
+
+test('promote (M2): a node created own-authored (never borrowed) is unaffected by promoteIfBorrowed', async () => {
+  const store = memStore();
+  const own = await funnel.createRoot({ store, instanceId: COMM, ...alice, kind: 'thought', content: { thought: 'My idea' } });
+  assert.equal(own.origin, 'own');
+  const edited = await funnel.editContent({ store, nodeId: own.id, content: { context: 'more context' } });
+  assert.equal(edited.origin, 'own');
+  assert.equal(edited.promotedAt, null, 'never-borrowed nodes never get a promotedAt stamp');
+});
+
+test('promote (M2): ownership guard — a borrowed node can only be promoted via the OWNER\'s own editContent call (route-level 404 for others, see routes/unison.js#loadOwnedNode)', async () => {
+  const store = memStore();
+  const borrowed = await store.insertNode({
+    id: 'nB3', instanceId: COMM, ownerId: bob.ownerId, ownerHandle: bob.ownerHandle,
+    kind: 'thought', content: { thought: 'Mirrored claim', context: '' },
+    axisFrameIds: [], topicId: null, parentIds: [], edgeKind: 'root',
+    origin: 'borrowed', sourceNodeId: 'post1', sourceEntryId: 'entry1', sourceOwnerHandle: 'Alice',
+    visibility: 'private', publishedAt: null, promotedAt: null,
+  });
+  // editContent itself trusts the caller (ownership is enforced one layer up,
+  // in the route's loadOwnedNode) — but the node's ownerId is unchanged by
+  // promotion, so "who can reach this" is exactly "who owns the node."
+  const promoted = await funnel.editContent({ store, nodeId: borrowed.id, content: { thought: 'Bob\'s own take' } });
+  assert.equal(promoted.ownerId, 'bob', 'promotion never changes ownership');
+  assert.equal(promoted.origin, 'own');
+});
+
 test("setAxes: replaces a thought's axes wholesale; rejects on a topic hub", async () => {
   const store = memStore();
   const t = await funnel.createRoot({
