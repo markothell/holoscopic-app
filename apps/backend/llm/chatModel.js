@@ -82,9 +82,32 @@ function getChatModel(env = process.env) {
 // For tests / hot-reload: forget the memoized instance.
 function _resetChatModel() { _cached = null; }
 
+// The community-synthesis model (SYNTHESIS.md §8): the SAME chat adapter/
+// provider config as getChatModel() (API key, base URL, provider selection)
+// but overriding the model id with UNISON_SYNTHESIS_MODEL when set — one
+// amortized-per-viewer call is worth a quality upgrade even though the (now
+// removed) per-question Q&A ran the cheaper default. Falls back to the chat
+// model's id when UNISON_SYNTHESIS_MODEL is unset. Synthesis never embeds a
+// query (no retrieval — it's fed the whole corpus), so callers should gate on
+// `chatConfigured`, not `configured` (which also requires the embed adapter).
+let _cachedSynthesis = null;
+function getSynthesisModel(env = process.env) {
+  if (_cachedSynthesis && env === process.env) return _cachedSynthesis;
+  const overrideEnv = env.UNISON_SYNTHESIS_MODEL
+    ? { ...env, UNISON_MODEL_ID: env.UNISON_SYNTHESIS_MODEL }
+    : env;
+  const model = composeChatModel(buildChatAdapter(overrideEnv), buildEmbedAdapter(env));
+  if (env === process.env) _cachedSynthesis = model;
+  return model;
+}
+
+function _resetSynthesisModel() { _cachedSynthesis = null; }
+
 module.exports = {
   getChatModel,
+  getSynthesisModel,
   composeChatModel,
   LLMNotConfiguredError,
   _resetChatModel,
+  _resetSynthesisModel,
 };

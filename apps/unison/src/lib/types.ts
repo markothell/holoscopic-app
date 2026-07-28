@@ -100,13 +100,14 @@ export interface UnisonReply {
   updatedAt: string;
 }
 
-// M3 — "Ask the Group" (PLAN §6). Mirrors routes/unison.js's SSE contract and
-// UnisonThread's citationSchema. Assembled server-side from the retrieval set
-// (never parsed from model output), so `nodeId`/`replyId` are trustworthy
-// deep-link targets — AskOverlay routes a click through those, not anchorUrl.
-// `layer` is only ever present on a fresh `kind:'node'` citation off the live
-// stream (assembleCitations sets it, but UnisonThread's schema doesn't persist
-// it) — rehydrated turns from GET /thread won't carry it back.
+// S1 community synthesis (SYNTHESIS.md §6). Mirrors routes/unison.js's SSE
+// contract and models/UnisonSynthesis.js's citationSchema. Assembled
+// server-side from the selection set (never parsed from model output), so
+// `nodeId`/`replyId` are trustworthy deep-link targets — SynthesisOverlay
+// routes a click through those, not anchorUrl. `layer` is only ever present
+// on a fresh `kind:'node'` citation off the live stream (assembleCitations
+// sets it, but UnisonSynthesis's schema doesn't persist it) — a cached
+// artifact from GET /synthesis won't carry it back.
 export interface Citation {
   kind: 'node' | 'reply';
   nodeId: string;
@@ -116,12 +117,25 @@ export interface Citation {
   anchorUrl: string;
 }
 
-// A single persisted turn off UnisonThread.turns (GET /unison/thread) — a
-// flat alternating user/assistant list, not pre-paired; citations only ever
-// appear on an assistant turn.
-export interface ChatTurn {
-  role: 'user' | 'assistant';
-  content: string;
-  citations?: Citation[];
-  createdAt: string;
+// One depth's cached artifact off models/UnisonSynthesis.js — brief (2-4
+// sentences) or full (structured read). `atCorpusVersion` is the corpusVersion
+// this text was generated AT; SynthesisCache.stale compares it to the live one.
+export interface SynthesisArtifact {
+  text: string;
+  citations: Citation[];
+  generatedAt: string | null;
+  model: string;
+  atCorpusVersion: number;
 }
+
+// GET /unison/synthesis's response shape — the cached brief/full (if either
+// has ever been generated), the community's live corpusVersion, and whether
+// the cached BRIEF is stale relative to it (routes/unison.js#toClientCache).
+export interface SynthesisCache {
+  brief?: SynthesisArtifact;
+  full?: SynthesisArtifact;
+  corpusVersion: number;
+  stale: boolean;
+}
+
+export type SynthesisDepth = 'brief' | 'full';

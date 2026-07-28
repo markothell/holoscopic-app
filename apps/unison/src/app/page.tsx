@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import MapGraph from '@/components/graph/MapGraph';
 import OverlayDock, { type OverlayKey } from '@/components/overlays/OverlayDock';
 import FeedOverlay from '@/components/overlays/FeedOverlay';
-import AskOverlay from '@/components/overlays/AskOverlay';
+import SynthesisOverlay from '@/components/overlays/SynthesisOverlay';
 import CommunityGate from '@/components/community/CommunityGate';
 import LoggedOutLanding from '@/components/community/LoggedOutLanding';
 import { useCommunity } from '@/hooks/useCommunity';
@@ -55,8 +55,8 @@ export default function HomePage() {
   } = useCommunity(userId);
   const [overlay, setOverlay] = useState<OverlayKey>(null);
   // nodeId always set; replyId only present when the request came from a
-  // reply citation chip (AskOverlay) — MapGraph forwards it to PostOverlay
-  // so the specific reply can be scrolled to and highlighted.
+  // reply citation chip (SynthesisOverlay) — MapGraph forwards it to
+  // PostOverlay so the specific reply can be scrolled to and highlighted.
   const [openPostRequest, setOpenPostRequest] = useState<{ nodeId: string; replyId?: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
@@ -181,7 +181,7 @@ export default function HomePage() {
         />
       )}
       {overlay === 'ask' && (
-        <AskOverlay
+        <SynthesisOverlay
           instanceId={instanceId}
           userId={effectiveUserId}
           useMock={useMock}

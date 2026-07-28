@@ -9,8 +9,8 @@ const Entry = require('../models/Entry');
 const nodeFunnel = require('../utils/unisonNodes');
 const entryUtils = require('../utils/entries');
 const communityFunnel = require('../utils/unisonCommunities');
-const chat = require('../utils/unisonChat');
-const { getChatModel } = require('../llm/chatModel');
+const synthesis = require('../utils/unisonSynthesis');
+const { getSynthesisModel } = require('../llm/chatModel');
 
 // Unison — M0 REST surface: community/membership plumbing (create/join a
 // community, the ≤50-member gate, pseudonymous handles) plus a member's own
@@ -114,8 +114,8 @@ const BAD_REQUEST_ERRORS = new Set([
   'sourceNodeId is required',
   'A response needs a stance in [0,1]',
   'Cannot vote on your own entry',
-  // M3 LLM
-  'A question is required',
+  // S1 community synthesis
+  "depth must be 'brief' or 'full'",
 ]);
 
 const NOT_FOUND_ERRORS = new Set(['Node not found', 'Spectrum not found', 'Community not found', 'Entry not found']);
@@ -450,56 +450,68 @@ router.post('/nodes/:id/replies/:entryId/upvote', async (req, res) => {
   }
 });
 
-// ── M3: the collective LLM — "Ask the Group" ───────────────────────────
-// Retrieval-augmented chat over the community's PUBLISHED corpus (published
-// thoughts + public replies), instanceId-scoped. Answers in the group's voice
-// and cites specific thoughts by handle. Private nodes are never indexed or
-// retrievable (utils/unisonIndex.js). If the LLM isn't configured the endpoints
-// fail cleanly with 503 — they never crash the server or block route loading.
+// ── S1: the community synthesis — "The Group" ──────────────────────────
+// Replaces the M3 "Ask the Group" Q&A (question box, per-user UnisonThread)
+// with a single cached, WHOLE-COMMUNITY artifact: two depths (brief/full),
+// each drawn from the entire published corpus + per-post positional
+// summaries (utils/unisonSynthesis.js), generated only on the
+// Synthesize/Expand button and reused across every viewer until the corpus
+// changes. Private nodes are never indexed or summarized (selectCorpus /
+// computePositional are published-only). If the LLM isn't configured the
+// generate endpoint fails cleanly with 503 — it never crashes the server or
+// blocks route loading.
 //
-// STREAMING CONTRACT (Server-Sent Events) for the AskOverlay frontend:
-//   POST /api/unison/chat   body: { message: string }
+// STREAMING CONTRACT (Server-Sent Events) for the frontend synthesis view —
+// identical shape to M3's (now-removed) /chat contract:
+//   GET  /api/unison/synthesis          → cached { brief?, full?, corpusVersion, stale }
+//   POST /api/unison/synthesis { depth: 'brief' | 'full' }
 //   Response: text/event-stream, events in order:
 //     event: meta      data: { citations: Citation[] }   // once, up front
-//     event: token     data: { text: string }            // 0..N answer chunks
+//     event: token     data: { text: string }            // 0..N chunks
 //     event: done      data: { citations: Citation[] }   // once, on success
 //     event: error     data: { error: string }           // instead of done, on failure
 //   Citation = { kind:'node'|'reply', nodeId, layer?, replyId?, ownerHandle, anchorUrl }
-//   Citations are assembled from the retrieval set (never parsed from model
-//   output) and sent BEFORE the answer so chips can render immediately. When
-//   the corpus is silent on the question, `meta.citations` is [] and the single
-//   token is a deflection (the model is not called — no hallucinated opinion).
+//   Citations are assembled from the selection set (never parsed from model
+//   output) and sent BEFORE the text so chips can render immediately. When
+//   the corpus is empty, `meta.citations` is [] and the single token is the
+//   canned "nothing published yet" text (the model is not called).
 
-router.get('/thread', async (req, res) => {
+router.get('/synthesis', async (req, res) => {
   try {
     const membership = await requireMember(req, res);
     if (!membership) return;
-    const thread = await chat.getThread({ instanceId: req.instanceId, userId: membership.userId });
-    res.json({ turns: thread ? thread.turns : [] });
+    const doc = await synthesis.getCache(req.instanceId);
+    res.json(synthesis.toClientCache(doc));
   } catch (error) {
     fail(res, error);
   }
 });
 
-router.post('/chat', async (req, res) => {
+router.post('/synthesis', async (req, res) => {
   const membership = await requireMember(req, res);
   if (!membership) return;
 
-  const model = getChatModel();
-  // configured === chat AND embed both wired (retrieval needs the query embed).
-  if (!model.configured) {
+  const depth = req.body && req.body.depth;
+  if (depth !== 'brief' && depth !== 'full') {
+    return res.status(400).json({ error: "depth must be 'brief' or 'full'" });
+  }
+
+  const model = getSynthesisModel();
+  // Synthesis never embeds a query (no retrieval) — only the chat half needs
+  // to be wired up, unlike M3's chat endpoint which also needed embedConfigured.
+  if (!model.chatConfigured) {
     return res.status(503).json({ error: 'LLM not configured' });
   }
 
-  const query = String((req.body && req.body.message) || '').trim();
-  if (!query) return res.status(400).json({ error: 'A question is required' });
-
-  // Retrieve + assemble citations + silence decision BEFORE opening the stream,
-  // so a retrieval error surfaces as a normal JSON error, not a broken stream.
-  let prepared;
+  // Prepare (select corpus + compute positions + assemble citations) BEFORE
+  // opening the stream, so a DB error surfaces as a normal JSON error, not a
+  // broken stream. Capture the corpusVersion baseline at the same time, so
+  // the artifact we save stamps the version this generation actually ran at.
+  let prepared, corpusVersion;
   try {
-    const history = await chat.recentTurns({ instanceId: req.instanceId, userId: membership.userId });
-    prepared = await chat.prepareAnswer({ model, instanceId: req.instanceId, query, history });
+    const doc = await synthesis.getOrCreateDoc(req.instanceId);
+    corpusVersion = doc.corpusVersion;
+    prepared = await synthesis.prepareSynthesis({ instanceId: req.instanceId, depth });
   } catch (error) {
     return fail(res, error);
   }
@@ -520,36 +532,36 @@ router.post('/chat', async (req, res) => {
 
   send('meta', { citations: prepared.citations });
 
-  let answer = '';
+  let text = '';
   try {
-    if (prepared.silent) {
-      answer = prepared.refusal;
-      send('token', { text: answer });
+    if (prepared.empty) {
+      text = prepared.text;
+      send('token', { text });
     } else {
       for await (const chunk of model.stream({ system: prepared.system, messages: prepared.messages, signal: ac.signal })) {
-        answer += chunk;
+        text += chunk;
         send('token', { text: chunk });
       }
     }
   } catch (error) {
     if (ac.signal.aborted) return res.end();
-    console.error('[unison chat]', error && error.message);
-    send('error', { error: 'The group could not be reached right now.' });
+    console.error('[unison synthesis]', error && error.message);
+    send('error', { error: 'The synthesis could not be generated right now.' });
     return res.end();
   }
 
-  // Persist the exchange for continuity (best-effort — never fails the response).
+  // Cache the result (best-effort — never fails the response).
   try {
-    await chat.appendExchange({
+    await synthesis.saveDepth({
       instanceId: req.instanceId,
-      userId: membership.userId,
-      handle: membership.handle,
-      userText: query,
-      assistantText: answer,
+      depth,
+      text,
       citations: prepared.citations,
+      model: model.info && model.info.chat ? model.info.chat.modelId : '',
+      corpusVersion,
     });
   } catch (error) {
-    console.error('[unison thread]', error && error.message);
+    console.error('[unison synthesis cache]', error && error.message);
   }
 
   send('done', { citations: prepared.citations });

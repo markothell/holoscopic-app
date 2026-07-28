@@ -4,11 +4,14 @@ export type OverlayKey = 'feed' | 'ask' | null;
 
 // Task item 1: Post is not a standalone dock destination — a post view is
 // never visited cold, only opened from a specific thought (a map node or a
-// feed item; see PostOverlay). The dock over map-home is Map + Feed + Ask.
+// feed item; see PostOverlay). The dock over map-home is Map + Feed + The
+// Group. The 'ask' key is unchanged (SynthesisOverlay's dock slot) — only
+// the label moved, from the retired question-box "Ask" to the community
+// synthesis view (S1, SYNTHESIS.md §10).
 const TABS: { key: Exclude<OverlayKey, null> | 'map'; label: string; glyph: string }[] = [
   { key: 'map', label: 'Map', glyph: '◇' },
   { key: 'feed', label: 'Feed', glyph: '≡' },
-  { key: 'ask', label: 'Ask', glyph: '◈' },
+  { key: 'ask', label: 'The Group', glyph: '◈' },
 ];
 
 // D7: Map is home; Feed / Ask open as overlays over it, then dismiss back

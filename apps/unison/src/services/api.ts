@@ -73,12 +73,12 @@ export async function apiFetch<T>(
   return json as T;
 }
 
-// A `text/event-stream` POST (unison chat, PLAN §6) — EventSource can't POST,
-// so the caller reads `res.body` itself and parses `event:`/`data:` frames
-// (see AskOverlay). Throws ApiError on a non-2xx status BEFORE any stream
-// reading starts (e.g. 503 `{ error: 'LLM not configured' }`), same failure
-// shape as apiFetch, so callers can share one catch path for "not set up yet"
-// vs. a mid-stream `event: error`.
+// A `text/event-stream` POST (community synthesis, SYNTHESIS.md §9) —
+// EventSource can't POST, so the caller reads `res.body` itself and parses
+// `event:`/`data:` frames (see SynthesisOverlay). Throws ApiError on a
+// non-2xx status BEFORE any stream reading starts (e.g. 503 `{ error: 'LLM
+// not configured' }`), same failure shape as apiFetch, so callers can share
+// one catch path for "not set up yet" vs. a mid-stream `event: error`.
 export async function apiStream(
   path: string,
   options: {
