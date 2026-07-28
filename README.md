@@ -39,7 +39,7 @@ holoscopic/
 └── render.yaml            Backend deploy config (Render)
 ```
 
-Frontends are Next.js 15 / React 19 / Tailwind v4, deployed on Vercel. The backend is Express + Socket.IO + Mongoose, deployed on Render. Real-time play (entries, votes, token balances) is pushed over WebSockets.
+Frontends are Next.js 16 / React 19 / Tailwind v4, deployed on Vercel. The backend is Express + Socket.IO + Mongoose, deployed on Render. Real-time play (entries, votes, token balances) is pushed over WebSockets.
 
 ## Running locally
 

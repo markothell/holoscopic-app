@@ -327,8 +327,8 @@ interface ChatModel {
 
 ## 7. Frontend (`apps/unison`, port 4004)
 
-Next.js 15 + Tailwind v4, same stack as spectrum. NextAuth credentials + signed
-game token → backend `enforceVerifiedUser`, identical to OaS.
+Next.js 16 + React 19 + Tailwind v4, same stack as spectrum. NextAuth credentials
++ signed game token → backend `enforceVerifiedUser`, identical to OaS.
 
 Surfaces:
 1. **My Map** — the DAG editor (`@xyflow/react`): add child, marry, edit layers,

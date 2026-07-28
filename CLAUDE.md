@@ -1,11 +1,12 @@
 # Holoscopic Monorepo (GitHub: markothell/holoscopic-app)
 
-`main` is the production branch: pushing it deploys the backend (Render) and the frontends (Vercel). Three games ship from here (newest first, as on the holoscopic.io homepage):
-- **On a Spectrum** — `apps/spectrum`, at spectrum.holoscopic.io (backend surface: `apps/backend/routes/oas.js`; see `apps/spectrum/CLAUDE.md`). Replaced the retired On the Spectrum party game; its old backend surface (`routes/spectrum.js`, `models/SpectrumGame.js`, `utils/spectrumGames.js`) stays mounted but dormant until post-cutover deletion.
+`main` is the production branch: pushing it deploys the backend (Render) and the frontends (Vercel). The games (newest first, as on the holoscopic.io homepage):
+- **Unison** — `apps/unison`, a networked pseudonymous group blog (backend surface: `apps/backend/routes/unison.js`; see `apps/unison/CLAUDE.md`). In development on branch `unison-m0-m1-loop`; ships to unison.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover.
+- **On a Spectrum** — `apps/spectrum`, at spectrum.holoscopic.io (backend surface: `apps/backend/routes/oas.js`; see `apps/spectrum/CLAUDE.md`). `routes/spectrum.js`, `models/SpectrumGame.js`, and `utils/spectrumGames.js` are mounted but dormant, and get deleted post-cutover.
 - **interView** — `apps/holoscopic-game`, the production game app at holoscopic.io
 - **Map + Sequence** — the original create-panel + sequence-builder tools inside `apps/holoscopic-game` (`/create`, `/create/sequences`), presented as the first game behind `/map-sequence`
 
-Local dev ports: spectrum 4000, backend 4001, platform 4002, game 4003.
+Local dev ports: spectrum 4000, backend 4001, platform 4002, game 4003, unison 4004.
 
 Holoscopic is a collective-sensemaking platform where groups map their perspectives on a 2D grid, leave comments, and vote on each other's views. It is multi-tenant: one backend serves multiple isolated deployments ("instances"), each with its own holon economy, quorum rules, and data scope.
 
@@ -13,8 +14,8 @@ Holoscopic is a collective-sensemaking platform where groups map their perspecti
 
 | Layer | Tech |
 |---|---|
-| Game frontend | Next.js 15, TypeScript, Tailwind v4 |
-| Platform admin | Next.js 15, TypeScript, inline styles |
+| Game frontend | Next.js 16, React 19, TypeScript, Tailwind v4 |
+| Platform admin | Next.js 16, React 19, TypeScript, inline styles |
 | Backend | Express, Socket.IO, Mongoose (MongoDB) |
 | Shared components | `@hs/activities` — React component library (local package) |
 | Monorepo tooling | npm workspaces + Turborepo |
@@ -25,6 +26,7 @@ Holoscopic is a collective-sensemaking platform where groups map their perspecti
 ```
 holoscopic/
 ├── apps/
+│   ├── unison/            Unison — Next.js frontend (port 4004)  → see apps/unison/CLAUDE.md
 │   ├── spectrum/          On a Spectrum — Next.js frontend (port 4000)  → see apps/spectrum/CLAUDE.md
 │   ├── holoscopic-game/   Next.js game frontend (port 4003)  → see apps/holoscopic-game/CLAUDE.md
 │   ├── platform/          Next.js admin UI for instance mgmt (port 4002)  → see apps/platform/CLAUDE.md
@@ -43,6 +45,7 @@ npm run dev:backend     # port 4001
 npm run dev:spectrum    # port 4000
 npm run dev:game        # port 4003
 npm run dev:platform    # port 4002
+npm run dev:unison      # port 4004
 ```
 
 ## Multi-Tenancy
@@ -112,3 +115,18 @@ Allowed origins from `CLIENT_URL` env var (comma-separated) in `apps/backend/.en
 - New deploy targets beyond what's in `render.yaml`.
 - Changes to MongoDB indexes on large collections (`activities`, `ratings`, `comments` arrays).
 - Anything touching auth — password hashing, session tokens, `requireAdmin` middleware.
+
+## Delegation
+
+You are authorized to dispatch subagents on your own. Do not ask permission first, and do not wait to be told which agent to use.
+
+Dispatch when a task is both **specifiable in advance** and **verifiable on return** — you can write it out in a paragraph without a back-and-forth, and you can tell from the report whether it worked:
+
+- Broad searches where the conclusion matters and the files do not → `Explore`.
+- A bounded build behind a decision already settled in this conversation → `general-purpose`.
+- Independent work in two apps that do not touch each other → dispatch in parallel.
+- A second opinion on a diff you have been staring at → a fresh agent reads it cold.
+
+Work inline instead when the spec would be longer than the work, when you already have the context loaded, when the task needs a judgment call mid-flight (a subagent cannot stop and ask), or when it touches auth, migrations, or holon-economy parameters.
+
+Say in one line what you dispatched and why. Treat agent reports skeptically: require test output over claims, and verify anything load-bearing yourself.
