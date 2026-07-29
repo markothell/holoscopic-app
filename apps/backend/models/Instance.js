@@ -180,6 +180,52 @@ instanceSchema.statics.getDefault = async function () {
   return inst;
 };
 
+// The shape an Instance takes on a public read path.
+//
+// This is an ALLOW-LIST and must stay one. The previous public read returned
+// `config` and `access` wholesale, which shipped two secrets to anyone who
+// asked: config.memorial.curatorKey (authorizes hiding/removing any Chorus
+// memory — see the comment on that field) and access.inviteCodes (grants
+// entry to invite-only instances). A delete-list would re-leak both the next
+// time somebody adds a field.
+instanceSchema.methods.toPublicJSON = function () {
+  const c = this.config || {};
+  return {
+    id: this.id,
+    name: this.name,
+    slug: this.slug,
+    gameNumber: this.gameNumber,
+    gameVersion: this.gameVersion,
+    active: this.active,
+    startDate: this.startDate,
+    endDate: this.endDate,
+    // mode only — never inviteCodes
+    access: { mode: this.access?.mode },
+    config: {
+      mode: c.mode,
+      topicsActivityId: c.topicsActivityId,
+      holons: c.holons,
+      quorum: c.quorum,
+      memorial: {
+        accent: c.memorial?.accent,
+        promptTemplate: c.memorial?.promptTemplate,
+        seedRoleTags: c.memorial?.seedRoleTags,
+        seedExperienceTags: c.memorial?.seedExperienceTags,
+        allowCustomTags: c.memorial?.allowCustomTags,
+        audioMaxSeconds: c.memorial?.audioMaxSeconds,
+        // curatorKey is deliberately absent.
+      },
+      synthesis: {
+        visibility: c.synthesis?.visibility,
+        synthesisThreshold: c.synthesis?.synthesisThreshold,
+        statementSlots: c.synthesis?.statementSlots,
+        synthesisStatementId: c.synthesis?.synthesisStatementId,
+        synthesisReachedAt: c.synthesis?.synthesisReachedAt,
+      },
+    },
+  };
+};
+
 // Both of these are on the hot path: middleware/resolveInstance.js runs on
 // EVERY /api request, falling through to findByDomain and then getDefault.
 // Instances grow with usage (one per OaS room, one per Synthesis idea), so

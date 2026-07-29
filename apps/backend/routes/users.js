@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { requireSelf } = require('../middleware/verifyUser');
 const User = require('../models/User');
 const Activity = require('../models/Activity');
 const Entry = require('../models/Entry');
@@ -199,8 +200,12 @@ router.get('/:userId', async (req, res) => {
   }
 });
 
-// Update user profile
-router.put('/:userId', async (req, res) => {
+// Update user profile.
+// requireSelf because the subject is a path param: the router-level
+// enforceVerifiedUser only compares x-user-id / body.userId against the
+// token, so a signed-in user sending their own header could target anyone
+// else's :userId here.
+router.put('/:userId', requireSelf('userId'), async (req, res) => {
   try {
     const { userId } = req.params;
     const { bio } = req.body;
@@ -249,8 +254,11 @@ router.get('/:userId/settings', async (req, res) => {
   }
 });
 
-// Update user settings (name, email, notifications)
-router.put('/:userId/settings', async (req, res) => {
+// Update user settings (name, email, notifications).
+// Same path-param exposure as above, and higher stakes: this one writes
+// `email`, which is the login identifier — an unguarded version is an
+// account-takeover primitive, not just a profile edit.
+router.put('/:userId/settings', requireSelf('userId'), async (req, res) => {
   try {
     const { userId } = req.params;
     const { name, email, notifications } = req.body;

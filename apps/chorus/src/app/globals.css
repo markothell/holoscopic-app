@@ -1,0 +1,183 @@
+@import "tailwindcss";
+
+/* Chorus — "eau de nil & dial light".
+   A memorial for one person, read mostly on a phone, arriving from a text
+   message. The register is warm and ordinary, not funereal: these are stories
+   about a kitchen radio left on all night, stalling a car on a hill, chips on
+   a wall watching the tide.
+
+   The ground is eau de nil — the pale blue-green of mid-century domestic
+   paintwork — rather than the cream-and-terracotta a memorial brief defaults
+   to. It reads as painted plaster, not paper, and it lets photographs and the
+   one accent carry all the warmth. That accent is amber: the glow of a radio
+   dial in a dark kitchen, which is also what this app's recorded memories
+   literally are. Amber appears in exactly three places (the ruled blanks, the
+   audio affordance, the primary action) and nowhere else.
+
+   Newsreader carries the voice — a reading serif with warmth in its italics,
+   for the prompt sentence and the stories themselves. Archivo is the working
+   hand: labels, names, controls. */
+
+:root {
+  /* Painted ground, lightest to deepest */
+  --nil:        #E4EAE2;
+  --nil-deep:   #D5DDD3;
+  --card:       #F4F2EB;
+  --card-raised:#FBFAF6;
+
+  /* Warm near-black with green in it — never pure black on this ground */
+  --ink:        #23261F;
+  --ink-soft:   #55584D;
+  --ink-faint:  #838779;
+
+  /* The dial */
+  --dial:       #C97B1E;
+  --dial-lit:   #E8A44B;
+  --dial-soft:  #F2E0C4;
+
+  --rule:        rgba(35, 38, 31, 0.14);
+  --rule-strong: rgba(35, 38, 31, 0.28);
+
+  --shadow-card: 0 1px 1px rgba(35, 38, 31, 0.04), 0 6px 18px rgba(35, 38, 31, 0.06);
+  --shadow-lift: 0 2px 4px rgba(35, 38, 31, 0.06), 0 14px 32px rgba(35, 38, 31, 0.10);
+}
+
+@theme inline {
+  --color-nil:         var(--nil);
+  --color-nil-deep:    var(--nil-deep);
+  --color-card:        var(--card);
+  --color-card-raised: var(--card-raised);
+  --color-ink:         var(--ink);
+  --color-ink-soft:    var(--ink-soft);
+  --color-ink-faint:   var(--ink-faint);
+  --color-dial:        var(--dial);
+  --color-dial-lit:    var(--dial-lit);
+  --color-dial-soft:   var(--dial-soft);
+  --color-rule:        var(--rule);
+
+  --font-voice: var(--font-newsreader), Georgia, serif;
+  --font-hand:  var(--font-archivo), system-ui, sans-serif;
+}
+
+/* next/font declares --font-newsreader / --font-archivo on the <body> class,
+   NOT on :root. Any rule that resolves them at :root — which is where @theme
+   puts its variables — gets an invalid value and silently falls back to the
+   system sans. So the hand-written rules below reach for the next/font
+   variables directly, resolving them through inheritance at the element. */
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--nil);
+  color: var(--ink);
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  /* Wide enough to read comfortably at arm's length on a phone held by
+     someone in their seventies — this audience skews older than any other
+     app in this repo. */
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── The signature: a blank you write on ──────────────────────────────────
+   The prompt is "<Name> was ___ and I was ___ having an experience of ___",
+   and the filled words are set ON a ruled amber line rather than inside a
+   pill. The form is the product, so the form stays visible in the answer:
+   every memory still reads as something written onto ruled lines. Pills
+   would have made it a tag UI; this keeps it a sentence. */
+.blank {
+  display: inline;
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-weight: 500;
+  color: var(--ink);
+  background-image: linear-gradient(to top, var(--dial-lit) 0.09em, transparent 0.09em);
+  padding-bottom: 0.04em;
+  /* Keeps the rule unbroken under a two-word answer, then breaks cleanly. */
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* An unfilled blank: the ruled line with nothing written on it yet.
+   line-height MUST stay 1 here. An inline-block inherits the paragraph's line
+   height for its own box, so at the sentence's airy leading the box grows tall
+   and its border-bottom drifts half a line below the baseline — the rule
+   detaches from the ＋ sitting on it and reads as a stray mark. */
+.blank-empty {
+  display: inline-block;
+  min-width: 4.5em;
+  line-height: 1;
+  padding-bottom: 0.12em;
+  border-bottom: 1px solid var(--rule-strong);
+  vertical-align: baseline;
+}
+
+/* The quiet connectives between answers — "was", "and I was". They carry the
+   grammar without competing with the words the sharer actually chose. */
+.connective {
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-style: italic;
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+/* ── Type roles ──────────────────────────────────────────────────────────── */
+.voice {
+  font-family: var(--font-newsreader), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+
+.eyebrow {
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ── Quality floor ───────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--dial);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* A sheet takes focus when it opens so screen readers land inside it, but it
+   is a container, not a control — ringing the whole panel just reads as an
+   error. The controls within it still ring normally. */
+[role="dialog"]:focus-visible {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Wall cards settle in on load. One orchestrated moment, staggered by index
+   via --i, rather than motion scattered across the page. */
+@keyframes settle {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.settle {
+  animation: settle 520ms cubic-bezier(0.16, 0.84, 0.44, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+@keyframes rise {
+  from { transform: translateY(100%); }
+  to   { transform: none; }
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

@@ -1,12 +1,13 @@
 # Holoscopic Monorepo (GitHub: markothell/holoscopic-app)
 
 `main` is the production branch: pushing it deploys the backend (Render) and the frontends (Vercel). The games (newest first, as on the holoscopic.io homepage):
-- **Unison** — `apps/unison`, a networked pseudonymous group blog (backend surface: `apps/backend/routes/unison.js`; see `apps/unison/CLAUDE.md`). In development on branch `unison-m0-m1-loop`; ships to unison.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover.
+- **Chorus** — `apps/chorus`, memories about one person, collected from anyone with the link (backend surface: `apps/backend/routes/memorial.js`; see `apps/chorus/CLAUDE.md`). In development; ships to chorus.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover. **The only app with no accounts, no holon economy, and a route mounted without `enforceVerifiedUser`** — all three are deliberate, see its `PLAN.md` §10.
+- **Synthesis** — `apps/synthesis`, a networked pseudonymous group blog (backend surface: `apps/backend/routes/synthesis.js`; see `apps/synthesis/CLAUDE.md`). In development on branch `unison-m0-m1-loop` (branch predates the rename); ships to synthesis.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover.
 - **On a Spectrum** — `apps/spectrum`, at spectrum.holoscopic.io (backend surface: `apps/backend/routes/oas.js`; see `apps/spectrum/CLAUDE.md`). `routes/spectrum.js`, `models/SpectrumGame.js`, and `utils/spectrumGames.js` are mounted but dormant, and get deleted post-cutover.
 - **interView** — `apps/holoscopic-game`, the production game app at holoscopic.io
 - **Map + Sequence** — the original create-panel + sequence-builder tools inside `apps/holoscopic-game` (`/create`, `/create/sequences`), presented as the first game behind `/map-sequence`
 
-Local dev ports: spectrum 4000, backend 4001, platform 4002, game 4003, unison 4004.
+Local dev ports: spectrum 4000, backend 4001, platform 4002, game 4003, synthesis 4004, chorus 4005.
 
 Holoscopic is a collective-sensemaking platform where groups map their perspectives on a 2D grid, leave comments, and vote on each other's views. It is multi-tenant: one backend serves multiple isolated deployments ("instances"), each with its own holon economy, quorum rules, and data scope.
 
@@ -26,7 +27,8 @@ Holoscopic is a collective-sensemaking platform where groups map their perspecti
 ```
 holoscopic/
 ├── apps/
-│   ├── unison/            Unison — Next.js frontend (port 4004)  → see apps/unison/CLAUDE.md
+│   ├── chorus/            Chorus — Next.js frontend (port 4005)  → see apps/chorus/CLAUDE.md
+│   ├── synthesis/         Synthesis — Next.js frontend (port 4004)  → see apps/synthesis/CLAUDE.md
 │   ├── spectrum/          On a Spectrum — Next.js frontend (port 4000)  → see apps/spectrum/CLAUDE.md
 │   ├── holoscopic-game/   Next.js game frontend (port 4003)  → see apps/holoscopic-game/CLAUDE.md
 │   ├── platform/          Next.js admin UI for instance mgmt (port 4002)  → see apps/platform/CLAUDE.md
@@ -45,7 +47,8 @@ npm run dev:backend     # port 4001
 npm run dev:spectrum    # port 4000
 npm run dev:game        # port 4003
 npm run dev:platform    # port 4002
-npm run dev:unison      # port 4004
+npm run dev:synthesis   # port 4004
+npm run dev:chorus      # port 4005
 ```
 
 ## Multi-Tenancy
@@ -60,7 +63,7 @@ Resolution order:
 The middleware attaches `req.instance` and `req.instanceId` for all downstream handlers.
 
 **Instance-scoped models** (always filter by `instanceId: req.instanceId`):
-- `Topic`, `Algorithm`, `AlgorithmProposal`, `HolonTransaction`, `InstanceMembership`, `Activity`, `Entry`, `FrameOfReference`
+- `Topic`, `Algorithm`, `AlgorithmProposal`, `HolonTransaction`, `InstanceMembership`, `Activity`, `Entry`, `FrameOfReference`, `Memory`, `MemoryTag`
 
 **NOT instance-scoped**: `Sequence`, `User` — these are global.
 
@@ -103,7 +106,7 @@ Allowed origins from `CLIENT_URL` env var (comma-separated) in `apps/backend/.en
 ## What NOT to Do
 
 - Do NOT query `Activity.findById()` — use `Activity.findOne({ id })`.
-- Do NOT write to the entries collection outside `utils/entries.js`.
+- Do NOT write to the entries collection outside `utils/entries.js`, or to `Memory`/`MemoryTag` outside `utils/memories.js`.
 - Do NOT skip `instanceId` on new `Activity`/`Entry`/`Topic`/`FrameOfReference`/`Algorithm` documents.
 - Do NOT return another user's identity on voted-for entries — redaction happens in the API layer (`entries.toRedacted`), never client-side.
 - Do NOT use `maxEntries: 0` unless you intend solo tracker mode (creator-only, unlimited slots).

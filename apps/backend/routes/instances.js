@@ -9,9 +9,12 @@ function generateId() {
 }
 
 // GET /api/instances/current — returns config for the resolved instance (used by frontend)
+//
+// Public: every frontend fetches this on load, including Chorus, which has no
+// accounts at all. It therefore must never return a secret — see
+// Instance#toPublicJSON.
 router.get('/current', (req, res) => {
-  const { id, name, slug, access, config, active, startDate, endDate } = req.instance;
-  res.json({ instance: { id, name, slug, access, config, active, startDate, endDate } });
+  res.json({ instance: req.instance.toPublicJSON() });
 });
 
 // GET /api/instances/mine — interView editions the current user has joined.
@@ -67,8 +70,21 @@ router.get('/resolve/:slugOrId', async (req, res) => {
     const key = req.params.slugOrId;
     const instance = await Instance.findOne({ slug: key }) || await Instance.findOne({ id: key });
     if (!instance) return res.status(404).json({ error: 'No game found for that address' });
-    const { id, name, slug, gameNumber, access, active, startDate, endDate } = instance;
-    res.json({ instance: { id, name, slug, gameNumber, access, active, startDate, endDate } });
+    // Also public, and enumerable by slug — it returned `access` whole, so it
+    // handed out inviteCodes for any instance whose slug could be guessed.
+    const pub = instance.toPublicJSON();
+    res.json({
+      instance: {
+        id: pub.id,
+        name: pub.name,
+        slug: pub.slug,
+        gameNumber: pub.gameNumber,
+        access: pub.access,
+        active: pub.active,
+        startDate: pub.startDate,
+        endDate: pub.endDate,
+      },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

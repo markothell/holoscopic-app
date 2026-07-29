@@ -7,20 +7,20 @@
 // not a code choice.
 //
 // Config (all overridable; default targets Voyage):
-//   UNISON_EMBED_PROVIDER   label only, e.g. 'voyage' | 'openai' | 'gateway'
-//   UNISON_EMBED_BASE_URL   default https://api.voyageai.com/v1
-//   UNISON_EMBED_MODEL      default voyage-3.5
-//   UNISON_EMBED_API_KEY    (fallback VOYAGE_API_KEY / OPENAI_API_KEY)
+//   SYN_EMBED_PROVIDER   label only, e.g. 'voyage' | 'openai' | 'gateway'
+//   SYN_EMBED_BASE_URL   default https://api.voyageai.com/v1
+//   SYN_EMBED_MODEL      default voyage-3.5
+//   SYN_EMBED_API_KEY    (fallback VOYAGE_API_KEY / OPENAI_API_KEY)
 
 const DEFAULT_BASE_URL = 'https://api.voyageai.com/v1';
 const DEFAULT_MODEL = 'voyage-3.5';
 const MAX_BATCH = 128;
 
 function buildEmbedAdapter(env = process.env) {
-  const provider = env.UNISON_EMBED_PROVIDER || 'voyage';
-  const apiKey = env.UNISON_EMBED_API_KEY || env.VOYAGE_API_KEY || env.OPENAI_API_KEY || '';
-  const baseUrl = (env.UNISON_EMBED_BASE_URL || DEFAULT_BASE_URL).replace(/\/+$/, '');
-  const modelId = env.UNISON_EMBED_MODEL || DEFAULT_MODEL;
+  const provider = env.SYN_EMBED_PROVIDER || 'voyage';
+  const apiKey = env.SYN_EMBED_API_KEY || env.VOYAGE_API_KEY || env.OPENAI_API_KEY || '';
+  const baseUrl = (env.SYN_EMBED_BASE_URL || DEFAULT_BASE_URL).replace(/\/+$/, '');
+  const modelId = env.SYN_EMBED_MODEL || DEFAULT_MODEL;
 
   async function embedBatch(inputs, signal) {
     const res = await fetch(`${baseUrl}/embeddings`, {

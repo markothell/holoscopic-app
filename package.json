@@ -18,9 +18,11 @@
     "dev:game": "npm run dev --workspace=apps/holoscopic-game",
     "dev:backend": "npm run dev --workspace=apps/backend",
     "dev:platform": "npm run dev --workspace=apps/platform",
-    "dev:unison": "npm run dev --workspace=apps/unison",
+    "dev:synthesis": "npm run dev --workspace=apps/synthesis",
+    "dev:chorus": "npm run dev --workspace=apps/chorus",
     "build": "turbo build",
-    "dev": "turbo dev"
+    "dev": "turbo dev",
+    "dev:tunnel": "node apps/backend/scripts/dev-tunnel.js"
   },
   "devDependencies": {
     "turbo": "^2.0.0"

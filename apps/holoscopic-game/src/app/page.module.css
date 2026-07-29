@@ -319,9 +319,10 @@
 }
 
 /* ---- JOIN A GAME CARDS ----
-   One card per game, each wearing its own palette: On a Spectrum on its
-   paper/crimson/cobalt, interView on the warm taupe it owns, Map + Sequence
-   on soft emerald. The motif SVG sits behind the type, anchored right. */
+   One card per game, each wearing its own palette: Synthesis on dark plum
+   with brass/teal, On a Spectrum on its paper/crimson/cobalt, interView on
+   the warm taupe it owns, Map + Sequence on soft emerald. The motif SVG sits
+   behind the type, anchored right. */
 
 .gameCardStack {
   display: flex;
@@ -420,6 +421,29 @@
 
 .gameCardSubMs {
   color: #0e8f66;
+}
+
+/* Synthesis — dark plum, the theme the app itself wears, with brass + teal */
+.gameCardSyn {
+  background: #221e2e;
+}
+
+.gameCardSyn .gameCardTitle {
+  color: #f4efe6;
+}
+
+.gameCardSyn .gameCardMeta {
+  color: rgba(244, 239, 230, 0.55);
+}
+
+/* The wordmark splits on its morphemes, not its syllables: syn- (together)
+   in the brass the art starts from, -thesis (the proposition) in the teal it
+   converges to. Same left-to-right many-into-one reading as ConvergeArt. */
+.synPrefix { color: #e3a548; }
+.synAccent { color: #55c2a8; }
+
+.gameCardSubSyn {
+  color: #55c2a8;
 }
 
 /* ---- REVEAL STATE (must follow all animated elements) ---- */

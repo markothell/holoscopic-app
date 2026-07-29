@@ -20,7 +20,13 @@ export function getCurrentInstanceId(): string | null {
 let gameToken: { token: string; expiresAt: number } | null = null;
 let tokenPromise: Promise<string | null> | null = null;
 
-async function getGameToken(): Promise<string | null> {
+/**
+ * The caller's identity token. Exported because the Socket.IO handshake needs
+ * it too — the server derives the personal room from the verified token
+ * rather than from a client-supplied userId, so a socket with no token gets
+ * no holon or notification push.
+ */
+export async function getGameToken(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
   if (gameToken && gameToken.expiresAt - Date.now() > 60_000) return gameToken.token;
   if (!tokenPromise) {

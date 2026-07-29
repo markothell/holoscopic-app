@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node websocket-server.js",
     "dev": "nodemon websocket-server.js",
-    "test": "node --test utils/**/*.test.js routes/**/*.test.js"
+    "test": "node --test"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

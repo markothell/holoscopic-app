@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { io as socketIO, Socket } from 'socket.io-client';
 import { useInstance } from '@/contexts/InstanceContext';
 import { HolonService } from '@/services/holonService';
+import { getGameToken } from '@/lib/api';
 
 interface AuthContextType {
   userId: string | null;
@@ -73,11 +74,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const sock = socketIO(SOCKET_URL, { transports: ['websocket'], upgrade: false });
+    // The handshake carries the same identity token as HTTP calls. The server
+    // reads the personal room from it and ignores anything the client claims,
+    // so without a token there is no holon/notification push. `auth` may be a
+    // function, which socket.io re-invokes on every reconnect — that matters
+    // because the token expires in 15 minutes and reconnects outlive it.
+    let cancelled = false;
+    const sock = socketIO(SOCKET_URL, {
+      transports: ['websocket'],
+      upgrade: false,
+      auth: (cb) => { getGameToken().then((token) => cb({ token })); },
+    });
     socketRef.current = sock;
 
     sock.on('connect', () => {
-      sock.emit('join_user_room', { userId });
+      if (cancelled) return;
+      sock.emit('join_user_room');
       setSocket(sock);
     });
 
@@ -87,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => {
+      cancelled = true;
       sock.disconnect();
       socketRef.current = null;
       setSocket(null);

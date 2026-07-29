@@ -9,6 +9,16 @@ interface AuthUser {
   role: string;
 }
 
+// The stored session. The backend's requireAdmin no longer accepts a bare
+// x-user-id header — a header is not a credential — so this app exchanges
+// credentials for a signed 12h token via /auth/admin-token and sends it as a
+// bearer on every request (see lib/api.ts).
+interface StoredSession {
+  user: AuthUser;
+  token: string;
+  expiresAt: number;
+}
+
 interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
@@ -33,23 +43,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) setUser(JSON.parse(stored));
-    } catch {}
+      if (stored) {
+        const session: StoredSession = JSON.parse(stored);
+        // A stored session whose token has expired is not a session. Without
+        // this the UI renders as signed in and every call 401s.
+        if (session.token && session.expiresAt > Date.now()) {
+          setUser(session.user);
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      }
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    }
     setIsLoading(false);
   }, []);
 
   async function login(email: string, password: string) {
-    const res = await fetch(`${API_URL}/auth/login`, {
+    const res = await fetch(`${API_URL}/auth/admin-token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
+    // /auth/admin-token returns one indistinguishable error for bad
+    // credentials and for a valid non-admin, so there is no role check to do
+    // here — the backend already refused to issue a token.
     if (!res.ok) throw new Error(data.error || 'Login failed');
-    if (data.user.role !== 'admin') throw new Error('Admin access required');
-    const u: AuthUser = { id: data.user.id, email: data.user.email, name: data.user.name, role: data.user.role };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-    setUser(u);
+
+    const session: StoredSession = {
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.name,
+        role: data.user.role,
+      },
+      token: data.token,
+      expiresAt: data.expiresAt,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    setUser(session.user);
   }
 
   function logout() {

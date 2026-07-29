@@ -12,7 +12,15 @@
 // Default: the sequence arrives as a draft owned by <userId>, publishable
 // from the sequence builder. --publish imports straight to public (active
 // sequence, non-draft activities) — for demo/sample content.
+//
+// <userId> must be an admin: /api/import/sequence is behind requireAdmin now
+// (it used to accept any non-empty x-user-id, unverified, which made it an
+// unauthenticated way to publish content into any instance). This script
+// signs a short-lived token with GAME_TOKEN_SECRET from the backend env.
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
+require('dotenv').config({ path: require('path').join(__dirname, '..', envFile) });
 const fs = require('fs');
+const { authHeaders } = require('./lib/adminToken');
 
 async function main() {
   const args = process.argv.slice(2);
@@ -27,8 +35,7 @@ async function main() {
   const res = await fetch(`${apiUrl}/import/sequence`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'x-user-id': userId,
+      ...authHeaders(userId),
       'x-instance-id': instanceId,
     },
     body: JSON.stringify(payload),

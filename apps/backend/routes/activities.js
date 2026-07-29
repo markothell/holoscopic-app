@@ -178,7 +178,11 @@ module.exports = function(io) {
 
   // Get all activities (admin endpoint - includes drafts)
   // Optional ?createdBy=userId to scope to a specific creator
-  router.get('/admin', async (req, res) => {
+  //
+  // Was public despite the name: enforceVerifiedUser no-ops on GET, and the
+  // global limiter used to skip any path containing '/admin', so this was an
+  // unauthenticated *and* unthrottled read of every activity including drafts.
+  router.get('/admin', require('../middleware/requireAdmin'), async (req, res) => {
     try {
       const query = { instanceId: req.instanceId };
       if (req.query.createdBy) {

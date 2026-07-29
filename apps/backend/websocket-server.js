@@ -79,12 +79,28 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Skip rate limiting for admin endpoints and health checks
-    // Also skip for localhost in development
+    // Only health checks and local development bypass the limiter.
+    //
+    // This used to also skip `req.path.includes('/admin')`. That matched any
+    // path *containing* the substring anywhere — so the bypass was selectable
+    // by the caller, on unauthenticated routes, e.g. /activities/admin.
+    // Admin routes get their own generous bucket below instead.
     const isLocalhost = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
-    return req.path.includes('/admin') ||
-           req.path === '/health' ||
-           (isDevelopment && isLocalhost);
+    return req.path === '/health' || (isDevelopment && isLocalhost);
+  }
+});
+
+// Admin tooling is chatty and authenticated, so it gets headroom the public
+// API does not — but it is never unlimited.
+const adminLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: isProduction ? 600 : 10000,
+  message: { error: 'Too many admin requests, please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    const isLocalhost = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
+    return isDevelopment && isLocalhost;
   }
 });
 
@@ -166,6 +182,22 @@ require('./utils/synNodes').setIndex(require('./utils/synIndexHooks'));
 const { registerSpectrumHandlers } = require('./sockets/spectrum');
 const { registerOasHandlers } = require('./sockets/oas');
 const { registerSynthesisHandlers } = require('./sockets/synthesis');
+
+// Socket identity. The client passes the same short-lived game token it uses
+// for HTTP via `io(url, { auth: { token } })`, and it is verified with the
+// same code path (middleware/verifyUser.js#verifyToken).
+//
+// Unauthenticated sockets are ADMITTED, not rejected: On a Spectrum guests
+// and Chorus contributors deliberately have no account. They simply get
+// socket.data.userId = null and cannot join a personal room.
+const { verifyToken } = require('./middleware/verifyUser');
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth && socket.handshake.auth.token;
+  const payload = verifyToken(token);
+  socket.data.userId = payload && payload.sub ? String(payload.sub) : null;
+  next();
+});
 
 // Store active connections and activity participants
 const connections = new Map(); // socketId -> { userId, activityIds }
@@ -253,6 +285,7 @@ function loadAPIRoutes() {
       // bare x-user-id / body.userId is never trusted for mutations.
       // (admin/import/instances stay on requireAdmin; auth/waitlist are anonymous.)
       const { enforceVerifiedUser } = require('./middleware/verifyUser');
+      const requireAdmin = require('./middleware/requireAdmin');
       // Same routers also reject mutations once their instance has ended —
       // reads stay open, admin/auth/waitlist/instances stay unaffected so an
       // instance can still be reactivated.
@@ -262,17 +295,22 @@ function loadAPIRoutes() {
       app.use('/api/sequences', enforceVerifiedUser, sequenceRoutes);
       app.use('/api/auth', authRoutes);
       app.use('/api/users', enforceVerifiedUser, userRoutes);
-      app.use('/api/admin', adminRoutes);
+      app.use('/api/admin', adminLimiter, adminRoutes);
       app.use('/api/waitlist', waitlistRoutes);
       app.use('/api/signup', signupRoutes);
-      app.use('/api/import', importRoutes);
+      // Import creates activities and seeds entries into an instance the
+      // caller names via x-instance-id. Its only check was "is x-user-id
+      // non-empty" — the id was never looked up — so it was an
+      // unauthenticated content firehose. Its one legitimate caller is
+      // scripts/import-sequence.js, which now carries an admin token.
+      app.use('/api/import', adminLimiter, requireAdmin, importRoutes);
       app.use('/api/holons', enforceVerifiedUser, blockIfInstanceEnded, holonRoutes);
       app.use('/api/topics', enforceVerifiedUser, blockIfInstanceEnded, topicRoutes);
       app.use('/api/notifications', enforceVerifiedUser, notificationRoutes);
       app.use('/api/algorithms', enforceVerifiedUser, blockIfInstanceEnded, algorithmRoutes);
       app.use('/api/frames', enforceVerifiedUser, blockIfInstanceEnded, frameRoutes);
       app.use('/api/frame-refs', enforceVerifiedUser, blockIfInstanceEnded, frameRefRoutes);
-      app.use('/api/instances', instanceRoutes);
+      app.use('/api/instances', adminLimiter, instanceRoutes);
       // On the Spectrum party game — guest identities, so enforceVerifiedUser
       // (guest JWTs from the join route) but no blockIfInstanceEnded.
       const spectrumRoutes = require('./routes/spectrum')(io);
@@ -457,8 +495,14 @@ io.on('connection', (socket) => {
   registerOasHandlers(io, socket);
   registerSynthesisHandlers(io, socket);
 
-  // Join user room for personal events (holon updates, notifications)
-  socket.on('join_user_room', ({ userId }) => {
+  // Join user room for personal events (holon updates, notifications).
+  //
+  // The room name comes from the verified handshake, never from the payload:
+  // this used to join whatever userId the client asked for, so any socket
+  // could subscribe to another user's holon balance and notification bodies
+  // by guessing an 8-character id. The argument is now ignored entirely.
+  socket.on('join_user_room', () => {
+    const userId = socket.data.userId;
     if (userId) socket.join(`user:${userId}`);
   });
 

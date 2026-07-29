@@ -1,5 +1,5 @@
 // Chat adapter factory — the ONLY place a chat vendor's wire protocol lives.
-// Selected by `UNISON_MODEL_PROVIDER`:
+// Selected by `SYN_MODEL_PROVIDER`:
 //   'claude' | 'anthropic'  → Anthropic Messages API (default)
 //   'openai' | 'gateway' | 'local' → any OpenAI-compatible /chat/completions
 //                                     (Vercel AI Gateway, a local server, etc.)
@@ -13,7 +13,7 @@
 const { readDataLines } = require('./sse');
 
 // Default chat model: pinned from the claude-api reference (current default
-// Claude). Overridable per deployment via UNISON_MODEL_ID.
+// Claude). Overridable per deployment via SYN_MODEL_ID.
 const DEFAULT_CLAUDE_MODEL = 'claude-opus-5';
 const DEFAULT_OPENAI_MODEL = 'openai/gpt-4o-mini';
 const DEFAULT_MAX_TOKENS = 1024;
@@ -25,14 +25,14 @@ function num(v, fallback) {
 
 // ── Anthropic Messages adapter ──────────────────────────────────────────────
 function anthropicChat(env) {
-  const apiKey = env.UNISON_MODEL_API_KEY || env.ANTHROPIC_API_KEY || '';
-  const baseUrl = (env.UNISON_MODEL_BASE_URL || 'https://api.anthropic.com').replace(/\/+$/, '');
-  const modelId = env.UNISON_MODEL_ID || DEFAULT_CLAUDE_MODEL;
-  const maxTokens = num(env.UNISON_MODEL_MAX_TOKENS, DEFAULT_MAX_TOKENS);
+  const apiKey = env.SYN_MODEL_API_KEY || env.ANTHROPIC_API_KEY || '';
+  const baseUrl = (env.SYN_MODEL_BASE_URL || 'https://api.anthropic.com').replace(/\/+$/, '');
+  const modelId = env.SYN_MODEL_ID || DEFAULT_CLAUDE_MODEL;
+  const maxTokens = num(env.SYN_MODEL_MAX_TOKENS, DEFAULT_MAX_TOKENS);
   // Disabled thinking keeps short RAG answers snappy; effort defaults to
   // <= high so disabling is accepted on Opus 5. Override to 'adaptive' if a
   // deployment wants visible reasoning.
-  const thinkingMode = env.UNISON_MODEL_THINKING || 'disabled';
+  const thinkingMode = env.SYN_MODEL_THINKING || 'disabled';
 
   return {
     configured: !!apiKey,
@@ -81,14 +81,14 @@ function anthropicChat(env) {
 
 // ── OpenAI-compatible chat adapter (gateway / local / OpenAI) ────────────────
 function openaiChat(env) {
-  const apiKey = env.UNISON_MODEL_API_KEY || env.OPENAI_API_KEY || '';
-  const baseUrl = (env.UNISON_MODEL_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
-  const modelId = env.UNISON_MODEL_ID || DEFAULT_OPENAI_MODEL;
-  const maxTokens = num(env.UNISON_MODEL_MAX_TOKENS, DEFAULT_MAX_TOKENS);
+  const apiKey = env.SYN_MODEL_API_KEY || env.OPENAI_API_KEY || '';
+  const baseUrl = (env.SYN_MODEL_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
+  const modelId = env.SYN_MODEL_ID || DEFAULT_OPENAI_MODEL;
+  const maxTokens = num(env.SYN_MODEL_MAX_TOKENS, DEFAULT_MAX_TOKENS);
 
   return {
     configured: !!apiKey,
-    provider: env.UNISON_MODEL_PROVIDER || 'openai',
+    provider: env.SYN_MODEL_PROVIDER || 'openai',
     modelId,
     async *stream({ system, messages, signal }) {
       const chatMessages = system
@@ -124,7 +124,7 @@ function openaiChat(env) {
 }
 
 function buildChatAdapter(env = process.env) {
-  const provider = (env.UNISON_MODEL_PROVIDER || 'claude').toLowerCase();
+  const provider = (env.SYN_MODEL_PROVIDER || 'claude').toLowerCase();
   if (provider === 'openai' || provider === 'gateway' || provider === 'local') {
     return openaiChat(env);
   }

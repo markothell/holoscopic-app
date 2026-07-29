@@ -175,6 +175,48 @@ function SequenceChainArt() {
   );
 }
 
+// Synthesis: many scattered nodes drawn along converging curves into one
+// filled node — the group arriving at a single expression, in brass → teal.
+function ConvergeArt() {
+  const target: [number, number] = [272, 105];
+  const nodes: [number, number, number][] = [
+    [30, 34, 4], [22, 78, 4], [44, 122, 5], [28, 168, 4],
+    [78, 52, 4], [70, 100, 5], [86, 140, 4],
+    [140, 72, 5], [150, 132, 5], [186, 98, 6],
+  ];
+  const paths = [
+    'M30,34 C120,34 162,105 246,105',
+    'M22,78 C112,78 166,105 246,105',
+    'M44,122 C130,122 172,105 246,105',
+    'M28,168 C120,168 162,105 246,105',
+    'M78,52 C150,52 182,105 246,105',
+    'M70,100 C152,100 190,105 246,105',
+    'M86,140 C156,140 186,105 246,105',
+  ];
+  return (
+    <svg
+      className={styles.gameCardArt}
+      viewBox="0 0 320 210"
+      aria-hidden
+      preserveAspectRatio="xMaxYMid meet"
+    >
+      <defs>
+        <linearGradient id="synConverge" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#E3A548" />
+          <stop offset="100%" stopColor="#55C2A8" />
+        </linearGradient>
+      </defs>
+      {paths.map((d, i) => (
+        <path key={i} d={d} stroke="url(#synConverge)" strokeOpacity="0.4" strokeWidth="1.5" fill="none" />
+      ))}
+      {nodes.map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill="url(#synConverge)" opacity={0.28 + (x / 246) * 0.42} />
+      ))}
+      <circle cx={target[0]} cy={target[1]} r={26} fill="url(#synConverge)" opacity="0.78" />
+    </svg>
+  );
+}
+
 function MappingVisual() {
   return (
     <svg
@@ -455,6 +497,18 @@ export default function HomePage() {
         <RevealSection id="game" className={styles.invitation}>
           <p className={styles.sectionLabel}>Join a Game</p>
           <div className={styles.gameCardStack}>
+            <a href="https://synthesis.holoscopic.io" className={`${styles.gameCard} ${styles.gameCardSyn}`}>
+              <ConvergeArt />
+              <span className={styles.gameCardTitle}>
+                <span className={styles.synPrefix}>Syn</span><span className={styles.synAccent}>thesis</span>
+              </span>
+              <span className={`${styles.gameCardSub} ${styles.gameCardSubSyn}`}>
+                a game for finding what a group actually agrees on
+              </span>
+              <span className={styles.gameCardMeta}>
+                2&ndash;50 collaborators &middot; open-ended
+              </span>
+            </a>
             <a href="https://spectrum.holoscopic.io" className={`${styles.gameCard} ${styles.gameCardOas}`}>
               <SpectrumBarsArt />
               <span className={styles.gameCardTitle}>
