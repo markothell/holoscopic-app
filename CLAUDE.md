@@ -126,10 +126,16 @@ Allowed origins from `CLIENT_URL` env var (comma-separated) in `apps/backend/.en
 
 **Never restart or kill another agent's dev server.** All six ports are usually live (`4000`–`4005`). If you need a server, start your own on a spare port and stop it when done.
 
-**Local dev points at the production database.** `apps/backend/.env.local`'s `MONGODB_URI` is the live Atlas cluster, so:
-- Any seed, migration, or reset script you run "locally" hits production. Read `scripts/reset-db-for-launch.js` before running anything in `scripts/`.
-- Dev has `autoIndex: true`, so **editing an index declaration in `models/*.js` creates that index on production** the moment nodemon restarts. Production itself has `autoIndex: false`; real index changes go through `scripts/ensure-indexes.js`.
-- Prefer read-only queries when exploring. If you need to write test data, ask first.
+**There are two Atlas clusters, and they share a database name.** Both are called `holoscopic-db`, which makes them easy to confuse — check the *host*, never the database name:
+
+| | Host | Used by |
+|---|---|---|
+| Dev | `cluster0.38i5zna` | `apps/backend/.env.local` — every local dev server and every script run without `NODE_ENV=production` |
+| **Production** | `live.ofmfipp` | `apps/backend/.env.production`, and what Render serves holoscopic.io from |
+
+- Anything in `scripts/` run with `NODE_ENV=production` hits the live site's data. Read the script first — `reset-db-for-launch.js` deletes 14 collections.
+- Dev runs `autoIndex: true`, so editing an index declaration in `models/*.js` creates that index on the **dev** cluster as soon as nodemon restarts. Production is `autoIndex: false`, so the same edit reaches production only via `scripts/ensure-indexes.js` with `NODE_ENV=production`. **A model index change is not live until you run that script against production** — the two clusters drift apart silently otherwise.
+- Verify which cluster you are on before writing. `node -e "require('dotenv').config({path:'.env.local'});console.log(process.env.MONGODB_URI.match(/@([^/?]+)/)[1])"` prints the host.
 
 **Don't fix failing tests in another app's area.** A red test in a file you did not touch is usually an agent mid-change. Report it; do not "helpfully" repair it and collide with their next write.
 
