@@ -11,9 +11,19 @@ const Instance = require('../models/Instance');
 //
 // THE LOOP. The Union (utils/synUnion.js) reads an idea's whole published
 // corpus and says where the group stands. A collaborator edits that read into
-// a claim they will stand behind and submits it. Everyone votes. At ⅔ (D12)
-// the statement is marked `synthesized` and stamped onto the idea's Instance,
-// and the group has reached Synthesis.
+// a claim they will stand behind and submits it. Everyone votes.
+//
+// SYNTHESIS IS A LIVING MEASURE, NOT A LATCH (D12, revised). It is not a
+// statement winning — it is the GROUP finding shared understanding, and a group
+// can find it, lose it, and find better. So nothing here is ever frozen:
+// `synthesisState` is RECOMPUTED from the current votes on every read and every
+// write. A group that has gathered behind one wording is *in synthesis*; if
+// backing drains away, or new collaborators join and raise the bar, it simply
+// is not any more, and the measure says so.
+//
+// This is what makes the third who never voted matter. They can read what the
+// group settled on, disagree, put up better words, and pull the group somewhere
+// else — no reopening ceremony, because nothing ever closed.
 //
 // THE BUDGET (D14) is the one rule that shapes behaviour here: each
 // collaborator holds THREE slots per idea, and authoring a live statement and
@@ -36,7 +46,7 @@ const mongoStore = {
   async insertStatement(fields) { return SynStatement.create(fields); },
   async saveStatement(doc) { return doc.save(); },
   async listLive(instanceId) {
-    return SynStatement.find({ instanceId, status: { $in: ['live', 'synthesized'] } });
+    return SynStatement.find({ instanceId, status: 'live' });
   },
   // Every statement this user is currently holding a slot on: authored-and-live,
   // or voted-for. One read serves the whole budget calculation.
@@ -69,7 +79,6 @@ function toClient(s, { userId } = {}) {
     voteCount: s.voteCount,
     votedByMe: userId ? (s.voterIds || []).includes(userId) : false,
     mine: userId ? s.authorId === userId : false,
-    synthesizedAt: s.synthesizedAt || null,
     createdAt: s.createdAt,
   };
 }
@@ -106,38 +115,88 @@ async function assertHasSlot({ store, instanceId, userId, instance }) {
   }
 }
 
-// ── Reaching Synthesis (D12) ────────────────────────────────────────────────
-// Runs after every vote. When a statement clears the bar it is marked
-// `synthesized` and stamped onto the idea's Instance — the presence of
-// `synthesisStatementId` IS the flag the rest of the app reads.
+// ── The Synthesis measure (D12, living) ─────────────────────────────────────
+
+// Rank live statements: most-backed first, ties broken by the earlier
+// submission. Pure, so the leaderboard and the measure agree by construction.
+function rank(statements) {
+  return [...(statements || [])].sort((a, b) => {
+    if (b.voteCount !== a.voteCount) return b.voteCount - a.voteCount;
+    return new Date(a.createdAt) - new Date(b.createdAt);
+  });
+}
+
+// Where the group stands RIGHT NOW. Derived from current votes every time —
+// never read from a stored flag, so it cannot drift from the votes it claims
+// to summarize.
 //
-// First past the post wins: once an idea has reached Synthesis this is a no-op,
-// so a later statement overtaking on votes does not silently reopen a settled
-// question. Changing the group's mind is a deliberate act, not a side effect of
-// someone else voting.
-async function checkSynthesis({ store = mongoStore, instanceId, statement }) {
-  const instance = await store.getInstance(instanceId);
-  if (!instance) return null;
-  if (instance.config?.synthesis?.synthesisStatementId) return null; // already settled
+// `share` is the fraction of collaborators gathered behind the single
+// best-backed wording. That is the measure the group is actually moving: not
+// how one statement is doing, but how much of the group has found the same
+// words. `inSynthesis` is simply that share standing at or above the bar.
+async function synthesisState({ store = mongoStore, instanceId, statements, instance }) {
+  const [live, collaborators, inst] = await Promise.all([
+    statements ?? store.listLive(instanceId),
+    store.countCollaborators(instanceId),
+    instance ?? store.getInstance(instanceId),
+  ]);
 
-  const collaborators = await store.countCollaborators(instanceId);
-  const needed = votesNeeded(collaborators, thresholdFor(instance));
-  if (statement.voteCount < needed) return null;
+  const threshold = thresholdFor(inst);
+  const needed = votesNeeded(collaborators, threshold);
+  const ranked = rank(live);
+  const leading = ranked[0] ?? null;
+  const backing = leading?.voteCount ?? 0;
 
-  statement.status = 'synthesized';
-  statement.synthesizedAt = new Date();
-  await store.saveStatement(statement);
+  // Everyone who has spent at least one slot — the other half of the story,
+  // and the one that names the people who have yet to weigh in at all.
+  const engaged = new Set();
+  for (const s of live || []) {
+    engaged.add(s.authorId);
+    for (const v of s.voterIds || []) engaged.add(v);
+  }
 
-  if (!instance.config) instance.config = {};
-  if (!instance.config.synthesis) instance.config.synthesis = {};
-  instance.config.synthesis.synthesisStatementId = statement.id;
-  instance.config.synthesis.synthesisReachedAt = statement.synthesizedAt;
+  return {
+    collaboratorCount: collaborators,
+    threshold,
+    votesToReach: needed,
+    leadingStatementId: leading?.id ?? null,
+    backing,
+    share: collaborators > 0 ? backing / collaborators : 0,
+    inSynthesis: backing >= needed && backing > 0,
+    stillToWeighIn: Math.max(0, collaborators - engaged.size),
+  };
+}
+
+// Mirrors the CURRENT measure onto the idea's Instance so cheap reads
+// (/me/ideas, the ideas list) don't each have to recompute it. This is a CACHE
+// of a derived value, never the source of truth: synthesisState is. It moves in
+// both directions — a group that drops back below the bar has the stamp
+// cleared, because the alternative is an ideas list claiming a synthesis the
+// votes no longer support.
+async function syncSynthesisStamp({ store = mongoStore, instanceId, state, instance }) {
+  const inst = instance ?? await store.getInstance(instanceId);
+  if (!inst) return null;
+  if (!inst.config) inst.config = {};
+  if (!inst.config.synthesis) inst.config.synthesis = {};
+  const syn = inst.config.synthesis;
+
+  const nextId = state.inSynthesis ? state.leadingStatementId : null;
+  const wasId = syn.synthesisStatementId ?? null;
+  if (nextId === wasId) return { changed: false, entered: false, left: false };
+
+  syn.synthesisStatementId = nextId;
+  // Timestamp the START of the current run. Moving from one statement straight
+  // to another is still one continuous run of the group being in synthesis, so
+  // the clock only resets when the group was outside it.
+  if (nextId && !wasId) syn.synthesisReachedAt = new Date();
+  if (!nextId) syn.synthesisReachedAt = null;
+
   // config is a nested subdocument — Mongoose needs telling when a path inside
   // one is mutated in place rather than reassigned.
-  if (typeof instance.markModified === 'function') instance.markModified('config.synthesis');
-  await store.saveInstance(instance);
+  if (typeof inst.markModified === 'function') inst.markModified('config.synthesis');
+  await store.saveInstance(inst);
 
-  return statement;
+  return { changed: true, entered: !!nextId && !wasId, left: !nextId && !!wasId };
 }
 
 // ── Funnel ──────────────────────────────────────────────────────────────────
@@ -164,7 +223,6 @@ async function submitStatement({
     status: 'live',
     voterIds: [],
     voteCount: 0,
-    synthesizedAt: null,
   });
 }
 
@@ -200,64 +258,70 @@ async function voteStatement({ store = mongoStore, instanceId, statementId, user
   statement.voteCount = statement.voterIds.length;
   await store.saveStatement(statement);
 
-  if (!already) {
-    const reached = await checkSynthesis({ store, instanceId, statement });
-    if (reached) return { statement: reached, reachedSynthesis: true };
-  }
-  return { statement, reachedSynthesis: false };
+  // Recompute from scratch — a vote can carry the group INTO synthesis or,
+  // when it is withdrawn from the leading wording, back out of it.
+  const state = await synthesisState({ store, instanceId });
+  const stamp = await syncSynthesisStamp({ store, instanceId, state });
+
+  return {
+    statement,
+    state,
+    enteredSynthesis: !!stamp?.entered,
+    leftSynthesis: !!stamp?.left,
+  };
 }
 
 // Retire a statement, freeing every slot it held — its author's, and each
-// voter's. Only the author can withdraw, and a statement the group has already
-// reached Synthesis on stays put.
+// voter's. Only the author can withdraw.
+//
+// Withdrawing the group's current synthesis is ALLOWED: they are your words,
+// and the measure is living, so the group simply drops back below the bar and
+// re-converges on something else. Freezing an author's own sentence in place
+// because others agreed with it would make agreement a trap.
 async function withdrawStatement({ store = mongoStore, instanceId, statementId, userId }) {
   const statement = await store.getStatement(statementId);
   if (!statement || statement.instanceId !== instanceId) throw new Error('Statement not found');
   if (statement.authorId !== userId) throw new Error('Only the author can withdraw a statement');
-  if (statement.status === 'synthesized') throw new Error('The group has reached Synthesis on that statement');
 
   statement.status = 'withdrawn';
   statement.voterIds = [];
   statement.voteCount = 0;
   await store.saveStatement(statement);
-  return statement;
+
+  const state = await synthesisState({ store, instanceId });
+  const stamp = await syncSynthesisStamp({ store, instanceId, state });
+
+  return { statement, state, leftSynthesis: !!stamp?.left };
 }
 
-// The leaderboard: live statements most-backed first, ties broken by the
-// earlier submission — the same rule that decides a race to the bar. A
-// synthesized statement sorts to the very top regardless of count.
+// The voting surface: live statements most-backed first (ties to the earlier
+// submission), wrapped in the group's current measure. Everything the UI needs
+// to draw the meter and the budget comes back in one read.
 async function leaderboard({ store = mongoStore, instanceId, userId }) {
-  const [statements, collaborators, instance] = await Promise.all([
+  const [statements, instance] = await Promise.all([
     store.listLive(instanceId),
-    store.countCollaborators(instanceId),
     store.getInstance(instanceId),
   ]);
 
-  const threshold = thresholdFor(instance);
-  const needed = votesNeeded(collaborators, threshold);
+  const state = await synthesisState({ store, instanceId, statements, instance });
 
-  const ranked = [...(statements || [])]
-    .sort((a, b) => {
-      if (a.status === 'synthesized' && b.status !== 'synthesized') return -1;
-      if (b.status === 'synthesized' && a.status !== 'synthesized') return 1;
-      if (b.voteCount !== a.voteCount) return b.voteCount - a.voteCount;
-      return new Date(a.createdAt) - new Date(b.createdAt);
-    })
-    .map(s => ({
-      ...toClient(s, { userId }),
-      votesNeeded: Math.max(0, needed - s.voteCount),
-    }));
+  const ranked = rank(statements).map(s => ({
+    ...toClient(s, { userId }),
+    votesNeeded: Math.max(0, state.votesToReach - s.voteCount),
+    // The share of the group gathered behind THIS wording — what the meter
+    // fills to when this statement is the leading one.
+    share: state.collaboratorCount > 0 ? s.voteCount / state.collaboratorCount : 0,
+    isLeading: s.id === state.leadingStatementId,
+    isSynthesis: state.inSynthesis && s.id === state.leadingStatementId,
+  }));
 
   const used = userId ? await slotsUsed({ store, instanceId, userId }) : 0;
 
   return {
+    ...state,
     statements: ranked,
-    collaboratorCount: collaborators,
-    threshold,
-    votesToReach: needed,
     slotsUsed: used,
     slotsTotal: slotsFor(instance),
-    synthesisStatementId: instance?.config?.synthesis?.synthesisStatementId ?? null,
   };
 }
 
@@ -267,8 +331,10 @@ module.exports = {
   withdrawStatement,
   leaderboard,
   slotsUsed,
-  checkSynthesis,
+  synthesisState,
+  syncSynthesisStamp,
   // pure helpers (exported for tests and reuse)
+  rank,
   votesNeeded,
   toClient,
   DEFAULT_SLOTS,

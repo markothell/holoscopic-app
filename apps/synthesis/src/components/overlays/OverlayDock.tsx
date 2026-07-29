@@ -1,21 +1,26 @@
 'use client';
 
-export type OverlayKey = 'feed' | 'ask' | null;
+export type OverlayKey = 'feed' | 'union' | 'statements' | null;
 
-// Task item 1: Post is not a standalone dock destination — a post view is
-// never visited cold, only opened from a specific thought (a map node or a
-// feed item; see PostOverlay). The dock over map-home is Map + Feed + The
-// Group. The 'ask' key is unchanged (SynthesisOverlay's dock slot) — only
-// the label moved, from the retired question-box "Ask" to the community
-// synthesis view (S1, UNION.md §10).
+// Post is not a standalone dock destination — a post view is never visited
+// cold, only opened from a specific thought (a map node or a feed item; see
+// PostOverlay).
+//
+// THE TWO STATEMENT SURFACES ARE SEPARATE ON PURPOSE. Union (∪) is where the
+// group's read of its own corpus lives and where you WRITE a statement from
+// it — a slow, private act against the whole thing. Synthesis is where you see
+// what everyone else wrote and decide what the group stands behind — a fast
+// read of other people's words. Folded together, the leaderboard read as a
+// byproduct of the LLM, when it is where the group actually does its work.
 const TABS: { key: Exclude<OverlayKey, null> | 'map'; label: string; glyph: string }[] = [
   { key: 'map', label: 'Map', glyph: '◇' },
   { key: 'feed', label: 'Feed', glyph: '≡' },
-  { key: 'ask', label: 'The Group', glyph: '◈' },
+  { key: 'union', label: 'Union', glyph: '∪' },
+  { key: 'statements', label: 'Synthesis', glyph: '◈' },
 ];
 
-// D7: Map is home; Feed / Ask open as overlays over it, then dismiss back
-// to the map. This dock is the one navigation surface for those three.
+// D7/D15: within an idea the map is home; the other three open as overlays
+// over it, then dismiss back. This dock is the one navigation surface.
 export default function OverlayDock({ active, onSelect }: { active: OverlayKey; onSelect: (key: OverlayKey) => void }) {
   return (
     <nav

@@ -43,41 +43,16 @@ function generateId() {
   return Math.random().toString(36).substring(2, 10);
 }
 
-async function sweepQuorum(instanceId, config) {
-  const threshold = config.quorum.topicSupportThreshold;
-  const topics = await Topic.find({ instanceId, status: 'nominated' });
-  for (const topic of topics) {
-    if (topic.supporters.length >= threshold) {
-      topic.status = 'confirmed';
-      topic.confirmedAt = new Date();
-      topic.holonPool = config.holons.nominationCost + topic.supporters.reduce((sum, s) => sum + s.holonsWagered, 0);
-      await topic.save();
-      await transact({ userId: topic.nominatedBy, instanceId, type: 'session_host_reward', amount: config.holons.topicQuorumReward, refType: 'topic', refId: topic.id });
-      await notify({ userId: topic.nominatedBy, type: 'topic_confirmed', message: `Your topic "${topic.title}" reached quorum. Create an activity to start mapping.`, refType: 'topic', refId: topic.id });
-    }
-  }
-}
-
-async function sweepExpired(instanceId, config) {
-  const expired = await Topic.find({ instanceId, status: 'nominated', expiresAt: { $lte: new Date() } });
-  for (const topic of expired) {
-    topic.status = 'expired';
-    await topic.save();
-    await transact({ userId: topic.nominatedBy, instanceId, type: 'nomination_return', amount: config.holons.nominationCost, refType: 'topic', refId: topic.id });
-    for (const s of topic.supporters) {
-      await transact({ userId: s.userId, instanceId, type: 'support_return', amount: s.holonsWagered, refType: 'topic', refId: topic.id });
-    }
-  }
-  return expired.length;
-}
+// Quorum confirmation and expiry now live in utils/sweeps.js, driven by the
+// interval runner in jobs/index.js. They used to run inline here on every GET:
+// unbounded, unlocked, and read-then-write, so concurrent readers could each
+// confirm the same topic and each pay the reward. Reads below are pure reads.
 
 // GET /api/topics
 router.get('/', async (req, res) => {
   try {
     const { instanceId } = req;
     const config = req.instance.config;
-    await sweepExpired(instanceId, config);
-    await sweepQuorum(instanceId, config);
     const statuses = String(req.query.status || 'nominated').split(',').map(s => s.trim()).filter(Boolean);
     const docs = await Topic.find({ instanceId, status: { $in: statuses } }).sort({ expiresAt: 1 });
     const rollup = await activityRollup(docs.map(t => t.id));
@@ -98,7 +73,6 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const config = req.instance.config;
-    await sweepQuorum(req.instanceId, config);
     const doc = await Topic.findOne({ id: req.params.id, instanceId: req.instanceId });
     if (!doc) return res.status(404).json({ error: 'Topic not found' });
     res.json({

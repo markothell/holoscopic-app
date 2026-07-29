@@ -436,7 +436,7 @@ behind the same funnel — deliberately not in v1.
 | **M0** ✅ | `Memory` + `MemoryTag` models, `config.memorial`, funnel + tests, `GET /config` + `/memories`, landing + wall against seeded data | The wall renders a real memorial from config with fake memories |
 | **M1** ✅ | Compose, text-only, end to end: tag drawers, custom tags, anon toggle, title, `POST /memories`, contributor session | A stranger can post a text memory on a phone with no account |
 | **M2** ⚠ | Audio: recorder, Blob client upload, IndexedDB stash, global player, waveform, Deepgram + callback | A 90-second spoken memory records, uploads, plays back, and transcribes |
-| **M3** | Threads ✅, tag filtering ✅, tag portrait ✅, share sheet ✅, **sockets remaining** | Shippable. This is the public launch cut. |
+| **M3** ✅ | Threads, tag filtering, tag portrait, share sheet, sockets | Shippable. This is the public launch cut. |
 | **M4** | `/curate`, flags, takedown, perf/a11y pass, export | Safe to hand a family the link and walk away |
 
 Ship-worthy at **M3**; do not launch a memorial without **M4** close behind.
@@ -494,6 +494,20 @@ Four things the design above didn't anticipate, all now in the code and the test
 
 ### Settled while building M3
 
+- **New memories are announced, never inserted.** A memorial is read slowly, and
+  content moving under someone mid-sentence is worse than a slightly stale wall. A quiet count
+  appears; tapping it refreshes and returns to the top. The one exception is a reader already at
+  the very top, who has nothing to lose — there it simply refreshes.
+- **The socket room is keyed by the RESOLVED instance id, not the slug.** The client had
+  `NEXT_PUBLIC_INSTANCE_ID` ("chorus") while the funnel broadcasts to `memorial:<req.instanceId>`
+  ("6691dd8d"). The socket connected, the join was accepted, and no event ever arrived — a failure
+  with no error anywhere. `GET /config` returns the resolved id for exactly this.
+- **Sorting needed `threadCount` denormalized.** A per-request aggregate can't participate in a
+  keyset cursor. `syncThreadCount` maintains it on create, hide, unhide and withdraw — missing any
+  one leaves the wall ordered by a number that used to be true.
+- **Every sort spec ends in `id`.** Without a unique tiebreaker two rows compare equal and a page
+  boundary between them drops one. The cursor also carries its sort name, so a cursor minted under
+  one ordering can't be replayed against another.
 - **Filter state lives in the URL** (`/?tags=a,b`), so the wall stays a Server Component with no
   refetch flicker, a filtered view is a link somebody can send ("every story where she was
   stubborn"), and Back behaves.

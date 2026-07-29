@@ -175,6 +175,7 @@ require('./utils/notify').setIO(io);
 require('./utils/spectrumGames').setIO(io);
 require('./utils/oasGames').setIO(io);
 require('./utils/synNodes').setIO(io);
+require('./utils/memories').setIO(io);
 // M3 — the collective LLM's embedding-index refresh hooks. Injected here so the
 // funnel stays decoupled; the hooks no-op when the LLM is unconfigured, so this
 // never blocks route loading or writes.
@@ -182,6 +183,7 @@ require('./utils/synNodes').setIndex(require('./utils/synIndexHooks'));
 const { registerSpectrumHandlers } = require('./sockets/spectrum');
 const { registerOasHandlers } = require('./sockets/oas');
 const { registerSynthesisHandlers } = require('./sockets/synthesis');
+const { registerMemorialHandlers } = require('./sockets/memorial');
 
 // Socket identity. The client passes the same short-lived game token it uses
 // for HTTP via `io(url, { auth: { token } })`, and it is verified with the
@@ -494,6 +496,10 @@ io.on('connection', (socket) => {
   registerSpectrumHandlers(io, socket);
   registerOasHandlers(io, socket);
   registerSynthesisHandlers(io, socket);
+  // Chorus visitors hold no account, so this room is joined without any
+  // verified identity — correct here, because a memorial wall is public and
+  // the room only ever carries what REST already serves to anyone.
+  registerMemorialHandlers(io, socket);
 
   // Join user room for personal events (holon updates, notifications).
   //

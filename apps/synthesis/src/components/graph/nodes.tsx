@@ -40,6 +40,7 @@ export interface SynNodeData extends Record<string, unknown> {
   marryMode: boolean;
   eligible: boolean;   // same-kind as the other marry-mode selection, or nothing selected yet
   hubTier: number;     // hubs standing above this node — the nesting size step
+  inSynthesis?: boolean; // the GROUP measure is at or above the bar (home hub only)
   onOpenSource?: (sourceNodeId: string) => void; // task item 4: borrowed-node provenance
 }
 
@@ -58,9 +59,9 @@ const cardPath = (x: number, y: number, w: number, h: number, c: number) =>
   + `L ${x + w - c},${y + h} L ${x + c},${y + h} L ${x},${y + h - c} L ${x},${y + c} Z`;
 
 function Outline({
-  w, h, d, ring, ringColor, stroke, fill, strokeWidth = 1.5, dashed,
+  w, h, d, ring, ring2, ringColor, stroke, fill, strokeWidth = 1.5, dashed,
 }: {
-  w: number; h: number; d: string; ring?: string; ringColor?: string;
+  w: number; h: number; d: string; ring?: string; ring2?: string; ringColor?: string;
   stroke: string; fill: string; strokeWidth?: number; dashed: boolean;
 }) {
   return (
@@ -70,7 +71,12 @@ function Outline({
       aria-hidden width={w} height={h} viewBox={`0 0 ${w} ${h}`}
       style={{ position: 'absolute', inset: 0, overflow: 'visible' }}
     >
-      {ring && <path d={ring} fill="none" stroke={ringColor} strokeWidth={1.25} opacity={0.5} />}
+      {/* A SECOND, wider ring is the synthesis mark, and only ever that. A
+          join node already wears one teal ring, so the group's synthesis is
+          set apart by treatment as well as hue — two concentric rings read as
+          "this gathered" at a glance, at any zoom. */}
+      {ring2 && <path d={ring2} fill="none" stroke={ringColor} strokeWidth={1.25} opacity={0.34} />}
+      {ring && <path d={ring} fill="none" stroke={ringColor} strokeWidth={1.25} opacity={ring2 ? 0.85 : 0.5} />}
       <path
         d={d}
         fill={fill}
@@ -95,14 +101,22 @@ function Handles() {
 }
 
 export function TopicNode({ data }: NodeProps & { data: SynNodeData }) {
-  const { synthesisNode: n, selected, marryMode, eligible, hubTier } = data;
+  const { synthesisNode: n, selected, marryMode, eligible, hubTier, inSynthesis } = data;
   const isHome = !!n.isHome;
+  // The idea's own hub carries the group's state: when the group has found
+  // shared words, the centre of everyone's map says so. It moves back when the
+  // measure does — Synthesis is living, so this is never a permanent badge.
+  const homeSynthesis = isHome && !!inSynthesis;
   const w = hubWidth(hubTier, isHome);
   const h = hubHeight(w);
-  const stroke = selected ? 'var(--join)' : ORIGIN_COLOR[n.origin];
+  const stroke = selected
+    ? 'var(--join)'
+    : homeSynthesis ? 'var(--synthesis)' : ORIGIN_COLOR[n.origin];
   const fill = selected
     ? 'color-mix(in srgb, var(--join) 20%, var(--dusk-raised))'
-    : 'var(--dusk-raised)';
+    : homeSynthesis
+      ? 'color-mix(in srgb, var(--synthesis) 14%, var(--dusk-raised))'
+      : 'var(--dusk-raised)';
 
   return (
     <div
@@ -113,7 +127,8 @@ export function TopicNode({ data }: NodeProps & { data: SynNodeData }) {
         w={w} h={h}
         d={hexPath(0, 0, w, h)}
         ring={isHome ? hexPath(-7, -7, w + 14, h + 14) : undefined}
-        ringColor="var(--own)"
+        ring2={homeSynthesis ? hexPath(-13, -13, w + 26, h + 26) : undefined}
+        ringColor={homeSynthesis ? 'var(--synthesis)' : 'var(--own)'}
         stroke={stroke}
         fill={fill}
         strokeWidth={isHome ? 2 : 1.5}
@@ -126,7 +141,12 @@ export function TopicNode({ data }: NodeProps & { data: SynNodeData }) {
         style={{ paddingLeft: Math.round(w * 0.2), paddingRight: Math.round(w * 0.2) }}
       >
         {isHome && (
-          <span className="eyebrow !text-[0.5rem] mb-0.5" style={{ color: 'var(--own)' }}>home</span>
+          <span
+            className="eyebrow !text-[0.5rem] mb-0.5"
+            style={{ color: homeSynthesis ? 'var(--synthesis)' : 'var(--own)' }}
+          >
+            {homeSynthesis ? '∪ in synthesis' : 'home'}
+          </span>
         )}
         <span
           className="eyebrow !text-[0.6rem] leading-snug"

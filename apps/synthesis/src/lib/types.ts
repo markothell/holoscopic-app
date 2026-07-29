@@ -96,6 +96,47 @@ export interface Collaborator extends Membership {
   replyCount: number;
 }
 
+// Where the group stands right now (utils/synStatements.js#synthesisState).
+// Recomputed from current votes on every read — Synthesis is a living measure,
+// so this can move in both directions and is never a latched flag.
+export interface SynthesisState {
+  collaboratorCount: number;
+  threshold: number;          // the share needed, e.g. 2/3
+  votesToReach: number;       // collaborators needed behind one wording
+  leadingStatementId: string | null;
+  backing: number;            // how many are behind the leading wording
+  share: number;              // backing / collaboratorCount — what the meter fills to
+  inSynthesis: boolean;       // share is at or above the bar
+  stillToWeighIn: number;     // collaborators who have spent no slot at all
+}
+
+// A statement someone has put to the group, as the voting surface sees it.
+export interface Statement {
+  id: string;
+  instanceId: string;
+  authorId: string;
+  authorHandle: string;
+  text: string;
+  sourceUnionId: string | null; // the Union read it was drafted from, if any
+  status: 'live' | 'withdrawn';
+  voteCount: number;
+  votedByMe: boolean;
+  mine: boolean;
+  createdAt: string;
+  // Present on the leaderboard read only:
+  votesNeeded?: number;   // how many more to carry the group
+  share?: number;         // this wording's share of the group
+  isLeading?: boolean;
+  isSynthesis?: boolean;  // leading AND above the bar
+}
+
+// GET /statements — the board plus the measure plus my budget, in one read.
+export interface StatementBoard extends SynthesisState {
+  statements: Statement[];
+  slotsUsed: number;
+  slotsTotal: number;
+}
+
 // Mirrors toClientMembership() — the pseudonymous handle for THIS idea.
 export interface Membership {
   id: string;

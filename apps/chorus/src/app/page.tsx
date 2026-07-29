@@ -5,6 +5,7 @@ import ComposeButton from '@/components/compose/ComposeButton';
 import FilterRail from '@/components/tags/FilterRail';
 import TagPortrait from '@/components/tags/TagPortrait';
 import SortBar from '@/components/tags/SortBar';
+import LiveWall from '@/components/LiveWall';
 import { activeTagIds, activeSort, type SearchParams } from '@/lib/filters';
 import type { ConfigResponse, WallResponse } from '@/lib/types';
 
@@ -52,6 +53,9 @@ export default async function Home({
 
   return (
     <main className="mx-auto max-w-md px-5 pb-24">
+      {/* Announces memories that arrive while you're here; never moves what
+          you're reading. */}
+      <LiveWall instanceId={memorial.instanceId} />
       {/* ── Who this is for ─────────────────────────────────────────────── */}
       <header className="pt-12 pb-10">
         {memorial.subjectPhotoUrl ? (

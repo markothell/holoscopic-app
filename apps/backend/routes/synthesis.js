@@ -126,7 +126,7 @@ const BAD_REQUEST_ERRORS = new Set([
 const NOT_FOUND_ERRORS = new Set(['Node not found', 'Spectrum not found', 'Idea not found', 'Entry not found', 'Statement not found']);
 // 409: the caller is out of slots (D14), or is acting on a settled statement.
 const CONFLICT_ERRORS = new Set(['This idea is full', 'That handle is taken on this idea']);
-const CONFLICT_PATTERNS = [/holding all \d+ of your statement slots/, /reached Synthesis on that statement/, /statement was withdrawn/];
+const CONFLICT_PATTERNS = [/holding all \d+ of your statement slots/, /statement was withdrawn/];
 // M1 private-first guards: the target isn't a published post (§8).
 const FORBIDDEN_ERRORS = new Set([
   'You can only respond to a published thought',
@@ -228,8 +228,15 @@ router.post('/ideas/:code/join', async (req, res) => {
 
 // The browse directory (D13): public ideas only. Deliberately mounted BEFORE
 // `/ideas/:code` so the literal path wins over the code parameter.
+//
+// Signed-in accounts only. "Public" means any ACCOUNT can find and join an
+// idea — it does not mean open to the internet. The rows carry each idea's
+// join code, which is the credential that gets you in, so an unauthenticated
+// read here would hand out the whole directory's keys.
 router.get('/ideas/public', async (req, res) => {
   try {
+    const userId = await requireUser(req, res);
+    if (!userId) return;
     const limit = Math.min(Number(req.query.limit) || 50, 100);
     const skip = Math.max(Number(req.query.skip) || 0, 0);
     const ideas = await ideaFunnel.listPublicIdeas({ limit, skip });
@@ -285,6 +292,43 @@ router.get('/ideas/:code/collaborators', async (req, res) => {
       return { ...m, publishedCount: published, replyCount: replies };
     }));
     res.json({ collaborators });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// One collaborator's map, as it exists inside THIS idea — the social page's
+// way into someone's thinking rather than just their name.
+//
+// PUBLISHED NODES ONLY. This is the one place another member's map is
+// readable, and the private-first contract holds exactly as it does on /feed:
+// drafts never leave their author's own map. The filter is here, server-side,
+// and the caller cannot widen it.
+router.get('/ideas/:code/collaborators/:handle/map', async (req, res) => {
+  try {
+    const instance = await Instance.findOne({ slug: `idea-${String(req.params.code).toLowerCase()}` });
+    if (!instance) return res.status(404).json({ error: 'Idea not found' });
+    const userId = await requireUser(req, res);
+    if (!userId) return;
+    const mine = await SynMembership.findOne({ instanceId: instance.id, userId });
+    if (!mine) return res.status(403).json({ error: 'Join this idea to see how people are thinking' });
+
+    const theirs = await SynMembership.findOne({
+      instanceId: instance.id,
+      handleLower: String(req.params.handle).toLowerCase(),
+    });
+    if (!theirs) return res.status(404).json({ error: 'No such collaborator' });
+
+    const nodes = await SynNode.find({
+      instanceId: instance.id,
+      ownerId: theirs.userId,
+      visibility: 'published',
+    }).sort({ publishedAt: -1 });
+
+    res.json({
+      collaborator: ideaFunnel.toClientMembership(theirs),
+      nodes: nodes.map(nodeFunnel.toClient),
+    });
   } catch (error) {
     fail(res, error);
   }
@@ -707,19 +751,23 @@ router.post('/statements/:id/vote', async (req, res) => {
   try {
     const membership = await requireMember(req, res);
     if (!membership) return;
-    const { statement, reachedSynthesis } = await statementFunnel.voteStatement({
+    const { statement, state, enteredSynthesis, leftSynthesis } = await statementFunnel.voteStatement({
       instanceId: req.instanceId,
       statementId: req.params.id,
       userId: membership.userId,
     });
     const wire = statementFunnel.toClient(statement);
-    nodeFunnel.emitToIdea(req.instanceId, 'statement_upserted', { statement: wire });
-    if (reachedSynthesis) {
-      nodeFunnel.emitToIdea(req.instanceId, 'synthesis_reached', { statement: wire });
+    nodeFunnel.emitToIdea(req.instanceId, 'statement_upserted', { statement: wire, state });
+    // The measure moved across the bar in one direction or the other — every
+    // open client needs to redraw the meter and the map treatment.
+    if (enteredSynthesis || leftSynthesis) {
+      nodeFunnel.emitToIdea(req.instanceId, 'synthesis_changed', { state });
     }
     res.json({
       statement: statementFunnel.toClient(statement, { userId: membership.userId }),
-      reachedSynthesis,
+      state,
+      enteredSynthesis,
+      leftSynthesis,
     });
   } catch (error) {
     fail(res, error);
@@ -731,15 +779,16 @@ router.delete('/statements/:id', async (req, res) => {
   try {
     const membership = await requireMember(req, res);
     if (!membership) return;
-    const statement = await statementFunnel.withdrawStatement({
+    const { statement, state, leftSynthesis } = await statementFunnel.withdrawStatement({
       instanceId: req.instanceId,
       statementId: req.params.id,
       userId: membership.userId,
     });
     nodeFunnel.emitToIdea(req.instanceId, 'statement_upserted', {
-      statement: statementFunnel.toClient(statement),
+      statement: statementFunnel.toClient(statement), state,
     });
-    res.json({ statement: statementFunnel.toClient(statement, { userId: membership.userId }) });
+    if (leftSynthesis) nodeFunnel.emitToIdea(req.instanceId, 'synthesis_changed', { state });
+    res.json({ statement: statementFunnel.toClient(statement, { userId: membership.userId }), state });
   } catch (error) {
     fail(res, error);
   }

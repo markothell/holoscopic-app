@@ -50,6 +50,25 @@ function newId() {
   return crypto.randomUUID().substring(0, 8);
 }
 
+// ── Broadcast ───────────────────────────────────────────────────────────────
+// Injected in production by websocket-server.js, like utils/holons.js#setIO.
+// Left null in tests, so the funnel's unit tests never need a socket server.
+let _io = null;
+
+function setIO(io) { _io = io; }
+
+// Fire-and-forget, and deliberately never awaited. A wall that fails to
+// animate is a small loss; a memory that fails to save is the whole product.
+// Nothing about persistence may depend on a socket being connected.
+function broadcast(instanceId, event, payload) {
+  if (!_io || !instanceId) return;
+  try {
+    _io.to(`memorial:${instanceId}`).emit(event, payload);
+  } catch (err) {
+    console.error('[memories] broadcast failed:', err.message);
+  }
+}
+
 // ── Transcription hook ──────────────────────────────────────────────────────
 // Injected in production by websocket-server.js, exactly like Synthesis's
 // setIndex(). Default is a no-op so unit tests and any environment without
@@ -471,6 +490,16 @@ async function createMemory({
   // Stamps the new size onto every member of the thread, this memory included.
   const liveCount = await syncThreadCount({ store, instanceId, threadId: memory.threadId });
   memory.threadCount = liveCount;
+
+  // Tell anyone with the wall open. The payload goes through toClient like
+  // every other read, so nothing private rides along — and it carries no
+  // contributorId, meaning a listener can't tell whose memory it is beyond
+  // the name they chose to sign it with.
+  const tagMap = await tagMapFor({ store, instanceId });
+  broadcast(instanceId, 'memory_created', {
+    memory: toClient(memory, { tagMap, threadCount: liveCount }),
+  });
+
   fireTranscription(memory);
   return memory;
 }
@@ -572,6 +601,9 @@ async function setMemoryStatus({ store = mongoStore, instanceId, id, status, rea
   // Hiding or restoring changes how many LIVE memories the thread has, so the
   // whole thread's stored count has to move with it.
   await syncThreadCount({ store, instanceId, threadId: memory.threadId });
+  // Only the id and the new status — a hidden memory's content must not be
+  // pushed to every open wall on its way out.
+  broadcast(instanceId, 'memory_updated', { id, status });
   return updated;
 }
 
@@ -595,7 +627,7 @@ async function flagMemory({ store = mongoStore, instanceId, id, contributorId })
 async function attachTranscript({ store = mongoStore, instanceId, id, text, status = 'ready', provider = 'deepgram' }) {
   const memory = await store.findMemory(instanceId, id);
   if (!memory || !memory.body?.audio?.url) return null;
-  return store.updateMemory(instanceId, id, {
+  const updated = await store.updateMemory(instanceId, id, {
     'body.audio.transcript': {
       text: String(text || ''),
       status,
@@ -603,6 +635,11 @@ async function attachTranscript({ store = mongoStore, instanceId, id, text, stat
       updatedAt: new Date(),
     },
   });
+  // Just the id: a page showing this memory re-fetches it. Pushing transcript
+  // text to every open wall would be a lot of bytes for something only one
+  // page is looking at.
+  broadcast(instanceId, 'transcript_ready', { id, status });
+  return updated;
 }
 
 // ── Read paths ──────────────────────────────────────────────────────────────
@@ -773,6 +810,7 @@ async function getMemoryWithThread({
 }
 
 module.exports = {
+  setIO,
   setTranscriber,
   syncThreadCount,
   SORTS,

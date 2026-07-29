@@ -7,9 +7,18 @@ import { io, Socket } from 'socket.io-client';
 // this client to `syn:<instanceId>`, which broadcasts:
 //   node_published { node }        — a thought entered the community feed
 //   reply_upserted { postId, reply } — a public reply landed/changed on a post
+//   statement_upserted { statement, state } — a statement was put up, backed, or withdrawn
+//   synthesis_changed { state } — the group crossed the bar, either way
 const SOCKET_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4001';
 
-const COMMUNITY_EVENTS = ['node_published', 'reply_upserted'] as const;
+const COMMUNITY_EVENTS = [
+  'node_published',
+  'reply_upserted',
+  // The synthesis mechanism: a statement landed or changed, and (separately)
+  // the group's measure crossed the bar in one direction or the other.
+  'statement_upserted',
+  'synthesis_changed',
+] as const;
 export type CommunityEvent = (typeof COMMUNITY_EVENTS)[number];
 
 class SynthesisSocket {

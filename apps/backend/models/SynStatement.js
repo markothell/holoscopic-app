@@ -44,12 +44,16 @@ const synStatementSchema = new mongoose.Schema({
   // seed this, or did someone bring it themselves?"
   sourceUnionId: { type: String, default: null },
 
-  // 'live'        — on the leaderboard, holding one of its author's slots
-  // 'withdrawn'   — retired by its author; frees every slot it held
-  // 'synthesized' — cleared the bar; this idea has reached Synthesis
+  // 'live'      — on the board, holding one of its author's slots
+  // 'withdrawn' — retired by its author; frees every slot it held
+  //
+  // There is deliberately NO 'synthesized' status. Synthesis is a living
+  // measure of the group, recomputed from current votes (utils/synStatements.js
+  // #synthesisState), so no statement is ever marked the winner. A statement is
+  // the group's synthesis for exactly as long as the group is still behind it.
   status: {
     type: String,
-    enum: ['live', 'withdrawn', 'synthesized'],
+    enum: ['live', 'withdrawn'],
     default: 'live',
     index: true,
   },
@@ -59,8 +63,6 @@ const synStatementSchema = new mongoose.Schema({
   // "have I voted" and a count, and nothing else.
   voterIds:  { type: [String], default: [] },
   voteCount: { type: Number, default: 0 },
-
-  synthesizedAt: { type: Date, default: null },
 }, {
   timestamps: true,
   id: false,

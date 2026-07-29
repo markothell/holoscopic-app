@@ -121,12 +121,88 @@ function CitationChips({ citations, onOpenPost }: { citations: Citation[]; onOpe
   );
 }
 
+// The drafting half of the mechanism. The Union is raw material: a member
+// takes the group's read, puts it in words they will stand behind, and sends
+// it to the voting surface. Editable by design — an unedited LLM paragraph is
+// nobody's position, and the whole point is that a person commits to it.
+function StatementComposer({
+  instanceId,
+  userId,
+  seed,
+  onDone,
+}: {
+  instanceId: string;
+  userId: string;
+  seed: string;
+  onDone: () => void;
+}) {
+  const [text, setText] = useState(seed);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const remaining = 500 - text.length;
+
+  async function submit() {
+    if (!text.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await SynthesisService.submitStatement(instanceId, userId, text.trim());
+      onDone();
+    } catch (err) {
+      // 409 is the slot budget — a rule, not a fault.
+      setError(err instanceof ApiError ? err.message : 'That did not go through');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="tone-in rounded-2xl border px-4 py-4" style={{ borderColor: 'var(--own)', background: 'var(--dusk-raised)' }}>
+      <p className="eyebrow" style={{ color: 'var(--own)' }}>Your statement</p>
+      <p className="mt-1.5 text-[0.7rem] text-mist-faint">
+        Say it the way you would stand behind it. The group votes on these words.
+      </p>
+      <textarea
+        value={text}
+        onChange={e => setText(e.target.value.slice(0, 500))}
+        rows={5}
+        className="mt-3 w-full resize-none rounded-xl border px-3 py-2.5 text-sm outline-none"
+        style={{ borderColor: 'var(--line-strong)', background: 'var(--dusk-deep)', color: 'var(--mist)' }}
+        placeholder="Where this group actually stands…"
+      />
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <span className="eyebrow !text-[0.6rem] !text-mist-faint">{remaining} left</span>
+        <span className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onDone}
+            className="eyebrow !text-[0.6rem] underline"
+            style={{ color: 'var(--mist-faint)' }}
+          >
+            cancel
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={busy || !text.trim()}
+            className="rounded-full px-4 py-2 text-sm font-medium disabled:opacity-40"
+            style={{ background: 'var(--own)', color: 'var(--dusk-deep)' }}
+          >
+            {busy ? 'Sending…' : 'Put it to the group'}
+          </button>
+        </span>
+      </div>
+      {error && <p className="mt-2 text-sm" style={{ color: 'var(--live)' }}>{error}</p>}
+    </div>
+  );
+}
+
 export default function UnionOverlay({
   instanceId,
   userId,
   useMock,
   onClose,
   onOpenPost,
+  onStatementSubmitted,
 }: {
   instanceId: string;
   userId: string;
@@ -136,7 +212,11 @@ export default function UnionOverlay({
   // citations only) is forwarded so the caller (page.tsx -> MapGraph ->
   // PostOverlay) can scroll to and highlight that exact reply.
   onOpenPost: (nodeId: string, replyId?: string) => void;
+  // A submitted statement belongs on the voting surface, so the caller can
+  // hand the member straight over to it.
+  onStatementSubmitted?: () => void;
 }) {
+  const [composing, setComposing] = useState(false);
   const [brief, setBrief] = useState<DepthState>(EMPTY_DEPTH);
   const [full, setFull] = useState<DepthState>(EMPTY_DEPTH);
   const [expanded, setExpanded] = useState(false);
@@ -297,6 +377,29 @@ export default function UnionOverlay({
             >
               {expanded ? (busyDepth === 'full' ? 'Expanding…' : 'Refresh full read') : 'Expand'}
             </button>
+          )}
+
+          {/* The hand-off into the mechanism. Seeded with the union's own
+              words so the first act is editing rather than facing a blank
+              box — but it is a seed, not a submission. */}
+          {!useMock && !unconfigured && (
+            composing ? (
+              <StatementComposer
+                instanceId={instanceId}
+                userId={userId}
+                seed={brief.text}
+                onDone={() => { setComposing(false); onStatementSubmitted?.(); }}
+              />
+            ) : (
+              <button
+                onClick={() => setComposing(true)}
+                disabled={busyDepth !== null}
+                className="rounded-full px-4 py-3 text-sm font-medium disabled:opacity-40"
+                style={{ background: 'var(--own-soft)', color: 'var(--own)', border: '1px solid var(--own)' }}
+              >
+                {hasBrief ? 'Draft a statement from this' : 'Draft a statement'}
+              </button>
+            )
           )}
 
           {expanded && (

@@ -31,9 +31,7 @@ function memStore({ collaborators = 3, slots = 3, threshold = 2 / 3 } = {}) {
     },
     async saveStatement(doc) { docs.set(doc.id, doc); return doc; },
     async listLive(instanceId) {
-      return [...docs.values()].filter(
-        d => d.instanceId === instanceId && ['live', 'synthesized'].includes(d.status),
-      );
+      return [...docs.values()].filter(d => d.instanceId === instanceId && d.status === 'live');
     },
     async listHeldBy(instanceId, userId) {
       return [...docs.values()].filter(
@@ -134,53 +132,89 @@ test('threshold: votesNeeded rounds UP — a fraction of a collaborator never cl
   assert.equal(statements.votesNeeded(1, 2 / 3), 1, 'a lone collaborator still needs their own vote');
 });
 
-test('reaching Synthesis: just under the bar changes nothing', async () => {
+test('the measure: just under the bar, the group is not in synthesis', async () => {
   const store = memStore({ collaborators: 6 }); // needs 4
   const s = await submit(store, 'where we land');
   for (const u of ['alice', 'bob', 'cal']) {
     await statements.voteStatement({ store, instanceId: IDEA, statementId: s.id, userId: u });
   }
-  const stored = await store.getStatement(s.id);
-  assert.equal(stored.voteCount, 3);
-  assert.equal(stored.status, 'live');
+  const state = await statements.synthesisState({ store, instanceId: IDEA });
+  assert.equal(state.backing, 3);
+  assert.equal(state.inSynthesis, false);
+  assert.equal(state.share, 0.5);
   assert.equal(store._instance.config.synthesis.synthesisStatementId, null);
 });
 
-test('reaching Synthesis: at exactly the bar the statement and the idea are both stamped', async () => {
+test('the measure: at exactly the bar the group is in synthesis, and the idea is stamped', async () => {
   const store = memStore({ collaborators: 6 }); // needs 4
   const s = await submit(store, 'where we land');
   let result;
   for (const u of ['alice', 'bob', 'cal', 'dee']) {
     result = await statements.voteStatement({ store, instanceId: IDEA, statementId: s.id, userId: u });
   }
-  assert.equal(result.reachedSynthesis, true);
-  assert.equal(result.statement.status, 'synthesized');
-  assert.ok(result.statement.synthesizedAt);
+  assert.equal(result.enteredSynthesis, true);
+  assert.equal(result.state.inSynthesis, true);
+  assert.equal(result.state.leadingStatementId, s.id);
+  // The statement itself carries no winner flag — synthesis is the group's.
+  assert.equal(result.statement.status, 'live');
   assert.equal(store._instance.config.synthesis.synthesisStatementId, s.id);
   assert.ok(store._instance.config.synthesis.synthesisReachedAt);
 });
 
-// Once settled, a later statement overtaking on votes must NOT silently
-// reopen the question.
-test('reaching Synthesis: first past the post wins — a later statement does not overwrite it', async () => {
-  const store = memStore({ collaborators: 3, slots: 9 }); // needs 2
-  const first = await submit(store, 'first there');
-  const second = await submit(store, 'more popular later');
+// The heart of the living measure: backing drains away and the group is
+// simply no longer in synthesis. Nothing had to be reopened.
+test('the measure: losing backing drops the group back out of synthesis', async () => {
+  const store = memStore({ collaborators: 3 }); // needs 2
+  const s = await submit(store, 'we agree for now');
+  await statements.voteStatement({ store, instanceId: IDEA, statementId: s.id, userId: 'alice' });
+  const entered = await statements.voteStatement({ store, instanceId: IDEA, statementId: s.id, userId: 'bob' });
+  assert.equal(entered.enteredSynthesis, true);
+  assert.equal(store._instance.config.synthesis.synthesisStatementId, s.id);
 
-  await statements.voteStatement({ store, instanceId: IDEA, statementId: first.id, userId: 'alice' });
-  await statements.voteStatement({ store, instanceId: IDEA, statementId: first.id, userId: 'bob' });
-  assert.equal(store._instance.config.synthesis.synthesisStatementId, first.id);
-
-  for (const u of ['alice', 'bob', 'cal']) {
-    await statements.voteStatement({ store, instanceId: IDEA, statementId: second.id, userId: u });
-  }
-  const storedSecond = await store.getStatement(second.id);
-  assert.equal(storedSecond.voteCount, 3, 'it still collects votes');
-  assert.equal(storedSecond.status, 'live', 'but it does not become the synthesis');
-  assert.equal(store._instance.config.synthesis.synthesisStatementId, first.id, 'unchanged');
+  // Bob toggles his backing off.
+  const left = await statements.voteStatement({ store, instanceId: IDEA, statementId: s.id, userId: 'bob' });
+  assert.equal(left.leftSynthesis, true);
+  assert.equal(left.state.inSynthesis, false);
+  assert.equal(store._instance.config.synthesis.synthesisStatementId, null, 'the stamp clears too');
 });
 
-test('withdraw: only the author may, and never after Synthesis', async () => {
+// The third who never voted can still move the group. No ceremony.
+test('the measure: a better-backed statement takes over as the group synthesis', async () => {
+  const store = memStore({ collaborators: 4, slots: 9 }); // needs 3
+  const first = await submit(store, 'first wording');
+  const better = await submit(store, 'better wording');
+
+  for (const u of ['alice', 'bob', 'cal']) {
+    await statements.voteStatement({ store, instanceId: IDEA, statementId: first.id, userId: u });
+  }
+  assert.equal(store._instance.config.synthesis.synthesisStatementId, first.id);
+
+  // The quiet fourth reads it, disagrees, and backs the other wording — and
+  // two others move across with them.
+  for (const u of ['dee', 'alice', 'bob']) {
+    await statements.voteStatement({ store, instanceId: IDEA, statementId: better.id, userId: u });
+  }
+  // alice and bob moving across also drops `first` below the bar.
+  for (const u of ['alice', 'bob']) {
+    await statements.voteStatement({ store, instanceId: IDEA, statementId: first.id, userId: u });
+  }
+
+  const state = await statements.synthesisState({ store, instanceId: IDEA });
+  assert.equal(state.leadingStatementId, better.id, 'the group moved');
+  assert.equal(state.inSynthesis, true);
+  assert.equal(store._instance.config.synthesis.synthesisStatementId, better.id);
+});
+
+test('the measure: stillToWeighIn counts collaborators who have spent no slot', async () => {
+  const store = memStore({ collaborators: 5 });
+  const s = await submit(store, 'a claim');                     // alice engaged
+  await statements.voteStatement({ store, instanceId: IDEA, statementId: s.id, userId: 'bob' });
+  const state = await statements.synthesisState({ store, instanceId: IDEA });
+  assert.equal(state.stillToWeighIn, 3, 'five collaborators, two have acted');
+});
+
+// They are your words. Agreement must not become a trap.
+test('withdraw: only the author may — and may even withdraw the current synthesis', async () => {
   const store = memStore({ collaborators: 3 }); // needs 2
   const s = await submit(store, 'mine');
   await assert.rejects(
@@ -190,10 +224,11 @@ test('withdraw: only the author may, and never after Synthesis', async () => {
 
   await statements.voteStatement({ store, instanceId: IDEA, statementId: s.id, userId: 'alice' });
   await statements.voteStatement({ store, instanceId: IDEA, statementId: s.id, userId: 'bob' });
-  await assert.rejects(
-    () => statements.withdrawStatement({ store, instanceId: IDEA, statementId: s.id, userId: 'alice' }),
-    /reached Synthesis/,
-  );
+  assert.equal(store._instance.config.synthesis.synthesisStatementId, s.id);
+
+  const result = await statements.withdrawStatement({ store, instanceId: IDEA, statementId: s.id, userId: 'alice' });
+  assert.equal(result.leftSynthesis, true);
+  assert.equal(store._instance.config.synthesis.synthesisStatementId, null);
 });
 
 // ── Leaderboard ─────────────────────────────────────────────────────────────
@@ -227,25 +262,28 @@ test('leaderboard: a synthesized statement pins to the top and reports my slot u
 
   const board = await statements.leaderboard({ store, instanceId: IDEA, userId: 'alice' });
   assert.equal(board.statements[0].text, 'settled');
-  assert.equal(board.statements[0].status, 'synthesized');
-  assert.equal(board.synthesisStatementId, settled.id);
+  assert.equal(board.statements[0].isSynthesis, true, 'the leading wording, above the bar');
+  assert.equal(board.leadingStatementId, settled.id);
+  assert.equal(board.inSynthesis, true);
   assert.equal(board.slotsTotal, 3);
-  // A synthesized statement leaves 'live', so it releases the slots it held —
-  // its author's and its voters' alike. Slots exist to ration LIVE contention,
-  // and the question this one settled is no longer contested.
-  assert.equal(board.slotsUsed, 0, 'settling releases the slot it held');
+  // Slots stay held while the statement is live — which it always is, since
+  // synthesis never freezes anything. The group can still move.
+  assert.equal(board.slotsUsed, 1, 'alice still holds the slot she authored with');
 });
 
-test('slot budget: a statement that reaches Synthesis releases every slot it held', async () => {
-  const store = memStore({ collaborators: 3, slots: 3 }); // needs 2
-  const s = await submit(store, 'settled');
+test('leaderboard: reports each statement\'s share of the group and the distance to the bar', async () => {
+  const store = memStore({ collaborators: 4, slots: 9 }); // needs 3
+  const s = await submit(store, 'a wording');
   await statements.voteStatement({ store, instanceId: IDEA, statementId: s.id, userId: 'bob' });
-  assert.equal(await statements.slotsUsed({ store, instanceId: IDEA, userId: 'bob' }), 1);
 
-  await statements.voteStatement({ store, instanceId: IDEA, statementId: s.id, userId: 'cal' });
-  assert.equal(store._instance.config.synthesis.synthesisStatementId, s.id, 'the bar was cleared');
-  assert.equal(await statements.slotsUsed({ store, instanceId: IDEA, userId: 'bob' }), 0, 'voter freed');
-  assert.equal(await statements.slotsUsed({ store, instanceId: IDEA, userId: 'alice' }), 0, 'author freed');
+  const board = await statements.leaderboard({ store, instanceId: IDEA, userId: 'alice' });
+  const row = board.statements[0];
+  assert.equal(row.voteCount, 1);
+  assert.equal(row.share, 0.25, 'one of four collaborators');
+  assert.equal(row.votesNeeded, 2, 'two more to carry the group');
+  assert.equal(row.isLeading, true);
+  assert.equal(row.isSynthesis, false, 'leading is not the same as reaching');
+  assert.equal(board.share, 0.25, 'the group meter tracks its best-backed wording');
 });
 
 test('submitStatement: requires text', async () => {

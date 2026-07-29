@@ -8,10 +8,11 @@ Design source of truth is `PLAN.md` (§-numbered, settled decisions D1–D11 in 
 relevant § before changing behavior it describes. The Mongoose model files carry long header
 comments explaining why each field exists.
 
-**M0, M1 and M2 are built and verified**, including a real browser recording: 14s of WebM/Opus,
-48 captured peaks, transcript returned by Deepgram. **iOS Safari is the one path still untested**
-(it takes the MP4 branch and the no-duration-metadata workaround). **M3 is in progress**: tag
-filtering, the tag portrait, and sockets.
+**M0–M3 are built and verified**, including a real browser recording (14s of WebM/Opus, 48 captured
+peaks, Deepgram transcript) and live socket updates. **iOS Safari is the one path still untested**
+— it takes the MP4 branch and the no-duration-metadata workaround. **M4 is next and gates launch**:
+the curate page, flags, and takedown. Live-on-submit means the curator link is the only safety
+valve, so do not hand anyone a real memorial before it exists.
 
 Blob store: `chorus-memories` (public, iad1), connected to the `chorus` Vercel project, so
 `vercel env pull` supplies `BLOB_READ_WRITE_TOKEN`.
@@ -106,6 +107,11 @@ under `node --test` with no DB, no Blob, no Deepgram. Keep that when adding func
 - **Tags in a sentence keep the ruled line (`variant="rule"`).** Rendering them as chips there
   turns the signature element into a tag UI, which is the one thing the visual language rules out.
   Chips are for filter *controls* only.
+- **The socket room key is the RESOLVED instance id, never the slug.** `NEXT_PUBLIC_INSTANCE_ID`
+  holds `chorus`; the funnel broadcasts to `memorial:<req.instanceId>` (`6691dd8d`). Joining on the
+  slug subscribes to a room nothing publishes to, and it fails completely silently — the socket
+  connects, the join is accepted, no event ever arrives. `LiveWall` takes the id from
+  `GET /config`.
 - **New models need `{ id: false }`** in schema options, like every model in this repo.
 - **The compose sheet must never close on a failed send.** Those fields hold the only copy of
   something that may have taken ten minutes to write. Same rule governs the M2 recording stash.

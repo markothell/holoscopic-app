@@ -1,5 +1,5 @@
 import { apiFetch, apiStream } from './api';
-import type { Collaborator, FrameSpec, Idea, Membership, MyIdea, NodeContent, NodeKind, SynthesisCache, SynthesisDepth, SynFrame, SynNode, SynthesisReply } from '@/lib/types';
+import type { Collaborator, FrameSpec, Idea, Membership, MyIdea, NodeContent, NodeKind, Statement, StatementBoard, SynthesisCache, SynthesisDepth, SynthesisState, SynFrame, SynNode, SynthesisReply } from '@/lib/types';
 
 // Typed wrappers for the live REST surface (routes/synthesis.js). Matches
 // its two addressing schemes (apps/synthesis/PLAN.md §5):
@@ -46,6 +46,45 @@ export const SynthesisService = {
   // The social page: who is working on this idea. Collaborators only.
   collaborators(code: string, userId: string) {
     return apiFetch<{ collaborators: Collaborator[] }>(`/synthesis/ideas/${code}/collaborators`, { userId });
+  },
+
+  // One collaborator's published thinking inside this idea — the way into
+  // someone's map from the social page. Published nodes only, filtered
+  // server-side.
+  collaboratorMap(code: string, handle: string, userId: string) {
+    return apiFetch<{ collaborator: Membership; nodes: SynNode[] }>(
+      `/synthesis/ideas/${code}/collaborators/${encodeURIComponent(handle)}/map`,
+      { userId },
+    );
+  },
+
+  // ── Statements: the synthesis mechanism ────────────────────────────────
+  // The voting surface — ranked statements wrapped in the group's live
+  // measure and my remaining slots.
+  statements(instanceId: string, userId: string) {
+    return apiFetch<StatementBoard>('/synthesis/statements', { instanceId, userId });
+  },
+
+  submitStatement(instanceId: string, userId: string, text: string, sourceUnionId?: string | null) {
+    return apiFetch<{ statement: Statement }>('/synthesis/statements', {
+      method: 'POST', body: { text, sourceUnionId: sourceUnionId ?? null }, instanceId, userId,
+    });
+  },
+
+  // A toggle: backing a statement, or taking that backing away. Either can
+  // move the group across the bar, so the response carries the new state.
+  voteStatement(instanceId: string, userId: string, statementId: string) {
+    return apiFetch<{ statement: Statement; state: SynthesisState; enteredSynthesis: boolean; leftSynthesis: boolean }>(
+      `/synthesis/statements/${statementId}/vote`,
+      { method: 'POST', instanceId, userId },
+    );
+  },
+
+  withdrawStatement(instanceId: string, userId: string, statementId: string) {
+    return apiFetch<{ statement: Statement; state: SynthesisState }>(
+      `/synthesis/statements/${statementId}`,
+      { method: 'DELETE', instanceId, userId },
+    );
   },
 
   // Flat indexed scan of the caller's own map (SynNode.find({instanceId, ownerId})).

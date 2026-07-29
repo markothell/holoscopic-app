@@ -7,10 +7,13 @@ import MapGraph from '@/components/graph/MapGraph';
 import OverlayDock, { type OverlayKey } from '@/components/overlays/OverlayDock';
 import FeedOverlay from '@/components/overlays/FeedOverlay';
 import UnionOverlay from '@/components/overlays/UnionOverlay';
+import StatementsOverlay from '@/components/statements/StatementsOverlay';
+import PeopleOverlay from '@/components/ideas/PeopleOverlay';
 import IdeaList from '@/components/ideas/IdeaList';
 import LoggedOutLanding from '@/components/ideas/LoggedOutLanding';
 import { useIdeas } from '@/hooks/useIdeas';
 import { synthesisSocket } from '@/services/socket';
+import { SynthesisService } from '@/services/synthesisService';
 import { MOCK_COMMUNITY, MOCK_MAX_MEMBERS, MOCK_USER_HANDLE, MOCK_USER_ID } from '@/lib/mock';
 
 // The `synthesis` PARENT_INSTANCE_ID (services/api.ts) only fronts auth and
@@ -57,6 +60,13 @@ export default function HomePage() {
   const [openPostRequest, setOpenPostRequest] = useState<{ nodeId: string; replyId?: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
+  // The group's live measure, held here so the map's home hub and the dock
+  // agree with the voting surface without either owning the other.
+  const [inSynthesis, setInSynthesis] = useState(false);
+  // The roster is opened from the collaborator count, never from the dock:
+  // it answers a question you have while looking at the map, and the dock is
+  // already carrying the four destinations.
+  const [showPeople, setShowPeople] = useState(false);
 
   const showMap = demoMode || (isAuthenticated && !!idea);
 
@@ -89,6 +99,21 @@ export default function HomePage() {
     return () => synthesisSocket.disconnect();
   }, [useMock, instanceId]);
 
+  // Seed the measure on open, then follow the room. Synthesis is living, so
+  // this listens for movement in BOTH directions rather than latching once.
+  useEffect(() => {
+    if (useMock) { setInSynthesis(false); return; }
+    let cancelled = false;
+    SynthesisService.statements(instanceId, effectiveUserId)
+      .then(board => { if (!cancelled) setInSynthesis(board.inSynthesis); })
+      .catch(() => {});
+    const off = synthesisSocket.on('synthesis_changed', payload => {
+      const state = (payload as { state?: { inSynthesis?: boolean } })?.state;
+      if (state) setInSynthesis(!!state.inSynthesis);
+    });
+    return () => { cancelled = true; off(); };
+  }, [useMock, instanceId, effectiveUserId]);
+
   if (isLoading) return <LoadingShell label="Tuning in…" />;
 
   if (!showMap) {
@@ -119,7 +144,13 @@ export default function HomePage() {
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="pointer-events-auto rounded-2xl border border-line px-3 py-2" style={{ background: 'rgba(38,34,51,0.85)', backdropFilter: 'blur(8px)' }}>
           <p className="eyebrow" style={{ color: 'var(--own)' }}>{ideaTitle}{demoMode && !idea && ' · demo'}</p>
-          <p className="text-[0.7rem] text-mist-faint">{memberCount}/{MOCK_MAX_MEMBERS} voices</p>
+          <button
+            onClick={() => setShowPeople(true)}
+            className="block text-left text-[0.7rem] text-mist-faint underline decoration-dotted"
+            title="See who is working on this idea"
+          >
+            {memberCount}/{MOCK_MAX_MEMBERS} voices
+          </button>
           {ideaCode && (
             <button
               onClick={copyCode}
@@ -162,6 +193,7 @@ export default function HomePage() {
 
       <MapGraph
         instanceId={instanceId}
+        inSynthesis={inSynthesis}
         userId={effectiveUserId}
         ownerHandle={effectiveHandle}
         useMock={useMock}
@@ -178,13 +210,33 @@ export default function HomePage() {
           onOpenPost={id => { setOverlay(null); setOpenPostRequest({ nodeId: id }); }}
         />
       )}
-      {overlay === 'ask' && (
+      {overlay === 'union' && (
         <UnionOverlay
           instanceId={instanceId}
           userId={effectiveUserId}
           useMock={useMock}
           onClose={() => setOverlay(null)}
           onOpenPost={(nodeId, replyId) => { setOverlay(null); setOpenPostRequest({ nodeId, replyId }); }}
+          onStatementSubmitted={() => setOverlay('statements')}
+        />
+      )}
+      {overlay === 'statements' && (
+        <StatementsOverlay
+          instanceId={instanceId}
+          userId={effectiveUserId}
+          useMock={useMock}
+          onClose={() => setOverlay(null)}
+          onDraft={() => setOverlay('union')}
+        />
+      )}
+
+      {showPeople && (
+        <PeopleOverlay
+          code={ideaCode}
+          userId={effectiveUserId}
+          useMock={useMock}
+          onClose={() => setShowPeople(false)}
+          onOpenPost={id => { setShowPeople(false); setOpenPostRequest({ nodeId: id }); }}
         />
       )}
 

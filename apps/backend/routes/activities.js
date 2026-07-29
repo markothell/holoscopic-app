@@ -98,9 +98,26 @@ function isComplete(activity, activityEntries) {
 }
 
 async function closeAndSettle(activity, activityEntries, instanceId, reason) {
+  // Claim the activity before paying anything out. The status flip is the
+  // claim: it matches only while the activity is still active, so of several
+  // concurrent triggers — the periodic sweep, a final vote completing the
+  // table, a settle-on-read — exactly one proceeds to settlement.
+  //
+  // Previously this assigned `status` in memory and saved afterwards, so two
+  // triggers could both read 'active', both settle, and both pay.
+  const claimed = await Activity.findOneAndUpdate(
+    { id: activity.id, status: 'active' },
+    { $set: { status: 'completed' } },
+    { new: true },
+  );
+  if (!claimed) return false; // already closed by someone else
+
+  // Settle against the claimed document so stake.settled flags are written on
+  // the copy that won, not on a stale in-memory one.
+  const summary = await settleActivityStakes(claimed, activityEntries, instanceId);
+  await claimed.save();
+  // Keep the caller's object consistent with what was persisted.
   activity.status = 'completed';
-  const summary = await settleActivityStakes(activity, activityEntries, instanceId);
-  await activity.save();
   // The payout is the payoff — tell every affected player what happened
   for (const [userId, s] of Object.entries(summary)) {
     const parts = [];
@@ -112,6 +129,7 @@ async function closeAndSettle(activity, activityEntries, instanceId, reason) {
     } catch (e) { console.error('[activities] close notify error:', e.message); }
   }
   console.log(`[activities] closed "${activity.title}" (${reason}), settled ${Object.keys(summary).length} players`);
+  return true;
 }
 
 async function sweepExpiredActivities(req) {

@@ -38,6 +38,7 @@ import { synthesisSocket } from '@/services/socket';
 
 function buildFlow(
   nodes: SynNode[], marryMode: boolean, marrySelection: string[], onOpenSource: (id: string) => void,
+  inSynthesis: boolean,
 ): { flowNodes: Node[]; flowEdges: BuiltInEdge[] } {
   const laid = layoutMap(nodes);
   const onMap = new Set(nodes.map(n => n.id));
@@ -55,6 +56,7 @@ function buildFlow(
       marryMode,
       eligible: !eligibleKind || eligibleKind === node.kind || marrySelection.includes(node.id),
       hubTier,
+      inSynthesis,
       onOpenSource,
     } satisfies SynNodeData,
     draggable: false,
@@ -87,9 +89,11 @@ function buildFlow(
 }
 
 function GraphInner({
-  instanceId, userId, ownerHandle, useMock, openPostRequest, onOpenPostRequestHandled,
+  instanceId, userId, ownerHandle, useMock, inSynthesis = false, openPostRequest, onOpenPostRequestHandled,
 }: {
   instanceId: string; userId: string; ownerHandle: string; useMock: boolean;
+  // The group's live measure, drawn on the idea's home hub.
+  inSynthesis?: boolean;
   openPostRequest: { nodeId: string; replyId?: string } | null;
   onOpenPostRequestHandled: () => void;
 }) {
@@ -213,8 +217,8 @@ function GraphInner({
   }, []);
 
   const { flowNodes, flowEdges } = useMemo(
-    () => buildFlow(nodes, marryMode, marrySelection, openSource),
-    [nodes, marryMode, marrySelection, openSource],
+    () => buildFlow(nodes, marryMode, marrySelection, openSource, inSynthesis),
+    [nodes, marryMode, marrySelection, openSource, inSynthesis],
   );
 
   const sheetNode = sheetNodeId ? byId.get(sheetNodeId) ?? null : null;
@@ -496,6 +500,7 @@ function GraphInner({
 
 export default function MapGraph(props: {
   instanceId: string; userId: string; ownerHandle: string; useMock: boolean;
+  inSynthesis?: boolean;
   openPostRequest: { nodeId: string; replyId?: string } | null;
   onOpenPostRequestHandled: () => void;
 }) {

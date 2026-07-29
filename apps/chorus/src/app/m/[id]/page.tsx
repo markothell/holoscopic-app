@@ -5,6 +5,7 @@ import PromptSentence from '@/components/PromptSentence';
 import ComposeButton from '@/components/compose/ComposeButton';
 import AudioPill from '@/components/audio/AudioPill';
 import TagLink from '@/components/tags/TagLink';
+import LiveWall from '@/components/LiveWall';
 import { ApiError } from '@/services/api';
 import type { Memory } from '@/lib/types';
 
@@ -69,6 +70,8 @@ export default async function MemoryPage({
 
   return (
     <main className="mx-auto max-w-md px-5 pb-24">
+      {/* Lets a transcript appear the moment Deepgram returns it. */}
+      <LiveWall instanceId={config.memorial.instanceId} announce={false} />
       <nav className="pt-8 pb-6">
         <Link
           href="/"

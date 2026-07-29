@@ -30,6 +30,12 @@
 
   --join: #55C2A8; /* teal — a marriage / join node */
   --join-soft: #1D3A34;
+  /* Synthesis — the GROUP measure, deliberately a brighter, cooler aqua than
+     --join and always drawn as a DOUBLE ring, so "this group has found shared
+     words" never reads as "these two thoughts were joined". Two devices apart
+     (hue and treatment) because they sit on the same map at the same time. */
+  --synthesis: #6EE7C7;
+  --synthesis-soft: #17403A;
   --live: #E2735A;      /* coral — published / live state */
   --live-soft: #3D241E;
 
@@ -53,6 +59,8 @@
   --color-borrowed-soft: var(--borrowed-soft);
   --color-join: var(--join);
   --color-join-soft: var(--join-soft);
+  --color-synthesis: var(--synthesis);
+  --color-synthesis-soft: var(--synthesis-soft);
   --color-live: var(--live);
   --color-live-soft: var(--live-soft);
   --font-display: var(--font-fraunces);
