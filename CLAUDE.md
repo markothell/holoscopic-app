@@ -111,6 +111,29 @@ Allowed origins from `CLIENT_URL` env var (comma-separated) in `apps/backend/.en
 - Do NOT return another user's identity on voted-for entries — redaction happens in the API layer (`entries.toRedacted`), never client-side.
 - Do NOT use `maxEntries: 0` unless you intend solo tracker mode (creator-only, unlimited slots).
 - Do NOT add new activity types to the DB schema enum without registering them in `@hs/activities`.
+- Do NOT run `git add -A` / `git add .` / `git commit -a` — other agents are editing this tree. See **Working in a Shared Tree** below.
+
+## Working in a Shared Tree
+
+**Assume another agent is editing this repo right now.** Several usually are — one per app — in the same working directory, on the same branch, with dev servers running. The working tree, the git index, and the database are shared mutable state. Most of the rules below exist because ignoring one of them cost real work.
+
+**Never stage or commit paths you did not edit.**
+
+- `git add -A`, `git add .`, and `git commit -a` are banned. They sweep up whatever another agent has half-finished, and the result is one commit containing two unrelated features under a message describing only one of them. *(This has happened: five security fixes are buried inside commit `4a8c6f3`, whose message is about Chorus.)*
+- Commit with `git commit --only <explicit paths> -m "…"`. It ignores whatever else is staged and leaves the index untouched, which is exactly right when someone else pre-staged their own work.
+- Run `git status` before committing. If files you never opened are dirty, that is another agent's work in progress — leave it alone.
+- Renames pair up: `git add` on one side of a detected rename can pull in the whole rename set. Check `git diff --cached --name-only` after staging and before committing.
+
+**Never restart or kill another agent's dev server.** All six ports are usually live (`4000`–`4005`). If you need a server, start your own on a spare port and stop it when done.
+
+**Local dev points at the production database.** `apps/backend/.env.local`'s `MONGODB_URI` is the live Atlas cluster, so:
+- Any seed, migration, or reset script you run "locally" hits production. Read `scripts/reset-db-for-launch.js` before running anything in `scripts/`.
+- Dev has `autoIndex: true`, so **editing an index declaration in `models/*.js` creates that index on production** the moment nodemon restarts. Production itself has `autoIndex: false`; real index changes go through `scripts/ensure-indexes.js`.
+- Prefer read-only queries when exploring. If you need to write test data, ask first.
+
+**Don't fix failing tests in another app's area.** A red test in a file you did not touch is usually an agent mid-change. Report it; do not "helpfully" repair it and collide with their next write.
+
+**Report what you swept.** If a commit of yours ended up containing someone else's files anyway, say so plainly in the response rather than letting it pass silently.
 
 ## When to Escalate to the User
 
