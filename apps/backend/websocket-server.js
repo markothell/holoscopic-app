@@ -342,6 +342,13 @@ function loadAPIRoutes() {
       app.use('/api/memorial', memorialWriteLimiter, memorialRoutes);
       apiRoutesLoaded = true;
       console.log('✅ API routes loaded successfully');
+
+      // Periodic settlement, replacing the sweeps that used to run inline on
+      // GET /topics and GET /activities. Started here rather than at boot
+      // because it needs Mongo, and injected with closeAndSettle so
+      // utils/sweeps.js never imports from routes/.
+      const { startJobs } = require('./jobs');
+      startJobs({ closeAndSettle: require('./routes/activities').closeAndSettle });
     } catch (error) {
       console.error('❌ Error loading API routes:', error.message);
     }

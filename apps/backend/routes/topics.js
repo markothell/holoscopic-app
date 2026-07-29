@@ -159,11 +159,16 @@ router.post('/:id/support', async (req, res) => {
   try {
     const { instanceId } = req;
     const config = req.instance.config;
-    await sweepExpired(instanceId, config);
 
     const topic = await Topic.findOne({ id: req.params.id, instanceId });
     if (!topic) return res.status(404).json({ error: 'Topic not found' });
     if (topic.status !== 'nominated') return res.status(400).json({ error: 'Topic is no longer open for support' });
+    // A topic past its deadline is closed even if the sweep has not reached it
+    // yet (it runs on an interval now, not on read). Checking the timestamp
+    // directly is both cheaper and more accurate than settling first.
+    if (topic.expiresAt && topic.expiresAt <= new Date()) {
+      return res.status(400).json({ error: 'Topic is no longer open for support' });
+    }
     if (topic.nominatedBy === userId) return res.status(400).json({ error: 'Cannot support your own nomination' });
     if (topic.supporters.some(s => s.userId === userId)) return res.status(400).json({ error: 'Already supporting this topic' });
 

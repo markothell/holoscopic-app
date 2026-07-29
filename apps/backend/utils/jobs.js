@@ -21,8 +21,13 @@ async function withLock(name, ttlMs, fn) {
 
   let acquired = false;
   try {
+    // Only an expired lease can be taken. Note there is deliberately no
+    // "…or I already hold it" clause: that would let this process re-enter its
+    // own lock, so two overlapping ticks in ONE process — a sweep running
+    // longer than the interval — would both proceed. The lock has to exclude
+    // the local caller as strictly as a remote one.
     const res = await JobLock.findOneAndUpdate(
-      { name, $or: [{ expiresAt: { $lt: now } }, { holder: HOLDER }] },
+      { name, expiresAt: { $lt: now } },
       { $set: { holder: HOLDER, expiresAt, updatedAt: now } },
       { new: true, upsert: true },
     );
