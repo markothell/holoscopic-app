@@ -119,6 +119,11 @@ async function sweepExpiredActivities(req) {
   const topicsActivityId = req.instance?.config?.topicsActivityId || null;
   const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
   const expired = await Activity.find({
+    // Instance scope is required, not an optimization. Without it this query
+    // matched every active activity on the platform, so a request to instance
+    // A force-closed instance B's maps — using A's activityWindowHours and A's
+    // topicsActivityId exemption, neither of which applies to B.
+    instanceId: req.instanceId,
     status: 'active',
     isDraft: { $ne: true },
     maxEntries: { $gt: 0 },
@@ -134,7 +139,10 @@ async function sweepExpiredActivities(req) {
     if (inSession.has(activity.id)) continue;
     try {
       const activityEntries = await entries.listByActivity(activity.id);
-      await closeAndSettle(activity, activityEntries, req.instanceId, 'time window ended');
+      // The activity's own instance, never the caller's. stakes[].instanceId
+      // is required so the fallback in settleActivityStakes rarely fires, but
+      // when it does the holons must not land in whoever happened to GET.
+      await closeAndSettle(activity, activityEntries, activity.instanceId, 'time window ended');
     }
     catch (e) { console.error('[activities] sweep close error:', e.message); }
   }
@@ -245,7 +253,7 @@ module.exports = function(io) {
         activity.id !== topicsActivityId && activity.createdAt &&
         Date.now() - new Date(activity.createdAt).getTime() > windowHours * 60 * 60 * 1000
       ) {
-        await closeAndSettle(activity, entryDocs, req.instanceId, 'time window ended');
+        await closeAndSettle(activity, entryDocs, activity.instanceId, 'time window ended');
       }
 
       res.json({ activity: serializeActivity(activity, { entryDocs, windowHours }) });
@@ -447,7 +455,7 @@ module.exports = function(io) {
       if (updates.status === 'completed' && activity.stakes?.length) {
         try {
           const entryDocs = await entries.listByActivity(activity.id);
-          await settleActivityStakes(activity, entryDocs, req.instanceId);
+          await settleActivityStakes(activity, entryDocs, activity.instanceId);
         } catch (e) {
           console.error('[activities] stake settlement error:', e.message);
         }
@@ -700,7 +708,7 @@ module.exports = function(io) {
       // Complete rule: full table + everyone entered and voted → settle now
       const entryDocs = await entries.listByActivity(activity.id);
       if (isComplete(activity, entryDocs)) {
-        await closeAndSettle(activity, entryDocs, req.instanceId, 'everyone has played');
+        await closeAndSettle(activity, entryDocs, activity.instanceId, 'everyone has played');
         if (io) {
           const windowHours = req.instance?.config?.quorum?.activityWindowHours ?? 168;
           io.to(req.params.id).emit('activity_updated', {

@@ -24,6 +24,54 @@ services:
       # like "the site is up but nothing saves".
       - key: GAME_TOKEN_SECRET
         sync: false
+
+  # Off-site logical backup, daily at 07:00 UTC.
+  #
+  # Atlas M10 continuous backup + PITR is the primary recovery path. This is
+  # the independent second copy: Atlas snapshots live in the same Atlas
+  # account, so they do not survive account compromise, an accidentally
+  # deleted cluster, or somebody running reset-db-for-launch.js against prod.
+  #
+  # A separate service, not a job inside the web process — mongodump competes
+  # for the same memory and would die on deploy.
+  #
+  # runtime: docker because Render's Node image has no mongodb-database-tools;
+  # scripts/backup-mongo.js exits non-zero if mongodump is missing rather than
+  # recording a backup that never happened.
+  #
+  # SETUP REQUIRED before this does anything (see scripts/backup-mongo.js):
+  #   1. Create a read-only Atlas user (readAnyDatabase) → MONGODB_URI_BACKUP.
+  #      A leaked backup credential must not be able to write.
+  #   2. Create an S3-compatible bucket (Cloudflare R2 or S3) with versioning
+  #      and lifecycle rules for retention: 7 daily / 4 weekly / 3 monthly.
+  #      Grant this service PutObject only — never DeleteObject, so a
+  #      compromised backend cannot erase its own backups.
+  #   3. Set BACKUP_HEARTBEAT_URL to a dead-man's-switch (healthchecks.io) so
+  #      a MISSING backup pages you. A backup nobody is alerted about is not a
+  #      backup.
+  - type: cron
+    name: holoscopic-mongo-backup
+    runtime: docker
+    dockerfilePath: ./apps/backend/Dockerfile.backup
+    dockerContext: .
+    schedule: "0 7 * * *"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI_BACKUP
+        sync: false
+      - key: BACKUP_S3_BUCKET
+        sync: false
+      - key: BACKUP_S3_ENDPOINT
+        sync: false
+      - key: BACKUP_S3_REGION
+        sync: false
+      - key: BACKUP_S3_ACCESS_KEY_ID
+        sync: false
+      - key: BACKUP_S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: BACKUP_HEARTBEAT_URL
+        sync: false
       # Concurrent Socket.IO cap (websocket-server.js falls back to 25).
       # Each phone in a live Spectrum room + each interView player = 1 socket.
       - key: MAX_CONNECTIONS

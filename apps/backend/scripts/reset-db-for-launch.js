@@ -90,12 +90,13 @@ async function main() {
   const startingStake = g1.config?.holons?.startingStake ?? 100;
   const users = await User.find({}).select('id name email').lean();
   for (const u of users) {
-    await InstanceMembership.create({
-      id: Math.random().toString(36).substring(2, 10),
-      userId: u.id,
-      instanceId: g1.id,
-      holonBalance: startingStake,
-    });
+    // getOrCreate, not create: it is the single grant point that writes the
+    // matching `join_bonus` HolonTransaction alongside the balance.
+    // Creating the membership directly left four accounts holding ◈100 with
+    // no ledger row behind it — scripts/verify-ledger.js flags exactly that,
+    // and root CLAUDE.md's rule is that balances never move outside
+    // utils/holons.js.
+    await InstanceMembership.getOrCreate(u.id, g1.id);
   }
   console.log(`granted ${users.length} users membership in g1 with ◈${startingStake} starting stake`);
   console.log('\nNote: when deploying, add the production game domain to this instance\'s domains[].');
