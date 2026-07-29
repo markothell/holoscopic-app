@@ -24,6 +24,21 @@ services:
       # like "the site is up but nothing saves".
       - key: GAME_TOKEN_SECRET
         sync: false
+      # Chorus (apps/chorus) — memorial transcription. Deepgram fetches a
+      # memory's audio from Vercel Blob and POSTs the transcript back here, so
+      # it needs this service's own public URL. In production that is a
+      # permanent Render address; set it once.
+      #
+      # Leave PUBLIC_API_URL unset and utils/memorialTranscribe.js deliberately
+      # SKIPS the enqueue rather than queuing a job whose callback can never
+      # arrive — recordings still upload and play, they just never gain a
+      # transcript. That is the honest failure; a stale value is the bad one.
+      - key: PUBLIC_API_URL
+        sync: false
+      # Optional. Without it transcripts stay 'skipped' and everything else in
+      # Chorus works unchanged.
+      - key: DEEPGRAM_API_KEY
+        sync: false
 
   # Off-site logical backup, daily at 07:00 UTC.
   #

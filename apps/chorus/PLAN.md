@@ -437,7 +437,7 @@ behind the same funnel — deliberately not in v1.
 | **M1** ✅ | Compose, text-only, end to end: tag drawers, custom tags, anon toggle, title, `POST /memories`, contributor session | A stranger can post a text memory on a phone with no account |
 | **M2** ⚠ | Audio: recorder, Blob client upload, IndexedDB stash, global player, waveform, Deepgram + callback | A 90-second spoken memory records, uploads, plays back, and transcribes |
 | **M3** ✅ | Threads, tag filtering, tag portrait, share sheet, sockets | Shippable. This is the public launch cut. |
-| **M4** | `/curate`, flags, takedown, perf/a11y pass, export | Safe to hand a family the link and walk away |
+| **M4** | `/curate` ✅, flags ✅, **perf/a11y pass and export remaining** | Safe to hand a family the link and walk away |
 
 Ship-worthy at **M3**; do not launch a memorial without **M4** close behind.
 

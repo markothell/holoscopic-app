@@ -85,6 +85,28 @@ export const memorialApi = {
 
   memory: (id: string) => apiFetch<MemoryDetail>(`/memorial/memories/${id}`),
 
+  flag: (id: string) => apiFetch<{ ok: true }>(`/memorial/memories/${id}/flag`, {
+    method: 'POST',
+    withContributor: true,
+  }),
+
+  // ── Curator surface ───────────────────────────────────────────────────────
+  // Authenticated by a key in the URL and nothing else (D10), so a family
+  // member with no holoscopic account can moderate from a texted link. Every
+  // one of these 404s without it, so probing is indistinguishable from a typo.
+  curate: {
+    wall: (key: string, cursor?: string | null) => {
+      const q = new URLSearchParams({ k: key, limit: '50' });
+      if (cursor) q.set('cursor', cursor);
+      return apiFetch<WallResponse>(`/memorial/memories?${q}`);
+    },
+    setStatus: (key: string, id: string, status: 'live' | 'hidden' | 'removed', reason = '') =>
+      apiFetch<{ memory: { id: string; status: string } }>(
+        `/memorial/curate/memories/${id}/status?k=${encodeURIComponent(key)}`,
+        { method: 'POST', body: { status, reason } },
+      ),
+  },
+
   session: () => apiFetch<{ contributorId: string; token: string }>(
     '/memorial/session',
     { method: 'POST', withContributor: true },

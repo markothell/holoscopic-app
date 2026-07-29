@@ -10,9 +10,9 @@ comments explaining why each field exists.
 
 **M0–M3 are built and verified**, including a real browser recording (14s of WebM/Opus, 48 captured
 peaks, Deepgram transcript) and live socket updates. **iOS Safari is the one path still untested**
-— it takes the MP4 branch and the no-duration-metadata workaround. **M4 is next and gates launch**:
-the curate page, flags, and takedown. Live-on-submit means the curator link is the only safety
-valve, so do not hand anyone a real memorial before it exists.
+— it takes the MP4 branch and the no-duration-metadata workaround. **M4 is partly done**: `/curate?k=` and
+reporting are built and verified (no key → 404; a hidden memory leaves the public wall and 404s on
+its own page). **Remaining before launch**: an accessibility and performance pass, and export.
 
 Blob store: `chorus-memories` (public, iad1), connected to the `chorus` Vercel project, so
 `vercel env pull` supplies `BLOB_READ_WRITE_TOKEN`.

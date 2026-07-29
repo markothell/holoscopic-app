@@ -6,6 +6,7 @@ import ComposeButton from '@/components/compose/ComposeButton';
 import AudioPill from '@/components/audio/AudioPill';
 import TagLink from '@/components/tags/TagLink';
 import LiveWall from '@/components/LiveWall';
+import ReportMemory from '@/components/ReportMemory';
 import { ApiError } from '@/services/api';
 import type { Memory } from '@/lib/types';
 
@@ -166,9 +167,15 @@ export default async function MemoryPage({
         </section>
       )}
 
+      {/* The quietest thing on the page, and the only route a visitor has to
+          raise a concern about a memory. */}
+      <div className="mt-10 border-t border-rule pt-5">
+        <ReportMemory memoryId={memory.id} />
+      </div>
+
       {/* Prefilled with this memory's title and tags — you're describing the
           same afternoon as the person you're answering. */}
-      <div className="mt-10">
+      <div className="mt-8">
         <ComposeButton
           memorial={config.memorial}
           tags={config.tags}
