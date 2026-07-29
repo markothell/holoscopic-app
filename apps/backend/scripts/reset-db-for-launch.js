@@ -5,15 +5,42 @@
 // Holoscopic is the platform; instances are games. This removes the legacy
 // "Holoscopic (slug=default)" instance document along with everything else.
 //
-// Usage: node scripts/reset-db-for-launch.js --yes
+// Usage: node scripts/reset-db-for-launch.js --yes --db=<database-name>
+//
+// --db must exactly match the database in MONGODB_URI. `--yes` alone is not
+// enough: the destructive part of this script is identical whether the URI
+// points at localhost or production, and the URI comes from whichever .env
+// file NODE_ENV happens to select. Naming the target is the only step that
+// cannot be performed by accident.
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
 require('dotenv').config({ path: envFile });
 const mongoose = require('mongoose');
 
-if (!process.argv.includes('--yes')) {
-  console.log('This clears ALL game data (keeps users). Re-run with --yes to proceed.');
+const uri = process.env.MONGODB_URI;
+if (!uri) {
+  console.error('MONGODB_URI is not set.');
   process.exit(1);
 }
+
+// Same extraction the server uses at startup.
+const dbMatch = uri.match(/\/([^/?]+)(\?|$)/);
+const targetDb = dbMatch ? dbMatch[1] : null;
+
+if (!process.argv.includes('--yes')) {
+  console.log(`This clears ALL game data (keeps users) in "${targetDb}".`);
+  console.log(`Re-run with: --yes --db=${targetDb}`);
+  process.exit(1);
+}
+
+const dbArg = (process.argv.find(a => a.startsWith('--db=')) || '').slice(5);
+if (!dbArg || dbArg !== targetDb) {
+  console.error(`Refusing to run: --db must exactly match the database in MONGODB_URI.`);
+  console.error(`  MONGODB_URI database: ${targetDb}`);
+  console.error(`  --db argument:        ${dbArg || '(missing)'}`);
+  process.exit(1);
+}
+
+console.log(`⚠️  Clearing game data in database "${targetDb}"`);
 
 // Game-data collections to drop. Kept: users, waitlists, signups.
 const CLEAR = [

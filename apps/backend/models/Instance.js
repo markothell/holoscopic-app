@@ -48,6 +48,68 @@ const instanceConfigSchema = new mongoose.Schema({
     votesPerUser:   { type: Number, default: 3, min: 1 },
     maxPlayers:     { type: Number, default: 40, min: 2 },
   },
+  // Chorus memorial config — everything the app needs to know about the person
+  // it collects memories for. One Chorus instance is one memorial for one
+  // subject, and ALL of that subject's data lives here rather than in env vars
+  // or a frontend build constant. That's deliberate and it's cheap: it means
+  // the same deployed frontend can serve any memorial, so the eventual
+  // multi-collection version is a routing change, not a data migration
+  // (apps/chorus/PLAN.md §11, D11). Curator edits these in the platform admin
+  // instance config tab — Chorus ships no admin surface of its own.
+  //
+  // Chorus runs with `mode: 'explore'` — it is the first app in this repo with
+  // NO holon economy and no quorum, so the holons/quorum blocks above are
+  // present but bypassed entirely.
+  memorial: {
+    subjectName:     { type: String, default: '' },   // "Ellen"
+    subjectPhotoUrl: { type: String, default: '' },
+    blurb:           { type: String, default: '' },   // a few lines under the name
+    lifespan:        { type: String, default: '' },   // free text — "1941 – 2024"
+    // Placeholders {name} / {role} / {experience}; {role} appears twice.
+    promptTemplate: {
+      type: String,
+      default: 'This is a story where {name} was {role} and I was {role} having an experience of {experience}.',
+    },
+    // Curator preloads. Materialized into MemoryTag docs (origin 'seeded') by
+    // utils/memories.js#syncSeedTags — contributors extend the vocabulary from
+    // there.
+    seedRoleTags:       { type: [String], default: [] },
+    seedExperienceTags: { type: [String], default: [] },
+    allowCustomTags: { type: Boolean, default: true },
+    audioMaxSeconds: { type: Number,  default: 180 },
+    // Moderation authenticates with this key in a URL (/curate?k=…) and
+    // nothing else, so the link can be texted to a family member who has no
+    // holoscopic account (D10). Minted at setup; never returned by a public
+    // read path.
+    curatorKey: { type: String, default: '' },
+    accent:     { type: String, default: '' },  // one CSS accent colour
+  },
+  // Synthesis idea config. In Synthesis a child Instance IS an idea — a thought
+  // space, named by its title, that collaborators map their thinking into. The
+  // fields below are the whole of what makes an idea more than a bare Instance,
+  // and they live here (rather than on a model of their own) for the same
+  // reason OaS rooms do: instance scoping then comes free on every SynNode /
+  // SynFrame / SynMembership read.
+  //
+  // Like Chorus, Synthesis runs with NO holon economy (PLAN.md D1) — the
+  // holons/quorum blocks above are present but bypassed.
+  synthesis: {
+    // D13. A public idea is listed in the browse directory and any signed-in
+    // account may join it; a private one is reachable by invite code alone.
+    // The MEMBER_CAP applies either way.
+    visibility: { type: String, enum: ['public', 'private'], default: 'private' },
+    // D12. The share of collaborators that must vote for one statement before
+    // the group has reached Synthesis. Per-idea so it can be tuned without a
+    // migration; ⅔ is the default bar.
+    synthesisThreshold: { type: Number, default: 2 / 3, min: 0.5, max: 1 },
+    // D14. How many statement slots each collaborator holds at once — authoring
+    // and voting draw on the same budget.
+    statementSlots: { type: Number, default: 3, min: 1 },
+    // Set once a statement clears the bar. Their presence IS the "this group
+    // reached Synthesis" flag; utils/synStatements.js owns both writes.
+    synthesisStatementId: { type: String, default: null },
+    synthesisReachedAt:   { type: Date,   default: null },
+  },
 }, { _id: false });
 
 const instanceSchema = new mongoose.Schema({
@@ -117,5 +179,13 @@ instanceSchema.statics.getDefault = async function () {
   }
   return inst;
 };
+
+// Both of these are on the hot path: middleware/resolveInstance.js runs on
+// EVERY /api request, falling through to findByDomain and then getDefault.
+// Instances grow with usage (one per OaS room, one per Synthesis idea), so
+// without these every request pays a collection scan that gets slower as the
+// platform succeeds.
+instanceSchema.index({ domains: 1 });
+instanceSchema.index({ active: 1, gameNumber: 1, createdAt: 1 });
 
 module.exports = mongoose.model('Instance', instanceSchema);

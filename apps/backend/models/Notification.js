@@ -15,4 +15,9 @@ const notificationSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 }, { id: false });
 
+// routes/notifications.js: find({userId}).sort({createdAt:-1}).limit(30),
+// polled every 30s by every signed-in client. The standalone userId index
+// leaves the sort blocking in memory.
+notificationSchema.index({ userId: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Notification', notificationSchema);

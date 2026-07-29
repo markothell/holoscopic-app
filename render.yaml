@@ -5,6 +5,9 @@ services:
     rootDir: apps/backend
     buildCommand: npm install
     startCommand: node websocket-server.js
+    # /health returns 503 unless Mongo is connected, routes are loaded, AND a
+    # token secret is present — so a write-dead deploy never takes traffic.
+    healthCheckPath: /health
     envVars:
       - key: PORT
         value: 10000
@@ -14,6 +17,13 @@ services:
         sync: false
       - key: NODE_ENV
         value: production
+      # Shared HS256 secret with the Next.js frontends, which sign short-lived
+      # identity tokens (each app's /api/auth/game-token). MUST match the value
+      # in Vercel. Without it middleware/verifyUser.js 503s every
+      # identity-bearing write while reads keep working — the failure looks
+      # like "the site is up but nothing saves".
+      - key: GAME_TOKEN_SECRET
+        sync: false
       # Concurrent Socket.IO cap (websocket-server.js falls back to 25).
       # Each phone in a live Spectrum room + each interView player = 1 socket.
       - key: MAX_CONNECTIONS

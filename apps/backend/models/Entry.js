@@ -68,5 +68,9 @@ entrySchema.index(
   { activityId: 1, userId: 1, slotNumber: 1, questionId: 1 },
   { unique: true }
 );
+// utils/entries.js:53 listByActivity — the play-page payload. The unique key
+// above serves the activityId match but leaves the sort blocking, and this is
+// the single most-read query in the app.
+entrySchema.index({ activityId: 1, createdAt: 1 });
 
 module.exports = mongoose.model('Entry', entrySchema);

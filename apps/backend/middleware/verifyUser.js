@@ -58,4 +58,11 @@ function enforceVerifiedUser(req, res, next) {
   next();
 }
 
-module.exports = { attachVerifiedUser, enforceVerifiedUser };
+// Single source of truth for "can this process verify identities at all?".
+// Read by /health so the server reports unhealthy rather than accepting
+// traffic it will 503 on (enforceVerifiedUser above).
+function isAuthConfigured() {
+  return Boolean(SECRET);
+}
+
+module.exports = { attachVerifiedUser, enforceVerifiedUser, isAuthConfigured };

@@ -247,6 +247,13 @@ const ActivitySchema = new mongoose.Schema({
 ActivitySchema.index({ status: 1, createdAt: -1 });
 ActivitySchema.index({ 'participants.id': 1 });
 ActivitySchema.index({ topicId: 1 });
+// routes/activities.js:209 — the instance activity list, sorted by recency.
+ActivitySchema.index({ instanceId: 1, createdAt: -1 });
+// The expiry sweep's query shape (instance-scoped after the cross-tenant fix).
+ActivitySchema.index({ instanceId: 1, status: 1, createdAt: 1 });
+// "Activities this user is in", scoped — the bare participants.id index above
+// is global and matches across every instance.
+ActivitySchema.index({ instanceId: 1, 'participants.id': 1 });
 
 // Add or refresh a member
 ActivitySchema.methods.addParticipant = async function(userId, username) {

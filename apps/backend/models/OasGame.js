@@ -151,5 +151,8 @@ const oasGameSchema = new mongoose.Schema({
 
 // "Games this user played" — multikey, same pattern as Entry.voterIds.
 oasGameSchema.index({ 'participants.id': 1 });
+// utils/oasStats.js:189,243 — the pulse feed and a user's game history, both
+// sorted by recency across every game ever played in the parent instance.
+oasGameSchema.index({ parentInstanceId: 1, updatedAt: -1 });
 
 module.exports = mongoose.model('OasGame', oasGameSchema);

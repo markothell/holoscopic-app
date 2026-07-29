@@ -153,5 +153,8 @@ const oasNominationSchema = new mongoose.Schema({
 });
 
 oasNominationSchema.index({ gameId: 1, round: 1, status: 1 });
+// utils/oasStats.js:316 runs this lookup once per spectrum in a loop (up to
+// 50 per pulse request) — without the index that is 50 collection scans.
+oasNominationSchema.index({ 'frameSlate.frameId': 1 });
 
 module.exports = mongoose.model('OasNomination', oasNominationSchema);
