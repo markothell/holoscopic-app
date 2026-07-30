@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
 const router = express.Router();
 const User = require('../models/User');
 const InstanceMembership = require('../models/InstanceMembership');
@@ -40,7 +41,14 @@ const loginLimiter = rateLimit({
   max: isProduction ? 10 : 1000,
   // Key on IP + email so one attacker cannot lock out an entire office NAT,
   // and so spraying one password across many accounts still gets throttled.
-  keyGenerator: (req) => `${req.ip}:${String(req.body?.email || '').toLowerCase()}`,
+  //
+  // ipKeyGenerator, not raw req.ip: an IPv6 client's /128 address is one of
+  // 2^64+ inside a single allocation, so keying on it whole gave an attacker
+  // `max` attempts PER ADDRESS — unlimited in practice. This truncates IPv6 to
+  // its subnet so one allocation shares one bucket. Cheap here because the key
+  // also carries the email: aggregating only collides for the same email from
+  // the same subnet, which is the same person.
+  keyGenerator: (req) => `${ipKeyGenerator(req.ip)}:${String(req.body?.email || '').toLowerCase()}`,
   message: { success: false, error: 'Too many sign-in attempts. Try again shortly.' },
   standardHeaders: true,
   legacyHeaders: false,
