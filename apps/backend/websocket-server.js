@@ -483,7 +483,15 @@ if (process.env.MONGODB_URI) {
 //                           write, while reads look perfectly healthy
 // Any of them is a 503. Returning a hardcoded 'ok' here is how a fully
 // write-dead deploy passes a health check.
+//
+// `transcription` is REPORTED but never gates health. Chorus transcription is
+// optional by design — audio records and plays without it — so a missing key
+// must not take the platform down. It is here because both of its failure
+// modes are invisible from outside: the app behaves perfectly except that
+// transcripts never appear, which is otherwise only discoverable by making a
+// recording and waiting. Same reasoning that put authConfigured here.
 const { isAuthConfigured } = require('./middleware/verifyUser');
+const { readiness: transcriptionReadiness } = require('./utils/memorialTranscribe');
 
 app.get('/health', (req, res) => {
   const capacityStatus = connectionCount >= MAX_CONNECTIONS ? 'full' :
@@ -498,6 +506,7 @@ app.get('/health', (req, res) => {
     mongodb: isMongoConnected ? 'connected' : 'disconnected',
     apiRoutesLoaded,
     authConfigured,
+    transcription: transcriptionReadiness(),
     connections: connectionCount,
     capacity: {
       current: connectionCount,

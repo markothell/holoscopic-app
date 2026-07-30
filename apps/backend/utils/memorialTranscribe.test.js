@@ -82,13 +82,79 @@ test('requestTranscript: does nothing without a key, and never throws', async ()
 test('requestTranscript: refuses to enqueue when the callback URL is unreachable', async () => {
   // The local-dev case. Enqueuing here would strand the memory on 'pending'
   // forever, promising a transcript that can never arrive.
-  await withEnv({ ...CONFIGURED, PUBLIC_API_URL: undefined }, async () => {
+  //
+  // RENDER_EXTERNAL_URL is cleared explicitly: publicApiUrl() falls back to it,
+  // so leaving it to the ambient environment would make this test pass or fail
+  // depending on where it runs.
+  await withEnv({ ...CONFIGURED, PUBLIC_API_URL: undefined, RENDER_EXTERNAL_URL: undefined }, async () => {
     const result = await transcribe.requestTranscript({
       memory: memoryWithAudio,
       fetchImpl: () => { throw new Error('should not be called'); },
     });
     assert.equal(result.status, 'no-callback-url');
   });
+});
+
+test('requestTranscript: derives the callback base from RENDER_EXTERNAL_URL', async () => {
+  // Production carries no hand-set copy of its own address. Render injects
+  // this, so a service rename can never leave a stale callback behind.
+  await withEnv(
+    { ...CONFIGURED, PUBLIC_API_URL: undefined, RENDER_EXTERNAL_URL: 'https://svc.onrender.com' },
+    async () => {
+      let seen = null;
+      const result = await transcribe.requestTranscript({
+        memory: memoryWithAudio,
+        fetchImpl: async (url) => { seen = url; return { ok: true }; },
+      });
+      assert.equal(result.status, 'queued');
+      const callback = new URL(seen).searchParams.get('callback');
+      // The /api mount point must be added — routes live under /api/memorial.
+      assert.ok(
+        callback.startsWith('https://svc.onrender.com/api/memorial/hooks/deepgram'),
+        `callback was ${callback}`,
+      );
+    },
+  );
+});
+
+test('requestTranscript: an explicit PUBLIC_API_URL overrides the derived one', async () => {
+  // Dev tunnels and any non-Render host depend on this precedence.
+  await withEnv(
+    { ...CONFIGURED, RENDER_EXTERNAL_URL: 'https://svc.onrender.com' },
+    async () => {
+      let seen = null;
+      await transcribe.requestTranscript({
+        memory: memoryWithAudio,
+        fetchImpl: async (url) => { seen = url; return { ok: true }; },
+      });
+      const callback = new URL(seen).searchParams.get('callback');
+      assert.ok(callback.startsWith('https://api.example.com/api/'), `callback was ${callback}`);
+    },
+  );
+});
+
+test('readiness: names the reason transcripts would not arrive', async () => {
+  // What /health reports. Each branch is a state the app is otherwise
+  // indistinguishable from healthy in.
+  const noRender = { RENDER_EXTERNAL_URL: undefined };
+
+  await withEnv({ ...CONFIGURED, ...noRender }, async () => {
+    assert.equal(transcribe.readiness(), 'ready');
+  });
+  await withEnv({ ...CONFIGURED, ...noRender, DEEPGRAM_API_KEY: undefined }, async () => {
+    assert.equal(transcribe.readiness(), 'no-api-key');
+  });
+  await withEnv({ ...CONFIGURED, ...noRender, NEXTAUTH_SECRET: undefined }, async () => {
+    assert.equal(transcribe.readiness(), 'no-secret');
+  });
+  await withEnv({ ...CONFIGURED, ...noRender, PUBLIC_API_URL: undefined }, async () => {
+    assert.equal(transcribe.readiness(), 'no-callback-url');
+  });
+  // Derived alone is enough to be ready — production sets nothing.
+  await withEnv(
+    { ...CONFIGURED, PUBLIC_API_URL: undefined, RENDER_EXTERNAL_URL: 'https://svc.onrender.com' },
+    async () => { assert.equal(transcribe.readiness(), 'ready'); },
+  );
 });
 
 test('requestTranscript: a text-only memory is not a transcription job', async () => {

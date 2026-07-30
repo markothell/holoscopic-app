@@ -27,6 +27,22 @@ Express + Socket.IO + Mongoose server. Single entry point: `websocket-server.js`
 
 Routes are NOT loaded at startup. `loadAPIRoutes()` in `websocket-server.js` fires only after MongoDB connects (and only once). This means if you restart and Mongo is unavailable, all `/api` routes return 404 until reconnect. Check `apiRoutesLoaded` in the `/health` response.
 
+## `/health` is the diagnostic surface
+
+`GET /health` reports the states in which this process is up but not useful, so they are answerable
+without exercising the feature:
+
+| Field | Gates health? | Meaning |
+|---|---|---|
+| `mongodb`, `apiRoutesLoaded` | yes → 503 | Routes never mounted; every `/api` 404s |
+| `authConfigured` | yes → 503 | No token secret, so every identity-bearing write 503s while reads look fine |
+| `transcription` | **no** | `ready` \| `no-api-key` \| `no-secret` \| `no-callback-url` |
+
+The rule for adding a field: **gate health on it only if the platform is broken without it.**
+Chorus transcription is optional by design — audio records and plays without it — so it is
+reported and never gates. Anything whose absence leaves the app behaving perfectly except that one
+thing silently never happens belongs here; that invisibility is the whole reason the field exists.
+
 This makes a restart expensive rather than free. Until Mongo connects — 1s warm, up to ~9s on a cold Atlas cluster — requests do not 404 cleanly; they sit in mongoose's 10s command buffer and then 500. So a boot is roughly ten seconds of hangs, not a blip.
 
 ## Running It Locally

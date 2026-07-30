@@ -24,19 +24,50 @@ services:
       # like "the site is up but nothing saves".
       - key: GAME_TOKEN_SECRET
         sync: false
+      # Concurrent Socket.IO cap. websocket-server.js:28 falls back to 25,
+      # which is a development number — each phone in a live Spectrum room and
+      # each interView player holds one socket, so 25 is a few rooms. Declared
+      # here as a literal because it is configuration, not a secret, and its
+      # value is the kind of thing that must be reviewable in a diff.
+      - key: MAX_CONNECTIONS
+        value: 200
+      # ── Synthesis LLM (apps/synthesis) ──────────────────────────────────
+      # Two independent vendors: chat generation and embeddings. Either can be
+      # absent — the adapters report `configured: false` and the feature that
+      # needs them is skipped rather than erroring.
+      #
+      # These are the PRIMARY names the adapters read. ANTHROPIC_API_KEY and
+      # VOYAGE_API_KEY also work but are the fallback branch
+      # (llm/adapters/chat.js:48, embed.js:40); setting the SYN_ names keeps
+      # "which key does this deployment use" answerable from this file.
+      - key: SYN_MODEL_API_KEY
+        sync: false
+      - key: SYN_EMBED_API_KEY
+        sync: false
       # Chorus (apps/chorus) — memorial transcription. Deepgram fetches a
       # memory's audio from Vercel Blob and POSTs the transcript back here, so
-      # it needs this service's own public URL. In production that is a
-      # permanent Render address; set it once.
+      # it needs this service's own public URL.
       #
-      # Leave PUBLIC_API_URL unset and utils/memorialTranscribe.js deliberately
-      # SKIPS the enqueue rather than queuing a job whose callback can never
-      # arrive — recordings still upload and play, they just never gain a
-      # transcript. That is the honest failure; a stale value is the bad one.
-      - key: PUBLIC_API_URL
-        sync: false
+      # PUBLIC_API_URL is intentionally absent: utils/memorialTranscribe.js
+      # derives the callback base from RENDER_EXTERNAL_URL, which Render
+      # injects — so this service carries no hand-set copy of its own address,
+      # and a rename cannot strand it. Set PUBLIC_API_URL only to override
+      # (a dev tunnel, or a non-Render host).
+      #
+      # UNVERIFIED as of this commit: that RENDER_EXTERNAL_URL is actually
+      # populated here. Confirm on the first deploy with
+      #   curl $SERVICE/health   → "transcription": "ready"
+      # If it reports "no-callback-url" instead, the derive found nothing —
+      # uncomment the two lines below and set the value to this service's own
+      # public URL INCLUDING the /api mount point, e.g.
+      # https://whorl-websocket-server.onrender.com/api
+      # - key: PUBLIC_API_URL
+      #   sync: false
+      #
       # Optional. Without it transcripts stay 'skipped' and everything else in
-      # Chorus works unchanged.
+      # Chorus works unchanged. Whether it is actually working is reported by
+      # /health as `transcription` — check that rather than making a test
+      # recording and waiting to see if text appears.
       - key: DEEPGRAM_API_KEY
         sync: false
       # Optional. Error reporting (observability.js). Unset = disabled, no
@@ -93,7 +124,3 @@ services:
         sync: false
       - key: BACKUP_HEARTBEAT_URL
         sync: false
-      # Concurrent Socket.IO cap (websocket-server.js falls back to 25).
-      # Each phone in a live Spectrum room + each interView player = 1 socket.
-      - key: MAX_CONNECTIONS
-        value: 200

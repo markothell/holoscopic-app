@@ -21,8 +21,22 @@ peaks, Deepgram transcript) and live socket updates. **iOS Safari is the one pat
 reporting are built and verified (no key → 404; a hidden memory leaves the public wall and 404s on
 its own page). **Remaining before launch**: an accessibility and performance pass, and export.
 
-Blob store: `chorus-memories` (public, iad1), connected to the `chorus` Vercel project, so
-`vercel env pull` supplies `BLOB_READ_WRITE_TOKEN`.
+**Vercel project is `holoscopic-app-chorus`** (serving chorus.holoscopic.io) — there is no project
+called `chorus`, and a `.vercel/project.json` naming one is a stale link that makes every
+`vercel env pull` / `env ls` in this directory fail with "project was either deleted or
+transferred". Repair with `vercel link --yes --project holoscopic-app-chorus`.
+
+Blob store: `chorus-memories` (public, iad1, `store_ELLOQEAjs3dvD6g5`). **Recording works only if
+that store is CONNECTED to the project** — connecting is what injects `BLOB_READ_WRITE_TOKEN` into
+each environment. A store connected to nothing (`vercel blob list-stores` → `Projects: –`) leaves
+production with no token while local development keeps working from whatever is in `.env.local`,
+so this fails in exactly one place and looks like a code bug. The browser reports it as
+*"Vercel Blob: Failed to retrieve the client token"*, which is the SDK's message for any
+non-token response; `/api/audio/upload` answers a named 503 first so the cause is readable.
+
+    vercel blob list-stores                       # Projects column must name the project
+    curl -X POST https://chorus.holoscopic.io/api/audio/upload \
+      -H 'Content-Type: application/json' -d '{}'  # 503 = no token, 400 = token present
 
 ## The app
 
@@ -191,9 +205,19 @@ cards each repeating the boilerplate is noise, not rhythm.
 
 Backend side: `BLOB_HOST_SUFFIX` (default `.public.blob.vercel-storage.com`), `MEMORIAL_IP_SALT`,
 and `GAME_TOKEN_SECRET`/`NEXTAUTH_SECRET` — the contributor token and the Deepgram callback token
-are both signed with the existing shared secret. Transcription additionally needs
-`DEEPGRAM_API_KEY` and a publicly reachable `PUBLIC_API_URL`; with either missing, transcripts stay
-`skipped` and audio still records and plays.
+are both signed with the existing shared secret.
+
+Transcription needs `DEEPGRAM_API_KEY` plus a publicly reachable callback base. **Production derives
+that base from `RENDER_EXTERNAL_URL`** and needs nothing set. `PUBLIC_API_URL` is an override, for a
+dev tunnel or a non-Render host; it must include the `/api` mount point, because the callback path
+is appended to it. With any of it missing, transcripts stay `skipped` and audio still records and
+plays.
+
+**`GET /health` reports `transcription`** — `ready` | `no-api-key` | `no-secret` |
+`no-callback-url`. Check it instead of making a test recording and waiting to see whether text
+appears. It reports what is CONFIGURED, not what is reachable: a stale `PUBLIC_API_URL` pointing at
+a dead tunnel still reads `ready`, which is why `dev-tunnel.js` removes the line on exit and why a
+leftover one should be deleted by hand if it survives a crash.
 
 ## Running it
 

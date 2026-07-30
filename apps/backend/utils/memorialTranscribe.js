@@ -35,8 +35,50 @@ function callbackSecret() {
 // The public base URL Deepgram will call back on. Localhost is unreachable
 // from Deepgram's side, so in dev the enqueue is skipped rather than left to
 // time out silently.
+//
+// DERIVED IN PRODUCTION, overridable everywhere. Render injects
+// RENDER_EXTERNAL_URL for web services — the same mechanism observability.js
+// already trusts for RENDER_GIT_COMMIT — so the deployment does not carry a
+// hand-set copy of its own address. A hand-set copy is the kind of config that
+// goes stale in silence: rename the service and jobs keep being enqueued
+// against a callback nobody answers, transcripts simply stop arriving, and
+// nothing anywhere reports a problem.
+//
+// PUBLIC_API_URL still wins when set, which is what dev needs (scripts/
+// dev-tunnel.js writes a cloudflared URL there) and what any non-Render host
+// would need.
+//
+// Deriving also fails in the SAFE direction: off Render with nothing set, this
+// returns '' and requestTranscript skips the enqueue, leaving transcripts
+// visibly 'skipped' rather than lost in flight.
 function publicApiUrl() {
-  return process.env.PUBLIC_API_URL || '';
+  if (process.env.PUBLIC_API_URL) return process.env.PUBLIC_API_URL;
+  const external = process.env.RENDER_EXTERNAL_URL;
+  // Routes are mounted under /api; the callback path is appended to this.
+  return external ? `${external.replace(/\/+$/, '')}/api` : '';
+}
+
+// Whether a recording made right now would gain a transcript, and if not, why.
+//
+// Exists so /health can answer that question WITHOUT a recording to test with.
+// Both ways this feature fails are invisible from outside — a missing key and
+// an unreachable callback each leave the app working perfectly except that
+// transcripts never appear — and the same reasoning already put
+// `authConfigured` on /health.
+//
+//   'ready'            → enqueue will proceed
+//   'no-api-key'       → DEEPGRAM_API_KEY unset (the normal local state)
+//   'no-callback-url'  → nothing to call back on; enqueue is skipped
+//   'no-secret'        → no signing secret, so a callback could be forged
+//
+// Never gate health on this. Transcription is optional by design: audio
+// records and plays without it, and 503ing a service over a missing
+// nice-to-have would take the whole platform down for it.
+function readiness() {
+  if (!apiKey()) return 'no-api-key';
+  if (!callbackSecret()) return 'no-secret';
+  if (!publicApiUrl()) return 'no-callback-url';
+  return 'ready';
 }
 
 // Signs the memory id so the callback can't be forged. Deepgram is not
@@ -128,6 +170,7 @@ async function requestTranscript({
 
 module.exports = {
   requestTranscript,
+  readiness,
   callbackToken,
   verifyCallbackToken,
   extractTranscript,
