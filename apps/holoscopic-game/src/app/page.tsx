@@ -1,10 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import UserMenu from '@/components/UserMenu';
 import styles from './page.module.css';
 
+// Sections below the hero start at opacity 0 and are revealed on scroll. The
+// observer that does it lives in an inline script in layout.tsx, NOT here —
+// see `revealScript` there. Gating the reveal on React meant the page ended at
+// the hero until the whole bundle had loaded and hydrated, which on a slow
+// connection (or a dev server sharing a machine with five others) reads as a
+// one-screen site. Marking up with `data-reveal` keeps it a parse-time job.
 function RevealSection({
   id,
   className,
@@ -14,33 +20,12 @@ function RevealSection({
   className: string;
   children: React.ReactNode;
 }) {
-  const ref = useRef<HTMLElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.unobserve(el);
-        }
-      },
-      { threshold: 0.08, rootMargin: '0px 0px -50px 0px' }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
+  // The script can set `data-revealed` before hydration — a section already in
+  // view on load (a restored scroll position, a `#game` deep link) reveals
+  // immediately. React would report that attribute as a mismatch, so this
+  // element opts out of the check.
   return (
-    <section
-      ref={ref}
-      id={id}
-      className={`${className} ${visible ? styles.visible : ''}`}
-    >
+    <section id={id} className={className} data-reveal suppressHydrationWarning>
       {children}
     </section>
   );
@@ -171,6 +156,53 @@ function SequenceChainArt() {
           <circle cx={x} cy={y} r={3} fill="url(#ivChain)" opacity="0.5" />
         </g>
       ))}
+    </svg>
+  );
+}
+
+// Chorus: separate voices running in parallel, gathering around one node, then
+// re-forming as parallel lines and rising — many people, one person, the memory
+// carried on. The waist is narrower than the base and the lines that leave it
+// are closer together than the ones that arrived, which is the whole shape of
+// the app in one figure.
+//
+// Eau de nil ground and a dial-amber line, the memorial's own palette: the
+// strokes darken toward the bottom and light up as they rise.
+function ChorusArt() {
+  // Five voices. Bottom parallels at 34pt spacing, the waist at 5.5, the rising
+  // parallels at 17 — the gather has to be visibly tighter than both or the
+  // figure reads as a plain hourglass rather than as a convergence.
+  //
+  // The whole figure sits in the RIGHT half of the viewBox. The card anchors
+  // this art to its right edge behind the type, so a centred composition puts
+  // the node straight through the subtitle line.
+  const voices = [
+    'M180,208 L180,152 C180,124 237,132 237,104 C237,78 214,74 214,44 L214,4',
+    'M214,208 L214,152 C214,126 243,130 243,104 C243,80 231,74 231,44 L231,4',
+    'M248,208 L248,152 C248,128 248,128 248,104 C248,82 248,74 248,44 L248,4',
+    'M282,208 L282,152 C282,130 253,130 253,104 C253,80 265,74 265,44 L265,4',
+    'M316,208 L316,152 C316,132 259,132 259,104 C259,78 282,74 282,44 L282,4',
+  ];
+  return (
+    <svg
+      className={styles.gameCardArt}
+      viewBox="0 0 320 210"
+      aria-hidden
+      preserveAspectRatio="xMaxYMid meet"
+    >
+      <defs>
+        <linearGradient id="chorusVoices" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%" stopColor="#8A6F4E" stopOpacity="0.55" />
+          <stop offset="45%" stopColor="#C97B1E" />
+          <stop offset="100%" stopColor="#E8A44B" />
+        </linearGradient>
+      </defs>
+      <g fill="none" stroke="url(#chorusVoices)" strokeWidth="1.6" strokeLinecap="round">
+        {voices.map(d => <path key={d} d={d} />)}
+      </g>
+      {/* The person the voices gather around. */}
+      <circle cx="248" cy="104" r="8.5" fill="none" stroke="#C97B1E" strokeWidth="1.6" />
+      <circle cx="248" cy="104" r="3.2" fill="#C97B1E" />
     </svg>
   );
 }
@@ -342,6 +374,14 @@ export default function HomePage() {
     };
   }, []);
 
+  // On a fresh load the inline script in layout.tsx has already armed these —
+  // it runs at parse time, before React exists. This covers the other way in:
+  // a client-side navigation, where no HTML is parsed and that script never
+  // re-runs. Re-arming is idempotent (it skips anything already armed).
+  useEffect(() => {
+    window.__hsReveal?.();
+  }, []);
+
   return (
     <div className={styles.page}>
       <div className={styles.grain} />
@@ -497,18 +537,32 @@ export default function HomePage() {
         <RevealSection id="game" className={styles.invitation}>
           <p className={styles.sectionLabel}>Join a Game</p>
           <div className={styles.gameCardStack}>
-            <a href="https://synthesis.holoscopic.io" className={`${styles.gameCard} ${styles.gameCardSyn}`}>
+            {/* The one card with a single-colour wordmark. The others split on
+                something the split means — syn-/-thesis, the two OaS axes.
+                "Cho|rus" has no such seam, so a two-tone treatment here would
+                be decoration pretending to be structure. */}
+            <Link href="/chorus" className={`${styles.gameCard} ${styles.gameCardCh}`}>
+              <ChorusArt />
+              <span className={styles.gameCardTitle}>Chorus</span>
+              <span className={`${styles.gameCardSub} ${styles.gameCardSubCh}`}>
+                connecting stories and voices
+              </span>
+              <span className={styles.gameCardMeta}>
+                anyone with the link &middot; always open
+              </span>
+            </Link>
+            <Link href="/synthesis" className={`${styles.gameCard} ${styles.gameCardSyn}`}>
               <ConvergeArt />
               <span className={styles.gameCardTitle}>
                 <span className={styles.synPrefix}>Syn</span><span className={styles.synAccent}>thesis</span>
               </span>
               <span className={`${styles.gameCardSub} ${styles.gameCardSubSyn}`}>
-                a game for finding what a group actually agrees on
+                a game for generating collective thought
               </span>
               <span className={styles.gameCardMeta}>
                 2&ndash;50 collaborators &middot; open-ended
               </span>
-            </a>
+            </Link>
             <a href="https://spectrum.holoscopic.io" className={`${styles.gameCard} ${styles.gameCardOas}`}>
               <SpectrumBarsArt />
               <span className={styles.gameCardTitle}>
