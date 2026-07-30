@@ -127,7 +127,28 @@ const instanceSchema = new mongoose.Schema({
   endDate:     { type: Date, default: null },
   adminUserId: { type: String, default: null },
 
+  // Which app this instance belongs to. Before this field existed there was no
+  // answer stored anywhere, and every consumer inferred one from a different
+  // accident: `parentInstanceId` for On a Spectrum rooms, `slug === 'spectrum'`
+  // for the OaS parent, the presence of `config.memorial` for Chorus,
+  // everything-else for interView. The admin's create form therefore had
+  // nothing to offer — every instance it made was an interView edition, which
+  // is why a memorial could only be born from scripts/seed-memorial.js.
+  //
+  // Consumers read this field. The old inference rules survive in exactly one
+  // place, scripts/backfill-instance-app.js, which stamps rows created before
+  // it existed.
+  app: {
+    type: String,
+    enum: ['interview', 'spectrum', 'synthesis', 'chorus'],
+    default: 'interview',
+  },
+
   gameVersion: { type: String, default: '1.0' },
+  // interView editions only. getDefault() picks the lowest-numbered active
+  // instance, so a Chorus memorial or a Synthesis idea holding a gameNumber
+  // could become the platform default and start answering unrelated traffic —
+  // POST /instances leaves it null for every app but interView.
   gameNumber:  { type: Number, default: null },
 
   // Set on per-room instances (e.g. On a Spectrum game rooms) so they can be
@@ -194,6 +215,7 @@ instanceSchema.methods.toPublicJSON = function () {
     id: this.id,
     name: this.name,
     slug: this.slug,
+    app: this.app,
     gameNumber: this.gameNumber,
     gameVersion: this.gameVersion,
     active: this.active,

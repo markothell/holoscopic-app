@@ -228,6 +228,7 @@ async function createRoomInstance({ parentInstanceId, topic, code, startingToken
     id: newId(),
     name: topic.slice(0, 80),
     slug: `oas-${code.toLowerCase()}`,
+    app: 'spectrum',
     domains: [],
     access: { mode: 'public', inviteCodes: [] },
     parentInstanceId,

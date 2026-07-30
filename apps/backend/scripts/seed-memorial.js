@@ -4,9 +4,19 @@
 // the wall has something real to render against.
 //
 //   node scripts/seed-memorial.js
-//   node scripts/seed-memorial.js --slug=chorus-ellen --name="Ellen Vance"
 //   node scripts/seed-memorial.js --reset          # drop seeded memories first
 //   node scripts/seed-memorial.js --no-memories    # config + tags only
+//
+// Starting a REAL memorial — one command, then refine in the platform admin
+// (Instances → the new instance → Config), which edits every field below:
+//
+//   node scripts/seed-memorial.js --no-memories \
+//     --slug=chorus-ellen --name="Ellen Vance" \
+//     --lifespan="1941 – 2024" --photo=https://…  \
+//     --blurb="If you knew her, tell us something we wouldn't otherwise know."
+//
+// Re-running is safe: it fills only what is still empty and never rotates the
+// curator key, so a link already sent to the family keeps working.
 //
 // The subject here is fictional. Chorus's whole premise is real named people
 // who did not consent to being written about, so the demo data must never be
@@ -23,6 +33,9 @@ const Instance = require('../models/Instance');
 const Memory = require('../models/Memory');
 const MemoryTag = require('../models/MemoryTag');
 const memories = require('../utils/memories');
+const {
+  SEED_ROLE_TAGS, SEED_EXPERIENCE_TAGS, provisionMemorial,
+} = require('../utils/memorialDefaults');
 
 const args = new Map(
   process.argv.slice(2).map(a => {
@@ -34,18 +47,9 @@ const args = new Map(
 const SLUG = args.get('slug') || 'chorus';
 const SUBJECT = args.get('name') || 'Ellen Vance';
 
-// Curator preloads. Deliberately a mix of roles and adjectives — the blank
-// reads "Ellen was ___ and I was ___", and both kinds of word fit there. The
-// list only needs to be good enough to show people the shape of an answer;
-// contributors extend it from the first day.
-const SEED_ROLE_TAGS = [
-  'stubborn', 'a teacher', 'the new kid', 'patient', 'in over my head',
-  'a stranger', 'funny', 'scared', 'a neighbour', 'young',
-];
-const SEED_EXPERIENCE_TAGS = [
-  'being seen', 'getting lost', 'first jobs', 'laughing too hard',
-  'grief', 'being forgiven', 'ordinary Tuesdays', 'saying goodbye',
-];
+// The starter vocabularies and the curator key come from
+// utils/memorialDefaults.js, shared with POST /api/instances, so a memorial
+// created in the platform admin and one created here are the same product.
 
 // Seeded memories. Written as a curator would seed them before sharing the
 // link — an empty wall converts badly (PLAN §12). Each carries a real
@@ -127,6 +131,7 @@ async function main() {
       id: crypto.randomUUID().substring(0, 8),
       name: SUBJECT,
       slug: SLUG,
+      app: 'chorus',
       domains: [],
       access: { mode: 'public', inviteCodes: [] },
       gameNumber: null,
@@ -135,31 +140,29 @@ async function main() {
   } else {
     console.log(`✓ Memorial instance exists: ${SLUG} (id ${instance.id})`);
   }
+  instance.app = 'chorus';
 
-  // Chorus has no holon economy at all — 'explore' turns costs and rewards off
-  // wholesale rather than leaving zeroed numbers around to be misread later.
-  instance.config.mode = 'explore';
+  // Explore mode, the starter vocabularies, and the curator key — the same
+  // provisioning the admin's create form runs, and idempotent for the same
+  // reason: it never rotates a key already texted to a family member.
+  const hadKey = Boolean(instance.config.memorial.curatorKey);
+  provisionMemorial(instance, { subjectName: SUBJECT });
 
   const m = instance.config.memorial;
   m.subjectName = SUBJECT;
-  m.blurb = m.blurb
+  // Flags win, then whatever is already stored, then the demo defaults. That
+  // ordering is what makes a re-run safe: details edited in the platform admin
+  // survive, because this only fills what is still empty.
+  m.blurb = args.get('blurb') || m.blurb
     || 'She kept the radio on all night and the back door unlocked. '
      + 'If you knew her, tell us something we would not otherwise know.';
-  m.lifespan = m.lifespan || '1941 – 2024';
-  m.subjectPhotoUrl = m.subjectPhotoUrl || '';
-  m.seedRoleTags = SEED_ROLE_TAGS;
-  m.seedExperienceTags = SEED_EXPERIENCE_TAGS;
+  m.lifespan = args.get('lifespan') || m.lifespan || '1941 – 2024';
+  m.subjectPhotoUrl = args.get('photo') || m.subjectPhotoUrl || '';
   m.allowCustomTags = true;
   m.audioMaxSeconds = 180;
-  m.accent = m.accent || '#8a6f4e';
-  // Minted once and never rotated by a re-run — the curator link is shared out
-  // to family, and silently changing it would lock them out.
-  if (!m.curatorKey) {
-    m.curatorKey = crypto.randomBytes(24).toString('base64url');
-    console.log(`✓ Minted curator key. Curate at: /curate?k=${m.curatorKey}`);
-  } else {
-    console.log(`  Curator key already set: /curate?k=${m.curatorKey}`);
-  }
+  console.log(hadKey
+    ? `  Curator key already set: /c/${SLUG}/curate?k=${m.curatorKey}`
+    : `✓ Minted curator key. Curate at: /c/${SLUG}/curate?k=${m.curatorKey}`);
   instance.updatedAt = new Date();
   await instance.save();
 

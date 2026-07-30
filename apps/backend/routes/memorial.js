@@ -33,6 +33,36 @@ const transcribe = require('../utils/memorialTranscribe');
 const CONTRIBUTOR_SECRET = process.env.GAME_TOKEN_SECRET || process.env.NEXTAUTH_SECRET || '';
 const IP_SALT = process.env.MEMORIAL_IP_SALT || CONTRIBUTOR_SECRET || 'chorus';
 
+// ── The instance must actually be a memorial ────────────────────────────────
+//
+// resolveInstance never fails: an `x-instance-id` it does not recognise falls
+// through to Instance.getDefault(), which is an interView edition. Without this
+// guard every route below then ran happily against that edition — GET /config
+// answered with the edition's NAME as a subject, and (worse) its syncSeedTags
+// call WROTE MemoryTag documents into it. An unauthenticated caller could
+// therefore plant tag vocabulary in any non-Chorus instance by sending a header
+// naming nothing at all.
+//
+// That fallback used to be hard to reach by accident. It stopped being so the
+// moment memorials became addressable as /c/<slug>, since the slug in a URL is
+// whatever a visitor types.
+//
+// 404, not 403: a slug that names no memorial and a slug that names a memorial
+// someone is not allowed to see must be indistinguishable from outside.
+//
+// The Deepgram callback is the one exemption. It is called server-to-server
+// with none of our headers, so req.instance is ALWAYS the fallback there —
+// it reads its memorial from `?i=` and authenticates with `?t=` instead.
+const NOT_INSTANCE_SCOPED = ['/hooks/deepgram'];
+
+router.use((req, res, next) => {
+  if (NOT_INSTANCE_SCOPED.includes(req.path)) return next();
+  if (req.instance?.app !== 'chorus') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  next();
+});
+
 // ── Contributor identity ────────────────────────────────────────────────────
 
 function signContributor(id) {
