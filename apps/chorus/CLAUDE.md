@@ -208,9 +208,10 @@ and `GAME_TOKEN_SECRET`/`NEXTAUTH_SECRET` — the contributor token and the Deep
 are both signed with the existing shared secret.
 
 Transcription needs `DEEPGRAM_API_KEY` plus a publicly reachable callback base. **Production derives
-that base from `RENDER_EXTERNAL_URL`** and needs nothing set. `PUBLIC_API_URL` is an override, for a
-dev tunnel or a non-Render host; it must include the `/api` mount point, because the callback path
-is appended to it. With any of it missing, transcripts stay `skipped` and audio still records and
+that base from `RENDER_EXTERNAL_URL` and needs nothing set** — verified live: with `PUBLIC_API_URL`
+absent from Render, `/health` reports `ready` and a recorded memory came back transcribed.
+`PUBLIC_API_URL` is an override, for a dev tunnel or a non-Render host; it must include the `/api`
+mount point, because the callback path is appended to it. With any of it missing, transcripts stay `skipped` and audio still records and
 plays.
 
 **`GET /health` reports `transcription`** — `ready` | `no-api-key` | `no-secret` |

@@ -54,12 +54,14 @@ services:
       # and a rename cannot strand it. Set PUBLIC_API_URL only to override
       # (a dev tunnel, or a non-Render host).
       #
-      # UNVERIFIED as of this commit: that RENDER_EXTERNAL_URL is actually
-      # populated here. Confirm on the first deploy with
-      #   curl $SERVICE/health   → "transcription": "ready"
-      # If it reports "no-callback-url" instead, the derive found nothing —
-      # uncomment the two lines below and set the value to this service's own
-      # public URL INCLUDING the /api mount point, e.g.
+      # VERIFIED in production: with PUBLIC_API_URL set nowhere on this
+      # service, /health reports "transcription": "ready" and a recorded memory
+      # came back transcribed. RENDER_EXTERNAL_URL is populated here, so this
+      # service needs no PUBLIC_API_URL at all — do not "helpfully" add one.
+      #
+      # If a future deploy ever reports "no-callback-url", the derive found
+      # nothing: uncomment the two lines below and set the value to this
+      # service's own public URL INCLUDING the /api mount point, e.g.
       # https://whorl-websocket-server.onrender.com/api
       # - key: PUBLIC_API_URL
       #   sync: false
