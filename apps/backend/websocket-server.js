@@ -64,6 +64,11 @@ app.use(cors({
 
 app.use(bodyParser.json());
 
+// Tag every request so a 500 in the logs can be matched to the requestId the
+// client was shown. Registered before routing so even a 404 carries one.
+const { requestId, notFound, errorHandler } = require('./middleware/errorHandler');
+app.use(requestId);
+
 // Environment-aware rate limiting
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = !isProduction;
@@ -153,6 +158,22 @@ app.use('/socket.io', wsLimiter);
 const resolveInstance = require('./middleware/resolveInstance');
 const Instance = require('./models/Instance');
 const entryUtils = require('./utils/entries');
+// Refuse /api work before the routers exist, BEFORE resolveInstance gets a
+// chance to query Mongo.
+//
+// Routes mount only once Mongo connects, and the terminal error handler mounts
+// with them — so in the exact situation where a clean error matters most (the
+// database is unreachable), there was no handler and resolveInstance's failure
+// rendered Express's default HTML stack trace. This turns that into an honest
+// 503 and never touches the database to produce it.
+app.use('/api', (req, res, next) => {
+  if (apiRoutesLoaded) return next();
+  res.status(503).json({
+    error: 'Service unavailable — the server has not finished starting.',
+    requestId: req.id,
+  });
+});
+
 app.use('/api', resolveInstance);
 
 // Verify bearer tokens (signed from the NextAuth session by the game frontend)
@@ -340,6 +361,14 @@ function loadAPIRoutes() {
         require('./utils/memorialTranscribe').requestTranscript,
       );
       app.use('/api/memorial', memorialWriteLimiter, memorialRoutes);
+
+      // Terminal handlers, registered last so they sit behind every route.
+      // They live inside loadAPIRoutes for the same reason the routers do: at
+      // module scope they would be registered BEFORE the routes and would
+      // swallow every request as a 404.
+      app.use('/api', notFound);
+      app.use(errorHandler);
+
       apiRoutesLoaded = true;
       console.log('✅ API routes loaded successfully');
 

@@ -12,9 +12,28 @@
 //   SYN_EMBED_MODEL      default voyage-3.5
 //   SYN_EMBED_API_KEY    (fallback VOYAGE_API_KEY / OPENAI_API_KEY)
 
+const {
+  fetchWithTimeout, withRetry, createSemaphore, createBudget,
+} = require('../resilience');
+
 const DEFAULT_BASE_URL = 'https://api.voyageai.com/v1';
 const DEFAULT_MODEL = 'voyage-3.5';
 const MAX_BATCH = 128;
+const TIMEOUT_MS = 20_000;
+
+// Indexing is fire-and-forget (utils/synNodes.js#fireIndex), so a burst of
+// publishes used to mean an equal burst of concurrent embedding requests with
+// nothing in between. Four at a time keeps a backlog moving without stampeding
+// the vendor or the event loop.
+const runEmbed = createSemaphore(
+  Number(process.env.SYN_EMBED_CONCURRENCY) || 4
+);
+
+// Daily ceiling on embedding calls. 0 disables the cap.
+const embedBudget = createBudget({
+  limit: Number(process.env.SYN_EMBED_DAILY_LIMIT ?? 5000),
+  label: 'embedding',
+});
 
 function buildEmbedAdapter(env = process.env) {
   const provider = env.SYN_EMBED_PROVIDER || 'voyage';
@@ -23,15 +42,25 @@ function buildEmbedAdapter(env = process.env) {
   const modelId = env.SYN_EMBED_MODEL || DEFAULT_MODEL;
 
   async function embedBatch(inputs, signal) {
-    const res = await fetch(`${baseUrl}/embeddings`, {
-      method: 'POST',
-      signal,
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ model: modelId, input: inputs }),
-    });
+    embedBudget.consume();
+
+    // A whole-request timeout is right here (unlike chat, which streams).
+    // Retries matter more than they look: a dropped embedding means a node is
+    // missing from search results with nothing surfaced to anyone, because the
+    // caller is fire-and-forget.
+    const res = await runEmbed(() => withRetry(
+      () => fetchWithTimeout(`${baseUrl}/embeddings`, {
+        method: 'POST',
+        signal,
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({ model: modelId, input: inputs }),
+      }, { timeoutMs: TIMEOUT_MS }),
+      { label: `embed(${inputs.length})`, signal },
+    ));
+
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
       throw new Error(`Embedding request failed (${res.status}): ${detail.slice(0, 300)}`);

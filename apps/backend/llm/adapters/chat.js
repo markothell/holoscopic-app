@@ -18,10 +18,30 @@ const DEFAULT_CLAUDE_MODEL = 'claude-opus-5';
 const DEFAULT_OPENAI_MODEL = 'openai/gpt-4o-mini';
 const DEFAULT_MAX_TOKENS = 1024;
 
+const {
+  fetchWithTimeout, withRetry, createSemaphore, createBudget,
+} = require('../resilience');
+
 function num(v, fallback) {
   const n = parseInt(v, 10);
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
+
+// Time to first byte, NOT total duration — a long answer must not be cut off
+// mid-stream, but a vendor that accepts the connection and then says nothing
+// has to fail rather than hold a socket forever.
+const TTFB_TIMEOUT_MS = num(process.env.SYN_MODEL_TIMEOUT_MS, 30_000);
+
+// Generation is expensive and user-triggered; two at a time is plenty and
+// stops a burst of Synthesize clicks from opening N upstream streams.
+const runChat = createSemaphore(num(process.env.SYN_MODEL_CONCURRENCY, 2));
+
+// Daily generation ceiling. 0 disables it. This is the only thing standing
+// between a client-side retry loop and an unbounded bill.
+const chatBudget = createBudget({
+  limit: Number(process.env.SYN_MODEL_DAILY_LIMIT ?? 500),
+  label: 'model generation',
+});
 
 // ── Anthropic Messages adapter ──────────────────────────────────────────────
 function anthropicChat(env) {
@@ -49,16 +69,25 @@ function anthropicChat(env) {
       if (thinkingMode === 'disabled') body.thinking = { type: 'disabled' };
       else if (thinkingMode === 'adaptive') body.thinking = { type: 'adaptive', display: 'summarized' };
 
-      const res = await fetch(`${baseUrl}/v1/messages`, {
-        method: 'POST',
-        signal,
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(body),
-      });
+      chatBudget.consume();
+
+      // Retry only covers establishing the stream. Once tokens are flowing a
+      // retry would restart the answer from the beginning, which is worse than
+      // surfacing the error.
+      const res = await runChat(() => withRetry(
+        () => fetchWithTimeout(`${baseUrl}/v1/messages`, {
+          method: 'POST',
+          signal,
+          headers: {
+            'content-type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify(body),
+        }, { timeoutMs: TTFB_TIMEOUT_MS, streaming: true }),
+        { label: 'anthropic chat', signal },
+      ));
+
       if (!res.ok) {
         const detail = await res.text().catch(() => '');
         throw new Error(`Anthropic chat failed (${res.status}): ${detail.slice(0, 300)}`);
@@ -94,20 +123,29 @@ function openaiChat(env) {
       const chatMessages = system
         ? [{ role: 'system', content: system }, ...messages]
         : [...messages];
-      const res = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        signal,
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: modelId,
-          max_tokens: maxTokens,
-          messages: chatMessages,
-          stream: true,
-        }),
-      });
+      // Same budget, semaphore and TTFB deadline as the Anthropic path — the
+      // provider is a config choice, so the guardrails cannot differ by which
+      // branch a deployment happens to take.
+      chatBudget.consume();
+
+      const res = await runChat(() => withRetry(
+        () => fetchWithTimeout(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          signal,
+          headers: {
+            'content-type': 'application/json',
+            authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: modelId,
+            max_tokens: maxTokens,
+            messages: chatMessages,
+            stream: true,
+          }),
+        }, { timeoutMs: TTFB_TIMEOUT_MS, streaming: true }),
+        { label: 'openai-compatible chat', signal },
+      ));
+
       if (!res.ok) {
         const detail = await res.text().catch(() => '');
         throw new Error(`Chat completion failed (${res.status}): ${detail.slice(0, 300)}`);

@@ -21,6 +21,8 @@ const crypto = require('crypto');
 // full-text search later.
 
 const DEEPGRAM_URL = 'https://api.deepgram.com/v1/listen';
+// Enqueue-only deadline; the transcript itself returns via the callback.
+const DEEPGRAM_TIMEOUT_MS = Number(process.env.DEEPGRAM_TIMEOUT_MS) || 15_000;
 
 function apiKey() {
   return process.env.DEEPGRAM_API_KEY || '';
@@ -96,8 +98,16 @@ async function requestTranscript({
   });
 
   try {
+    // A deadline, because this had none. Deepgram only has to accept the job
+    // here (transcription itself is async and arrives by callback), so 15s is
+    // generous — but without any timeout a stalled connection holds a socket
+    // for the lifetime of the process.
+    //
+    // Applied via the signal rather than by wrapping fetchImpl, so an injected
+    // test double keeps working unchanged.
     const res = await fetchImpl(`${DEEPGRAM_URL}?${query}`, {
       method: 'POST',
+      signal: AbortSignal.timeout(DEEPGRAM_TIMEOUT_MS),
       headers: {
         Authorization: `Token ${apiKey()}`,
         'Content-Type': 'application/json',
