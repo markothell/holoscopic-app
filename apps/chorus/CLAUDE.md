@@ -4,6 +4,13 @@ Memories about one person, collected from anyone with the link. Working name —
 it. Local dev port **4005**, ships to `chorus.holoscopic.io` (add to backend `CLIENT_URL` at
 cutover). Next.js 16 + React 19 + Tailwind v4 (`@theme inline` in `globals.css`, no config file).
 
+**One deployment serves every memorial.** A memorial is `/c/<slug>`, where the slug is its
+`Instance`'s — `/c/chorus`, `/c/chorus-ray`. Its pages are `/c/<slug>/m/<id>` and
+`/c/<slug>/curate?k=…`. The root `/` is a front door that never shows a memorial. A new memorial is
+therefore a row created in the platform admin (Instances → New → App: Chorus), with no deploy and
+no env var — which is what PLAN §11 was built toward, and the whole of what it cost was making
+`INSTANCE_ID` a parameter instead of a module constant.
+
 Design source of truth is `PLAN.md` (§-numbered, settled decisions D1–D11 in §10). Read the
 relevant § before changing behavior it describes. The Mongoose model files carry long header
 comments explaining why each field exists.
@@ -41,11 +48,13 @@ anything. Don't "fix" them by adding auth.
 
 | Where | What |
 |---|---|
-| `src/services/api.ts` | All HTTP. Attaches `x-instance-id` and, on writes, `x-contributor-token`. Safe to import from a Server Component — nothing touches `window` at module scope. |
+| `src/app/c/[slug]/` | **One memorial.** `layout.tsx` resolves the slug, 404s an unknown one, and provides it to everything below |
+| `src/components/MemorialProvider.tsx` | `useMemorial()` → `{ slug, instanceId, subjectName, api }` for client components |
+| `src/services/api.ts` | All HTTP. `memorialApiFor(slug)` binds one memorial; attaches `x-instance-id` and, on writes, `x-contributor-token`. Safe to import from a Server Component — nothing touches `window` at module scope. |
 | `src/lib/types.ts` | Wire types, mirroring `utils/memories.js#toClient` exactly |
 | `src/components/PromptSentence.tsx` | **The signature element** — the fill-in-the-blank sentence, at two densities plus an interactive mode (pass `onSlotTap`) |
 | `src/components/MemoryCard.tsx` | One memory on the wall. Stretched-link card (see gotchas) |
-| `src/lib/filters.ts` | Filter state lives in the URL, so a filtered wall is a shareable link |
+| `src/lib/filters.ts` | Filter state lives in the URL, so a filtered wall is a shareable link. Every href builder takes the memorial's `base` (`/c/<slug>`) |
 | `src/components/tags/TagLink.tsx` | A tag as a filter link — `rule` inside a sentence, `chip` as a control |
 | `src/components/tags/FilterRail.tsx` | Active filters + the words people actually used |
 | `src/components/tags/TagPortrait.tsx` | *Who she was, according to everyone* — size ∝ `useCount` |
@@ -107,11 +116,19 @@ under `node --test` with no DB, no Blob, no Deepgram. Keep that when adding func
 - **Tags in a sentence keep the ruled line (`variant="rule"`).** Rendering them as chips there
   turns the signature element into a tag UI, which is the one thing the visual language rules out.
   Chips are for filter *controls* only.
-- **The socket room key is the RESOLVED instance id, never the slug.** `NEXT_PUBLIC_INSTANCE_ID`
-  holds `chorus`; the funnel broadcasts to `memorial:<req.instanceId>` (`6691dd8d`). Joining on the
-  slug subscribes to a room nothing publishes to, and it fails completely silently — the socket
-  connects, the join is accepted, no event ever arrives. `LiveWall` takes the id from
-  `GET /config`.
+- **The socket room key is the RESOLVED instance id, never the slug.** The URL and the
+  `x-instance-id` header carry the slug (`chorus`); the funnel broadcasts to
+  `memorial:<req.instanceId>` (`6691dd8d`). Joining on the slug subscribes to a room nothing
+  publishes to, and it fails completely silently — the socket connects, the join is accepted, no
+  event ever arrives. `LiveWall` takes the id from `GET /config`, which is why `useMemorial()`
+  carries both.
+- **`resolveInstance` never fails, so `/api/memorial/*` guards on `Instance.app === 'chorus'`.** An
+  unrecognised `x-instance-id` falls through to the default interView edition. Before the guard,
+  `GET /config` answered for that edition — and its `syncSeedTags` call *wrote* MemoryTag rows into
+  it, from an unauthenticated request. The guard 404s (never 403s) so an absent memorial and a
+  hidden one look the same. `/hooks/deepgram` is the one exemption; it reads `?i=`.
+- **There is no default slug.** `memorialApiFor` takes one and nothing supplies a fallback — a
+  wrong guess would show one family another family's memories rather than fail.
 - **New models need `{ id: false }`** in schema options, like every model in this repo.
 - **The compose sheet must never close on a failed send.** Those fields hold the only copy of
   something that may have taken ten minutes to write. Same rule governs the M2 recording stash.
@@ -164,7 +181,10 @@ cards each repeating the boilerplate is noise, not rhythm.
 ## Environment
 
 - `NEXT_PUBLIC_API_URL` (default `http://localhost:4001/api`)
-- `NEXT_PUBLIC_INSTANCE_ID` (default `chorus`)
+- `NEXT_PUBLIC_ABOUT_URL` — where `/` points for "what Chorus is" (default
+  `https://holoscopic.io/chorus`)
+
+`NEXT_PUBLIC_INSTANCE_ID` is gone. Which memorial a page is for comes from its `/c/<slug>` route.
 
 - `BLOB_READ_WRITE_TOKEN` — **required for recording**. Without it `/api/audio/upload` returns a
   named 503 and only typed memories work.
@@ -180,6 +200,10 @@ are both signed with the existing shared secret. Transcription additionally need
 ```bash
 npm run dev:backend    # 4001
 npm run dev:chorus     # 4005
-node apps/backend/scripts/seed-memorial.js          # memorial + tags + 6 memories
+node apps/backend/scripts/seed-memorial.js          # the demo memorial + tags + 6 memories
 node apps/backend/scripts/seed-memorial.js --reset  # rebuild the seeded memories
 ```
+
+Then open `http://localhost:4005/c/chorus`. A **real** memorial is made in the platform admin
+(`npm run dev:platform`, Instances → New instance → App: Chorus), which provisions the curator key
+and starting vocabulary on create; the seed script is for the demo.

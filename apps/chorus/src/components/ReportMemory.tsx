@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ensureContributor, memorialApi } from '@/services/api';
+import { ensureContributor } from '@/services/api';
+import { useMemorial } from '@/components/MemorialProvider';
 
 // The way a visitor raises a concern about a memory.
 //
@@ -15,14 +16,15 @@ import { ensureContributor, memorialApi } from '@/services/api';
 // that, so nobody expects the memory to disappear.
 
 export default function ReportMemory({ memoryId }: { memoryId: string }) {
+  const { api } = useMemorial();
   const [state, setState] = useState<'idle' | 'confirming' | 'sent'>('idle');
 
   async function send() {
     setState('sent');
-    await ensureContributor();
+    await ensureContributor(api);
     // The response is identical whatever the flag count, so a reporter learns
     // nothing about whether this memory is already queued.
-    try { await memorialApi.flag(memoryId); } catch { /* stays 'sent' either way */ }
+    try { await api.flag(memoryId); } catch { /* stays 'sent' either way */ }
   }
 
   if (state === 'sent') {

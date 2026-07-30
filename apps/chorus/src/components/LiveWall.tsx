@@ -24,7 +24,7 @@ import { io, type Socket } from 'socket.io-client';
 const AT_TOP_PX = 24;
 
 export default function LiveWall({
-  // The RESOLVED instance id from GET /config — never NEXT_PUBLIC_INSTANCE_ID.
+  // The RESOLVED instance id from GET /config — never the /c/<slug> slug.
   // That env var holds the slug ("chorus"), while the funnel broadcasts to
   // `memorial:<req.instanceId>`, the short id resolveInstance produced. Joining
   // on the slug subscribes to a room nothing ever publishes to, and the failure

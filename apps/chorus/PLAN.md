@@ -577,24 +577,38 @@ accounts; email digests to the curator; the LLM auto-screen; any holon mechanic.
 
 ---
 
-## 11. Preparing for the community-app widget (cost: ~zero)
+## 11. Multi-memorial — **DONE**
 
-Everything here is either already required by the repo's own rules or one line:
+This section was a bet that keeping six things straight from day one would make the
+one-memorial-per-deployment version become the many-memorial version for nearly nothing. It did.
+The swap took one afternoon, no migration, no model change, and not one stored document moved.
 
 1. **Every document carries `instanceId`** and every query filters on it — mandatory anyway.
 2. **All subject config lives on the `Instance`**, so the same deployed frontend serves any
    memorial. Nothing is hardcoded or baked at build time.
-3. **The frontend resolves its memorial from the `x-instance-id` header**, defaulted from
-   `NEXT_PUBLIC_INSTANCE_ID`. Swapping that default for a path segment (`/c/[code]`) or a subdomain
-   is the *entire* multi-collection change on the read side.
+3. **The frontend resolves its memorial from the `x-instance-id` header.** *(Done.)* That header
+   was fed by a module constant read from `NEXT_PUBLIC_INSTANCE_ID`; it is now a parameter, and
+   `/c/[slug]` supplies it. `memorialApiFor(slug)` binds one memorial's API, `MemorialProvider`
+   hands it to client components, and every href builder in `lib/filters.ts` takes the memorial's
+   `base`. **The entire change on the read side, exactly as predicted.**
 4. **`curatorKey` exists from day one**, so a collection someone else creates already has an owner
    who isn't a holoscopic admin.
 5. **Blob pathnames are namespaced** `memorial/<instanceId>/<memoryId>.<ext>` — no reshuffle later.
 6. **Tags are per-instance**, so vocabularies never collide across collections.
 
-What's left for the widget version: a create-a-collection route that mints a child `Instance`
-(slug `mem-<code>`, `parentInstanceId` set) — the exact pattern OaS rooms and Synthesis communities
-already use — plus the routing swap in (3). No migration, no model change.
+**Creating a memorial** is now a row in the platform admin: Instances → New → App: Chorus. That
+provisions explore mode, the curator key, and the starting vocabulary server-side
+(`utils/memorialDefaults.js`), so the memorial is live at `/c/<slug>` before you have finished
+typing the blurb. `scripts/seed-memorial.js` remains, for the demo memorial only.
+
+**The one thing this uncovered.** `resolveInstance` never fails — an unrecognised `x-instance-id`
+falls through to the default interView edition. That was survivable while the slug came from an env
+var, and stopped being so the moment a visitor could type it in a URL: `GET /config` answered for
+the wrong instance, and its `syncSeedTags` call *wrote* MemoryTag rows into it. `routes/memorial.js`
+now guards on `Instance.app === 'chorus'` and 404s everything else.
+
+What's left for the widget version: a public create-a-collection route (the admin one is
+admin-only), which needs abuse protection on an unauthenticated write path. The routing is done.
 
 ---
 

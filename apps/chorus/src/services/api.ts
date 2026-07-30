@@ -13,12 +13,18 @@ import type { ConfigResponse, MemoryDetail, WallResponse, ComposeDraft } from '@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 
-// One memorial per deployment for now. Read from config on the server rather
-// than hardcoded anywhere, so pointing this frontend at a different memorial
-// is an env change — and the eventual multi-collection version is a routing
-// change rather than a data migration (PLAN §11).
-export const INSTANCE_ID = process.env.NEXT_PUBLIC_INSTANCE_ID || 'chorus';
-
+// One deployment serves every memorial. Which one a request is for comes from
+// the `/c/<slug>` path segment and travels as `x-instance-id` — resolveInstance
+// accepts a slug or an id there.
+//
+// This used to be a module constant read from NEXT_PUBLIC_INSTANCE_ID, which
+// meant one memorial per Vercel project. It is a parameter now precisely
+// because that is the entire multi-collection change on the read side
+// (PLAN §11.3): nothing else about the data or the model had to move.
+//
+// There is deliberately no default. A missing slug must be a 404 for a
+// memorial that doesn't exist, never a quiet fallback that shows one family
+// another family's memories.
 const TOKEN_KEY = 'chorus.contributorToken';
 
 export class ApiError extends Error {
@@ -40,12 +46,13 @@ export function storeContributorToken(token: string) {
 }
 
 async function apiFetch<T>(
+  instance: string,
   path: string,
   options: { method?: string; body?: unknown; withContributor?: boolean } = {},
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'x-instance-id': INSTANCE_ID,
+    'x-instance-id': instance,
   };
   if (options.withContributor) {
     const token = contributorToken();
@@ -68,66 +75,81 @@ async function apiFetch<T>(
   return json as T;
 }
 
-export const memorialApi = {
-  config: () => apiFetch<ConfigResponse>('/memorial/config'),
+// The API bound to one memorial. Server Components build this from their
+// `slug` route param; client components get it from useMemorial().
+//
+// Binding the instance once, here, is what keeps every call site from having
+// to remember to pass it — and a call site that forgets would read the wrong
+// memorial rather than fail, which is the one class of bug this app cannot
+// afford.
+export function memorialApiFor(instance: string) {
+  return {
+    instance,
 
-  wall: (params: {
-    tags?: string[]; cursor?: string | null; limit?: number; sort?: string;
-  } = {}) => {
-    const q = new URLSearchParams();
-    if (params.tags?.length) q.set('tags', params.tags.join(','));
-    if (params.cursor) q.set('cursor', params.cursor);
-    if (params.limit) q.set('limit', String(params.limit));
-    if (params.sort) q.set('sort', params.sort);
-    const qs = q.toString();
-    return apiFetch<WallResponse>(`/memorial/memories${qs ? `?${qs}` : ''}`);
-  },
+    config: () => apiFetch<ConfigResponse>(instance, '/memorial/config'),
 
-  memory: (id: string) => apiFetch<MemoryDetail>(`/memorial/memories/${id}`),
-
-  flag: (id: string) => apiFetch<{ ok: true }>(`/memorial/memories/${id}/flag`, {
-    method: 'POST',
-    withContributor: true,
-  }),
-
-  // ── Curator surface ───────────────────────────────────────────────────────
-  // Authenticated by a key in the URL and nothing else (D10), so a family
-  // member with no holoscopic account can moderate from a texted link. Every
-  // one of these 404s without it, so probing is indistinguishable from a typo.
-  curate: {
-    wall: (key: string, cursor?: string | null) => {
-      const q = new URLSearchParams({ k: key, limit: '50' });
-      if (cursor) q.set('cursor', cursor);
-      return apiFetch<WallResponse>(`/memorial/memories?${q}`);
+    wall: (params: {
+      tags?: string[]; cursor?: string | null; limit?: number; sort?: string;
+    } = {}) => {
+      const q = new URLSearchParams();
+      if (params.tags?.length) q.set('tags', params.tags.join(','));
+      if (params.cursor) q.set('cursor', params.cursor);
+      if (params.limit) q.set('limit', String(params.limit));
+      if (params.sort) q.set('sort', params.sort);
+      const qs = q.toString();
+      return apiFetch<WallResponse>(instance, `/memorial/memories${qs ? `?${qs}` : ''}`);
     },
-    setStatus: (key: string, id: string, status: 'live' | 'hidden' | 'removed', reason = '') =>
-      apiFetch<{ memory: { id: string; status: string } }>(
-        `/memorial/curate/memories/${id}/status?k=${encodeURIComponent(key)}`,
-        { method: 'POST', body: { status, reason } },
-      ),
-  },
 
-  session: () => apiFetch<{ contributorId: string; token: string }>(
-    '/memorial/session',
-    { method: 'POST', withContributor: true },
-  ),
+    memory: (id: string) => apiFetch<MemoryDetail>(instance, `/memorial/memories/${id}`),
 
-  create: (draft: ComposeDraft) => apiFetch<MemoryDetail>('/memorial/memories', {
-    method: 'POST',
-    withContributor: true,
-    body: {
-      title: draft.title,
-      sharerName: draft.sharerName,
-      // The server takes LABELS, not ids, for all three slots — that's what
-      // makes a picked tag and a typed-in one the same code path.
-      subjectTags: draft.subjectTags,
-      selfTags: draft.selfTags,
-      experienceTags: draft.experienceTags,
-      body: { text: draft.text, audio: draft.audio ?? undefined },
-      replyToId: draft.replyToId ?? null,
+    flag: (id: string) => apiFetch<{ ok: true }>(instance, `/memorial/memories/${id}/flag`, {
+      method: 'POST',
+      withContributor: true,
+    }),
+
+    // ── Curator surface ─────────────────────────────────────────────────────
+    // Authenticated by a key in the URL and nothing else (D10), so a family
+    // member with no holoscopic account can moderate from a texted link. Every
+    // one of these 404s without it, so probing is indistinguishable from a typo.
+    curate: {
+      wall: (key: string, cursor?: string | null) => {
+        const q = new URLSearchParams({ k: key, limit: '50' });
+        if (cursor) q.set('cursor', cursor);
+        return apiFetch<WallResponse>(instance, `/memorial/memories?${q}`);
+      },
+      setStatus: (key: string, id: string, status: 'live' | 'hidden' | 'removed', reason = '') =>
+        apiFetch<{ memory: { id: string; status: string } }>(
+          instance,
+          `/memorial/curate/memories/${id}/status?k=${encodeURIComponent(key)}`,
+          { method: 'POST', body: { status, reason } },
+        ),
     },
-  }),
-};
+
+    session: () => apiFetch<{ contributorId: string; token: string }>(
+      instance,
+      '/memorial/session',
+      { method: 'POST', withContributor: true },
+    ),
+
+    create: (draft: ComposeDraft) => apiFetch<MemoryDetail>(instance, '/memorial/memories', {
+      method: 'POST',
+      withContributor: true,
+      body: {
+        title: draft.title,
+        sharerName: draft.sharerName,
+        // The server takes LABELS, not ids, for all three slots — that's what
+        // makes a picked tag and a typed-in one the same code path.
+        subjectTags: draft.subjectTags,
+        selfTags: draft.selfTags,
+        experienceTags: draft.experienceTags,
+        body: { text: draft.text, audio: draft.audio ?? undefined },
+        replyToId: draft.replyToId ?? null,
+      },
+    }),
+  };
+}
+
+export type MemorialApi = ReturnType<typeof memorialApiFor>;
 
 // Uploads a recording straight from the browser to Vercel Blob and returns the
 // public URL. The bytes reach Blob directly — neither this Next server nor the
@@ -138,14 +160,16 @@ export const memorialApi = {
 // who thinks it's broken closes the sheet.
 export async function uploadRecording(
   blob: Blob,
-  { mimeType, onProgress }: { mimeType: string; onProgress?: (percent: number) => void },
+  { instance, mimeType, onProgress }: {
+    instance: string; mimeType: string; onProgress?: (percent: number) => void;
+  },
 ): Promise<{ url: string; pathname: string }> {
   const { upload } = await import('@vercel/blob/client');
   const { fileExtensionFor } = await import('@/lib/recorder');
 
   // Namespaced per memorial from day one, so the multi-collection version
   // needs no reshuffle of existing objects (PLAN §11).
-  const pathname = `memorial/${INSTANCE_ID}/${Date.now()}.${fileExtensionFor(mimeType)}`;
+  const pathname = `memorial/${instance}/${Date.now()}.${fileExtensionFor(mimeType)}`;
 
   const result = await upload(pathname, blob, {
     access: 'public',
@@ -166,11 +190,11 @@ export async function uploadRecording(
 // Returns null if the mint fails. The caller surfaces that at submit time,
 // not on open: a visitor who opened the sheet to read the prompt should not
 // be shown an error about a session they never asked for.
-export async function ensureContributor(): Promise<string | null> {
+export async function ensureContributor(api: MemorialApi): Promise<string | null> {
   const existing = contributorToken();
   if (existing) return existing;
   try {
-    const { token } = await memorialApi.session();
+    const { token } = await api.session();
     storeContributorToken(token);
     return token;
   } catch {

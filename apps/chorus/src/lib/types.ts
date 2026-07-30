@@ -73,7 +73,7 @@ export interface WallResponse {
   sort: string;
 }
 
-/** What the compose sheet holds. Tags are LABELS — see memorialApi.create. */
+/** What the compose sheet holds. Tags are LABELS — see memorialApiFor(…).create. */
 export interface ComposeDraft {
   title: string;
   sharerName: string;

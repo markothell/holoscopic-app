@@ -6,7 +6,8 @@ import Sheet from '@/components/ui/Sheet';
 import PromptSentence, { type Slot } from '@/components/PromptSentence';
 import TagDrawer from './TagDrawer';
 import Recorder from './Recorder';
-import { ensureContributor, memorialApi, uploadRecording } from '@/services/api';
+import { ensureContributor, uploadRecording } from '@/services/api';
+import { useMemorial } from '@/components/MemorialProvider';
 import { clearStashedRecording, type Recording } from '@/lib/recorder';
 import type { AddTarget, Memorial, Tag } from '@/lib/types';
 
@@ -37,6 +38,10 @@ interface Props {
 
 export default function ComposeButton({ memorial, tags, variant, label, addTo = null }: Props) {
   const router = useRouter();
+  // Which memorial this memory is being written into. Comes from the route
+  // rather than a prop so no caller can get it wrong.
+  const { slug, api } = useMemorial();
+  const base = `/c/${slug}`;
   const [open, setOpen] = useState(false);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [step, setStep] = useState<Step>('writing');
@@ -101,7 +106,7 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
     setError(null);
     // Mint the anonymous identity now so the send is one round trip. Nobody
     // who only reads a memorial ever causes this call.
-    void ensureContributor();
+    void ensureContributor(api);
   }
 
   async function send() {
@@ -109,7 +114,7 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
     setStep('sending');
     setError(null);
 
-    const token = await ensureContributor();
+    const token = await ensureContributor(api);
     if (!token) {
       setStep('writing');
       setError('Couldn’t reach the server. Your memory is still here — try again.');
@@ -125,6 +130,7 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
       if (recording) {
         setUploadPercent(0);
         const { url, pathname } = await uploadRecording(recording.blob, {
+          instance: slug,
           mimeType: recording.mimeType,
           onProgress: setUploadPercent,
         });
@@ -136,7 +142,7 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
         };
       }
 
-      const { memory } = await memorialApi.create({
+      const { memory } = await api.create({
         title: title.trim(),
         sharerName: anon ? '' : sharerName.trim(),
         subjectTags, selfTags, experienceTags,
@@ -159,7 +165,8 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
   }
 
   async function share() {
-    const url = createdId ? `${window.location.origin}/m/${createdId}` : window.location.origin;
+    const memorialUrl = `${window.location.origin}${base}`;
+    const url = createdId ? `${memorialUrl}/m/${createdId}` : memorialUrl;
     const shareData = {
       title: `Memories of ${name}`,
       text: `I left a memory of ${name}. Add yours.`,
@@ -175,7 +182,7 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
 
   function finish() {
     setOpen(false);
-    if (createdId) router.push(`/m/${createdId}`);
+    if (createdId) router.push(`${base}/m/${createdId}`);
   }
 
   return (

@@ -20,13 +20,18 @@ export function activeTagIds(params: SearchParams): string[] {
  * The href that adds this tag to (or removes it from) the current filter,
  * keeping the chosen ordering — changing a filter should never silently
  * reset the wall's order underneath the reader.
+ *
+ * `base` is the memorial's own path, `/c/<slug>`. Every builder here takes it
+ * because one deployment serves every memorial: a bare "/?tags=…" would land
+ * on the app's front door rather than on a filtered view of the wall the
+ * reader was actually looking at.
  */
-export function toggleTagHref(params: SearchParams, tagId: string): string {
+export function toggleTagHref(base: string, params: SearchParams, tagId: string): string {
   const current = activeTagIds(params);
   const next = current.includes(tagId)
     ? current.filter(id => id !== tagId)
     : [...current, tagId];
-  return buildHref(next, activeSort(params));
+  return buildHref(base, next, activeSort(params));
 }
 
 // ── Sorting ─────────────────────────────────────────────────────────────────
@@ -46,22 +51,22 @@ export function activeSort(params: SearchParams): SortKey {
 }
 
 /** Builds a URL preserving the current filters while changing the ordering. */
-export function sortHref(params: SearchParams, sort: SortKey): string {
-  return buildHref(activeTagIds(params), sort);
+export function sortHref(base: string, params: SearchParams, sort: SortKey): string {
+  return buildHref(base, activeTagIds(params), sort);
 }
 
-// The default ordering is left OUT of the URL, so the plain "/" a person is
+// The default ordering is left OUT of the URL, so the plain link a person is
 // texted stays clean and every view has exactly one address.
-function buildHref(tags: string[], sort: SortKey): string {
+function buildHref(base: string, tags: string[], sort: SortKey): string {
   const query = new URLSearchParams();
   if (tags.length) query.set('tags', tags.join(','));
   if (sort !== 'newest') query.set('sort', sort);
   const qs = query.toString();
-  return qs ? `/?${qs}` : '/';
+  return qs ? `${base}?${qs}` : base;
 }
 
-export function clearFiltersHref(params: SearchParams = {}): string {
-  return buildHref([], activeSort(params));
+export function clearFiltersHref(base: string, params: SearchParams = {}): string {
+  return buildHref(base, [], activeSort(params));
 }
 
 /** Resolves active ids to tags for display, dropping any that no longer exist. */

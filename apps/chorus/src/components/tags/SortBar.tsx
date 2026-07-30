@@ -11,7 +11,7 @@ import { sortHref, SORT_LABELS, activeSort, type SearchParams } from '@/lib/filt
 // Rendered as links so ordering stays in the URL alongside the filters, which
 // keeps the wall a Server Component and keeps every view shareable.
 
-export default function SortBar({ params }: { params: SearchParams }) {
+export default function SortBar({ base, params }: { base: string; params: SearchParams }) {
   const current = activeSort(params);
 
   return (
@@ -21,7 +21,7 @@ export default function SortBar({ params }: { params: SearchParams }) {
         return (
           <Link
             key={key}
-            href={sortHref(params, key)}
+            href={sortHref(base, params, key)}
             aria-current={active ? 'true' : undefined}
             className={`rounded-full px-2.5 py-1 text-[0.8125rem] transition-colors
                         ${active ? 'bg-card text-ink' : 'text-ink-faint hover:text-ink'}`}

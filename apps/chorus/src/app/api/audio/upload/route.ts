@@ -1,6 +1,5 @@
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { NextResponse } from 'next/server';
-import { INSTANCE_ID } from '@/services/api';
 
 // The ONLY server route this app owns.
 //
@@ -41,18 +40,28 @@ export async function POST(request: Request): Promise<NextResponse> {
     const result = await handleUpload({
       body,
       request,
-      onBeforeGenerateToken: async () => ({
-        allowedContentTypes: ALLOWED,
-        maximumSizeInBytes: MAX_BYTES,
-        // Two people recording "the kitchen radio" in the same second must not
-        // collide, and a guessable path would let anyone enumerate a
-        // memorial's recordings.
-        addRandomSuffix: true,
-        // Recordings are never rewritten — a re-record uploads a new object.
-        // Long cache means the second listener gets it from the CDN edge.
-        cacheControlMaxAge: 60 * 60 * 24 * 365,
-        tokenPayload: JSON.stringify({ instanceId: INSTANCE_ID }),
-      }),
+      // `pathname` is memorial/<slug>/… — see uploadRecording. This server no
+      // longer knows which memorial it is serving (one deployment now serves
+      // all of them), and it does not need to: the pathname is prefix-checked
+      // below, and the backend independently validates the returned URL
+      // against its blob host allowlist before storing it.
+      onBeforeGenerateToken: async (pathname) => {
+        if (!pathname.startsWith('memorial/')) {
+          throw new Error('Unexpected upload path');
+        }
+        return {
+          allowedContentTypes: ALLOWED,
+          maximumSizeInBytes: MAX_BYTES,
+          // Two people recording "the kitchen radio" in the same second must
+          // not collide, and a guessable path would let anyone enumerate a
+          // memorial's recordings.
+          addRandomSuffix: true,
+          // Recordings are never rewritten — a re-record uploads a new object.
+          // Long cache means the second listener gets it from the CDN edge.
+          cacheControlMaxAge: 60 * 60 * 24 * 365,
+          tokenPayload: JSON.stringify({ pathname }),
+        };
+      },
       // Fires server-to-server after the upload lands. Nothing to do here: the
       // browser posts the URL to the backend itself, and that write is what
       // makes the recording a memory. Uploaded-but-never-referenced blobs are

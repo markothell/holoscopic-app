@@ -14,8 +14,10 @@ import { activeTagIds, clearFiltersHref, toggleTagHref, type SearchParams } from
 // stacking two words narrows to memories carrying both.
 
 export default function FilterRail({
-  role, experience, params, total, subjectName,
+  base, role, experience, params, total, subjectName,
 }: {
+  /** This memorial's path, `/c/<slug>` — every link here hangs off it. */
+  base: string;
   role: Tag[];
   experience: Tag[];
   params: SearchParams;
@@ -41,10 +43,10 @@ export default function FilterRail({
         <div className="mb-3">
           <div className="flex flex-wrap items-center gap-2">
             {activeTags.map(tag => (
-              <TagLink key={tag.id} tag={tag} href={toggleTagHref(params, tag.id)} active size="md" />
+              <TagLink key={tag.id} tag={tag} href={toggleTagHref(base, params, tag.id)} active size="md" />
             ))}
             <Link
-              href={clearFiltersHref(params)}
+              href={clearFiltersHref(base, params)}
               className="px-2 py-1 text-[0.875rem] text-ink-faint underline
                          decoration-rule underline-offset-4 hover:text-ink"
             >
@@ -64,7 +66,7 @@ export default function FilterRail({
       <div className="-mx-5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex w-max gap-2 pb-1">
           {offered.map(tag => (
-            <TagLink key={tag.id} tag={tag} href={toggleTagHref(params, tag.id)} />
+            <TagLink key={tag.id} tag={tag} href={toggleTagHref(base, params, tag.id)} />
           ))}
         </div>
       </div>

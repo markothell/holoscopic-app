@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { memorialApi } from '@/services/api';
+import { memorialApiFor } from '@/services/api';
 import PromptSentence from '@/components/PromptSentence';
 import ComposeButton from '@/components/compose/ComposeButton';
 import AudioPill from '@/components/audio/AudioPill';
@@ -18,11 +18,13 @@ import type { Memory } from '@/lib/types';
 // them is selected" is a single query on threadId (PLAN §3.3), and opening any
 // member shows the whole cluster, not just what was added after it.
 
-function Sibling({ memory, subjectName }: { memory: Memory; subjectName: string }) {
+function Sibling({ base, memory, subjectName }: {
+  base: string; memory: Memory; subjectName: string;
+}) {
   return (
     <li>
       <Link
-        href={`/m/${memory.id}`}
+        href={`${base}/m/${memory.id}`}
         className="block rounded-[3px] bg-card px-5 py-4 shadow-[var(--shadow-card)]
                    transition-shadow duration-300 hover:shadow-[var(--shadow-lift)]"
       >
@@ -49,17 +51,17 @@ function Sibling({ memory, subjectName }: { memory: Memory; subjectName: string 
 
 export default async function MemoryPage({
   params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
+}: PageProps<'/c/[slug]/m/[id]'>) {
+  const { slug, id } = await params;
+  const base = `/c/${slug}`;
+  const api = memorialApiFor(slug);
 
   let detail;
   let config;
   try {
     [config, detail] = await Promise.all([
-      memorialApi.config(),
-      memorialApi.memory(id),
+      api.config(),
+      api.memory(id),
     ]);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound();
@@ -75,7 +77,7 @@ export default async function MemoryPage({
       <LiveWall instanceId={config.memorial.instanceId} announce={false} />
       <nav className="pt-8 pb-6">
         <Link
-          href="/"
+          href={base}
           className="text-[0.9375rem] text-ink-faint transition-colors hover:text-ink"
         >
           ← All memories of {name}
@@ -91,7 +93,7 @@ export default async function MemoryPage({
             <>
               {' · added to '}
               <Link
-                href={`/m/${memory.replyTo.id}`}
+                href={`${base}/m/${memory.replyTo.id}`}
                 className="underline decoration-rule underline-offset-2 hover:text-ink"
               >
                 {memory.replyTo.anonymous
@@ -147,7 +149,7 @@ export default async function MemoryPage({
                 // A tag chosen in two slots is one word, not two chips.
                 .filter((t, i, all) => all.findIndex(x => x.id === t.id) === i)
                 .map(tag => (
-                  <TagLink key={tag.id} tag={tag} href={`/?tags=${tag.id}`} />
+                  <TagLink key={tag.id} tag={tag} href={`${base}?tags=${tag.id}`} />
                 ))}
             </div>
           </div>
@@ -161,7 +163,7 @@ export default async function MemoryPage({
           </h2>
           <ul className="flex flex-col gap-3">
             {thread.map(sibling => (
-              <Sibling key={sibling.id} memory={sibling} subjectName={name} />
+              <Sibling key={sibling.id} base={base} memory={sibling} subjectName={name} />
             ))}
           </ul>
         </section>

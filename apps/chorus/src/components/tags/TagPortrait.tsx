@@ -22,8 +22,10 @@ const STEPS = [
 ];
 
 export default function TagPortrait({
-  tags, subjectName, params,
+  base, tags, subjectName, params,
 }: {
+  /** This memorial's path, `/c/<slug>` — every link here hangs off it. */
+  base: string;
   tags: Tag[];
   subjectName: string;
   params: SearchParams;
@@ -53,7 +55,7 @@ export default function TagPortrait({
           return (
             <Link
               key={tag.id}
-              href={toggleTagHref(params, tag.id)}
+              href={toggleTagHref(base, params, tag.id)}
               className={`voice ${STEPS[step]} leading-none text-ink transition-colors
                           hover:text-dial`}
               // The count is the whole point of the size, so say it where the

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { Newsreader, Archivo } from 'next/font/google';
-import { memorialApi } from '@/services/api';
 import PlayerProvider from '@/components/audio/PlayerProvider';
 import './globals.css';
 
@@ -24,27 +23,13 @@ const archivo = Archivo({
   display: 'swap',
 });
 
-// The title and share preview come from the memorial's own config, so a
-// texted link says who it's for. Falls back to something dignified rather
-// than "Chorus" if the backend is unreachable — an app name means nothing to
-// someone arriving from a message about a person they knew.
-export async function generateMetadata(): Promise<Metadata> {
-  try {
-    const { memorial } = await memorialApi.config();
-    const name = memorial.subjectName || 'someone';
-    return {
-      title: `Memories of ${name}`,
-      description: memorial.blurb || `Share a memory of ${name}.`,
-      openGraph: {
-        title: `Memories of ${name}`,
-        description: memorial.blurb || `Share a memory of ${name}.`,
-        images: memorial.subjectPhotoUrl ? [memorial.subjectPhotoUrl] : undefined,
-      },
-    };
-  } catch {
-    return { title: 'Memories' };
-  }
-}
+// Deliberately generic. This deployment serves every memorial, so there is no
+// single subject to name here — the title and share preview that matter are
+// set per memorial in c/[slug]/layout.tsx, where the subject is known.
+export const metadata: Metadata = {
+  title: 'Chorus',
+  description: 'Memories about one person, collected from anyone with the link.',
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

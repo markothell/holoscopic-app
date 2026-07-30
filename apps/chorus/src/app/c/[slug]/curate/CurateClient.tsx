@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { memorialApi } from '@/services/api';
+import { useMemorial } from '@/components/MemorialProvider';
 import type { Memory } from '@/lib/types';
 
 // The curator's page. Reached at /curate?k=<key> and nothing else — no account,
@@ -21,6 +21,10 @@ import type { Memory } from '@/lib/types';
 type Filter = 'all' | 'reported' | 'hidden';
 
 export default function CurateClient() {
+  // Which memorial is being curated comes from the route, not the key — the
+  // key authorizes, it does not identify.
+  const { slug, api } = useMemorial();
+  const base = `/c/${slug}`;
   const params = useSearchParams();
   const key = params.get('k') || '';
 
@@ -32,7 +36,7 @@ export default function CurateClient() {
   const load = useCallback(async () => {
     if (!key) { setState('denied'); return; }
     try {
-      const page = await memorialApi.curate.wall(key);
+      const page = await api.curate.wall(key);
       setMemories(page.memories);
       setState('ready');
     } catch (err) {
@@ -40,14 +44,14 @@ export default function CurateClient() {
       // and a missing memorial are indistinguishable from outside.
       setState(err instanceof Error && /not found/i.test(err.message) ? 'denied' : 'error');
     }
-  }, [key]);
+  }, [key, api]);
 
   useEffect(() => { void load(); }, [load]);
 
   async function setStatus(id: string, status: 'live' | 'hidden' | 'removed') {
     setBusy(id);
     try {
-      await memorialApi.curate.setStatus(key, id, status);
+      await api.curate.setStatus(key, id, status);
       setMemories(list => list.map(m => (m.id === id ? { ...m, status } : m)));
     } catch {
       await load();   // fall back to server truth rather than guessing
@@ -125,7 +129,7 @@ export default function CurateClient() {
                           ${memory.status === 'live' ? 'bg-card' : 'bg-nil-deep'}`}
             >
               <div className="flex items-baseline justify-between gap-3">
-                <Link href={`/m/${memory.id}`} className="voice text-[1.125rem] text-ink underline-offset-4 hover:underline">
+                <Link href={`${base}/m/${memory.id}`} className="voice text-[1.125rem] text-ink underline-offset-4 hover:underline">
                   {memory.title}
                 </Link>
                 {memory.flagCount > 0 && (

@@ -22,11 +22,14 @@ function excerpt(memory: Memory, max = 180) {
 }
 
 export default function MemoryCard({
+  base,
   memory,
   subjectName,
   params,
   index = 0,
 }: {
+  /** This memorial's path, `/c/<slug>` — every link out of the card hangs off it. */
+  base: string;
   memory: Memory;
   subjectName: string;
   params: SearchParams;
@@ -55,13 +58,13 @@ export default function MemoryCard({
             is exactly one link per memory and never an empty heading. */}
         {memory.replyTo ? (
           <p className="eyebrow">
-            <Link href={`/m/${memory.id}`} className="after:absolute after:inset-0 after:content-['']">
+            <Link href={`${base}/m/${memory.id}`} className="after:absolute after:inset-0 after:content-['']">
               Added to “{memory.replyTo.title}”
             </Link>
           </p>
         ) : (
           <h2 className="voice text-[1.4375rem] leading-tight text-ink">
-            <Link href={`/m/${memory.id}`} className="after:absolute after:inset-0 after:content-['']">
+            <Link href={`${base}/m/${memory.id}`} className="after:absolute after:inset-0 after:content-['']">
               {memory.title}
             </Link>
           </h2>
@@ -78,7 +81,7 @@ export default function MemoryCard({
                     {j > 0 && <span className="connective"> &amp; </span>}
                     <TagLink
                       tag={t}
-                      href={toggleTagHref(params, t.id)}
+                      href={toggleTagHref(base, params, t.id)}
                       active={active.includes(t.id)}
                       variant="rule"
                     />
