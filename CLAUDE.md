@@ -1,7 +1,7 @@
 # Holoscopic Monorepo (GitHub: markothell/holoscopic-app)
 
 `main` is the production branch: pushing it deploys the backend (Render) and the frontends (Vercel). The games (newest first, as on the holoscopic.io homepage):
-- **Chorus** — `apps/chorus`, memories about one person, collected from anyone with the link (backend surface: `apps/backend/routes/memorial.js`; see `apps/chorus/CLAUDE.md`). In development; ships to chorus.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover. **The only app with no accounts, no holon economy, and a route mounted without `enforceVerifiedUser`** — all three are deliberate, see its `PLAN.md` §10.
+- **Chorus** — `apps/chorus`, memories about one person, collected from anyone with the link (backend surface: `apps/backend/routes/memorial.js`; see `apps/chorus/CLAUDE.md`). In development; ships to chorus.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover. **The only app with no accounts, no holon economy, and a route mounted without `enforceVerifiedUser`** — all three are deliberate, see its `PLAN.md` §10. One deployment serves every memorial: a memorial is `/c/<slug>`, and creating one is a row in the platform admin, not a deploy.
 - **Synthesis** — `apps/synthesis`, a networked pseudonymous group blog (backend surface: `apps/backend/routes/synthesis.js`; see `apps/synthesis/CLAUDE.md`). In development on branch `unison-m0-m1-loop` (branch predates the rename); ships to synthesis.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover.
 - **On a Spectrum** — `apps/spectrum`, at spectrum.holoscopic.io (backend surface: `apps/backend/routes/oas.js`; see `apps/spectrum/CLAUDE.md`). `routes/spectrum.js`, `models/SpectrumGame.js`, and `utils/spectrumGames.js` are mounted but dormant, and get deleted post-cutover.
 - **interView** — `apps/holoscopic-game`, the production game app at holoscopic.io
@@ -55,6 +55,13 @@ npm run dev:chorus      # port 4005
 
 Every `/api` request is resolved to an `Instance` via `apps/backend/middleware/resolveInstance.js`.
 
+**`Instance.app` says which game an instance belongs to** — `interview` | `spectrum` | `synthesis` | `chorus`. Read that field; never infer. Before it existed there was no stored answer and four consumers each guessed from a different accident (`parentInstanceId`, `slug === 'spectrum'`, the presence of `config.memorial`, else interView), which is why the admin's create form had nothing to offer and every instance it made was an interView edition.
+
+- Set it wherever an instance is born: `POST /api/instances`, `utils/oasGames.js`, `utils/synIdeas.js`.
+- **`gameNumber` belongs to `interview` alone.** `Instance.getDefault()` picks the lowest-numbered active instance, so a memorial or an idea holding one can become the platform default and start answering unrelated traffic.
+- Creating with `app: 'chorus'` provisions a working memorial (explore mode, curator key, seed vocabulary) via `utils/memorialDefaults.js`.
+- Rows predating the field are stamped by `scripts/backfill-instance-app.js` (dry run by default, `--write` to apply). **Dev is done; production still needs it.**
+
 Resolution order:
 1. `x-instance-id` request header
 2. `Origin`/`Referer` → domain lookup on `Instance.domains[]`
@@ -84,6 +91,7 @@ Map queries are flat index scans: personal maps via `{instanceId, userId}`, vote
 - **Dual submission path**: Entries can arrive via the `submit_entry` WebSocket event OR `POST /activities/:id/entry`. Both wrap `utils/entries.js` and broadcast `entry_upserted` via Socket.IO.
 - **Routes loaded lazily**: All Express routes mount inside `loadAPIRoutes()`, which only fires once MongoDB connects. If Mongo is down at startup, routes are never registered.
 - **Sweeps on read**: `GET /api/topics` calls `sweepExpired()`/`sweepQuorum()`, and `GET /api/activities` settles expired maps — reads have write side effects.
+- **`resolveInstance` never fails.** An unrecognised `x-instance-id` falls through to `getDefault()`, an interView edition. Any router whose data is meaningless outside its own app must check `req.instance.app` itself — `routes/memorial.js` does, because without it an unauthenticated read was writing tag rows into whatever the default instance happened to be.
 - **Activity types**: exactly `dissolve`, `resolve`, `snapshot`. No legacy aliases exist in the schema or the client.
 - **Game-scoped profiles**: `GET /api/users/:userId/games` (player history) and `GET /api/users/:userId/game-map` (redacted personal map — voted-for entries are author-stripped **server-side**). Privacy gate is shared `InstanceMembership`.
 
@@ -125,6 +133,12 @@ Allowed origins from `CLIENT_URL` env var (comma-separated) in `apps/backend/.en
 - Renames pair up: `git add` on one side of a detected rename can pull in the whole rename set. Check `git diff --cached --name-only` after staging and before committing.
 
 **Never restart or kill another agent's dev server.** All six ports are usually live (`4000`–`4005`). If you need a server, start your own on a spare port and stop it when done.
+
+**Every backend edit restarts the backend for everyone.** `npm run dev` (→ `turbo dev`) runs each workspace's `dev` script, and the backend's is `nodemon websocket-server.js`. Nodemon watches all of `apps/backend`, so *any* agent saving *any* file there — a route, a util, a one-off in `scripts/` — restarts the shared server. Each restart costs 1–9s of Atlas reconnect during which `loadAPIRoutes()` has not fired, so every `/api` request buffers in mongoose for 10s and then 500s. With several agents editing the backend at once it never stays up long enough to serve, and *every* frontend looks broken — the symptom is multi-second hangs and 500s in an app you were not touching.
+
+- Diagnose it by pid, not by vibe: `pgrep -f "node websocket-server.js" | xargs ps -o pid=,etime=`. An age that keeps resetting to a few seconds is this, not your code.
+- If you need a stable backend while others are working, run it without the file watcher: `npm run start --workspace=apps/backend`. Leave their `turbo dev` alone; start yours on a spare port (`PORT=4051`) so you are not fighting for `4001`.
+- Frontends are unaffected — Next's dev server hot-reloads per app and does not restart on backend writes.
 
 **There are two Atlas clusters, and they share a database name.** Both are called `holoscopic-db`, which makes them easy to confuse — check the *host*, never the database name:
 

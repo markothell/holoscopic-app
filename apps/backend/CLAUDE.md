@@ -15,7 +15,8 @@ Express + Socket.IO + Mongoose server. Single entry point: `websocket-server.js`
 | `models/Entry.js` | Source of truth for participation: position + text + votes per (activity, user, slot, question), with denormalized `instanceId`/`topicId` |
 | `models/Activity.js` | Map configuration + membership (`participants[]`) + stake ledger — no entry content |
 | `models/Sequence.js` | Ordered collection of activities with members and round visibility |
-| `models/Instance.js` | Per-deployment config: holons, quorum, domains, access |
+| `models/Instance.js` | Per-deployment config: which `app` it belongs to, holons, quorum, domains, access |
+| `utils/memorialDefaults.js` | What a new Chorus memorial starts life with — shared by `POST /instances` and `scripts/seed-memorial.js` so both make the same product |
 | `models/InstanceMembership.js` | Per-user per-instance Holon balance |
 | `models/Topic.js` | Community topic nominations with supporter wager system |
 | `models/Algorithm.js` | Published conversation patterns with fork lineage |
@@ -25,6 +26,19 @@ Express + Socket.IO + Mongoose server. Single entry point: `websocket-server.js`
 ## Route Loading Pattern
 
 Routes are NOT loaded at startup. `loadAPIRoutes()` in `websocket-server.js` fires only after MongoDB connects (and only once). This means if you restart and Mongo is unavailable, all `/api` routes return 404 until reconnect. Check `apiRoutesLoaded` in the `/health` response.
+
+This makes a restart expensive rather than free. Until Mongo connects — 1s warm, up to ~9s on a cold Atlas cluster — requests do not 404 cleanly; they sit in mongoose's 10s command buffer and then 500. So a boot is roughly ten seconds of hangs, not a blip.
+
+## Running It Locally
+
+`npm run dev` (workspace script: `nodemon websocket-server.js`) watches all of `apps/backend`, so every save by every agent restarts the server and inflicts the boot cost above on all six frontends. When other agents are working in this tree, run it without the watcher instead:
+
+```bash
+npm run start --workspace=apps/backend        # plain node, no restarts
+PORT=4051 npm run start --workspace=apps/backend   # or on a spare port
+```
+
+See root `CLAUDE.md` § *Working in a Shared Tree* for how to tell this apart from a bug in your own code.
 
 ## Authentication
 
