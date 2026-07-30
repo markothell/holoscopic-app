@@ -6,6 +6,11 @@ console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
 // The URI is never logged — it carries the cluster password. Presence is
 // logged below, and the database name is extracted at connect time.
 
+// Before anything else: the SDK has to be initialised prior to the modules it
+// instruments being required.
+const observability = require('./observability');
+observability.init();
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -66,7 +71,10 @@ app.use(bodyParser.json());
 
 // Tag every request so a 500 in the logs can be matched to the requestId the
 // client was shown. Registered before routing so even a 404 carries one.
-const { requestId, notFound, errorHandler } = require('./middleware/errorHandler');
+const { requestId, notFound, errorHandler, setReporter } = require('./middleware/errorHandler');
+// The handler builds an allow-listed context (request id, instance, user id) —
+// never the raw request — and hands it here.
+setReporter(observability.report);
 app.use(requestId);
 
 // Environment-aware rate limiting
@@ -733,6 +741,9 @@ async function shutdown(signal) {
       await mongoose.connection.close(false);
       console.log('MongoDB connection closed');
     }
+    // Flush before exit, or the error that caused the shutdown is the one
+    // report you never receive.
+    await observability.flush(2000);
     clearTimeout(force);
     console.log('Shutdown complete');
     process.exit(0);

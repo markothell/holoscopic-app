@@ -39,6 +39,12 @@ services:
       # Chorus works unchanged.
       - key: DEEPGRAM_API_KEY
         sync: false
+      # Optional. Error reporting (observability.js). Unset = disabled, no
+      # behaviour change. Request bodies, headers and cookies are never sent,
+      # and /api/memorial context is withheld entirely — Chorus stores stories
+      # and recorded voices belonging to people who never agreed to a vendor.
+      - key: SENTRY_DSN
+        sync: false
 
   # Off-site logical backup, daily at 07:00 UTC.
   #
