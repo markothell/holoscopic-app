@@ -46,6 +46,16 @@ const allowedOrigins = process.env.CLIENT_URL
 
 console.log('🌐 CORS origins:', allowedOrigins);
 
+// Registered FIRST, ahead of CORS. It used to sit after cors and bodyParser,
+// so a rejected origin never reached it and its error logged as
+// "(request undefined)" — the one identifier that would have made the log line
+// traceable was missing from exactly the errors that needed it.
+const { requestId, notFound, errorHandler, setReporter } = require('./middleware/errorHandler');
+// The handler builds an allow-listed context (request id, instance, user id) —
+// never the raw request — and hands it here.
+setReporter(observability.report);
+app.use(requestId);
+
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
@@ -56,7 +66,14 @@ app.use(cors({
     if (normalizedAllowed.indexOf(normalizedOrigin) !== -1) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      // 403, not 500. An origin that is not on the allowlist is a statement
+      // about the caller, not a fault in this server: bots, stale deploys and
+      // any browser tab on the open internet produce these. Left as a bare
+      // Error it became a 500, which meant every stray origin logged a stack
+      // trace and burned an error-reporting event.
+      const err = new Error(`Origin not allowed: ${origin}`);
+      err.status = 403;
+      callback(err);
     }
   },
   credentials: true,
@@ -68,14 +85,6 @@ app.use(cors({
 }));
 
 app.use(bodyParser.json());
-
-// Tag every request so a 500 in the logs can be matched to the requestId the
-// client was shown. Registered before routing so even a 404 carries one.
-const { requestId, notFound, errorHandler, setReporter } = require('./middleware/errorHandler');
-// The handler builds an allow-listed context (request id, instance, user id) —
-// never the raw request — and hands it here.
-setReporter(observability.report);
-app.use(requestId);
 
 // Environment-aware rate limiting
 const isProduction = process.env.NODE_ENV === 'production';
