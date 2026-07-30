@@ -6,10 +6,20 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch } from '@/lib/api';
 
+// Optional because rows created before Instance.app existed carry no value
+// until scripts/backfill-instance-app.js stamps them.
+const APP_LABELS: Record<string, string> = {
+  interview: 'interView',
+  spectrum: 'On a Spectrum',
+  synthesis: 'Synthesis',
+  chorus: 'Chorus',
+};
+
 interface Instance {
   id: string;
   name: string;
   slug: string;
+  app?: string;
   domains: string[];
   active: boolean;
   access: { mode: string };
@@ -87,7 +97,7 @@ export default function InstancesPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
-                  {['Name', 'Domains', 'Access', 'Status', 'Dates', ''].map(h => (
+                  {['Name', 'App', 'Domains', 'Access', 'Status', 'Dates', ''].map(h => (
                     <th key={h} style={{ ...mono, padding: '0.6rem 1rem', textAlign: 'left', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 400 }}>{h}</th>
                   ))}
                 </tr>
@@ -98,6 +108,11 @@ export default function InstancesPage() {
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{inst.name}</div>
                       <div style={{ ...mono, color: 'var(--ink-light)', marginTop: '0.15rem' }}>{inst.slug}</div>
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <div style={{ ...mono, color: 'var(--ink-mid)' }}>
+                        {APP_LABELS[inst.app || 'interview'] || inst.app}
+                      </div>
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div style={{ ...mono, color: 'var(--ink-mid)' }}>
