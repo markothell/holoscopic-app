@@ -1,0 +1,829 @@
+const express = require('express');
+const router = express.Router();
+
+const Instance = require('../models/Instance');
+const SynNode = require('../models/SynNode');
+const SynFrame = require('../models/SynFrame');
+const SynMembership = require('../models/SynMembership');
+const Entry = require('../models/Entry');
+const nodeFunnel = require('../utils/synNodes');
+const entryUtils = require('../utils/entries');
+const ideaFunnel = require('../utils/synIdeas');
+const statementFunnel = require('../utils/synStatements');
+const synthesis = require('../utils/synUnion');
+const { getSynthesisModel } = require('../llm/chatModel');
+
+// Synthesis — M0 REST surface: community/membership plumbing (create/join a
+// community, the ≤50-member gate, pseudonymous handles) plus a member's own
+// private DAG (create root/child, marry, reparent, edit content, set axes,
+// publish/unpublish). Thin wrappers over utils/synNodes.js and
+// utils/synIdeas.js, the single write funnels — this file adds no
+// funnel logic beyond request shaping, ownership checks, and error-status
+// mapping. Mounted behind resolveInstance + enforceVerifiedUser in
+// websocket-server.js#loadAPIRoutes, exactly like every other identity-
+// bearing router (see routes/oas.js).
+//
+// Two different addressing schemes, on purpose:
+//   - /ideas* routes address an idea by its shareable CODE
+//     (mirrors OaS room codes — you don't have an x-instance-id for an
+//     idea until you've drafted or joined one).
+//   - /nodes* and /frames* routes operate against req.instanceId — the
+//     community instance resolved by the x-instance-id header, exactly like
+//     Topic/Activity elsewhere in the app (root CLAUDE.md's Multi-Tenancy
+//     section). Once a client has created/joined a community it sends that
+//     community's instance id as x-instance-id for every following request.
+//
+// M1 (built here): the networking loop — respond/borrow (the two-record
+// write, D2), the public reply thread on a post, free reply upvotes (D9), and
+// the community feed of published thoughts (D10), plus the sockets/synthesis.js
+// broadcast room. Private-first stays the privacy contract: owner-scoped
+// mutation paths remain owner-scoped, and the only cross-member READ paths
+// (/feed, /nodes/:id/post) return published nodes exclusively.
+//
+// M2 (built here): promote (borrowed -> own) is wired into the EXISTING
+// content-edit path — PATCH /nodes/:id with a `content` body is the single
+// "make it mine" gesture (utils/synNodes.js#editContent calls
+// promoteIfBorrowed internally). No separate promote route.
+//
+// DEFERRED TO M3+ (not built here): anything LLM.
+
+function userIdFrom(req) {
+  return req.headers['x-user-id'] || null;
+}
+
+async function requireUser(req, res) {
+  const userId = userIdFrom(req);
+  if (!userId) {
+    res.status(401).json({ error: 'Sign in required' });
+    return null;
+  }
+  return userId;
+}
+
+// Loads the caller's membership in the resolved (community) instance. Nodes
+// can only be listed/created by a joined member, and the server-trusted
+// handle used as ownerHandle on every write comes from here — never from a
+// client-supplied display name, so a node's attribution can't be spoofed.
+async function requireMember(req, res) {
+  const userId = await requireUser(req, res);
+  if (!userId) return null;
+  const membership = await SynMembership.findOne({ instanceId: req.instanceId, userId });
+  if (!membership) {
+    res.status(403).json({ error: 'Join this idea first' });
+    return null;
+  }
+  return membership;
+}
+
+// Loads a node this caller owns. 404s (not 403s) when the node exists but
+// belongs to someone else, so a probing request can't distinguish "doesn't
+// exist" from "not yours" — the private-first contract (plan §8) enforced
+// server-side, per node, on every mutation path below.
+async function loadOwnedNode(req, res) {
+  const userId = await requireUser(req, res);
+  if (!userId) return null;
+  const node = await SynNode.findOne({ id: req.params.id, instanceId: req.instanceId });
+  if (!node || node.ownerId !== userId) {
+    res.status(404).json({ error: 'Node not found' });
+    return null;
+  }
+  return node;
+}
+
+// Funnel validation errors that are the caller's fault (400), not a bug.
+const BAD_REQUEST_ERRORS = new Set([
+  "kind must be 'topic' or 'thought'",
+  'owner is required',
+  'instanceId is required',
+  'A thought carries at most two axes',
+  'Parent not found',
+  'parentIds must reference nodes owned by the same author',
+  'A node cannot be its own parent',
+  'That edge would create a cycle in the map',
+  'marry needs exactly two parents',
+  'A marriage needs two distinct parents',
+  'createChild needs a parentId',
+  'A node has at most two parents',
+  'Only thoughts carry axes',
+  'A spectrum needs both poles',
+  'The poles must differ',
+  'A handle is required',
+  'Handle must be at least 2 characters',
+  'An idea code is required',
+  'A title is required',
+  'A statement needs some text',
+  'author is required',
+  'visibility must be public or private',
+  'userId is required',
+  // M1 networking
+  'sourceNodeId is required',
+  'A response needs a stance in [0,1]',
+  'Cannot vote on your own entry',
+  // S1 union
+  "depth must be 'brief' or 'full'",
+]);
+
+const NOT_FOUND_ERRORS = new Set(['Node not found', 'Spectrum not found', 'Idea not found', 'Entry not found', 'Statement not found']);
+// 409: the caller is out of slots (D14), or is acting on a settled statement.
+const CONFLICT_ERRORS = new Set(['This idea is full', 'That handle is taken on this idea']);
+const CONFLICT_PATTERNS = [/holding all \d+ of your statement slots/, /statement was withdrawn/];
+// M1 private-first guards: the target isn't a published post (§8).
+const FORBIDDEN_ERRORS = new Set([
+  'You can only respond to a published thought',
+  'Only a published thought can be responded to',
+]);
+
+function fail(res, error) {
+  if (NOT_FOUND_ERRORS.has(error.message)) return res.status(404).json({ error: error.message });
+  if (FORBIDDEN_ERRORS.has(error.message)) return res.status(403).json({ error: error.message });
+  if (CONFLICT_ERRORS.has(error.message) || CONFLICT_PATTERNS.some(p => p.test(error.message))) {
+    return res.status(409).json({ error: error.message });
+  }
+  if (error.message === 'Only the author can withdraw a statement') return res.status(403).json({ error: error.message });
+  if (BAD_REQUEST_ERRORS.has(error.message)) return res.status(400).json({ error: error.message });
+  console.error('[synthesis]', error);
+  res.status(500).json({ error: 'Something went wrong' });
+}
+
+// Resolve 0–2 axis specs ({frameId} to borrow, or {poleA, poleB} to coin) to
+// frame ids via the shared community vocabulary (utils/synNodes.js's
+// resolveFrame — dedupes per community, orientation-free).
+async function resolveAxes(req, specs, membership) {
+  if (specs === undefined) return undefined;
+  if (!Array.isArray(specs)) throw new Error('A thought carries at most two axes');
+  if (specs.length > 2) throw new Error('A thought carries at most two axes');
+  const ids = [];
+  for (const spec of specs) {
+    const frame = await nodeFunnel.resolveFrame({
+      instanceId: req.instanceId,
+      parentInstanceId: req.instance.parentInstanceId || null,
+      spec,
+      userId: membership.userId,
+      username: membership.handle,
+    });
+    ids.push(frame.id);
+  }
+  return ids;
+}
+
+// ── Ideas + collaborators ───────────────────────────────────────────────
+// An idea IS a child Instance of the `synthesis` parent. These routes address
+// one by its shareable CODE rather than by instance id, because you have no
+// instance id until you have drafted or joined something.
+
+// Draft an idea and join it as its first (admin) collaborator under the given
+// handle. Seeds the idea's title as the home hub at the centre of the
+// drafter's map — the map is the idea's thought space, so it starts with the
+// idea in it.
+router.post('/ideas', async (req, res) => {
+  try {
+    const userId = await requireUser(req, res);
+    if (!userId) return;
+    const { instance, membership } = await ideaFunnel.createIdea({
+      userId,
+      handle: req.body.handle,
+      title: req.body.title,
+      visibility: req.body.visibility,
+    });
+    await nodeFunnel.seedHomeHub({
+      instanceId: instance.id,
+      ownerId: userId,
+      ownerHandle: membership.handle,
+      title: instance.name,
+    });
+    res.status(201).json({
+      idea: ideaFunnel.toClientIdea(instance),
+      membership: ideaFunnel.toClientMembership(membership),
+    });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// Join an existing idea by its shareable code. The ≤50-collaborator gate and
+// per-idea handle uniqueness are enforced in utils/synIdeas.js. Joining seeds
+// the same home hub, so a new collaborator's map opens on the idea rather
+// than on nothing.
+router.post('/ideas/:code/join', async (req, res) => {
+  try {
+    const userId = await requireUser(req, res);
+    if (!userId) return;
+    const { instance, membership } = await ideaFunnel.joinIdea({
+      code: req.params.code, userId, handle: req.body.handle,
+    });
+    await nodeFunnel.seedHomeHub({
+      instanceId: instance.id,
+      ownerId: userId,
+      ownerHandle: membership.handle,
+      title: instance.name,
+    });
+    res.status(201).json({
+      idea: ideaFunnel.toClientIdea(instance),
+      membership: ideaFunnel.toClientMembership(membership),
+    });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// The browse directory (D13): public ideas only. Deliberately mounted BEFORE
+// `/ideas/:code` so the literal path wins over the code parameter.
+//
+// Signed-in accounts only. "Public" means any ACCOUNT can find and join an
+// idea — it does not mean open to the internet. The rows carry each idea's
+// join code, which is the credential that gets you in, so an unauthenticated
+// read here would hand out the whole directory's keys.
+router.get('/ideas/public', async (req, res) => {
+  try {
+    const userId = await requireUser(req, res);
+    if (!userId) return;
+    const limit = Math.min(Number(req.query.limit) || 50, 100);
+    const skip = Math.max(Number(req.query.skip) || 0, 0);
+    const ideas = await ideaFunnel.listPublicIdeas({ limit, skip });
+    res.json({ ideas });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// Look up an idea by code (the join-page preview) plus my membership if I've
+// already joined it.
+router.get('/ideas/:code', async (req, res) => {
+  try {
+    const instance = await Instance.findOne({ slug: `idea-${String(req.params.code).toLowerCase()}` });
+    if (!instance) return res.status(404).json({ error: 'Idea not found' });
+    const userId = userIdFrom(req);
+    const [membership, collaboratorCount] = await Promise.all([
+      userId ? SynMembership.findOne({ instanceId: instance.id, userId }) : null,
+      SynMembership.countDocuments({ instanceId: instance.id }),
+    ]);
+    res.json({
+      idea: { ...ideaFunnel.toClientIdea(instance), collaboratorCount },
+      membership: membership ? ideaFunnel.toClientMembership(membership) : null,
+    });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// The collaborator roster — who is working on this idea (the social page).
+// Members only: the roster names people, and an idea's participants are
+// visible to its participants rather than to the whole deployment.
+router.get('/ideas/:code/collaborators', async (req, res) => {
+  try {
+    const instance = await Instance.findOne({ slug: `idea-${String(req.params.code).toLowerCase()}` });
+    if (!instance) return res.status(404).json({ error: 'Idea not found' });
+    const userId = await requireUser(req, res);
+    if (!userId) return;
+    const mine = await SynMembership.findOne({ instanceId: instance.id, userId });
+    if (!mine) return res.status(403).json({ error: 'Join this idea to see who is working on it' });
+
+    const roster = await ideaFunnel.listCollaborators({ instanceId: instance.id });
+    // Contribution counts per collaborator. Published-only for thoughts — an
+    // unpublished draft is private (the one privacy contract) and must not be
+    // counted where others can see it.
+    const collaborators = await Promise.all(roster.map(async m => {
+      const [published, replies] = await Promise.all([
+        SynNode.countDocuments({
+          instanceId: instance.id, ownerId: m.userId, kind: 'thought', visibility: 'published',
+        }),
+        Entry.countDocuments({ instanceId: instance.id, userId: m.userId }),
+      ]);
+      return { ...m, publishedCount: published, replyCount: replies };
+    }));
+    res.json({ collaborators });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// One collaborator's map, as it exists inside THIS idea — the social page's
+// way into someone's thinking rather than just their name.
+//
+// PUBLISHED NODES ONLY. This is the one place another member's map is
+// readable, and the private-first contract holds exactly as it does on /feed:
+// drafts never leave their author's own map. The filter is here, server-side,
+// and the caller cannot widen it.
+router.get('/ideas/:code/collaborators/:handle/map', async (req, res) => {
+  try {
+    const instance = await Instance.findOne({ slug: `idea-${String(req.params.code).toLowerCase()}` });
+    if (!instance) return res.status(404).json({ error: 'Idea not found' });
+    const userId = await requireUser(req, res);
+    if (!userId) return;
+    const mine = await SynMembership.findOne({ instanceId: instance.id, userId });
+    if (!mine) return res.status(403).json({ error: 'Join this idea to see how people are thinking' });
+
+    const theirs = await SynMembership.findOne({
+      instanceId: instance.id,
+      handleLower: String(req.params.handle).toLowerCase(),
+    });
+    if (!theirs) return res.status(404).json({ error: 'No such collaborator' });
+
+    const nodes = await SynNode.find({
+      instanceId: instance.id,
+      ownerId: theirs.userId,
+      visibility: 'published',
+    }).sort({ publishedAt: -1 });
+
+    res.json({
+      collaborator: ideaFunnel.toClientMembership(theirs),
+      nodes: nodes.map(nodeFunnel.toClient),
+    });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// The ideas I've drafted or joined — the app's home surface. Carries the
+// stats that list renders: how many collaborators, public or private, mine
+// (role 'admin') or one I joined, and whether the group reached Synthesis.
+router.get('/me/ideas', async (req, res) => {
+  try {
+    const userId = await requireUser(req, res);
+    if (!userId) return;
+    const memberships = await SynMembership.find({ userId }).sort({ joinedAt: -1 });
+    const instances = await Instance.find({ id: { $in: memberships.map(m => m.instanceId) } });
+    const byId = new Map(instances.map(i => [i.id, i]));
+    const ideas = await Promise.all(
+      memberships
+        .filter(m => byId.has(m.instanceId))
+        .map(async m => {
+          const instance = byId.get(m.instanceId);
+          const [collaboratorCount, lastNode] = await Promise.all([
+            SynMembership.countDocuments({ instanceId: instance.id }),
+            SynNode.findOne({ instanceId: instance.id }).sort({ updatedAt: -1 }).select('updatedAt'),
+          ]);
+          return {
+            ...ideaFunnel.toClientIdea(instance),
+            membership: ideaFunnel.toClientMembership(m),
+            collaboratorCount,
+            // 'admin' is the drafter — the one who started the idea.
+            draftedByMe: m.role === 'admin',
+            lastActivityAt: lastNode?.updatedAt ?? instance.createdAt,
+          };
+        }),
+    );
+    res.json({ ideas });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// ── My private map ─────────────────────────────────────────────────────
+// SynNode.find({ instanceId, ownerId }) — the flat indexed personal-map
+// scan (plan §2). Private-first: this is MY map only; there is no "view
+// another member's map" route in M0 (that's the M1 feed/post view).
+
+router.get('/nodes', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const nodes = await SynNode
+      .find({ instanceId: req.instanceId, ownerId: membership.userId })
+      .sort({ createdAt: 1 });
+    res.json({ nodes: nodes.map(nodeFunnel.toClient) });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+router.get('/nodes/:id', async (req, res) => {
+  try {
+    const node = await loadOwnedNode(req, res);
+    if (!node) return;
+    res.json({ node: nodeFunnel.toClient(node) });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// Create a root (no parentId in the body) or a child (parentId given) — a
+// topic hub or a thought. `axes` (0-2 specs) resolves/coins frames via the
+// shared community vocabulary before the node itself is created.
+router.post('/nodes', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const axisFrameIds = await resolveAxes(req, req.body.axes, membership);
+    const args = {
+      instanceId: req.instanceId,
+      ownerId: membership.userId,
+      ownerHandle: membership.handle,
+      kind: req.body.kind,
+      content: req.body.content,
+      axisFrameIds,
+    };
+    const node = req.body.parentId
+      ? await nodeFunnel.createChild({ ...args, parentId: req.body.parentId })
+      : await nodeFunnel.createRoot(args);
+    res.status(201).json({ node: nodeFunnel.toClient(node) });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// Marry two of my own nodes into a join node (plan D4/MAP-2: tap one
+// node, tap a second, then Marry). Cross-owner marriages are rejected inside
+// the funnel (assertSameOwner) since ownerId here is always the caller.
+router.post('/nodes/marry', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const axisFrameIds = await resolveAxes(req, req.body.axes, membership);
+    const node = await nodeFunnel.marry({
+      instanceId: req.instanceId,
+      ownerId: membership.userId,
+      ownerHandle: membership.handle,
+      kind: req.body.kind || 'thought',
+      content: req.body.content,
+      axisFrameIds,
+      parentIds: req.body.parentIds,
+    });
+    res.status(201).json({ node: nodeFunnel.toClient(node) });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// Edit content and/or replace axes on an existing node of mine.
+router.patch('/nodes/:id', async (req, res) => {
+  try {
+    const node = await loadOwnedNode(req, res);
+    if (!node) return;
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+
+    let updated = node;
+    if (req.body.content !== undefined) {
+      updated = await nodeFunnel.editContent({ nodeId: node.id, content: req.body.content });
+    }
+    if (req.body.axes !== undefined) {
+      const axisFrameIds = await resolveAxes(req, req.body.axes, membership);
+      updated = await nodeFunnel.setAxes({ nodeId: node.id, axisFrameIds });
+    }
+    res.json({ node: nodeFunnel.toClient(updated) });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// Re-file a node under new parent(s) — 0 (root), 1 (child), or 2 (marriage).
+// Cycle guard + same-owner invariant enforced in utils/synNodes.js.
+router.patch('/nodes/:id/parent', async (req, res) => {
+  try {
+    const node = await loadOwnedNode(req, res);
+    if (!node) return;
+    const updated = await nodeFunnel.reparent({ nodeId: node.id, newParentIds: req.body.parentIds });
+    res.json({ node: nodeFunnel.toClient(updated) });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+router.post('/nodes/:id/publish', async (req, res) => {
+  try {
+    const node = await loadOwnedNode(req, res);
+    if (!node) return;
+    const updated = await nodeFunnel.publish({ nodeId: node.id });
+    res.json({ node: nodeFunnel.toClient(updated) });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+router.post('/nodes/:id/unpublish', async (req, res) => {
+  try {
+    const node = await loadOwnedNode(req, res);
+    if (!node) return;
+    const updated = await nodeFunnel.unpublish({ nodeId: node.id });
+    res.json({ node: nodeFunnel.toClient(updated) });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// ── M1: publish → borrow → the networking loop ─────────────────────────
+// Attribution is always by handle; replies are public (toClient, never
+// toRedacted — D3/D6). Broadcasts (node_published on publish above,
+// reply_upserted here) are emitted from the funnel, not these routes.
+
+// The community feed: published thoughts across the community, recency-first,
+// carrying topic + author fields for the frontend's switchable lenses (D10).
+// Never leaks private nodes — the funnel query is visibility:'published' only.
+router.get('/feed', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const feed = await nodeFunnel.feed({ instanceId: req.instanceId });
+    res.json({ feed });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// A published post + its public reply thread (the comment section / reply map,
+// D6). Read-only, member-visible; a private draft is not a post to anyone but
+// its owner, so this 404s unless published. Replies are attributed by handle.
+router.get('/nodes/:id/post', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const node = await SynNode.findOne({ id: req.params.id, instanceId: req.instanceId });
+    if (!node || node.visibility !== 'published') {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+    const replies = await entryUtils.listByActivity(node.id);
+    res.json({
+      post: nodeFunnel.toClient(node),
+      replies: replies.map(entryUtils.toClient),
+    });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// Respond to a published thought — the two-record write (D2): a public reply
+// Entry on the post AND a borrowed node on my own map (structure-mirrored, D8).
+// Re-responding upserts both (no duplicate reply, no duplicate borrow).
+router.post('/nodes/:id/respond', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const { reply, borrowed } = await nodeFunnel.respond({
+      instanceId: req.instanceId,
+      responderId: membership.userId,
+      responderHandle: membership.handle,
+      sourceNodeId: req.params.id,
+      position: req.body.position,
+      text: req.body.text,
+    });
+    res.status(201).json({
+      reply: entryUtils.toClient(reply),
+      node: borrowed ? nodeFunnel.toClient(borrowed) : null,
+    });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// Toggle a free upvote on a reply (D9) — reuses the Entry vote mechanic, no
+// economy. Second call by the same user un-votes.
+router.post('/nodes/:id/replies/:entryId/upvote', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const entry = await nodeFunnel.upvoteReply({
+      instanceId: req.instanceId,
+      sourceNodeId: req.params.id,
+      entryId: req.params.entryId,
+      userId: membership.userId,
+    });
+    res.json({ reply: entryUtils.toClient(entry) });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// ── S1: the union — "The Group" ──────────────────────────
+// Replaces the M3 "Ask the Group" Q&A (question box, per-user SynThread)
+// with a single cached, WHOLE-COMMUNITY artifact: two depths (brief/full),
+// each drawn from the entire published corpus + per-post positional
+// summaries (utils/synUnion.js), generated only on the
+// Synthesize/Expand button and reused across every viewer until the corpus
+// changes. Private nodes are never indexed or summarized (selectCorpus /
+// computePositional are published-only). If the LLM isn't configured the
+// generate endpoint fails cleanly with 503 — it never crashes the server or
+// blocks route loading.
+//
+// STREAMING CONTRACT (Server-Sent Events) for the frontend synthesis view —
+// identical shape to M3's (now-removed) /chat contract:
+//   GET  /api/synthesis/synthesis          → cached { brief?, full?, corpusVersion, stale }
+//   POST /api/synthesis/synthesis { depth: 'brief' | 'full' }
+//   Response: text/event-stream, events in order:
+//     event: meta      data: { citations: Citation[] }   // once, up front
+//     event: token     data: { text: string }            // 0..N chunks
+//     event: done      data: { citations: Citation[] }   // once, on success
+//     event: error     data: { error: string }           // instead of done, on failure
+//   Citation = { kind:'node'|'reply', nodeId, layer?, replyId?, ownerHandle, anchorUrl }
+//   Citations are assembled from the selection set (never parsed from model
+//   output) and sent BEFORE the text so chips can render immediately. When
+//   the corpus is empty, `meta.citations` is [] and the single token is the
+//   canned "nothing published yet" text (the model is not called).
+
+router.get('/synthesis', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const doc = await synthesis.getCache(req.instanceId);
+    res.json(synthesis.toClientCache(doc));
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+router.post('/synthesis', async (req, res) => {
+  const membership = await requireMember(req, res);
+  if (!membership) return;
+
+  const depth = req.body && req.body.depth;
+  if (depth !== 'brief' && depth !== 'full') {
+    return res.status(400).json({ error: "depth must be 'brief' or 'full'" });
+  }
+
+  const model = getSynthesisModel();
+  // Synthesis never embeds a query (no retrieval) — only the chat half needs
+  // to be wired up, unlike M3's chat endpoint which also needed embedConfigured.
+  if (!model.chatConfigured) {
+    return res.status(503).json({ error: 'LLM not configured' });
+  }
+
+  // Prepare (select corpus + compute positions + assemble citations) BEFORE
+  // opening the stream, so a DB error surfaces as a normal JSON error, not a
+  // broken stream. Capture the corpusVersion baseline at the same time, so
+  // the artifact we save stamps the version this generation actually ran at.
+  let prepared, corpusVersion;
+  try {
+    const doc = await synthesis.getOrCreateDoc(req.instanceId);
+    corpusVersion = doc.corpusVersion;
+    prepared = await synthesis.prepareSynthesis({ instanceId: req.instanceId, depth });
+  } catch (error) {
+    return fail(res, error);
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // don't let a proxy buffer the stream
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
+
+  const send = (event, data) => {
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const ac = new AbortController();
+  req.on('close', () => ac.abort());
+
+  send('meta', { citations: prepared.citations });
+
+  let text = '';
+  try {
+    if (prepared.empty) {
+      text = prepared.text;
+      send('token', { text });
+    } else {
+      for await (const chunk of model.stream({ system: prepared.system, messages: prepared.messages, signal: ac.signal })) {
+        text += chunk;
+        send('token', { text: chunk });
+      }
+    }
+  } catch (error) {
+    if (ac.signal.aborted) return res.end();
+    console.error('[synthesis synthesis]', error && error.message);
+    send('error', { error: 'The synthesis could not be generated right now.' });
+    return res.end();
+  }
+
+  // Cache the result (best-effort — never fails the response).
+  try {
+    await synthesis.saveDepth({
+      instanceId: req.instanceId,
+      depth,
+      text,
+      citations: prepared.citations,
+      model: model.info && model.info.chat ? model.info.chat.modelId : '',
+      corpusVersion,
+    });
+  } catch (error) {
+    console.error('[synthesis synthesis cache]', error && error.message);
+  }
+
+  send('done', { citations: prepared.citations });
+  res.end();
+});
+
+// ── Statements — the synthesis mechanism ───────────────────────────────
+// The Union says where the group stands; a statement is what a collaborator
+// puts to the group to stand behind. Votes are rationed by the shared 3-slot
+// budget (D14) and at ⅔ (D12) the group has reached Synthesis. All of that
+// lives in utils/synStatements.js — these are thin wrappers.
+
+// The leaderboard, plus everything the UI needs to render the budget: my slot
+// usage, the bar, and how many votes each statement still needs.
+router.get('/statements', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const board = await statementFunnel.leaderboard({
+      instanceId: req.instanceId,
+      userId: membership.userId,
+    });
+    res.json(board);
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// Put a statement to the group. Costs one of my three slots.
+router.post('/statements', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const statement = await statementFunnel.submitStatement({
+      instanceId: req.instanceId,
+      userId: membership.userId,
+      authorHandle: membership.handle,
+      text: req.body.text,
+      sourceUnionId: req.body.sourceUnionId ?? null,
+    });
+    nodeFunnel.emitToIdea(req.instanceId, 'statement_upserted', {
+      statement: statementFunnel.toClient(statement),
+    });
+    res.status(201).json({ statement: statementFunnel.toClient(statement, { userId: membership.userId }) });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// Back a statement, or take that backing away (a toggle). Crossing the bar
+// here is what settles the idea, so the broadcast tells every open client.
+router.post('/statements/:id/vote', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const { statement, state, enteredSynthesis, leftSynthesis } = await statementFunnel.voteStatement({
+      instanceId: req.instanceId,
+      statementId: req.params.id,
+      userId: membership.userId,
+    });
+    const wire = statementFunnel.toClient(statement);
+    nodeFunnel.emitToIdea(req.instanceId, 'statement_upserted', { statement: wire, state });
+    // The measure moved across the bar in one direction or the other — every
+    // open client needs to redraw the meter and the map treatment.
+    if (enteredSynthesis || leftSynthesis) {
+      nodeFunnel.emitToIdea(req.instanceId, 'synthesis_changed', { state });
+    }
+    res.json({
+      statement: statementFunnel.toClient(statement, { userId: membership.userId }),
+      state,
+      enteredSynthesis,
+      leftSynthesis,
+    });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// Retire my own statement, freeing every slot it held.
+router.delete('/statements/:id', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const { statement, state, leftSynthesis } = await statementFunnel.withdrawStatement({
+      instanceId: req.instanceId,
+      statementId: req.params.id,
+      userId: membership.userId,
+    });
+    nodeFunnel.emitToIdea(req.instanceId, 'statement_upserted', {
+      statement: statementFunnel.toClient(statement), state,
+    });
+    if (leftSynthesis) nodeFunnel.emitToIdea(req.instanceId, 'synthesis_changed', { state });
+    res.json({ statement: statementFunnel.toClient(statement, { userId: membership.userId }), state });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// ── Frames — the community's shared axis vocabulary ────────────────────
+
+router.get('/frames', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const frames = await SynFrame.find({ instanceId: req.instanceId }).sort({ createdAt: 1 });
+    res.json({ frames });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+// Explicitly resolve/coin a frame outside of node creation (e.g. an axis
+// picker that lets you set up a spectrum before attaching it to a thought).
+router.post('/frames', async (req, res) => {
+  try {
+    const membership = await requireMember(req, res);
+    if (!membership) return;
+    const frame = await nodeFunnel.resolveFrame({
+      instanceId: req.instanceId,
+      parentInstanceId: req.instance.parentInstanceId || null,
+      spec: req.body,
+      userId: membership.userId,
+      username: membership.handle,
+    });
+    res.status(201).json({ frame });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+module.exports = router;

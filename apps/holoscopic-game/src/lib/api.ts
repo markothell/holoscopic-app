@@ -20,7 +20,13 @@ export function getCurrentInstanceId(): string | null {
 let gameToken: { token: string; expiresAt: number } | null = null;
 let tokenPromise: Promise<string | null> | null = null;
 
-async function getGameToken(): Promise<string | null> {
+/**
+ * The caller's identity token. Exported because the Socket.IO handshake needs
+ * it too — the server derives the personal room from the verified token
+ * rather than from a client-supplied userId, so a socket with no token gets
+ * no holon or notification push.
+ */
+export async function getGameToken(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
   if (gameToken && gameToken.expiresAt - Date.now() > 60_000) return gameToken.token;
   if (!tokenPromise) {
@@ -49,14 +55,15 @@ const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  * For services that build their own requests instead of using apiFetch.
  */
 export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
-  const method = (init.method || 'GET').toUpperCase();
   const extraHeaders: Record<string, string> = {};
   const instanceId = getCurrentInstanceId();
   if (instanceId) extraHeaders['x-instance-id'] = instanceId;
-  if (MUTATING.has(method)) {
-    const token = await getGameToken();
-    if (token) extraHeaders['Authorization'] = `Bearer ${token}`;
-  }
+  // Attached on reads too, not only writes. Some GET routes now require a
+  // signed-in caller (the /analytics ones were anonymous and platform-wide),
+  // and a bearer on a read is harmless. Signed-out callers get null and the
+  // header is simply omitted.
+  const token = await getGameToken();
+  if (token) extraHeaders['Authorization'] = `Bearer ${token}`;
   if (Object.keys(extraHeaders).length) {
     init = { ...init, headers: { ...(init.headers as Record<string, string>), ...extraHeaders } };
   }

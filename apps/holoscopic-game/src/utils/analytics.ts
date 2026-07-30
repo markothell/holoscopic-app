@@ -6,6 +6,12 @@ interface AnalyticsStats {
   emails: number;
 }
 
+import { authFetch } from '@/lib/api';
+
+// The /analytics routes require a signed-in caller and are scoped to the
+// current instance — they used to be anonymous and platform-wide. authFetch
+// (rather than bare fetch) attaches the identity token and the instance
+// header; without it these all return 401.
 class InternalAnalytics {
   private apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -15,7 +21,7 @@ class InternalAnalytics {
         ? `${this.apiUrl}/analytics/stats/${activityId}`
         : `${this.apiUrl}/analytics/stats`;
 
-      const response = await fetch(url);
+      const response = await authFetch(url, { method: 'GET' });
       if (!response.ok) throw new Error('Failed to fetch stats');
 
       return await response.json();
@@ -27,7 +33,7 @@ class InternalAnalytics {
 
   async getAllActivitiesStats(): Promise<{ [activityId: string]: AnalyticsStats }> {
     try {
-      const response = await fetch(`${this.apiUrl}/analytics/all-stats`);
+      const response = await authFetch(`${this.apiUrl}/analytics/all-stats`, { method: 'GET' });
       if (!response.ok) throw new Error('Failed to fetch all stats');
 
       return await response.json();

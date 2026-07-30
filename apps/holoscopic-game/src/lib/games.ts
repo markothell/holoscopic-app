@@ -11,6 +11,32 @@
 export const SPECTRUM_URL =
   process.env.NEXT_PUBLIC_SPECTRUM_URL || 'https://spectrum.holoscopic.io';
 
+// Synthesis, same deal (see apps/synthesis, :4004 locally).
+//
+// NOTE: synthesis.holoscopic.io does not resolve yet. The homepage card
+// pointing here is a dead link until that domain is live and added to the
+// backend's CLIENT_URL, so set NEXT_PUBLIC_SYNTHESIS_URL=http://localhost:4004
+// to follow the card locally.
+export const SYNTHESIS_URL =
+  process.env.NEXT_PUBLIC_SYNTHESIS_URL || 'https://synthesis.holoscopic.io';
+
+// Chorus (see apps/chorus, :4005 locally).
+//
+// One deployment serves every memorial, each addressed by a path: a memorial
+// is `${CHORUS_URL}/c/<slug>`, where the slug is its Instance's. There is no
+// per-memorial URL constant to add here, and there never will be — a new
+// memorial is a row in the platform admin.
+//
+// NOTE: chorus.holoscopic.io does not resolve yet. Set
+// NEXT_PUBLIC_CHORUS_URL=http://localhost:4005 to follow these links locally.
+export const CHORUS_URL =
+  process.env.NEXT_PUBLIC_CHORUS_URL || 'https://chorus.holoscopic.io';
+
+/** The public URL of one memorial. */
+export function memorialUrl(slug: string): string {
+  return `${CHORUS_URL}/c/${slug}`;
+}
+
 // The shape both the player-history rows and the game-map instance share.
 type GameRef = { slug: string; gameType?: 'interview' | 'spectrum' };
 

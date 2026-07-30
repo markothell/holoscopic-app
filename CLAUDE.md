@@ -1,11 +1,13 @@
 # Holoscopic Monorepo (GitHub: markothell/holoscopic-app)
 
-`main` is the production branch: pushing it deploys the backend (Render) and the frontends (Vercel). Three games ship from here (newest first, as on the holoscopic.io homepage):
-- **On a Spectrum** — `apps/spectrum`, at spectrum.holoscopic.io (backend surface: `apps/backend/routes/oas.js`; see `apps/spectrum/CLAUDE.md`). Replaced the retired On the Spectrum party game; its old backend surface (`routes/spectrum.js`, `models/SpectrumGame.js`, `utils/spectrumGames.js`) stays mounted but dormant until post-cutover deletion.
+`main` is the production branch: pushing it deploys the backend (Render) and the frontends (Vercel). The games (newest first, as on the holoscopic.io homepage):
+- **Chorus** — `apps/chorus`, memories about one person, collected from anyone with the link (backend surface: `apps/backend/routes/memorial.js`; see `apps/chorus/CLAUDE.md`). In development; ships to chorus.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover. **The only app with no accounts, no holon economy, and a route mounted without `enforceVerifiedUser`** — all three are deliberate, see its `PLAN.md` §10. One deployment serves every memorial: a memorial is `/c/<slug>`, and creating one is a row in the platform admin, not a deploy.
+- **Synthesis** — `apps/synthesis`, a networked pseudonymous group blog (backend surface: `apps/backend/routes/synthesis.js`; see `apps/synthesis/CLAUDE.md`). In development on branch `unison-m0-m1-loop` (branch predates the rename); ships to synthesis.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover.
+- **On a Spectrum** — `apps/spectrum`, at spectrum.holoscopic.io (backend surface: `apps/backend/routes/oas.js`; see `apps/spectrum/CLAUDE.md`). `routes/spectrum.js`, `models/SpectrumGame.js`, and `utils/spectrumGames.js` are mounted but dormant, and get deleted post-cutover.
 - **interView** — `apps/holoscopic-game`, the production game app at holoscopic.io
 - **Map + Sequence** — the original create-panel + sequence-builder tools inside `apps/holoscopic-game` (`/create`, `/create/sequences`), presented as the first game behind `/map-sequence`
 
-Local dev ports: spectrum 4000, backend 4001, platform 4002, game 4003.
+Local dev ports: spectrum 4000, backend 4001, platform 4002, game 4003, synthesis 4004, chorus 4005.
 
 Holoscopic is a collective-sensemaking platform where groups map their perspectives on a 2D grid, leave comments, and vote on each other's views. It is multi-tenant: one backend serves multiple isolated deployments ("instances"), each with its own holon economy, quorum rules, and data scope.
 
@@ -13,8 +15,8 @@ Holoscopic is a collective-sensemaking platform where groups map their perspecti
 
 | Layer | Tech |
 |---|---|
-| Game frontend | Next.js 15, TypeScript, Tailwind v4 |
-| Platform admin | Next.js 15, TypeScript, inline styles |
+| Game frontend | Next.js 16, React 19, TypeScript, Tailwind v4 |
+| Platform admin | Next.js 16, React 19, TypeScript, inline styles |
 | Backend | Express, Socket.IO, Mongoose (MongoDB) |
 | Shared components | `@hs/activities` — React component library (local package) |
 | Monorepo tooling | npm workspaces + Turborepo |
@@ -25,6 +27,8 @@ Holoscopic is a collective-sensemaking platform where groups map their perspecti
 ```
 holoscopic/
 ├── apps/
+│   ├── chorus/            Chorus — Next.js frontend (port 4005)  → see apps/chorus/CLAUDE.md
+│   ├── synthesis/         Synthesis — Next.js frontend (port 4004)  → see apps/synthesis/CLAUDE.md
 │   ├── spectrum/          On a Spectrum — Next.js frontend (port 4000)  → see apps/spectrum/CLAUDE.md
 │   ├── holoscopic-game/   Next.js game frontend (port 4003)  → see apps/holoscopic-game/CLAUDE.md
 │   ├── platform/          Next.js admin UI for instance mgmt (port 4002)  → see apps/platform/CLAUDE.md
@@ -43,11 +47,20 @@ npm run dev:backend     # port 4001
 npm run dev:spectrum    # port 4000
 npm run dev:game        # port 4003
 npm run dev:platform    # port 4002
+npm run dev:synthesis   # port 4004
+npm run dev:chorus      # port 4005
 ```
 
 ## Multi-Tenancy
 
 Every `/api` request is resolved to an `Instance` via `apps/backend/middleware/resolveInstance.js`.
+
+**`Instance.app` says which game an instance belongs to** — `interview` | `spectrum` | `synthesis` | `chorus`. Read that field; never infer. Before it existed there was no stored answer and four consumers each guessed from a different accident (`parentInstanceId`, `slug === 'spectrum'`, the presence of `config.memorial`, else interView), which is why the admin's create form had nothing to offer and every instance it made was an interView edition.
+
+- Set it wherever an instance is born: `POST /api/instances`, `utils/oasGames.js`, `utils/synIdeas.js`.
+- **`gameNumber` belongs to `interview` alone.** `Instance.getDefault()` picks the lowest-numbered active instance, so a memorial or an idea holding one can become the platform default and start answering unrelated traffic.
+- Creating with `app: 'chorus'` provisions a working memorial (explore mode, curator key, seed vocabulary) via `utils/memorialDefaults.js`.
+- Rows predating the field are stamped by `scripts/backfill-instance-app.js` (dry run by default, `--write` to apply). **Dev is done; production still needs it.**
 
 Resolution order:
 1. `x-instance-id` request header
@@ -57,7 +70,7 @@ Resolution order:
 The middleware attaches `req.instance` and `req.instanceId` for all downstream handlers.
 
 **Instance-scoped models** (always filter by `instanceId: req.instanceId`):
-- `Topic`, `Algorithm`, `AlgorithmProposal`, `HolonTransaction`, `InstanceMembership`, `Activity`, `Entry`, `FrameOfReference`
+- `Topic`, `Algorithm`, `AlgorithmProposal`, `HolonTransaction`, `InstanceMembership`, `Activity`, `Entry`, `FrameOfReference`, `Memory`, `MemoryTag`
 
 **NOT instance-scoped**: `Sequence`, `User` — these are global.
 
@@ -78,6 +91,7 @@ Map queries are flat index scans: personal maps via `{instanceId, userId}`, vote
 - **Dual submission path**: Entries can arrive via the `submit_entry` WebSocket event OR `POST /activities/:id/entry`. Both wrap `utils/entries.js` and broadcast `entry_upserted` via Socket.IO.
 - **Routes loaded lazily**: All Express routes mount inside `loadAPIRoutes()`, which only fires once MongoDB connects. If Mongo is down at startup, routes are never registered.
 - **Sweeps on read**: `GET /api/topics` calls `sweepExpired()`/`sweepQuorum()`, and `GET /api/activities` settles expired maps — reads have write side effects.
+- **`resolveInstance` never fails.** An unrecognised `x-instance-id` falls through to `getDefault()`, an interView edition. Any router whose data is meaningless outside its own app must check `req.instance.app` itself — `routes/memorial.js` does, because without it an unauthenticated read was writing tag rows into whatever the default instance happened to be.
 - **Activity types**: exactly `dissolve`, `resolve`, `snapshot`. No legacy aliases exist in the schema or the client.
 - **Game-scoped profiles**: `GET /api/users/:userId/games` (player history) and `GET /api/users/:userId/game-map` (redacted personal map — voted-for entries are author-stripped **server-side**). Privacy gate is shared `InstanceMembership`.
 
@@ -100,11 +114,46 @@ Allowed origins from `CLIENT_URL` env var (comma-separated) in `apps/backend/.en
 ## What NOT to Do
 
 - Do NOT query `Activity.findById()` — use `Activity.findOne({ id })`.
-- Do NOT write to the entries collection outside `utils/entries.js`.
+- Do NOT write to the entries collection outside `utils/entries.js`, or to `Memory`/`MemoryTag` outside `utils/memories.js`.
 - Do NOT skip `instanceId` on new `Activity`/`Entry`/`Topic`/`FrameOfReference`/`Algorithm` documents.
 - Do NOT return another user's identity on voted-for entries — redaction happens in the API layer (`entries.toRedacted`), never client-side.
 - Do NOT use `maxEntries: 0` unless you intend solo tracker mode (creator-only, unlimited slots).
 - Do NOT add new activity types to the DB schema enum without registering them in `@hs/activities`.
+- Do NOT run `git add -A` / `git add .` / `git commit -a` — other agents are editing this tree. See **Working in a Shared Tree** below.
+
+## Working in a Shared Tree
+
+**Assume another agent is editing this repo right now.** Several usually are — one per app — in the same working directory, on the same branch, with dev servers running. The working tree, the git index, and the database are shared mutable state. Most of the rules below exist because ignoring one of them cost real work.
+
+**Never stage or commit paths you did not edit.**
+
+- `git add -A`, `git add .`, and `git commit -a` are banned. They sweep up whatever another agent has half-finished, and the result is one commit containing two unrelated features under a message describing only one of them. *(This has happened: five security fixes are buried inside commit `4a8c6f3`, whose message is about Chorus.)*
+- Commit with `git commit --only <explicit paths> -m "…"`. It ignores whatever else is staged and leaves the index untouched, which is exactly right when someone else pre-staged their own work.
+- Run `git status` before committing. If files you never opened are dirty, that is another agent's work in progress — leave it alone.
+- Renames pair up: `git add` on one side of a detected rename can pull in the whole rename set. Check `git diff --cached --name-only` after staging and before committing.
+
+**Never restart or kill another agent's dev server.** All six ports are usually live (`4000`–`4005`). If you need a server, start your own on a spare port and stop it when done.
+
+**Every backend edit restarts the backend for everyone.** `npm run dev` (→ `turbo dev`) runs each workspace's `dev` script, and the backend's is `nodemon websocket-server.js`. Nodemon watches all of `apps/backend`, so *any* agent saving *any* file there — a route, a util, a one-off in `scripts/` — restarts the shared server. Each restart costs 1–9s of Atlas reconnect during which `loadAPIRoutes()` has not fired, so every `/api` request buffers in mongoose for 10s and then 500s. With several agents editing the backend at once it never stays up long enough to serve, and *every* frontend looks broken — the symptom is multi-second hangs and 500s in an app you were not touching.
+
+- Diagnose it by pid, not by vibe: `pgrep -f "node websocket-server.js" | xargs ps -o pid=,etime=`. An age that keeps resetting to a few seconds is this, not your code.
+- If you need a stable backend while others are working, run it without the file watcher: `npm run start --workspace=apps/backend`. Leave their `turbo dev` alone; start yours on a spare port (`PORT=4051`) so you are not fighting for `4001`.
+- Frontends are unaffected — Next's dev server hot-reloads per app and does not restart on backend writes.
+
+**There are two Atlas clusters, and they share a database name.** Both are called `holoscopic-db`, which makes them easy to confuse — check the *host*, never the database name:
+
+| | Host | Used by |
+|---|---|---|
+| Dev | `cluster0.38i5zna` | `apps/backend/.env.local` — every local dev server and every script run without `NODE_ENV=production` |
+| **Production** | `live.ofmfipp` | `apps/backend/.env.production`, and what Render serves holoscopic.io from |
+
+- Anything in `scripts/` run with `NODE_ENV=production` hits the live site's data. Read the script first — `reset-db-for-launch.js` deletes 14 collections.
+- Dev runs `autoIndex: true`, so editing an index declaration in `models/*.js` creates that index on the **dev** cluster as soon as nodemon restarts. Production is `autoIndex: false`, so the same edit reaches production only via `scripts/ensure-indexes.js` with `NODE_ENV=production`. **A model index change is not live until you run that script against production** — the two clusters drift apart silently otherwise.
+- Verify which cluster you are on before writing. `node -e "require('dotenv').config({path:'.env.local'});console.log(process.env.MONGODB_URI.match(/@([^/?]+)/)[1])"` prints the host.
+
+**Don't fix failing tests in another app's area.** A red test in a file you did not touch is usually an agent mid-change. Report it; do not "helpfully" repair it and collide with their next write.
+
+**Report what you swept.** If a commit of yours ended up containing someone else's files anyway, say so plainly in the response rather than letting it pass silently.
 
 ## When to Escalate to the User
 
@@ -112,3 +161,18 @@ Allowed origins from `CLIENT_URL` env var (comma-separated) in `apps/backend/.en
 - New deploy targets beyond what's in `render.yaml`.
 - Changes to MongoDB indexes on large collections (`activities`, `ratings`, `comments` arrays).
 - Anything touching auth — password hashing, session tokens, `requireAdmin` middleware.
+
+## Delegation
+
+You are authorized to dispatch subagents on your own. Do not ask permission first, and do not wait to be told which agent to use.
+
+Dispatch when a task is both **specifiable in advance** and **verifiable on return** — you can write it out in a paragraph without a back-and-forth, and you can tell from the report whether it worked:
+
+- Broad searches where the conclusion matters and the files do not → `Explore`.
+- A bounded build behind a decision already settled in this conversation → `general-purpose`.
+- Independent work in two apps that do not touch each other → dispatch in parallel.
+- A second opinion on a diff you have been staring at → a fresh agent reads it cold.
+
+Work inline instead when the spec would be longer than the work, when you already have the context loaded, when the task needs a judgment call mid-flight (a subagent cannot stop and ask), or when it touches auth, migrations, or holon-economy parameters.
+
+Say in one line what you dispatched and why. Treat agent reports skeptically: require test output over claims, and verify anything load-bearing yourself.

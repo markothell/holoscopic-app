@@ -6,6 +6,7 @@ import { HoloscopicActivity } from '@/models/Activity';
 import { SequenceService } from '@/services/sequenceService';
 import { ActivityService } from '@/services/activityService';
 import { useAuth } from '@/contexts/AuthContext';
+import { authFetch } from '@/lib/api';
 
 interface SequencePanelProps {
   editingSequence?: Sequence;
@@ -232,7 +233,10 @@ export default function SequencePanel({
       try {
         const userIds = editingSequence.members.map(m => m.userId);
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-        const response = await fetch(`${apiUrl}/auth/users/batch`, {
+        // authFetch, not fetch: /auth/users/batch now requires a signed-in
+        // caller. It used to be anonymous, which made it an oracle for
+        // harvesting the email address of any id you could guess.
+        const response = await authFetch(`${apiUrl}/auth/users/batch`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userIds })

@@ -28,10 +28,11 @@ async function uniqueUrlName(base, Model) {
 // publish: true imports straight to public — activities leave draft mode
 // and the sequence arrives active (for demo/sample content).
 router.post('/sequence', async (req, res) => {
+  // Authorization is the requireAdmin mount in websocket-server.js, which
+  // verifies a bearer token and confirms the role against the User row. The
+  // header is only read here for attribution, and requireAdmin has already
+  // overwritten it with the proven id.
   const userId = req.headers['x-user-id'];
-  if (!userId) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
 
   const { sequence: seqData, activities: activitiesData, publish = false } = req.body;
 

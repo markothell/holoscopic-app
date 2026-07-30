@@ -98,9 +98,26 @@ function isComplete(activity, activityEntries) {
 }
 
 async function closeAndSettle(activity, activityEntries, instanceId, reason) {
+  // Claim the activity before paying anything out. The status flip is the
+  // claim: it matches only while the activity is still active, so of several
+  // concurrent triggers — the periodic sweep, a final vote completing the
+  // table, a settle-on-read — exactly one proceeds to settlement.
+  //
+  // Previously this assigned `status` in memory and saved afterwards, so two
+  // triggers could both read 'active', both settle, and both pay.
+  const claimed = await Activity.findOneAndUpdate(
+    { id: activity.id, status: 'active' },
+    { $set: { status: 'completed' } },
+    { new: true },
+  );
+  if (!claimed) return false; // already closed by someone else
+
+  // Settle against the claimed document so stake.settled flags are written on
+  // the copy that won, not on a stale in-memory one.
+  const summary = await settleActivityStakes(claimed, activityEntries, instanceId);
+  await claimed.save();
+  // Keep the caller's object consistent with what was persisted.
   activity.status = 'completed';
-  const summary = await settleActivityStakes(activity, activityEntries, instanceId);
-  await activity.save();
   // The payout is the payoff — tell every affected player what happened
   for (const [userId, s] of Object.entries(summary)) {
     const parts = [];
@@ -112,34 +129,11 @@ async function closeAndSettle(activity, activityEntries, instanceId, reason) {
     } catch (e) { console.error('[activities] close notify error:', e.message); }
   }
   console.log(`[activities] closed "${activity.title}" (${reason}), settled ${Object.keys(summary).length} players`);
+  return true;
 }
 
-async function sweepExpiredActivities(req) {
-  const hours = req.instance?.config?.quorum?.activityWindowHours ?? 168;
-  const topicsActivityId = req.instance?.config?.topicsActivityId || null;
-  const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
-  const expired = await Activity.find({
-    status: 'active',
-    isDraft: { $ne: true },
-    maxEntries: { $gt: 0 },
-    createdAt: { $lte: cutoff },
-    ...(topicsActivityId ? { id: { $ne: topicsActivityId } } : {}),
-  });
-  if (!expired.length) return 0;
-  // Maps inside an active pattern session follow the session's pace,
-  // not the standalone window — never force-settle them mid-session.
-  const activeSeqs = await Sequence.find({ status: 'active' }).select('activities').lean();
-  const inSession = new Set(activeSeqs.flatMap(s => (s.activities || []).map(a => a.activityId)));
-  for (const activity of expired) {
-    if (inSession.has(activity.id)) continue;
-    try {
-      const activityEntries = await entries.listByActivity(activity.id);
-      await closeAndSettle(activity, activityEntries, req.instanceId, 'time window ended');
-    }
-    catch (e) { console.error('[activities] sweep close error:', e.message); }
-  }
-  return expired.length;
-}
+// sweepExpiredActivities moved to utils/sweeps.js — it is now driven by the
+// interval runner rather than by whoever happens to load the activity list.
 
 // Per-activity entry counts for list payloads (one indexed aggregation)
 async function entryCounts(activityIds) {
@@ -178,7 +172,11 @@ module.exports = function(io) {
 
   // Get all activities (admin endpoint - includes drafts)
   // Optional ?createdBy=userId to scope to a specific creator
-  router.get('/admin', async (req, res) => {
+  //
+  // Was public despite the name: enforceVerifiedUser no-ops on GET, and the
+  // global limiter used to skip any path containing '/admin', so this was an
+  // unauthenticated *and* unthrottled read of every activity including drafts.
+  router.get('/admin', require('../middleware/requireAdmin'), async (req, res) => {
     try {
       const query = { instanceId: req.instanceId };
       if (req.query.createdBy) {
@@ -199,9 +197,8 @@ module.exports = function(io) {
   // Get all activities (public endpoint - excludes drafts)
   router.get('/', async (req, res) => {
     try {
-      // Settle any maps whose time window has ended (sweep-on-read, like quorum)
-      await sweepExpiredActivities(req);
-
+      // No sweep here. Expiry settlement runs on an interval (jobs/index.js);
+      // this used to scan and settle inline on every list request.
       const windowHours = req.instance?.config?.quorum?.activityWindowHours ?? 168;
       const baseFilter = { instanceId: req.instanceId, isDraft: { $ne: true } };
       if (req.query.topicId) baseFilter.topicId = req.query.topicId;
@@ -235,13 +232,18 @@ module.exports = function(io) {
       const topicsActivityId = req.instance?.config?.topicsActivityId || null;
       const entryDocs = await entries.listByActivity(activity.id);
 
-      // Settle on read if this map's window has ended
+      // Deliberately kept as settle-on-read, unlike the list sweep that moved
+      // to jobs/index.js. This one is O(1) — a timestamp comparison on the one
+      // activity already loaded — and closeAndSettle now claims atomically, so
+      // neither of the reasons the other sweeps were removed applies. It earns
+      // its place by making the play page show a settled map immediately
+      // instead of up to a sweep interval late.
       if (
         activity.status === 'active' && !activity.isDraft && activity.maxEntries > 0 &&
         activity.id !== topicsActivityId && activity.createdAt &&
         Date.now() - new Date(activity.createdAt).getTime() > windowHours * 60 * 60 * 1000
       ) {
-        await closeAndSettle(activity, entryDocs, req.instanceId, 'time window ended');
+        await closeAndSettle(activity, entryDocs, activity.instanceId, 'time window ended');
       }
 
       res.json({ activity: serializeActivity(activity, { entryDocs, windowHours }) });
@@ -443,7 +445,7 @@ module.exports = function(io) {
       if (updates.status === 'completed' && activity.stakes?.length) {
         try {
           const entryDocs = await entries.listByActivity(activity.id);
-          await settleActivityStakes(activity, entryDocs, req.instanceId);
+          await settleActivityStakes(activity, entryDocs, activity.instanceId);
         } catch (e) {
           console.error('[activities] stake settlement error:', e.message);
         }
@@ -696,7 +698,7 @@ module.exports = function(io) {
       // Complete rule: full table + everyone entered and voted → settle now
       const entryDocs = await entries.listByActivity(activity.id);
       if (isComplete(activity, entryDocs)) {
-        await closeAndSettle(activity, entryDocs, req.instanceId, 'everyone has played');
+        await closeAndSettle(activity, entryDocs, activity.instanceId, 'everyone has played');
         if (io) {
           const windowHours = req.instance?.config?.quorum?.activityWindowHours ?? 168;
           io.to(req.params.id).emit('activity_updated', {
@@ -824,3 +826,7 @@ module.exports = function(io) {
 
   return router;
 };
+
+// Exported for the sweep runner (utils/sweeps.js), which is injected with it
+// rather than importing it — utils/ must not depend on routes/.
+module.exports.closeAndSettle = closeAndSettle;

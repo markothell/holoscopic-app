@@ -6,9 +6,11 @@
   "scripts": {
     "start": "node websocket-server.js",
     "dev": "nodemon websocket-server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1097.0",
+    "@sentry/node": "^10.69.0",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",

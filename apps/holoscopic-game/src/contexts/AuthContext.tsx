@@ -2,9 +2,12 @@
 
 import { createContext, useContext, ReactNode, useEffect, useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { io as socketIO, Socket } from 'socket.io-client';
+// Type-only: erased at compile time, so it does not pull the runtime library
+// into the bundle. The implementation is imported on demand below.
+import type { Socket } from 'socket.io-client';
 import { useInstance } from '@/contexts/InstanceContext';
 import { HolonService } from '@/services/holonService';
+import { getGameToken } from '@/lib/api';
 
 interface AuthContextType {
   userId: string | null;
@@ -73,21 +76,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const sock = socketIO(SOCKET_URL, { transports: ['websocket'], upgrade: false });
-    socketRef.current = sock;
+    let cancelled = false;
+    let sock: Socket | null = null;
 
-    sock.on('connect', () => {
-      sock.emit('join_user_room', { userId });
-      setSocket(sock);
-    });
+    // socket.io-client (plus engine.io-client) is loaded here rather than at
+    // module scope. Only an authenticated session ever opens a socket, but
+    // AuthProvider wraps every page from the root layout — so a static import
+    // put the whole library in the first load of the marketing homepage, the
+    // manifesto, and every other logged-out page that will never use it.
+    import('socket.io-client').then(({ io: socketIO }) => {
+      if (cancelled) return;
 
-    sock.on('holon_update', ({ balance, instanceId }: { balance: number; instanceId?: string }) => {
-      // Only apply updates for the instance currently being viewed
-      if (!instanceId || instanceId === instanceIdRef.current) setHolonBalance(balance);
+      // The handshake carries the same identity token as HTTP calls. The server
+      // reads the personal room from it and ignores anything the client claims,
+      // so without a token there is no holon/notification push. `auth` may be a
+      // function, which socket.io re-invokes on every reconnect — that matters
+      // because the token expires in 15 minutes and reconnects outlive it.
+      sock = socketIO(SOCKET_URL, {
+        transports: ['websocket'],
+        upgrade: false,
+        auth: (cb) => { getGameToken().then((token) => cb({ token })); },
+      });
+      socketRef.current = sock;
+
+      sock.on('connect', () => {
+        if (cancelled || !sock) return;
+        sock.emit('join_user_room');
+        setSocket(sock);
+      });
+
+      sock.on('holon_update', ({ balance, instanceId }: { balance: number; instanceId?: string }) => {
+        // Only apply updates for the instance currently being viewed
+        if (!instanceId || instanceId === instanceIdRef.current) setHolonBalance(balance);
+      });
+    }).catch((error) => {
+      // Balance and notifications fall back to their fetch-on-mount paths.
+      console.error('[AuthContext] socket.io-client failed to load:', error);
     });
 
     return () => {
-      sock.disconnect();
+      cancelled = true;
+      sock?.disconnect();
       socketRef.current = null;
       setSocket(null);
     };

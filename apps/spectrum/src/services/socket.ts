@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { getGameToken } from './api';
 
 // Singleton live channel. Sockets are latency sugar only — every mutation
 // goes through REST, and useOasGame re-fetches the snapshot on
@@ -29,11 +30,20 @@ class OasSocket {
     this.disconnect();
     this.gameId = gameId;
     this.userId = userId ?? null;
-    this.socket = io(SOCKET_URL, { transports: ['websocket'], upgrade: false });
+    // Identity rides the handshake, verified server-side with the same code
+    // path as HTTP. Passing `auth` as a function means socket.io re-runs it on
+    // every reconnect, so an expired 15-minute token is refreshed rather than
+    // silently reconnecting as anonymous.
+    this.socket = io(SOCKET_URL, {
+      transports: ['websocket'],
+      upgrade: false,
+      auth: (cb) => { getGameToken().then((token) => cb({ token })); },
+    });
     this.socket.on('connect', () => {
       this.socket?.emit('oas:join', { gameId });
-      // Personal room carries holon_update (the token balance push).
-      if (this.userId) this.socket?.emit('join_user_room', { userId: this.userId });
+      // Personal room carries holon_update (the token balance push). The
+      // server derives it from the verified token — the payload is ignored.
+      if (this.userId) this.socket?.emit('join_user_room');
       this.dispatch('__reconnect', {});
     });
     for (const event of [...GAME_EVENTS, 'holon_update']) {

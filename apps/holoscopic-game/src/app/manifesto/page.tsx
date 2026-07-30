@@ -1,9 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import styles from './page.module.css';
 
+// Reveal-on-scroll, driven by the inline script in app/layout.tsx rather than
+// by React — see the note on the homepage's RevealSection. These blocks ship at
+// opacity 0, so gating them on hydration meant the manifesto ended at its hero
+// until the whole bundle had loaded. `suppressHydrationWarning` is needed
+// because that script can set `data-revealed` before React hydrates.
 function RevealSection({
   className,
   children,
@@ -11,32 +16,8 @@ function RevealSection({
   className: string;
   children: React.ReactNode;
 }) {
-  const ref = useRef<HTMLElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.unobserve(el);
-        }
-      },
-      { threshold: 0.08, rootMargin: '0px 0px -50px 0px' }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <section
-      ref={ref}
-      className={`${className} ${visible ? styles.visible : ''}`}
-    >
+    <section className={className} data-reveal suppressHydrationWarning>
       {children}
     </section>
   );
@@ -49,32 +30,8 @@ function RevealDiv({
   className: string;
   children: React.ReactNode;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.unobserve(el);
-        }
-      },
-      { threshold: 0.08, rootMargin: '0px 0px -50px 0px' }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <div
-      ref={ref}
-      className={`${className} ${visible ? styles.visible : ''}`}
-    >
+    <div className={className} data-reveal suppressHydrationWarning>
       {children}
     </div>
   );
@@ -87,6 +44,12 @@ export default function ManifestoPage() {
     return () => {
       document.body.style.background = original;
     };
+  }, []);
+
+  // Covers arriving by client-side navigation, where no HTML is parsed and the
+  // inline script never re-runs. Idempotent on a fresh load.
+  useEffect(() => {
+    window.__hsReveal?.();
   }, []);
 
   return (

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { requireSelf } = require('../middleware/verifyUser');
 const User = require('../models/User');
 const Activity = require('../models/Activity');
 const Entry = require('../models/Entry');
@@ -89,10 +90,10 @@ router.get('/:userId/games', async (req, res) => {
         instanceId: inst.id,
         name: inst.name,
         slug: inst.slug,
-        // Per-room instances (parentInstanceId set) are On a Spectrum rooms;
-        // everything else is an interView edition. Lets the profile route each
-        // history row to the app that owns it.
-        gameType: inst.parentInstanceId ? 'spectrum' : 'interview',
+        // Lets the profile route each history row to the app that owns it.
+        // Reads Instance.app; the parentInstanceId test is the pre-backfill
+        // fallback for rows scripts/backfill-instance-app.js has not stamped.
+        gameType: inst.app || (inst.parentInstanceId ? 'spectrum' : 'interview'),
         gameNumber: inst.gameNumber ?? null,
         active: inst.active !== false && !(inst.endDate && new Date(inst.endDate) < new Date()),
         startDate: inst.startDate,
@@ -167,7 +168,7 @@ router.get('/:userId/game-map', async (req, res) => {
       instance: instance
         ? {
             id: instance.id, name: instance.name, slug: instance.slug,
-            gameType: instance.parentInstanceId ? 'spectrum' : 'interview',
+            gameType: instance.app || (instance.parentInstanceId ? 'spectrum' : 'interview'),
             gameNumber: instance.gameNumber ?? null,
           }
         : null,
@@ -199,8 +200,12 @@ router.get('/:userId', async (req, res) => {
   }
 });
 
-// Update user profile
-router.put('/:userId', async (req, res) => {
+// Update user profile.
+// requireSelf because the subject is a path param: the router-level
+// enforceVerifiedUser only compares x-user-id / body.userId against the
+// token, so a signed-in user sending their own header could target anyone
+// else's :userId here.
+router.put('/:userId', requireSelf('userId'), async (req, res) => {
   try {
     const { userId } = req.params;
     const { bio } = req.body;
@@ -249,8 +254,11 @@ router.get('/:userId/settings', async (req, res) => {
   }
 });
 
-// Update user settings (name, email, notifications)
-router.put('/:userId/settings', async (req, res) => {
+// Update user settings (name, email, notifications).
+// Same path-param exposure as above, and higher stakes: this one writes
+// `email`, which is the login identifier — an unguarded version is an
+// account-takeover primitive, not just a profile edit.
+router.put('/:userId/settings', requireSelf('userId'), async (req, res) => {
   try {
     const { userId } = req.params;
     const { name, email, notifications } = req.body;

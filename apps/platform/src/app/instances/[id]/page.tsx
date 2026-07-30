@@ -9,12 +9,37 @@ import { apiFetch } from '@/lib/api';
 interface HolonConfig { startingStake: number; nominationCost: number; supportCost: number; algorithmPublishCost: number; sessionHostReward: number; sessionParticipantReward: number; topicQuorumReward: number; algorithmRoyaltyPercent: number; forkRoyaltyDecayPercent: number; forkDepthCap: number; }
 interface QuorumConfig { topicSupportThreshold: number; topicWindowHours: number; inquiryMinParticipants: number; frameVoteThreshold: number; algorithmSessionQuorum: number; algorithmProposalWindowHours: number; }
 interface OasConfig { startingTokens: number; quorum: number; votesPerUser: number; maxPlayers: number; }
+// Chorus — everything the memorial app knows about the person it collects
+// memories for. Held on the Instance rather than in the frontend build so a
+// new memorial is a config change, not a deploy (apps/chorus/PLAN.md §11).
+interface MemorialConfig {
+  subjectName: string; subjectPhotoUrl: string; blurb: string; lifespan: string;
+  seedRoleTags: string[]; seedExperienceTags: string[];
+  allowCustomTags: boolean; audioMaxSeconds: number;
+  curatorKey: string; accent: string;
+}
+// Which app an instance belongs to. This is a stored field on the Instance —
+// before it existed the admin had no way to say, so everything created here
+// was an interView edition and a memorial could only be made by running
+// scripts/seed-memorial.js.
+type AppId = 'interview' | 'spectrum' | 'synthesis' | 'chorus';
+const APP_LABELS: Record<AppId, string> = {
+  interview: 'interView',
+  spectrum: 'On a Spectrum',
+  synthesis: 'Synthesis',
+  chorus: 'Chorus (memorial)',
+};
+
 interface InstanceData {
-  id: string; name: string; slug: string; domains: string[];
+  id: string; name: string; slug: string; app?: AppId; domains: string[];
   gameVersion: string | null; gameNumber: number | null; active: boolean;
   access: { mode: string; inviteCodes: string[] };
   startDate: string | null; endDate: string | null;
-  config: { mode?: 'normal' | 'explore'; holons: HolonConfig; quorum: QuorumConfig; oas: OasConfig };
+  config: {
+    mode?: 'normal' | 'explore';
+    holons: HolonConfig; quorum: QuorumConfig; oas: OasConfig;
+    memorial?: MemorialConfig;
+  };
 }
 
 type Tab = 'basic' | 'config';
@@ -31,6 +56,7 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
   // Basic fields
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
+  const [app, setApp] = useState<AppId>('interview');
   const [domains, setDomains] = useState('');
   const [gameVersion, setGameVersion] = useState('');
   const [gameNumber, setGameNumber] = useState('');
@@ -45,14 +71,19 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
   const [holons, setHolons] = useState<HolonConfig | null>(null);
   const [quorum, setQuorum] = useState<QuorumConfig | null>(null);
   const [oas, setOas] = useState<OasConfig | null>(null);
+  const [memorial, setMemorial] = useState<MemorialConfig | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // On a Spectrum (the `spectrum` instance) exposes only its room defaults;
-  // interView editions expose the holon/quorum economy.
-  const isOas = instance?.slug === 'spectrum';
+  // Which config surface to show is entirely a function of the app: On a
+  // Spectrum exposes its room defaults, Chorus its memorial subject, interView
+  // the holon/quorum economy. All three read the one stored field rather than
+  // sniffing slugs and config blocks the way this page used to.
+  const appId: AppId = app || 'interview';
+  const isOas = appId === 'spectrum';
+  const isMemorial = appId === 'chorus';
 
   useEffect(() => {
     if (!authLoading && !user) router.replace('/login');
@@ -66,6 +97,7 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
         setInstance(inst);
         setName(inst.name);
         setSlug(inst.slug);
+        setApp(inst.app || 'interview');
         setDomains(inst.domains.join('\n'));
         setGameVersion(inst.gameVersion || '1.0');
         setGameNumber(inst.gameNumber != null ? String(inst.gameNumber) : '');
@@ -78,6 +110,7 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
         setHolons(inst.config.holons);
         setQuorum(inst.config.quorum);
         setOas(inst.config.oas);
+        setMemorial(inst.config.memorial || null);
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
@@ -89,7 +122,8 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
     setError(null);
     try {
       const body: Record<string, unknown> = {
-        name, domains: domains.split('\n').map(d => d.trim()).filter(Boolean),
+        name, app,
+        domains: domains.split('\n').map(d => d.trim()).filter(Boolean),
         gameVersion, active,
         gameNumber: gameNumber.trim() === '' ? null : Number(gameNumber),
         access: { mode: accessMode, inviteCodes: inviteCodes.split('\n').map(c => c.trim()).filter(Boolean) },
@@ -100,7 +134,12 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
         // On a Spectrum only edits its own room defaults; interView editions
         // edit the holon economy. Send just the relevant slice so neither
         // rewrites the other's untouched values.
-        if (isOas) {
+        if (isMemorial) {
+          // Only the memorial slice — a Chorus instance has no economy to
+          // rewrite, and sending holons/quorum would overwrite defaults it
+          // never displays.
+          if (memorial) body.config = { memorial };
+        } else if (isOas) {
           if (oas) body.config = { oas };
         } else if (holons && quorum) {
           body.config = { mode, holons, quorum };
@@ -161,14 +200,33 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
             <FieldGroup label="Slug" hint="(changing slug does not update domains)">
               <input type="text" value={slug} readOnly style={{ ...inputStyle, color: 'var(--ink-light)', cursor: 'not-allowed' }} />
             </FieldGroup>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <FieldGroup label="Game number" hint="Edition number — drives /interview/g<N> URLs and the Edition badge">
-                <input type="number" min={1} value={gameNumber} onChange={e => setGameNumber(e.target.value)} style={inputStyle} placeholder="1" />
-              </FieldGroup>
-              <FieldGroup label="Game version" hint="Version shown to players in interView">
-                <input type="text" value={gameVersion} onChange={e => setGameVersion(e.target.value)} style={inputStyle} placeholder="1.0" />
-              </FieldGroup>
-            </div>
+            <FieldGroup label="App" hint="which game this instance belongs to — decides the Config tab">
+              <select value={app} onChange={e => setApp(e.target.value as AppId)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                {(Object.keys(APP_LABELS) as AppId[]).map(a => (
+                  <option key={a} value={a}>{APP_LABELS[a]}</option>
+                ))}
+              </select>
+            </FieldGroup>
+            {appId === 'chorus' && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--ink-light)', margin: '-0.5rem 0 0', maxWidth: '34rem' }}>
+                This memorial is live at <code>/c/{slug}</code> on the Chorus app. Its subject, photo
+                and starting vocabulary are on the Config tab.
+              </p>
+            )}
+            {/* Edition numbering is interView's alone — a memorial or a
+                Synthesis idea holding a gameNumber can be picked as the
+                platform's default instance and start answering unrelated
+                traffic. */}
+            {appId === 'interview' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <FieldGroup label="Game number" hint="Edition number — drives /interview/g<N> URLs and the Edition badge">
+                  <input type="number" min={1} value={gameNumber} onChange={e => setGameNumber(e.target.value)} style={inputStyle} placeholder="1" />
+                </FieldGroup>
+                <FieldGroup label="Game version" hint="Version shown to players in interView">
+                  <input type="text" value={gameVersion} onChange={e => setGameVersion(e.target.value)} style={inputStyle} placeholder="1.0" />
+                </FieldGroup>
+              </div>
+            )}
             <FieldGroup label="Domains" hint="One per line">
               <textarea rows={3} value={domains} onChange={e => setDomains(e.target.value)}
                 style={{ ...inputStyle, resize: 'vertical' }} />
@@ -201,7 +259,13 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
           </div>
         )}
 
-        {tab === 'config' && holons && quorum && (
+        {tab === 'config' && isMemorial && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <MemorialFields memorial={memorial} setMemorial={setMemorial} slug={instance.slug} />
+          </div>
+        )}
+
+        {tab === 'config' && !isMemorial && holons && quorum && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             {isOas ? (
               oas && (
@@ -302,3 +366,134 @@ const primaryBtn: React.CSSProperties = {
   padding: '0.5rem 1rem', borderRadius: 6, border: 'none',
   background: 'var(--ink)', color: '#fff', fontWeight: 600, fontSize: '0.8rem',
 };
+
+// ── Chorus memorial ─────────────────────────────────────────────────────────
+// Where the memorial and curate links point. One deployed Chorus frontend
+// serves every memorial, addressed by /c/<slug> — so this is a single value,
+// not one per memorial.
+const CHORUS_URL = process.env.NEXT_PUBLIC_CHORUS_URL || 'https://chorus.holoscopic.io';
+
+// The whole of what makes a Chorus instance a memorial for a particular
+// person. Editing these is how a new memorial gets its subject — no deploy, no
+// migration, because the frontend reads every one of them from GET /config at
+// request time (apps/chorus/PLAN.md §11, D11).
+function MemorialFields({
+  memorial, setMemorial, slug,
+}: {
+  memorial: MemorialConfig | null;
+  setMemorial: (fn: (m: MemorialConfig | null) => MemorialConfig | null) => void;
+  slug: string;
+}) {
+  // Creating an instance with app &ldquo;Chorus&rdquo; provisions all of this,
+  // so an empty block means the instance was switched to Chorus by hand and
+  // saved without a reload, or predates that provisioning.
+  if (!memorial) {
+    return (
+      <p style={{ fontSize: '0.8rem', color: 'var(--ink-light)', maxWidth: '32rem' }}>
+        This instance has no memorial config yet. Set <strong>App</strong> to Chorus on the Basic
+        tab, save, and reload — that mints the curator key and plants the starting vocabulary.
+      </p>
+    );
+  }
+
+  const set = <K extends keyof MemorialConfig>(key: K, value: MemorialConfig[K]) =>
+    setMemorial(m => m && { ...m, [key]: value });
+
+  const lines = (v: string[]) => (v || []).join('\n');
+  const toLines = (v: string) => v.split('\n').map(s => s.trim()).filter(Boolean);
+
+  return (
+    <>
+      <Section title="Who this memorial is for">
+        <p style={{ fontSize: '0.75rem', color: 'var(--ink-light)', margin: '0 0 0.75rem', maxWidth: '32rem' }}>
+          Every field here is read live by the Chorus frontend, so changing a name or photo takes
+          effect on the next page load. Nothing about the subject is baked into a build.
+        </p>
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          <FieldGroup label="subject name">
+            <input value={memorial.subjectName} placeholder="Ellen Vance"
+              onChange={e => set('subjectName', e.target.value)} style={inputStyle} />
+          </FieldGroup>
+          <FieldGroup label="photo url">
+            <input value={memorial.subjectPhotoUrl} placeholder="https://…"
+              onChange={e => set('subjectPhotoUrl', e.target.value)} style={inputStyle} />
+          </FieldGroup>
+          <FieldGroup label="lifespan (free text, optional)">
+            <input value={memorial.lifespan} placeholder="1941 – 2024"
+              onChange={e => set('lifespan', e.target.value)} style={inputStyle} />
+          </FieldGroup>
+          <FieldGroup label="blurb — the invitation under the name">
+            <textarea value={memorial.blurb} rows={3}
+              placeholder="If you knew her, tell us something we would not otherwise know."
+              onChange={e => set('blurb', e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
+          </FieldGroup>
+        </div>
+      </Section>
+
+      <Section title="Starting vocabulary">
+        <p style={{ fontSize: '0.75rem', color: 'var(--ink-light)', margin: '0 0 0.75rem', maxWidth: '32rem' }}>
+          One per line. These seed the two blanks in the prompt — <em>role</em> fills both
+          &ldquo;{memorial.subjectName || 'she'} was ___&rdquo; and &ldquo;I was ___&rdquo;.
+          Contributors add their own words from here, so this only has to be good enough to show
+          people the shape of an answer. Adding a line here makes it appear in the picker
+          immediately; removing one leaves any memory already using it untouched.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(16rem, 1fr))', gap: '0.75rem' }}>
+          <FieldGroup label="role tags">
+            <textarea value={lines(memorial.seedRoleTags)} rows={8}
+              onChange={e => set('seedRoleTags', toLines(e.target.value))}
+              style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }} />
+          </FieldGroup>
+          <FieldGroup label="experience tags">
+            <textarea value={lines(memorial.seedExperienceTags)} rows={8}
+              onChange={e => set('seedExperienceTags', toLines(e.target.value))}
+              style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }} />
+          </FieldGroup>
+        </div>
+      </Section>
+
+      <Section title="Behaviour">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(13rem, 1fr))', gap: '0.75rem' }}>
+          <FieldGroup label="let contributors add words">
+            <select value={memorial.allowCustomTags ? 'yes' : 'no'}
+              onChange={e => set('allowCustomTags', e.target.value === 'yes')} style={inputStyle}>
+              <option value="yes">Yes — the vocabulary grows</option>
+              <option value="no">No — the seeded words only</option>
+            </select>
+          </FieldGroup>
+          <FieldGroup label="recording limit (seconds)">
+            <input type="number" value={memorial.audioMaxSeconds}
+              onChange={e => set('audioMaxSeconds', Number(e.target.value))} style={inputStyle} />
+          </FieldGroup>
+          <FieldGroup label="accent colour">
+            <input value={memorial.accent} placeholder="#C97B1E"
+              onChange={e => set('accent', e.target.value)} style={inputStyle} />
+          </FieldGroup>
+        </div>
+      </Section>
+
+      <Section title="Links">
+        <p style={{ fontSize: '0.75rem', color: 'var(--ink-light)', margin: '0 0 0.75rem', maxWidth: '32rem' }}>
+          The first is the link you share. The second is the only credential for moderating this
+          memorial — send it to whoever is looking after it; anyone holding it can hide and restore
+          memories, and rotating it locks out everyone who has the old one.
+        </p>
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          <FieldGroup label="memorial url">
+            <input readOnly value={`${CHORUS_URL}/c/${slug}`}
+              onFocus={e => e.currentTarget.select()}
+              style={{ ...inputStyle, fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }} />
+          </FieldGroup>
+          <FieldGroup label="curate url">
+            <input readOnly
+              value={memorial.curatorKey
+                ? `${CHORUS_URL}/c/${slug}/curate?k=${memorial.curatorKey}`
+                : '(not set — save with App: Chorus and reload)'}
+              onFocus={e => e.currentTarget.select()}
+              style={{ ...inputStyle, fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }} />
+          </FieldGroup>
+        </div>
+      </Section>
+    </>
+  );
+}

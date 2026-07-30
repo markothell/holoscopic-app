@@ -20,7 +20,12 @@ export class ApiError extends Error {
 // Game-token cache: tokens live 15 minutes; refresh with a minute to spare.
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
-async function getGameToken(): Promise<string | null> {
+/**
+ * Exported for the Socket.IO handshake: the server now derives the personal
+ * room (`user:<id>`) from the verified token instead of trusting the userId
+ * the client emits, so an unauthenticated socket receives no holon push.
+ */
+export async function getGameToken(): Promise<string | null> {
   if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) {
     return cachedToken.token;
   }

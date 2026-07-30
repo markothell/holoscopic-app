@@ -6,10 +6,28 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch } from '@/lib/api';
 
+// Which app the new instance belongs to. Picking this is the whole point of
+// the field: it decides whether the backend hands out an edition number, which
+// config surface the edit page shows, and — for Chorus — whether the instance
+// arrives already provisioned as a working memorial.
+type AppId = 'interview' | 'spectrum' | 'synthesis' | 'chorus';
+
+const APPS: { id: AppId; label: string; hint: string }[] = [
+  { id: 'interview', label: 'interView',
+    hint: 'A numbered edition at holoscopic.io. Gets the next game number and the holon economy.' },
+  { id: 'chorus', label: 'Chorus — a memorial',
+    hint: 'One person, one memorial. Created ready to use: curator key minted, starting vocabulary planted, economy off. Fill in the subject on the next screen.' },
+  { id: 'synthesis', label: 'Synthesis',
+    hint: 'A thought space. Ideas are normally created by collaborators in the app itself — make one here only to set up a parent or repair one.' },
+  { id: 'spectrum', label: 'On a Spectrum',
+    hint: 'Rooms are created by players in the app. Make one here only to set up a parent instance.' },
+];
+
 export default function NewInstancePage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
 
+  const [app, setApp] = useState<AppId>('interview');
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [slugEdited, setSlugEdited] = useState(false);
@@ -26,9 +44,14 @@ export default function NewInstancePage() {
     if (!isLoading && !user) router.replace('/login');
   }, [user, isLoading, router]);
 
+  // A Chorus slug is the memorial's public URL (/c/<slug>), so it gets a
+  // `chorus-` namespace rather than sitting bare alongside every other
+  // instance's slug.
   useEffect(() => {
-    if (!slugEdited) setSlug(name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
-  }, [name, slugEdited]);
+    if (slugEdited) return;
+    const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    setSlug(app === 'chorus' && base ? `chorus-${base}` : base);
+  }, [name, slugEdited, app]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,7 +60,7 @@ export default function NewInstancePage() {
     setError(null);
     try {
       const body = {
-        name, slug,
+        name, slug, app,
         domains: domains.split('\n').map(d => d.trim()).filter(Boolean),
         gameVersion,
         access: {
@@ -70,53 +93,82 @@ export default function NewInstancePage() {
 
       <main style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1.5rem' }}>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <FieldGroup label="Name">
-            <input type="text" required value={name} onChange={e => setName(e.target.value)} style={inputStyle} placeholder="My Community" autoFocus />
+          {/* First, because it changes what every field below means. */}
+          <FieldGroup label="App">
+            <select value={app} onChange={e => setApp(e.target.value as AppId)} style={{ ...inputStyle, cursor: 'pointer' }}>
+              {APPS.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+            </select>
+            <p style={{ fontSize: '0.75rem', color: 'var(--ink-light)', margin: '0.4rem 0 0', lineHeight: 1.5 }}>
+              {APPS.find(a => a.id === app)!.hint}
+            </p>
           </FieldGroup>
 
-          <FieldGroup label="Slug">
+          <FieldGroup label={app === 'chorus' ? 'Their name' : 'Name'}>
+            <input type="text" required value={name} onChange={e => setName(e.target.value)} style={inputStyle}
+              placeholder={app === 'chorus' ? 'Ellen Vance' : 'My Community'} autoFocus />
+          </FieldGroup>
+
+          <FieldGroup label="Slug" hint={app === 'chorus' ? '— the memorial’s URL: /c/<slug>' : undefined}>
             <input type="text" required value={slug}
               onChange={e => { setSlug(e.target.value); setSlugEdited(true); }}
-              style={inputStyle} placeholder="my-community" />
+              style={inputStyle} placeholder={app === 'chorus' ? 'chorus-ellen-vance' : 'my-community'} />
           </FieldGroup>
 
-          <FieldGroup label="Game version" hint="e.g. 1.0 — shown to players in interView">
-            <input type="text" value={gameVersion} onChange={e => setGameVersion(e.target.value)} style={inputStyle} placeholder="1.0" />
-          </FieldGroup>
-
-          <FieldGroup label="Domains" hint="One per line — e.g. mycommunity.com">
-            <textarea rows={3} value={domains} onChange={e => setDomains(e.target.value)}
-              style={{ ...inputStyle, resize: 'vertical' }} placeholder={'mycommunity.com\nwww.mycommunity.com'} />
-          </FieldGroup>
-
-          <FieldGroup label="Access">
-            <select value={accessMode} onChange={e => setAccessMode(e.target.value as 'public' | 'invite')} style={{ ...inputStyle, cursor: 'pointer' }}>
-              <option value="public">Public</option>
-              <option value="invite">Invite only</option>
-            </select>
-          </FieldGroup>
-
-          {accessMode === 'invite' && (
-            <FieldGroup label="Invite codes" hint="One per line">
-              <textarea rows={3} value={inviteCodes} onChange={e => setInviteCodes(e.target.value)}
-                style={{ ...inputStyle, resize: 'vertical' }} placeholder="CODE-A&#10;CODE-B" />
+          {/* Edition numbering and versioning belong to interView alone. */}
+          {app === 'interview' && (
+            <FieldGroup label="Game version" hint="e.g. 1.0 — shown to players in interView">
+              <input type="text" value={gameVersion} onChange={e => setGameVersion(e.target.value)} style={inputStyle} placeholder="1.0" />
             </FieldGroup>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <FieldGroup label="Start date">
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inputStyle} />
-            </FieldGroup>
-            <FieldGroup label="End date">
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={inputStyle} />
-            </FieldGroup>
-          </div>
+          {/* Chorus is reached by its /c/<slug> path on the one shared Chorus
+              deployment, gates nothing behind invite codes, and has no run
+              window — a memorial stays open. None of the three below apply. */}
+          {app !== 'chorus' && (
+            <>
+              <FieldGroup label="Domains" hint="One per line — e.g. mycommunity.com">
+                <textarea rows={3} value={domains} onChange={e => setDomains(e.target.value)}
+                  style={{ ...inputStyle, resize: 'vertical' }} placeholder={'mycommunity.com\nwww.mycommunity.com'} />
+              </FieldGroup>
+
+              <FieldGroup label="Access">
+                <select value={accessMode} onChange={e => setAccessMode(e.target.value as 'public' | 'invite')} style={{ ...inputStyle, cursor: 'pointer' }}>
+                  <option value="public">Public</option>
+                  <option value="invite">Invite only</option>
+                </select>
+              </FieldGroup>
+
+              {accessMode === 'invite' && (
+                <FieldGroup label="Invite codes" hint="One per line">
+                  <textarea rows={3} value={inviteCodes} onChange={e => setInviteCodes(e.target.value)}
+                    style={{ ...inputStyle, resize: 'vertical' }} placeholder="CODE-A&#10;CODE-B" />
+                </FieldGroup>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <FieldGroup label="Start date">
+                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inputStyle} />
+                </FieldGroup>
+                <FieldGroup label="End date">
+                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={inputStyle} />
+                </FieldGroup>
+              </div>
+            </>
+          )}
+
+          {app === 'chorus' && (
+            <p style={{ fontSize: '0.8rem', color: 'var(--ink-light)', lineHeight: 1.6, maxWidth: '34rem' }}>
+              Creating this mints the curator key and plants a starting vocabulary, so the memorial
+              works the moment it exists. The next screen is where you add the photo, the years, and
+              the few lines under their name — and where you find the two links to share.
+            </p>
+          )}
 
           {error && <p style={{ color: 'var(--accent)', fontSize: '0.8rem' }}>{error}</p>}
 
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button type="submit" disabled={submitting} style={primaryBtn}>
-              {submitting ? 'Creating…' : 'Create instance'}
+              {submitting ? 'Creating…' : app === 'chorus' ? 'Create memorial' : 'Create instance'}
             </button>
             <Link href="/instances" style={secondaryBtn}>Cancel</Link>
           </div>

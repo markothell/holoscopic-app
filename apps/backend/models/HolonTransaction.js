@@ -45,4 +45,12 @@ const holonTransactionSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now, index: true },
 }, { id: false });
 
+// The fastest-growing collection on the platform — one row per daily bonus,
+// stake, vote settlement and award.
+// routes/holons.js:85 — a user's ledger page.
+holonTransactionSchema.index({ userId: 1, instanceId: 1, createdAt: -1 });
+// routes/holons.js:56 — the leaderboard aggregation, which otherwise scans
+// every transaction in the instance before grouping.
+holonTransactionSchema.index({ instanceId: 1, type: 1, amount: 1 });
+
 module.exports = mongoose.model('HolonTransaction', holonTransactionSchema);

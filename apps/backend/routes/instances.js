@@ -3,15 +3,24 @@ const router = express.Router();
 const Instance = require('../models/Instance');
 const InstanceMembership = require('../models/InstanceMembership');
 const requireAdmin = require('../middleware/requireAdmin');
+const memories = require('../utils/memories');
+const { provisionMemorial } = require('../utils/memorialDefaults');
+
+// Kept in step with the enum on Instance.app by hand, so a bad value is a 400
+// here rather than a Mongoose validation 500 further in.
+const APPS = ['interview', 'spectrum', 'synthesis', 'chorus'];
 
 function generateId() {
   return Math.random().toString(36).substring(2, 10);
 }
 
 // GET /api/instances/current — returns config for the resolved instance (used by frontend)
+//
+// Public: every frontend fetches this on load, including Chorus, which has no
+// accounts at all. It therefore must never return a secret — see
+// Instance#toPublicJSON.
 router.get('/current', (req, res) => {
-  const { id, name, slug, access, config, active, startDate, endDate } = req.instance;
-  res.json({ instance: { id, name, slug, access, config, active, startDate, endDate } });
+  res.json({ instance: req.instance.toPublicJSON() });
 });
 
 // GET /api/instances/mine — interView editions the current user has joined.
@@ -67,8 +76,21 @@ router.get('/resolve/:slugOrId', async (req, res) => {
     const key = req.params.slugOrId;
     const instance = await Instance.findOne({ slug: key }) || await Instance.findOne({ id: key });
     if (!instance) return res.status(404).json({ error: 'No game found for that address' });
-    const { id, name, slug, gameNumber, access, active, startDate, endDate } = instance;
-    res.json({ instance: { id, name, slug, gameNumber, access, active, startDate, endDate } });
+    // Also public, and enumerable by slug — it returned `access` whole, so it
+    // handed out inviteCodes for any instance whose slug could be guessed.
+    const pub = instance.toPublicJSON();
+    res.json({
+      instance: {
+        id: pub.id,
+        name: pub.name,
+        slug: pub.slug,
+        gameNumber: pub.gameNumber,
+        access: pub.access,
+        active: pub.active,
+        startDate: pub.startDate,
+        endDate: pub.endDate,
+      },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -90,24 +112,45 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/instances — create a new instance
+//
+// `app` decides what is being created, and it is the only input that changes
+// the shape of the result. Everything below keyed off it exists so that an
+// instance is usable by its app the moment this returns — a memorial created
+// here needs no follow-up script run, which is the whole point of the field.
 router.post('/', async (req, res) => {
   try {
     const { name, domains, access, startDate, endDate, config } = req.body;
     if (!name) return res.status(400).json({ error: 'name is required' });
 
-    // Next game number = highest existing + 1 (count-based numbering breaks
-    // once non-game instances like spectrum exist).
-    const top = await Instance.findOne({ gameNumber: { $ne: null } }).sort({ gameNumber: -1 });
-    const gameNumber = (top?.gameNumber || 0) + 1;
+    const app = req.body.app || 'interview';
+    if (!APPS.includes(app)) {
+      return res.status(400).json({ error: `app must be one of: ${APPS.join(', ')}` });
+    }
 
-    // No custom slug → address the game by its number (g1, g2, …)
-    const slug = req.body.slug || `g${gameNumber}`;
+    // Game numbers belong to interView editions alone. Handing one to a
+    // memorial or a Synthesis idea would enter it into getDefault()'s ordering
+    // and it could end up serving as the platform default instance.
+    let gameNumber = null;
+    if (app === 'interview') {
+      // Next number = highest existing + 1 (count-based numbering breaks once
+      // non-game instances like spectrum exist).
+      const top = await Instance.findOne({ gameNumber: { $ne: null } }).sort({ gameNumber: -1 });
+      gameNumber = (top?.gameNumber || 0) + 1;
+    }
+
+    // No custom slug → address the game by its number (g1, g2, …). Only
+    // interView has a number to fall back on; every other app is addressed by
+    // a slug the admin chose, and for Chorus that slug is the memorial's URL.
+    const slug = req.body.slug || (gameNumber ? `g${gameNumber}` : null);
+    if (!slug) return res.status(400).json({ error: 'slug is required' });
     const existing = await Instance.findOne({ slug });
     if (existing) return res.status(409).json({ error: 'Slug already in use' });
-    const instance = await Instance.create({
+
+    const instance = new Instance({
       id: generateId(),
       name,
       slug,
+      app,
       domains: domains || [],
       access: access || { mode: 'public' },
       startDate: startDate || null,
@@ -117,6 +160,16 @@ router.post('/', async (req, res) => {
       gameNumber,
       gameVersion: req.body.gameVersion || '1.0',
     });
+
+    if (app === 'chorus') provisionMemorial(instance);
+    await instance.save();
+
+    // Planting the seed vocabulary is what makes the prompt's two blanks
+    // offer anything on the first visit. It has to happen after save() so the
+    // MemoryTag docs carry a real instanceId.
+    if (app === 'chorus') {
+      await memories.syncSeedTags({ instanceId: instance.id, config: instance.config.memorial });
+    }
 
     res.status(201).json({ instance });
   } catch (err) {
@@ -154,7 +207,27 @@ router.put('/:id', async (req, res) => {
       instance.config = { ...instance.config.toObject(), ...config };
     }
 
+    // Reassigning an instance to another app is a repair for one created
+    // before Instance.app existed, or under the wrong choice. Moving it TO
+    // Chorus has to provision the memorial config, or the instance shows up in
+    // the admin as a memorial with no curator key and no vocabulary.
+    const { app } = req.body;
+    let provisioned = false;
+    if (app !== undefined && app !== instance.app) {
+      if (!APPS.includes(app)) {
+        return res.status(400).json({ error: `app must be one of: ${APPS.join(', ')}` });
+      }
+      instance.app = app;
+      if (app === 'chorus') {
+        provisionMemorial(instance);
+        provisioned = true;
+      }
+    }
+
     await instance.save();
+    if (provisioned) {
+      await memories.syncSeedTags({ instanceId: instance.id, config: instance.config.memorial });
+    }
     res.json({ instance });
   } catch (err) {
     res.status(500).json({ error: err.message });

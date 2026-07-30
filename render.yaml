@@ -5,6 +5,9 @@ services:
     rootDir: apps/backend
     buildCommand: npm install
     startCommand: node websocket-server.js
+    # /health returns 503 unless Mongo is connected, routes are loaded, AND a
+    # token secret is present — so a write-dead deploy never takes traffic.
+    healthCheckPath: /health
     envVars:
       - key: PORT
         value: 10000
@@ -14,6 +17,82 @@ services:
         sync: false
       - key: NODE_ENV
         value: production
+      # Shared HS256 secret with the Next.js frontends, which sign short-lived
+      # identity tokens (each app's /api/auth/game-token). MUST match the value
+      # in Vercel. Without it middleware/verifyUser.js 503s every
+      # identity-bearing write while reads keep working — the failure looks
+      # like "the site is up but nothing saves".
+      - key: GAME_TOKEN_SECRET
+        sync: false
+      # Chorus (apps/chorus) — memorial transcription. Deepgram fetches a
+      # memory's audio from Vercel Blob and POSTs the transcript back here, so
+      # it needs this service's own public URL. In production that is a
+      # permanent Render address; set it once.
+      #
+      # Leave PUBLIC_API_URL unset and utils/memorialTranscribe.js deliberately
+      # SKIPS the enqueue rather than queuing a job whose callback can never
+      # arrive — recordings still upload and play, they just never gain a
+      # transcript. That is the honest failure; a stale value is the bad one.
+      - key: PUBLIC_API_URL
+        sync: false
+      # Optional. Without it transcripts stay 'skipped' and everything else in
+      # Chorus works unchanged.
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      # Optional. Error reporting (observability.js). Unset = disabled, no
+      # behaviour change. Request bodies, headers and cookies are never sent,
+      # and /api/memorial context is withheld entirely — Chorus stores stories
+      # and recorded voices belonging to people who never agreed to a vendor.
+      - key: SENTRY_DSN
+        sync: false
+
+  # Off-site logical backup, daily at 07:00 UTC.
+  #
+  # Atlas M10 continuous backup + PITR is the primary recovery path. This is
+  # the independent second copy: Atlas snapshots live in the same Atlas
+  # account, so they do not survive account compromise, an accidentally
+  # deleted cluster, or somebody running reset-db-for-launch.js against prod.
+  #
+  # A separate service, not a job inside the web process — mongodump competes
+  # for the same memory and would die on deploy.
+  #
+  # runtime: docker because Render's Node image has no mongodb-database-tools;
+  # scripts/backup-mongo.js exits non-zero if mongodump is missing rather than
+  # recording a backup that never happened.
+  #
+  # SETUP REQUIRED before this does anything (see scripts/backup-mongo.js):
+  #   1. Create a read-only Atlas user (readAnyDatabase) → MONGODB_URI_BACKUP.
+  #      A leaked backup credential must not be able to write.
+  #   2. Create an S3-compatible bucket (Cloudflare R2 or S3) with versioning
+  #      and lifecycle rules for retention: 7 daily / 4 weekly / 3 monthly.
+  #      Grant this service PutObject only — never DeleteObject, so a
+  #      compromised backend cannot erase its own backups.
+  #   3. Set BACKUP_HEARTBEAT_URL to a dead-man's-switch (healthchecks.io) so
+  #      a MISSING backup pages you. A backup nobody is alerted about is not a
+  #      backup.
+  - type: cron
+    name: holoscopic-mongo-backup
+    runtime: docker
+    dockerfilePath: ./apps/backend/Dockerfile.backup
+    dockerContext: .
+    schedule: "0 7 * * *"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI_BACKUP
+        sync: false
+      - key: BACKUP_S3_BUCKET
+        sync: false
+      - key: BACKUP_S3_ENDPOINT
+        sync: false
+      - key: BACKUP_S3_REGION
+        sync: false
+      - key: BACKUP_S3_ACCESS_KEY_ID
+        sync: false
+      - key: BACKUP_S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: BACKUP_HEARTBEAT_URL
+        sync: false
       # Concurrent Socket.IO cap (websocket-server.js falls back to 25).
       # Each phone in a live Spectrum room + each interView player = 1 socket.
       - key: MAX_CONNECTIONS

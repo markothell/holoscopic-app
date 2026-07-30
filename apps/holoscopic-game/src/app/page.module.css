@@ -319,9 +319,10 @@
 }
 
 /* ---- JOIN A GAME CARDS ----
-   One card per game, each wearing its own palette: On a Spectrum on its
-   paper/crimson/cobalt, interView on the warm taupe it owns, Map + Sequence
-   on soft emerald. The motif SVG sits behind the type, anchored right. */
+   One card per game, each wearing its own palette: Synthesis on dark plum
+   with brass/teal, On a Spectrum on its paper/crimson/cobalt, interView on
+   the warm taupe it owns, Map + Sequence on soft emerald. The motif SVG sits
+   behind the type, anchored right. */
 
 .gameCardStack {
   display: flex;
@@ -422,11 +423,66 @@
   color: #0e8f66;
 }
 
-/* ---- REVEAL STATE (must follow all animated elements) ---- */
+/* Chorus — eau de nil, the pale blue-green of mid-century domestic paintwork
+   that the memorial itself is built on, with the one dial-amber accent. The
+   card wears the app's ground rather than a version of this page's taupe, the
+   same way every other card wears its own. */
+.gameCardCh {
+  background: #e4eae2;
+  border: 1px solid #d5ddd3;
+}
 
-.visible {
+/* The wordmark stays one colour — see the note on the card. The amber lives in
+   the art and the sub-line instead. */
+.gameCardSubCh {
+  color: #8a6f4e;
+}
+
+/* Synthesis — dark plum, the theme the app itself wears, with brass + teal */
+.gameCardSyn {
+  background: #221e2e;
+}
+
+.gameCardSyn .gameCardTitle {
+  color: #f4efe6;
+}
+
+.gameCardSyn .gameCardMeta {
+  color: rgba(244, 239, 230, 0.55);
+}
+
+/* The wordmark splits on its morphemes, not its syllables: syn- (together)
+   in the brass the art starts from, -thesis (the proposition) in the teal it
+   converges to. Same left-to-right many-into-one reading as ConvergeArt. */
+.synPrefix { color: #e3a548; }
+.synAccent { color: #55c2a8; }
+
+.gameCardSubSyn {
+  color: #55c2a8;
+}
+
+/* ---- REVEAL STATE (must follow all animated elements) ----
+   Driven by the inline script in layout.tsx, which sets [data-revealed] when a
+   section scrolls into view. It is an attribute rather than a class because
+   that script is plain JS and cannot know the hashed CSS-module class name. */
+
+.section[data-revealed],
+.invitation[data-revealed] {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Motion is decoration here; the content underneath is the point. Anyone who
+   has asked the OS to reduce motion gets it immediately and in place. */
+@media (prefers-reduced-motion: reduce) {
+  .hero,
+  .section,
+  .invitation {
+    opacity: 1;
+    transform: none;
+    animation: none;
+    transition: none;
+  }
 }
 
 /* ---- FOOTER ---- */

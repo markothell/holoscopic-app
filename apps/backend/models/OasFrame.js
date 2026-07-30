@@ -48,4 +48,7 @@ const oasFrameSchema = new mongoose.Schema({
   id: false,
 });
 
+// utils/oasStats.js:292 — the pulse feed's frame list.
+oasFrameSchema.index({ parentInstanceId: 1, createdAt: -1 });
+
 module.exports = mongoose.model('OasFrame', oasFrameSchema);

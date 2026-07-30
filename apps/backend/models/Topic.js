@@ -46,4 +46,8 @@ topicSchema.virtual('supporterCount').get(function () {
 
 topicSchema.set('toJSON', { virtuals: true });
 
+// routes/topics.js:82 — find({instanceId, status:{$in}}).sort({expiresAt:1}),
+// and the same shape drives the expiry sweep.
+topicSchema.index({ instanceId: 1, status: 1, expiresAt: 1 });
+
 module.exports = mongoose.model('Topic', topicSchema);
