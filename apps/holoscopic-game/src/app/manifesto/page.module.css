@@ -246,9 +246,26 @@
 
 /* ---- REVEAL STATE (must follow all animated elements) ---- */
 
-.visible {
+/* Set by the inline reveal script in app/layout.tsx when a block scrolls into
+   view. An attribute rather than a class because that script is plain JS and
+   cannot know the hashed CSS-module class name. */
+.manifestoSection[data-revealed],
+.closing[data-revealed] {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Motion is decoration; the writing is the point. */
+@media (prefers-reduced-motion: reduce) {
+  .nav,
+  .hero,
+  .manifestoSection,
+  .closing {
+    opacity: 1;
+    transform: none;
+    animation: none;
+    transition: none;
+  }
 }
 
 /* ---- FOOTER ---- */
