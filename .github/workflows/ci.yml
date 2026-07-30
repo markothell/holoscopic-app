@@ -101,6 +101,15 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      # Chorus's /c/[slug] routes type their params off Next's generated
+      # LayoutProps/PageProps rather than hand-written shapes (so a moved or
+      # renamed route folder is a type error here, not a silently-undefined
+      # param at runtime) — those ambient types live in .next/types and only
+      # `next build`/`next dev`/`next typegen` produce them. Without this, tsc
+      # sees a bare checkout and fails with "Cannot find name 'PageProps'" on
+      # every app that uses the pattern, even though `next build` on Vercel
+      # would have generated them and passed.
+      - run: npx next typegen apps/${{ matrix.app }}
       # Types were only ever checked as a side effect of `next build` on Vercel,
       # i.e. after merge. tsc --noEmit is the same check, minutes earlier.
       - run: npx tsc --noEmit -p apps/${{ matrix.app }}/tsconfig.json
