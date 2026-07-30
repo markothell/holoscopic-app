@@ -39,15 +39,16 @@ jobs:
     # what they assert cannot be faked: transactional rollback, and
     # exactly-once settlement under concurrency. They need a real replica set,
     # so they are opt-in locally (RUN_DB_TESTS=1) and always run here.
-    services:
-      mongodb:
-        image: mongo:7
-        ports: ['27017:27017']
-        options: >-
-          --health-cmd "mongosh --eval 'db.runCommand(\"ping\")'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
+    #
+    # No `services:` block: mongod only accepts --replSet as a command-line
+    # argument, and GitHub Actions' `options:` maps to `docker create` flags,
+    # with no way to append arguments after the image name. A service
+    # container therefore always starts as a standalone, and rs.initiate()
+    # against one throws "This node was not started with replication enabled"
+    # -- uncaught, since the catch above only expects rs.status() to fail.
+    # Confirmed against a real `docker run mongo:7` (no --replSet) before
+    # writing this fix. Started by hand below instead, where the replSet flag
+    # can actually be passed.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -56,17 +57,19 @@ jobs:
           cache: npm
       - run: npm ci
 
-      # Transactions require a replica set; the service container starts as a
-      # standalone. Without this the holon tests would silently fall back to the
-      # non-atomic path and the rollback assertion would fail — which is the
-      # correct failure, but the useful thing is to test the real path.
-      - name: Promote MongoDB to a single-node replica set
+      - name: Start MongoDB as a single-node replica set
         run: |
-          docker exec $(docker ps -q --filter ancestor=mongo:7) \
-            mongosh --quiet --eval 'try { rs.status() } catch (e) { rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]}) }'
+          docker run -d --name mongo -p 27017:27017 mongo:7 --replSet rs0 --bind_ip_all
           for i in $(seq 1 30); do
-            if docker exec $(docker ps -q --filter ancestor=mongo:7) \
-                 mongosh --quiet --eval 'rs.status().myState' | grep -q '^1$'; then
+            if docker exec mongo mongosh --quiet --eval 'db.runCommand("ping").ok' 2>/dev/null | grep -q '^1$'; then
+              echo "mongod ready"; break
+            fi
+            sleep 2
+          done
+          docker exec mongo mongosh --quiet --eval \
+            'rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]})'
+          for i in $(seq 1 30); do
+            if docker exec mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; then
               echo "replica set primary ready"; break
             fi
             sleep 2
