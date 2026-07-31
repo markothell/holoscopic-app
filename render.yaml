@@ -80,6 +80,10 @@ services:
       #
       # Unset = no mirroring, reported by /health as `mediaBackup`. Recording
       # still works; the voice just lives in one place.
+      #
+      # All five are required, REGION included — it is the SigV4 signing region,
+      # so a missing or wrong value means every upload is rejected while the
+      # config still reads as complete. `mediaBackup: no-region` names that case.
       - key: BACKUP_S3_BUCKET
         sync: false
       - key: BACKUP_S3_ENDPOINT
@@ -121,14 +125,30 @@ services:
   # scripts/backup-mongo.js exits non-zero if mongodump is missing rather than
   # recording a backup that never happened.
   #
-  # SETUP REQUIRED before this does anything (see scripts/backup-mongo.js):
+  # THE BUCKET (provisioned 2026-07-31, AWS account 736414043461):
+  #   s3://chorus-app-backup, us-east-2, versioning ON, SSE-S3, all four public
+  #   access blocks ON. Endpoint https://s3.us-east-2.amazonaws.com.
+  #
+  #   IAM user `holoscopic-backup` holds PutObject + GetObject and an explicit
+  #   Deny on every delete, so a compromised backend cannot erase its own
+  #   backups. GetObject is NOT optional — the scripts HEAD to dedupe, read
+  #   back to verify an upload, and GET to restore. Verified by round trip:
+  #   put/head/get succeed, DeleteObject returns AccessDenied.
+  #
+  # RETENTION is lifecycle rules on the bucket, never this service's job —
+  # that is what lets the credential above have no delete permission at all.
+  # S3 lifecycle expires by age only; it cannot express grandfather-father-son,
+  # so the earlier "7 daily / 4 weekly / 3 monthly" plan became:
+  #   mongo/  expire at 90 days, noncurrent versions at 30  (~90 dailies)
+  #   blob/   NEVER expires — transitions to STANDARD_IA at 90 days
+  # The split is the point. Dumps regenerate nightly and are disposable; the
+  # objects under blob/ are recorded voices with no second take, and an
+  # age-based expiry applied bucket-wide would delete them on a timer.
+  #
+  # STILL REQUIRED:
   #   1. Create a read-only Atlas user (readAnyDatabase) → MONGODB_URI_BACKUP.
   #      A leaked backup credential must not be able to write.
-  #   2. Create an S3-compatible bucket (Cloudflare R2 or S3) with versioning
-  #      and lifecycle rules for retention: 7 daily / 4 weekly / 3 monthly.
-  #      Grant this service PutObject only — never DeleteObject, so a
-  #      compromised backend cannot erase its own backups.
-  #   3. Set BACKUP_HEARTBEAT_URL to a dead-man's-switch (healthchecks.io) so
+  #   2. Set BACKUP_HEARTBEAT_URL to a dead-man's-switch (healthchecks.io) so
   #      a MISSING backup pages you. A backup nobody is alerted about is not a
   #      backup.
   #

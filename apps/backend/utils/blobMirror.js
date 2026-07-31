@@ -36,8 +36,9 @@
 // exactly that. A backup nobody has restored from is not a backup.
 //
 // Configured entirely from the BACKUP_S3_* variables backup-mongo.js already
-// needs. With them unset this is a no-op that says so — same contract as
-// transcription, and reported the same way on /health.
+// needs — BUCKET, ENDPOINT, REGION, ACCESS_KEY_ID, SECRET_ACCESS_KEY. With them
+// unset this is a no-op that says so — same contract as transcription, and
+// reported the same way on /health.
 
 const KEY_PREFIX_DEFAULT = 'blob';
 
@@ -45,7 +46,12 @@ function config(env = process.env) {
   return {
     bucket: env.BACKUP_S3_BUCKET || '',
     endpoint: env.BACKUP_S3_ENDPOINT || '',
-    region: env.BACKUP_S3_REGION || 'auto',
+    // No default. 'auto' is a Cloudflare R2 convention, and on AWS S3 it is a
+    // signing region — SigV4 signs the request over whatever string is here, so
+    // a wrong one produces SignatureDoesNotMatch on every upload while the
+    // config still looks complete. Required explicitly so R2 users write
+    // 'auto' on purpose and S3 users write 'us-east-2' on purpose.
+    region: env.BACKUP_S3_REGION || '',
     accessKeyId: env.BACKUP_S3_ACCESS_KEY_ID || '',
     secretAccessKey: env.BACKUP_S3_SECRET_ACCESS_KEY || '',
     prefix: env.BACKUP_BLOB_PREFIX || KEY_PREFIX_DEFAULT,
@@ -59,10 +65,15 @@ function config(env = process.env) {
 //   'ready'          → mirroring will proceed
 //   'no-bucket'      → BACKUP_S3_BUCKET / ENDPOINT unset
 //   'no-credentials' → bucket configured but no key pair
+//   'no-region'      → BACKUP_S3_REGION unset; see config() for why it has no
+//                      default. This one is worth a distinct state because the
+//                      failure it prevents is invisible: credentials and bucket
+//                      both present, every request signed and rejected.
 function readiness(env = process.env) {
   const c = config(env);
   if (!c.bucket || !c.endpoint) return 'no-bucket';
   if (!c.accessKeyId || !c.secretAccessKey) return 'no-credentials';
+  if (!c.region) return 'no-region';
   return 'ready';
 }
 

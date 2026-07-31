@@ -28,6 +28,7 @@ function withEnv(vars, fn) {
 const CONFIGURED = {
   BACKUP_S3_BUCKET: 'holoscopic-backups',
   BACKUP_S3_ENDPOINT: 'https://accountid.r2.cloudflarestorage.com',
+  BACKUP_S3_REGION: 'auto',
   BACKUP_S3_ACCESS_KEY_ID: 'ak',
   BACKUP_S3_SECRET_ACCESS_KEY: 'sk',
   BACKUP_BLOB_PREFIX: undefined,
@@ -76,6 +77,12 @@ test('readiness: names why mirroring would not happen', async () => {
   });
   await withEnv({ ...CONFIGURED, BACKUP_S3_SECRET_ACCESS_KEY: undefined }, async () => {
     assert.equal(mirror.readiness(), 'no-credentials');
+  });
+  // The region has no default on purpose. Defaulting it to R2's 'auto' made an
+  // AWS S3 bucket look fully configured while SigV4 signed every request over
+  // the wrong region and the store rejected all of them.
+  await withEnv({ ...CONFIGURED, BACKUP_S3_REGION: undefined }, async () => {
+    assert.equal(mirror.readiness(), 'no-region');
   });
 });
 

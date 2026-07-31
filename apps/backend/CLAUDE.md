@@ -38,7 +38,7 @@ without exercising the feature:
 | `mongodb`, `apiRoutesLoaded` | yes → 503 | Routes never mounted; every `/api` 404s |
 | `authConfigured` | yes → 503 | No token secret, so every identity-bearing write 503s while reads look fine |
 | `transcription` | **no** | `ready` \| `no-api-key` \| `no-secret` \| `no-callback-url` |
-| `mediaBackup` | **no** | `ready` \| `no-bucket` \| `no-credentials` — whether recordings get an off-site copy |
+| `mediaBackup` | **no** | `ready` \| `no-bucket` \| `no-credentials` \| `no-region` — whether recordings get an off-site copy |
 
 The rule for adding a field: **gate health on it only if the platform is broken without it.**
 Chorus transcription is optional by design — audio records and plays without it — so it is

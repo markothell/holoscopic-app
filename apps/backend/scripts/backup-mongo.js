@@ -85,7 +85,11 @@ async function main() {
 
   const bucket = requireEnv('BACKUP_S3_BUCKET');
   const endpoint = requireEnv('BACKUP_S3_ENDPOINT');
-  const region = process.env.BACKUP_S3_REGION || 'auto';
+  // Required, not defaulted — see utils/blobMirror.js config(). 'auto' is
+  // correct for Cloudflare R2 and silently fatal for AWS S3, where it becomes
+  // the SigV4 signing region and every PutObject comes back
+  // SignatureDoesNotMatch. Write it out for whichever one this bucket is.
+  const region = requireEnv('BACKUP_S3_REGION');
   const accessKeyId = requireEnv('BACKUP_S3_ACCESS_KEY_ID');
   const secretAccessKey = requireEnv('BACKUP_S3_SECRET_ACCESS_KEY');
   const prefix = process.env.BACKUP_PREFIX || 'mongo';
