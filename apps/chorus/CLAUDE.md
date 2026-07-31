@@ -156,6 +156,17 @@ under `node --test` with no DB, no Blob, no Deepgram. Keep that when adding func
   `{instanceId,set,key}` rejects the second write — a 500 on a perfectly good memory. That's what
   `resolveSlots()` exists for. Still three slots server-side even though the client only fills two:
   the edit path and every memory written before the change carry `selfTags`.
+- **The seed lists ARE the vocabulary — `syncSeedTags` adds, retires and reorders.** It used to
+  only add, which made the config a source of nothing: replacing a memorial's starting words left
+  every word provisioned at creation still in the picker. That is invisible on a memorial with
+  memories, and fatal on a new one — every `useCount` is 0, so the tie broke on `label`, and a
+  curator's words could sort *below* the defaults they thought they had replaced. The compose form
+  shows only the first few words, so alphabetical order silently decided which of them anybody saw.
+  Three rules hold it together now: a dropped word is retired via `hidden` (never deleted, so
+  nothing is orphaned and re-adding restores the same row); **a word with `useCount > 0` is never
+  retired**, because once somebody has said it about this person it is theirs and not the seed
+  list's; and `seedRank` carries the curator's ordering, ranked *below* `useCount` so the
+  vocabulary still self-organizes toward what people actually say.
 - **The wall cursor is a compound keyset** (`<iso>|<id>`), not a bare `createdAt`. Two memories in
   the same millisecond with a page boundary between them will silently drop one otherwise.
 - **`next/font` variables live on the `<body>` class, not `:root`.** Any CSS that resolves

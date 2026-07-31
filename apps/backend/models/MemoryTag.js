@@ -53,6 +53,17 @@ const memoryTagSchema = new mongoose.Schema({
   // funnel on every memory create/edit — never incremented from a route.
   useCount: { type: Number, default: 0 },
 
+  // The curator's own ordering, from the position of the word in the seed list.
+  // It breaks ties BELOW useCount, which makes it matter in exactly the case
+  // that used to look broken: a memorial with no memories yet has every count
+  // at 0, so the picker fell back to sorting by label and showed the curator's
+  // list alphabetized. The compose form only shows the first few words, so
+  // alphabetical order silently decided which of them anyone ever saw.
+  //
+  // High default so a contributed word never outranks a deliberately-placed
+  // seeded one at the same count.
+  seedRank: { type: Number, default: 9999 },
+
   // Curator can retire a tag: it disappears from pickers and filters, but
   // memories keep it in their arrays and simply stop rendering it. Retiring is
   // reversible; deleting would orphan references.

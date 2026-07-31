@@ -100,7 +100,7 @@ const mongoStore = {
   async getInstance(instanceId) { return Instance.findOne({ id: instanceId }); },
 
   async listTags(instanceId) {
-    return MemoryTag.find({ instanceId }).sort({ useCount: -1, label: 1 }).lean();
+    return MemoryTag.find({ instanceId }).sort({ useCount: -1, seedRank: 1, label: 1 }).lean();
   },
   async findTagByKey(instanceId, set, key) {
     return MemoryTag.findOne({ instanceId, set, key }).lean();
@@ -118,6 +118,9 @@ const mongoStore = {
   },
   async setTagHidden(instanceId, tagId, hidden) {
     return MemoryTag.findOneAndUpdate({ instanceId, id: tagId }, { hidden }, { new: true }).lean();
+  },
+  async patchTag(instanceId, tagId, patch) {
+    return MemoryTag.findOneAndUpdate({ instanceId, id: tagId }, patch, { new: true }).lean();
   },
 
   async createMemory(fields) {
@@ -230,29 +233,74 @@ function normalizeBody(raw = {}) {
 
 // ── Tags ────────────────────────────────────────────────────────────────────
 
-// Materialize the curator's seed lists from Instance.config.memorial into
-// MemoryTag docs. Idempotent — safe to call on every config read, which is how
-// a curator adding a seed tag in the platform admin makes it appear in the
-// picker without a deploy.
+// Make the vocabulary match the curator's seed lists in Instance.config.memorial.
+//
+// Idempotent, and called on every config read — that is how editing the lists
+// in the platform admin changes the picker with no deploy and no migration.
+//
+// THIS USED TO ONLY ADD, which meant the seed lists were not actually the
+// source of anything. Replacing the starting words left every word provisioned
+// at creation still sitting in the vocabulary, and since a new memorial has no
+// memories, every count was 0 and the picker fell back to alphabetical — so the
+// curator's own words could sort below the defaults they thought they had
+// replaced and never appear on the form at all. It looked like the config was
+// being ignored. It was being merged into.
+//
+// A word the curator drops is therefore RETIRED — unless a memory already uses
+// it. That exception is the promise the admin form makes ("removing one leaves
+// any memory already using it untouched"), and it is the right one: once
+// somebody has said a word about this person it belongs to them, not to the
+// seed list. Retiring is `hidden`, never a delete, so nothing is orphaned and
+// re-adding the word brings it back.
 async function syncSeedTags({ store = mongoStore, instanceId, config }) {
   const pairs = [
     ['role', config?.seedRoleTags || []],
     ['experience', config?.seedExperienceTags || []],
   ];
+
+  // One read instead of one per seed word, and in the steady state — every
+  // config read after the first — this writes nothing at all.
+  const existing = await store.listTags(instanceId);
   const created = [];
+
   for (const [set, labels] of pairs) {
+    // Position in the list is the curator's ranking. Deduped on the normalized
+    // key so a list containing "Teacher" and "teacher" ranks one word once.
+    const wanted = new Map();
     for (const raw of labels) {
       const label = cleanLabel(raw);
       if (!label) continue;
       const key = normalizeTagKey(label);
-      const existing = await store.findTagByKey(instanceId, set, key);
-      if (existing) continue;
-      created.push(await store.createTag({
-        id: newId(), instanceId, set, label, key, origin: 'seeded', useCount: 0, hidden: false,
-        createdAt: new Date(),
-      }));
+      if (!wanted.has(key)) wanted.set(key, { label, rank: wanted.size });
+    }
+
+    for (const [key, { label, rank }] of wanted) {
+      const found = existing.find(t => t.set === set && t.key === key);
+      if (!found) {
+        created.push(await store.createTag({
+          id: newId(), instanceId, set, label, key, origin: 'seeded', useCount: 0,
+          hidden: false, seedRank: rank, createdAt: new Date(),
+        }));
+        continue;
+      }
+      // Re-listing a retired word restores it, and the list's order is
+      // reasserted every read — so reordering the admin textarea is enough.
+      if (found.hidden || found.seedRank !== rank) {
+        await store.patchTag(instanceId, found.id, { hidden: false, seedRank: rank });
+      }
+    }
+
+    for (const tag of existing) {
+      if (tag.set !== set) continue;
+      // Contributed words are nobody's to retire — they arrived by being used.
+      if (tag.origin !== 'seeded') continue;
+      if (wanted.has(tag.key)) continue;
+      if ((tag.useCount || 0) > 0) continue;
+      if (tag.hidden) continue;
+      await store.patchTag(instanceId, tag.id, { hidden: true });
     }
   }
+
   return created;
 }
 

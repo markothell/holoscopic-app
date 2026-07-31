@@ -606,11 +606,15 @@ function MemorialFields({
           <em>role</em>{' '}answers &ldquo;Who was{' '}
           {memorial.shortName || (memorial.subjectName || '').trim().split(/\s+/)[0] || 'she'}{' '}
           in this story?&rdquo; and{' '}
-          <em>experience</em>{' '}answers &ldquo;What was this an experience of?&rdquo;. The most-used
-          few appear on the form itself, so put the likeliest answers here. Contributors add their
-          own words from here, so this only has to be good enough to show people the shape of an
-          answer. Adding a line here makes it appear in the picker immediately; removing one leaves
-          any memory already using it untouched.
+          <em>experience</em>{' '}answers &ldquo;What was this an experience of?&rdquo;.{' '}
+          <strong>These lists are the vocabulary</strong> — adding a line puts the word in the
+          picker, removing one takes it out, and the order you put them in is the order they appear
+          while this memorial is new. Only the first few show on the form itself, so lead with the
+          likeliest answers. Contributors add their own words from here, so this only has to be good
+          enough to show people the shape of an answer.{' '}
+          <strong>A word somebody has already used stays</strong> even if you remove it here —
+          once it has been said about {memorial.shortName || (memorial.subjectName || '').trim().split(/\s+/)[0] || 'her'}{' '}
+          it belongs to whoever said it.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(16rem, 1fr))', gap: '0.75rem' }}>
           <LinesField

@@ -42,7 +42,18 @@ function memStore(seedTags = []) {
 
     async getInstance(instanceId) { return { id: instanceId, config: {} }; },
 
-    async listTags() { return tags.map(t => ({ ...t })); },
+    // Mirrors mongoStore.listTags' sort exactly — {useCount:-1, seedRank:1,
+    // label:1}. Returning insertion order instead would let an ordering bug
+    // pass here and only show up on the compose form, which shows the head of
+    // this list and nothing else.
+    async listTags() {
+      return tags
+        .map(t => ({ ...t }))
+        .sort((a, b) =>
+          (b.useCount || 0) - (a.useCount || 0)
+          || (a.seedRank ?? 9999) - (b.seedRank ?? 9999)
+          || a.label.localeCompare(b.label));
+    },
     async findTagByKey(instanceId, set, key) {
       return tags.find(t => t.instanceId === instanceId && t.set === set && t.key === key) || null;
     },
@@ -59,6 +70,11 @@ function memStore(seedTags = []) {
     async setTagHidden(instanceId, tagId, hidden) {
       const t = tags.find(x => x.instanceId === instanceId && x.id === tagId);
       if (t) t.hidden = hidden;
+      return t || null;
+    },
+    async patchTag(instanceId, tagId, patch) {
+      const t = tags.find(x => x.instanceId === instanceId && x.id === tagId);
+      if (t) Object.assign(t, patch);
       return t || null;
     },
 
@@ -246,6 +262,73 @@ test('syncSeedTags: idempotent, and marks curator seeds as seeded', async () => 
 
   assert.equal(store._tags.length, 2, 'no duplicates on a second sync');
   assert.ok(store._tags.every(t => t.origin === 'seeded'));
+});
+
+test('syncSeedTags: a word dropped from the list is retired', async () => {
+  const store = memStore();
+  await memories.syncSeedTags({
+    store, instanceId: INST, config: { seedRoleTags: ['stubborn', 'patient'] },
+  });
+  // The curator replaces the starting words with their own.
+  await memories.syncSeedTags({
+    store, instanceId: INST, config: { seedRoleTags: ['priestess'] },
+  });
+
+  const { role } = await memories.listTags({ store, instanceId: INST });
+  assert.deepEqual(role.map(t => t.label), ['priestess'],
+    'the words the curator removed are gone from the picker');
+  assert.equal(store._tags.length, 3, 'retired, not deleted — nothing is orphaned');
+});
+
+test('syncSeedTags: a retired word comes back when the curator re-adds it', async () => {
+  const store = memStore();
+  await memories.syncSeedTags({ store, instanceId: INST, config: { seedRoleTags: ['stubborn'] } });
+  await memories.syncSeedTags({ store, instanceId: INST, config: { seedRoleTags: [] } });
+  await memories.syncSeedTags({ store, instanceId: INST, config: { seedRoleTags: ['stubborn'] } });
+
+  const { role } = await memories.listTags({ store, instanceId: INST });
+  assert.deepEqual(role.map(t => t.label), ['stubborn']);
+  assert.equal(store._tags.length, 1, 'the same row, unhidden — not a second one');
+});
+
+test('syncSeedTags: a word a memory already uses survives being dropped', async () => {
+  const store = memStore();
+  await memories.syncSeedTags({ store, instanceId: INST, config: { seedRoleTags: ['stubborn'] } });
+  await memories.createMemory(base(store, {
+    subjectTagLabels: ['stubborn'], selfTagLabels: [], experienceTagLabels: [],
+  }));
+
+  await memories.syncSeedTags({ store, instanceId: INST, config: { seedRoleTags: ['priestess'] } });
+
+  const { role } = await memories.listTags({ store, instanceId: INST });
+  assert.ok(role.some(t => t.label === 'stubborn'),
+    'a word somebody has already said about this person is not the seed list to take away');
+});
+
+test('syncSeedTags: the curator’s order survives every count being zero', async () => {
+  const store = memStore();
+  // Alphabetically this is exactly backwards, which is what the picker used to
+  // show on a memorial that had no memories yet.
+  await memories.syncSeedTags({
+    store, instanceId: INST, config: { seedRoleTags: ['priestess', 'mother', 'lover', 'friend'] },
+  });
+
+  const { role } = await memories.listTags({ store, instanceId: INST });
+  assert.deepEqual(role.map(t => t.label), ['priestess', 'mother', 'lover', 'friend']);
+});
+
+test('syncSeedTags: use still outranks the curator’s order', async () => {
+  const store = memStore();
+  await memories.syncSeedTags({
+    store, instanceId: INST, config: { seedRoleTags: ['priestess', 'friend'] },
+  });
+  await memories.createMemory(base(store, {
+    subjectTagLabels: ['friend'], selfTagLabels: [], experienceTagLabels: [],
+  }));
+
+  const { role } = await memories.listTags({ store, instanceId: INST });
+  assert.deepEqual(role.map(t => t.label), ['friend', 'priestess'],
+    'the vocabulary still self-organizes toward what people actually say');
 });
 
 // ── Threads ─────────────────────────────────────────────────────────────────
