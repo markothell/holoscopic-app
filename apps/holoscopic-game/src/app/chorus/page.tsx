@@ -35,7 +35,7 @@ export default function ChorusPage() {
   return (
     <main className={styles.page}>
       <div className={styles.inner}>
-        <p className={styles.eyebrow}>Newest game</p>
+        <p className={styles.eyebrow}>Newest activity</p>
         <h1 className={styles.title}>Chorus</h1>
         <p className={styles.sub}>connecting stories and voices</p>
 
@@ -63,15 +63,7 @@ export default function ChorusPage() {
           </a>
         </div>
 
-        <p className={styles.note}>
-          Chorus runs at{' '}
-          <a href={demo} className={styles.noteLink}>chorus.holoscopic.io</a>
-          {' '}— one page per link, open for as long as it is wanted. Anyone
-          holding the link can add to it, under whatever name they give or under
-          none.
-        </p>
-
-        <Link href="/" className={styles.back}>← all games</Link>
+        <Link href="/" className={styles.back}>← all activities</Link>
       </div>
     </main>
   );

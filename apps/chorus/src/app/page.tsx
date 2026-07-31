@@ -13,7 +13,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Chorus',
-  description: 'Memories about one person, collected from anyone with the link.',
+  description: 'Connecting stories and voices about one person, gathered from anyone with the link.',
 };
 
 const ABOUT_URL = process.env.NEXT_PUBLIC_ABOUT_URL || 'https://holoscopic.io/chorus';
@@ -23,7 +23,7 @@ export default function ChorusIndex() {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6">
       <p className="eyebrow">Chorus</p>
       <h1 className="voice mt-2 text-[2.25rem] leading-[1.15] text-ink">
-        Memories about one&nbsp;person
+        Connecting Stories and&nbsp;Voices
       </h1>
       <p className="voice mt-5 text-[1.125rem] leading-[1.6] text-ink-soft">
         Every memorial here has its own link. If someone sent you one, open it — that link is the

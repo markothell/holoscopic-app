@@ -26,7 +26,10 @@ called `chorus`, and a `.vercel/project.json` naming one is a stale link that ma
 `vercel env pull` / `env ls` in this directory fail with "project was either deleted or
 transferred". Repair with `vercel link --yes --project holoscopic-app-chorus`.
 
-Blob store: `chorus-memories` (public, iad1, `store_ELLOQEAjs3dvD6g5`). **Recording works only if
+Blob store: `chorus-memories` (public, iad1, `store_eIUuI62jhmFnk5eS` — it was
+`store_ELLOQEAjs3dvD6g5` until 2026-07-31, and a token for the old one now fails with *"This store
+does not exist"*, which reads like a code bug and is not one). The platform admin writes memorial
+subject photos to this same store, so both projects need it connected. **Recording works only if
 that store is CONNECTED to the project** — connecting is what injects `BLOB_READ_WRITE_TOKEN` into
 each environment. A store connected to nothing (`vercel blob list-stores` → `Projects: –`) leaves
 production with no token while local development keeps working from whatever is in `.env.local`,
@@ -41,9 +44,21 @@ non-token response; `/api/audio/upload` answers a named 503 first so the cause i
 ## The app
 
 A visitor lands on a photo, a name, and a wall of memories. One button: **Share a memory**. The
-prompt is a sentence with three blanks — "This is a story where *Ellen* was ___ and I was ___
-having an experience of ___" — filled from two tag vocabularies. Then a short name, your name (or
-one tap for anon), and the story typed or spoken. On any memory: **Add to this memory**.
+sheet opens on **two direct questions** — *"Who was Ellen in this story?"* and *"What was this an
+experience of?"* — each showing the most-used words from its vocabulary plus a **＋ More** chip that
+opens the full list. Then a short name, your name (or one tap for anon), and the story typed or
+spoken. On any memory: **Add to this memory**.
+
+**The sentence is how a memory READS, no longer how one is written.** Composing used to happen
+inside "This is a story where *Ellen* was ___ and I was ___ having an experience of ___", with each
+blank a tappable ＋. Testers could not tell what the ＋ was for and found three clauses too much to
+parse, so the form became the two questions above and the middle slot was dropped entirely.
+`PromptSentence` still renders the sentence on memory pages and wall cards — that artifact is the
+whole product bet and it survives intact.
+
+**`selfTags` ("I was ___") is legacy.** Nothing collects it now; the model, the wire and the
+`role` vocabulary all still carry it, and memories written before the change render and filter
+exactly as they always did. Every clause of the sentence is independently optional as a result.
 
 ## What makes this app different from every other one in this repo
 
@@ -66,7 +81,7 @@ anything. Don't "fix" them by adding auth.
 | `src/components/MemorialProvider.tsx` | `useMemorial()` → `{ slug, instanceId, subjectName, api }` for client components |
 | `src/services/api.ts` | All HTTP. `memorialApiFor(slug)` binds one memorial; attaches `x-instance-id` and, on writes, `x-contributor-token`. Safe to import from a Server Component — nothing touches `window` at module scope. |
 | `src/lib/types.ts` | Wire types, mirroring `utils/memories.js#toClient` exactly |
-| `src/components/PromptSentence.tsx` | **The signature element** — the fill-in-the-blank sentence, at two densities plus an interactive mode (pass `onSlotTap`) |
+| `src/components/PromptSentence.tsx` | **The signature element** — the filled sentence at two densities. Read-only; every clause optional |
 | `src/components/MemoryCard.tsx` | One memory on the wall. Stretched-link card (see gotchas) |
 | `src/lib/filters.ts` | Filter state lives in the URL, so a filtered wall is a shareable link. Every href builder takes the memorial's `base` (`/c/<slug>`) |
 | `src/components/tags/TagLink.tsx` | A tag as a filter link — `rule` inside a sentence, `chip` as a control |
@@ -74,7 +89,8 @@ anything. Don't "fix" them by adding auth.
 | `src/components/tags/TagPortrait.tsx` | *Who she was, according to everyone* — size ∝ `useCount` |
 | `src/components/ui/Sheet.tsx` | The one overlay pattern. Sheets stack; only the topmost handles Escape |
 | `src/components/compose/ComposeButton.tsx` | Trigger + compose sheet + the post-submit share step. Both entry points, one component |
-| `src/components/compose/TagDrawer.tsx` | One blank's vocabulary. The search field *is* the add-your-own field |
+| `src/components/compose/TagQuestion.tsx` | One question, its most-used words as chips, and the ＋ that opens the drawer |
+| `src/components/compose/TagDrawer.tsx` | One question's whole vocabulary. The search field *is* the add-your-own field |
 | `src/components/compose/Recorder.tsx` | Tap-to-record, live timer + peaks, review, re-record |
 | `src/lib/recorder.ts` | Mime detection, peak resampling, the IndexedDB stash |
 | `src/components/audio/PlayerProvider.tsx` | **One** `Audio` element for the whole app |
@@ -113,7 +129,8 @@ under `node --test` with no DB, no Blob, no Deepgram. Keep that when adding func
   draw from the *same* `role` vocabulary, so "she was stubborn and I was stubborn" resolves one key
   twice. Run concurrently and both lookups miss, both mint, and the unique index on
   `{instanceId,set,key}` rejects the second write — a 500 on a perfectly good memory. That's what
-  `resolveSlots()` exists for.
+  `resolveSlots()` exists for. Still three slots server-side even though the client only fills two:
+  the edit path and every memory written before the change carry `selfTags`.
 - **The wall cursor is a compound keyset** (`<iso>|<id>`), not a bare `createdAt`. Two memories in
   the same millisecond with a page boundary between them will silently drop one otherwise.
 - **`next/font` variables live on the `<body>` class, not `:root`.** Any CSS that resolves
@@ -149,9 +166,11 @@ under `node --test` with no DB, no Blob, no Deepgram. Keep that when adding func
 - **Clients send tag *labels*, never ids**, for the three prompt slots — that's what makes a picked
   tag and a typed-in one one code path. `TagDrawer` mirrors the server's per-slot caps so nothing
   is silently dropped at submit.
-- **`.blank-empty` needs `line-height: 1`.** An inline-block inherits the paragraph's line height
-  for its own box, so at the sentence's leading its `border-bottom` drifts half a line below the
-  baseline and the ruled line detaches from the ＋ sitting on it.
+- **The sentence renders only the clauses a memory actually has.** `PromptSentence` drops an
+  unanswered slot rather than ruling an empty line, and swaps its lead to "This is a story about …"
+  when neither *was* clause exists — otherwise a memory with only an experience reads as "This is a
+  story where having an experience of grief." It returns `null` when nothing was answered, so any
+  caller that frames it (`border-y` on the memory page) must check first or frame an empty box.
 - **Audio: never read duration off the file.** iOS writes MP4 with no duration metadata, which
   surfaces as `Infinity` in every player and an un-scrubbable track. The client times the recording
   and that stored number is what the player measures against.
