@@ -15,7 +15,14 @@ export interface Tag {
 
 export interface Memorial {
   instanceId: string;
+  /** The headline name — "Ellen Vance". The wall, the page title, share text. */
   subjectName: string;
+  /**
+   * What to call her in conversation — "Ellen". Every compose surface uses
+   * this. Never empty: the server derives it from the first word of
+   * `subjectName` when the curator has not set one.
+   */
+  shortName: string;
   subjectPhotoUrl: string;
   blurb: string;
   lifespan: string;

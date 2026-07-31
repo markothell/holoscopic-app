@@ -60,7 +60,13 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
   const [subjectTags, setSubjectTags] = useState<string[]>(addTo?.subjectTags ?? []);
   const [experienceTags, setExperienceTags] = useState<string[]>(addTo?.experienceTags ?? []);
 
-  const name = memorial.subjectName;
+  // TWO NAMES, on purpose. Everything the person composing reads is addressed
+  // to someone who knew her, so it uses the short name — "Who was Ellen in this
+  // story?" is how the question would actually be asked. The share payload
+  // keeps the full name, because that lands in a message to somebody who has
+  // not opened the memorial yet and needs to know who it is for.
+  const name = memorial.shortName || memorial.subjectName;
+  const fullName = memorial.subjectName;
 
   // A memory needs a name and a story — typed or spoken. The server enforces
   // the same rule; this just stops the button lying about being ready.
@@ -134,8 +140,8 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
     const memorialUrl = `${window.location.origin}${base}`;
     const url = createdId ? `${memorialUrl}/m/${createdId}` : memorialUrl;
     const shareData = {
-      title: `Memories of ${name}`,
-      text: `I left a memory of ${name}. Add yours.`,
+      title: `Memories of ${fullName}`,
+      text: `I left a memory of ${fullName}. Add yours.`,
       url,
     };
     try {

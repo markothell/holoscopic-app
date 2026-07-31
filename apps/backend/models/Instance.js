@@ -61,7 +61,14 @@ const instanceConfigSchema = new mongoose.Schema({
   // NO holon economy and no quorum, so the holons/quorum blocks above are
   // present but bypassed entirely.
   memorial: {
-    subjectName:     { type: String, default: '' },   // "Ellen"
+    subjectName:     { type: String, default: '' },   // "Ellen Vance" — the headline
+    // What to call her in conversation: headings, questions, placeholders.
+    // "Who was Ellen in this story?" is how somebody would actually ask; the
+    // full name there reads like a form about a stranger. Empty means "the
+    // first word of subjectName", which is right often enough that nobody has
+    // to set it, and settable because it is wrong for "Mary Ellen" and for
+    // anyone known by their surname.
+    shortName:       { type: String, default: '' },   // "Ellen"
     subjectPhotoUrl: { type: String, default: '' },
     blurb:           { type: String, default: '' },   // a few lines under the name
     lifespan:        { type: String, default: '' },   // free text — "1941 – 2024"

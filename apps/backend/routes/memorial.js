@@ -116,6 +116,17 @@ function memorialConfig(req) {
   return req.instance?.config?.memorial || {};
 }
 
+// The name to use in conversation — questions, placeholders, "someone who knew
+// ___". Defaults to the first word of the full name rather than to the full
+// name itself: "Who was Ellen Vance in this story?" reads like a form, and the
+// whole point of the compose copy is that it does not.
+function shortNameFor(config, instance) {
+  const explicit = String(config.shortName || '').trim();
+  if (explicit) return explicit;
+  const full = String(config.subjectName || instance?.name || '').trim();
+  return full.split(/\s+/)[0] || '';
+}
+
 // The curator authenticates with a key in the URL and nothing else (D10), so
 // the link can be texted to a family member with no holoscopic account. Fails
 // closed: a memorial with no curatorKey configured has no curator surface.
@@ -150,6 +161,10 @@ router.get('/config', async (req, res) => {
       memorial: {
         instanceId: req.instanceId,
         subjectName: config.subjectName || req.instance?.name || '',
+        // Always a usable value, so no client ever has to decide what to do
+        // with an empty one. The derive is the first whitespace-separated word,
+        // which is the common case; a curator overrides it when it is wrong.
+        shortName: shortNameFor(config, req.instance),
         subjectPhotoUrl: config.subjectPhotoUrl || '',
         blurb: config.blurb || '',
         lifespan: config.lifespan || '',
