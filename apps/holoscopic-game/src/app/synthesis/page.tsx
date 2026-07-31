@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { SYNTHESIS_URL } from '@/lib/games';
 import styles from './page.module.css';
+import SiteFooter from '@/components/SiteFooter';
 
 export const metadata: Metadata = {
   title: 'Synthesis — Holoscopic',
@@ -171,6 +172,8 @@ export default function SynthesisPage() {
 
         <Link href="/" className={styles.back}>← all games</Link>
       </div>
+
+      <SiteFooter />
     </main>
   );
 }

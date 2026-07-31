@@ -140,8 +140,12 @@ export default function APersonalStoryPage() {
             community with the many beautiful people sharing this moment.
           </p>
 
+          {/* Was `mo[at]holoscopi.io` — a domain we do not own, missing the c,
+              and unlinked. It was also the only contact anywhere on the site. */}
           <p className={styles.body}>
-            Thank you for reading. You can reach out here: mo[at]holoscopi.io
+            Thank you for reading. You can reach me at{' '}
+            <a href="mailto:mo@holoscopic.io">mo@holoscopic.io</a>, or through the{' '}
+            <Link href="/contact">contact page</Link>.
           </p>
 
         </div>

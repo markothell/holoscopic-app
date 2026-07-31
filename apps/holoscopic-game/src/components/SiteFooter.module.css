@@ -1,0 +1,58 @@
+/* Shared site footer.
+ *
+ * Colours are inherited, not declared. Each page that uses this defines its own
+ * --ink-light / --accent / --rule on its wrapper (the game landers each shift
+ * the accent — Chorus runs amber where the site runs crimson), so the footer
+ * reads whatever palette it is dropped into. The literals are last-resort
+ * fallbacks for a page that defines nothing.
+ */
+
+.footer {
+  padding: 3rem 0 4.5rem;
+  border-top: 1px solid var(--rule, #D9D4CC);
+  margin-top: 4rem;
+}
+
+.inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 1rem;
+  /* Matches .container in page.module.css so the footer lines up with the
+     content above it on pages that do not wrap it in one themselves. */
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.text {
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.65rem;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-light, #6B6560);
+}
+
+.link {
+  color: var(--ink-light, #6B6560) !important;
+  text-decoration: none !important;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.link:hover {
+  color: var(--accent, #C83B50) !important;
+  border-color: var(--accent, #C83B50);
+  text-decoration: none !important;
+}
+
+@media (max-width: 640px) {
+  .inner {
+    padding: 0 1.25rem;
+    /* Two items stacked reads better than two cramped columns. */
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

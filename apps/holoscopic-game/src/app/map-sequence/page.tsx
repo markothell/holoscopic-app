@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import styles from './page.module.css';
+import SiteFooter from '@/components/SiteFooter';
 
 export const metadata: Metadata = {
   title: 'Map + Sequence — Holoscopic',
@@ -121,6 +122,8 @@ export default function MapSequencePage() {
 
         <Link href="/" className={styles.back}>← all games</Link>
       </div>
+
+      <SiteFooter />
     </main>
   );
 }

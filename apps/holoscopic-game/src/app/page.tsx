@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import UserMenu from '@/components/UserMenu';
+import SiteFooter from '@/components/SiteFooter';
+import { SPECTRUM_URL } from '@/lib/games';
 import styles from './page.module.css';
 
 // Sections below the hero start at opacity 0 and are revealed on scroll. The
@@ -563,7 +565,10 @@ export default function HomePage() {
                 2&ndash;50 collaborators &middot; open-ended
               </span>
             </Link>
-            <a href="https://spectrum.holoscopic.io" className={`${styles.gameCard} ${styles.gameCardOas}`}>
+            {/* SPECTRUM_URL, not a literal: every sibling card resolves its
+                destination through lib/games.ts, and a hard-coded production
+                URL is the one card you cannot follow in local dev. */}
+            <a href={SPECTRUM_URL} className={`${styles.gameCard} ${styles.gameCardOas}`}>
               <SpectrumBarsArt />
               <span className={styles.gameCardTitle}>
                 On&nbsp;a&nbsp;<span className={styles.oasAx}>Spec</span><span className={styles.oasAy}>trum</span>
@@ -599,42 +604,7 @@ export default function HomePage() {
       </main>
 
       {/* ── Footer ───────────────────────────────────────────────────────────── */}
-      <footer className={styles.footer}>
-        <div className={styles.container}>
-          <div className={styles.footerInner}>
-            <span className={styles.footerText}>
-              Made by{' '}
-              <Link href="/essays/a-personal-story" className={styles.footerLink}>
-                Mo
-              </Link>
-              &nbsp;&middot;&nbsp;{' '}
-              <a
-                href="https://github.com/markothell/holoscopic-app"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.footerLink}
-              >
-                Open source
-              </a>
-              &nbsp;&middot;&nbsp;{' '}
-              <a
-                href="https://markothell.substack.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.footerLink}
-              >
-                Seeing Wholes
-              </a>
-            </span>
-            <Link
-              href="/manifesto"
-              className={`${styles.footerText} ${styles.footerLink}`}
-            >
-              Read the manifesto &rarr;
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

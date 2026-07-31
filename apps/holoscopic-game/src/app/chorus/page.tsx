@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { memorialUrl } from '@/lib/games';
 import styles from './page.module.css';
+import SiteFooter from '@/components/SiteFooter';
 
 export const metadata: Metadata = {
   title: 'Chorus — Holoscopic',
@@ -65,6 +66,8 @@ export default function ChorusPage() {
 
         <Link href="/" className={styles.back}>← all activities</Link>
       </div>
+
+      <SiteFooter />
     </main>
   );
 }
