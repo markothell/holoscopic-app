@@ -190,6 +190,67 @@ async function mirrorMemory({ memory, env = process.env, s3 = null, fetchImpl = 
   });
 }
 
+// ── Which failures are worth waking somebody for ────────────────────────────
+//
+// mirrorObject reports every failure the same way, but they are not the same
+// kind of thing. A 404 means the source object no longer exists and no future
+// run can copy it — retrying nightly forever cannot help. A timeout, a 503, or
+// a failed upload means try again tomorrow.
+//
+// The distinction matters because backup-blobs.js pings a dead-man's switch.
+// If a permanently-dead object fails the job every night, the alert fires every
+// night, and an alert that always fires is one nobody reads — which costs you
+// the real outage later. So: page for what changed, report what already was.
+function isPermanentlyGone(result) {
+  return result?.status === 'source-unreachable' && (result.code === 404 || result.code === 410);
+}
+
+/**
+ * Diff this run's outcomes against the set of objects already known to be gone.
+ *
+ * `previous` is the map persisted in the bucket, `outcomes` is
+ * `[{ key, label, result }]` from this run. Pure, so the decision that governs
+ * whether you get paged is testable without S3 or a database.
+ *
+ *   newlyGone  → an object that WAS reachable and now is not. This is data
+ *                loss happening now. It must fail the run.
+ *   stillGone  → already in the set. Reported, never fatal.
+ *   recovered  → was in the set, copied successfully this time. Drops out.
+ *   transient  → anything else that failed. Fails the run, retried tomorrow.
+ */
+function reconcileGone({ previous = {}, outcomes = [], now = () => new Date().toISOString() }) {
+  const gone = {};
+  const newlyGone = [];
+  const stillGone = [];
+  const recovered = [];
+  const transient = [];
+
+  for (const { key, label, result } of outcomes) {
+    const wasGone = Object.prototype.hasOwnProperty.call(previous, key);
+
+    if (isPermanentlyGone(result)) {
+      const entry = wasGone
+        ? previous[key]
+        : { firstSeenGone: now(), label, code: result.code };
+      gone[key] = entry;
+      (wasGone ? stillGone : newlyGone).push({ key, label });
+      continue;
+    }
+
+    if (result?.status === 'copied' || result?.status === 'already') {
+      if (wasGone) recovered.push({ key, label });
+      continue;
+    }
+
+    // Still failing, but not provably gone. Keep any existing gone-marker so a
+    // flaky night does not erase the record and re-page tomorrow.
+    if (wasGone) gone[key] = previous[key];
+    transient.push({ key, label, detail: result?.error || result?.code || result?.status });
+  }
+
+  return { gone, newlyGone, stillGone, recovered, transient };
+}
+
 module.exports = {
   config,
   readiness,
@@ -199,4 +260,6 @@ module.exports = {
   makeClient,
   mirrorObject,
   mirrorMemory,
+  isPermanentlyGone,
+  reconcileGone,
 };

@@ -208,3 +208,101 @@ test('mirrorMemory: a recorded memory is mirrored at its own pathname', async ()
     assert.equal(res.key, `blob/${PATHNAME}`);
   });
 });
+
+// ── The paging decision ─────────────────────────────────────────────────────
+// backup-blobs.js pings a dead-man's switch, so these tests are really about
+// when a human gets woken up. The failure they guard against is not a crash:
+// it is a nightly false alarm training somebody to ignore the one that matters.
+
+test('isPermanentlyGone: only a 404/410 source is unrecoverable', () => {
+  assert.equal(mirror.isPermanentlyGone({ status: 'source-unreachable', code: 404 }), true);
+  assert.equal(mirror.isPermanentlyGone({ status: 'source-unreachable', code: 410 }), true);
+  // A 503 or a timeout is tomorrow's problem, not a permanent loss.
+  assert.equal(mirror.isPermanentlyGone({ status: 'source-unreachable', code: 503 }), false);
+  assert.equal(mirror.isPermanentlyGone({ status: 'source-unreachable', error: 'timeout' }), false);
+  assert.equal(mirror.isPermanentlyGone({ status: 'upload-failed', error: 'no perms' }), false);
+  assert.equal(mirror.isPermanentlyGone({ status: 'copied' }), false);
+  assert.equal(mirror.isPermanentlyGone(undefined), false);
+});
+
+const GONE = { status: 'source-unreachable', code: 404 };
+const OK = { status: 'copied' };
+
+test('reconcileGone: a newly vanished recording pages, the same one tomorrow does not', () => {
+  const outcomes = [{ key: 'blob/a.webm', label: 'Carrots', result: GONE }];
+
+  // Night one: nothing known gone yet. This is loss happening now.
+  const first = mirror.reconcileGone({ previous: {}, outcomes, now: () => 'T1' });
+  assert.equal(first.newlyGone.length, 1);
+  assert.equal(first.stillGone.length, 0);
+  assert.equal(first.gone['blob/a.webm'].firstSeenGone, 'T1');
+
+  // Night two: same object, already recorded. Reported, but nobody is woken.
+  const second = mirror.reconcileGone({ previous: first.gone, outcomes, now: () => 'T2' });
+  assert.equal(second.newlyGone.length, 0);
+  assert.equal(second.stillGone.length, 1);
+  // The original sighting date survives — it is the only record of WHEN.
+  assert.equal(second.gone['blob/a.webm'].firstSeenGone, 'T1');
+});
+
+test('reconcileGone: a whole store dying overnight still pages', () => {
+  // The disaster this exists to catch. Everything 404s at once and none of it
+  // was known — every object must count as newly gone.
+  const outcomes = [
+    { key: 'blob/a.webm', label: 'a', result: GONE },
+    { key: 'blob/b.webm', label: 'b', result: GONE },
+    { key: 'blob/c.jpg', label: 'c', result: GONE },
+  ];
+  const r = mirror.reconcileGone({ previous: {}, outcomes });
+  assert.equal(r.newlyGone.length, 3);
+});
+
+test('reconcileGone: a transient failure is fatal and never marks an object gone', () => {
+  const outcomes = [
+    { key: 'blob/a.webm', label: 'a', result: { status: 'upload-failed', error: 'boom' } },
+    { key: 'blob/b.webm', label: 'b', result: { status: 'source-unreachable', code: 503 } },
+  ];
+  const r = mirror.reconcileGone({ previous: {}, outcomes });
+  assert.equal(r.transient.length, 2);
+  assert.equal(r.newlyGone.length, 0);
+  // Nothing gets a tombstone on a maybe — that would suppress the real alert.
+  assert.deepEqual(r.gone, {});
+});
+
+test('reconcileGone: an object that comes back drops out of the set', () => {
+  const previous = { 'blob/a.webm': { firstSeenGone: 'T1', label: 'a' } };
+  const r = mirror.reconcileGone({
+    previous,
+    outcomes: [{ key: 'blob/a.webm', label: 'a', result: OK }],
+  });
+  assert.equal(r.recovered.length, 1);
+  assert.deepEqual(r.gone, {});
+  // So if it vanishes again later it pages again, rather than being
+  // permanently excused by a tombstone nobody cleared.
+  const again = mirror.reconcileGone({
+    previous: r.gone,
+    outcomes: [{ key: 'blob/a.webm', label: 'a', result: GONE }],
+  });
+  assert.equal(again.newlyGone.length, 1);
+});
+
+test('reconcileGone: a flaky night does not erase an existing tombstone', () => {
+  const previous = { 'blob/a.webm': { firstSeenGone: 'T1', label: 'a' } };
+  const r = mirror.reconcileGone({
+    previous,
+    outcomes: [{ key: 'blob/a.webm', label: 'a', result: { status: 'source-unreachable', error: 'timeout' } }],
+  });
+  // Kept, so tomorrow's confirmed 404 is 'stillGone' rather than a fresh page.
+  assert.equal(r.gone['blob/a.webm'].firstSeenGone, 'T1');
+  assert.equal(r.transient.length, 1);
+});
+
+test('reconcileGone: an already-present copy counts as healthy', () => {
+  const r = mirror.reconcileGone({
+    previous: {},
+    outcomes: [{ key: 'blob/a.webm', label: 'a', result: { status: 'already' } }],
+  });
+  assert.equal(r.newlyGone.length, 0);
+  assert.equal(r.transient.length, 0);
+  assert.deepEqual(r.gone, {});
+});
