@@ -102,6 +102,39 @@ services:
       # and recorded voices belonging to people who never agreed to a vendor.
       - key: SENTRY_DSN
         sync: false
+      # ── Outbound mail (utils/email.js) ──────────────────────────────────
+      # One Resend key covers both kinds of message this platform sends:
+      #
+      #   operator  — a Chorus contributor could not post (utils/alerts.js), a
+      #               contact form arrived, somebody asked to host an edition.
+      #   user      — the password reset link, and nothing else.
+      #
+      # Mail is sent as `@notifications.holoscopic.io` — the SUBDOMAIN, which is
+      # what holds the verified SPF/DKIM records. The apex holoscopic.io is not
+      # a verified sender and Resend 403s it. Defaults live in utils/email.js
+      # and utils/alerts.js; override with MAIL_FROM / ALERT_FROM if the
+      # sending domain ever moves.
+      #
+      # /health reports `alerting`, which answers "can a send leave this
+      # process", NOT "does it reach an inbox". A key with no verified domain
+      # reports `ready` and fails on every send — the second question is only
+      # answerable by sending yourself one and looking.
+      #
+      # Unset = every send returns 'unconfigured' and degrades to a log line.
+      # Contact messages still persist (routes/contact.js saves before it
+      # sends), but a locked-out user has no self-serve way back in.
+      - key: RESEND_API_KEY
+        sync: false
+      # Where operator mail lands. Distinct from RESEND_API_KEY in /health
+      # ('no-recipient' vs 'no-api-key') because they need different fixes.
+      - key: ALERT_EMAIL
+        sync: false
+      # Base URL for links inside email — the password reset link is built from
+      # it. Optional: utils/email.js falls back to the first entry of
+      # CLIENT_URL, which is the home origin. Set it only if that stops being
+      # true (e.g. a game domain is ever listed first).
+      - key: APP_URL
+        sync: false
 
   # Off-site backup, daily at 07:00 UTC. TWO jobs in one image:
   #   scripts/backup-mongo.js  → mongodump of the database

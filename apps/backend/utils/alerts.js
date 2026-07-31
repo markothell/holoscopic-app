@@ -5,7 +5,10 @@
 // mostly closes the tab. The first live Chorus upload failure was found only
 // because somebody happened to be holding the phone and said so.
 //
-// Deliberately small: one HTTP call to Resend, no SDK, no queue, no database.
+// Deliberately small: the send itself is utils/email.js — one HTTP call to
+// Resend, no SDK, no queue, no database. What lives here is the part that is
+// specific to alerting: who it goes to, and how often.
+//
 // If it is unconfigured it degrades to the log line the caller already wrote,
 // and /health reports which of those two worlds we are in.
 //
@@ -14,9 +17,13 @@
 // bug — which is indistinguishable from no alerting at all, because nobody
 // reads the hundredth.
 
+const { sendEmail, readiness: emailReadiness } = require('./email');
+
 const ALERT_EMAIL = process.env.ALERT_EMAIL || '';
-const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-const ALERT_FROM = process.env.ALERT_FROM || 'alerts@holoscopic.io';
+// A separate sender from transactional mail so a broken deploy is filterable
+// from a password reset — you want one of these in your inbox and one in a rule.
+// Under the verified SENDING SUBDOMAIN, not the apex; see utils/email.js.
+const ALERT_FROM = process.env.ALERT_FROM || 'alerts@notifications.holoscopic.io';
 
 // One alert per distinct problem per hour, and never more than this many in an
 // hour whatever happens. Both are counted in memory: a restart resets them,
@@ -29,7 +36,10 @@ let windowStartedAt = 0;
 let sentThisWindow = 0;
 
 function readiness() {
-  if (!RESEND_API_KEY) return 'no-api-key';
+  const mail = emailReadiness();
+  if (mail !== 'ready') return mail;
+  // Distinct from 'no-api-key' on purpose: the platform can send mail, it just
+  // has nobody to send THIS to. Those need different fixes.
   if (!ALERT_EMAIL) return 'no-recipient';
   return 'ready';
 }
@@ -56,29 +66,12 @@ async function alertOnce(key, subject, body) {
   lastSentByKey.set(key, now);
   sentThisWindow++;
 
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: ALERT_FROM,
-        to: [ALERT_EMAIL],
-        subject,
-        text: body,
-      }),
-    });
-    if (!res.ok) {
-      console.error('[alerts] send failed', res.status, (await res.text()).slice(0, 200));
-      return 'failed';
-    }
-    return 'sent';
-  } catch (err) {
-    console.error('[alerts] send threw', err.message);
-    return 'failed';
-  }
+  // sendEmail never throws, so the cooldown bookkeeping above is already
+  // committed by the time we get here — a failed send burns this key's hour
+  // rather than retrying every request. That is the right trade for an alert:
+  // the alternative is a broken Resend turning every contributor failure into
+  // an outbound request of its own.
+  return sendEmail({ from: ALERT_FROM, to: ALERT_EMAIL, subject, text: body });
 }
 
 module.exports = { alertOnce, readiness };

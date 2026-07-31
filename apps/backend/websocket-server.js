@@ -410,6 +410,7 @@ function loadAPIRoutes() {
       const adminRoutes = require('./routes/admin');
       const waitlistRoutes = require('./routes/waitlist');
       const signupRoutes = require('./routes/signup');
+      const contactRoutes = require('./routes/contact');
       const importRoutes = require('./routes/import');
       const holonRoutes = require('./routes/holons');
       const topicRoutes = require('./routes/topics');
@@ -435,6 +436,9 @@ function loadAPIRoutes() {
       app.use('/api/admin', adminLimiter, adminRoutes);
       app.use('/api/waitlist', waitlistRoutes);
       app.use('/api/signup', signupRoutes);
+      // Unauthenticated by design — the people most likely to need it are the
+      // ones who arrived from a Chorus link and have no account at all.
+      app.use('/api/contact', contactRoutes);
       // Import creates activities and seeds entries into an instance the
       // caller names via x-instance-id. Its only check was "is x-user-id
       // non-empty" — the id was never looked up — so it was an
