@@ -51,9 +51,16 @@ const S3_VARS = [
   'BACKUP_S3_SECRET_ACCESS_KEY',
 ];
 
+// The live service is holoscopic-websocket-server. render.yaml calls it
+// holoscopic-socket-server, which is wrong and is fixed there too.
+//
+// holoscopic-mongo-backup does NOT exist yet — render.yaml declares the cron
+// but Render only creates it on a Blueprint deploy. It is marked optional so
+// this script can configure the web service today; until that cron exists,
+// nothing runs on a schedule.
 const PLAN = [
-  { service: 'holoscopic-socket-server', vars: S3_VARS },
-  { service: 'holoscopic-mongo-backup', vars: [...S3_VARS, 'MONGODB_URI_BACKUP', 'BACKUP_HEARTBEAT_URL'] },
+  { service: 'holoscopic-websocket-server', vars: S3_VARS },
+  { service: 'holoscopic-mongo-backup', optional: true, vars: [...S3_VARS, 'MONGODB_URI_BACKUP', 'BACKUP_HEARTBEAT_URL'] },
 ];
 
 const SECRETY = /SECRET|KEY|URI|TOKEN|PASSWORD/;
@@ -85,6 +92,7 @@ async function findServices() {
   return byName;
 }
 
+
 async function main() {
   console.log(WRITE ? 'mode: WRITE\n' : 'mode: dry run — pass --write to apply\n');
 
@@ -96,9 +104,15 @@ async function main() {
   const work = [];
   let fatal = false;
 
-  for (const { service, vars } of PLAN) {
+  for (const { service, vars, optional } of PLAN) {
     const svc = services[service];
     if (!svc) {
+      if (optional) {
+        console.log(`—  ${service} does not exist yet; skipping.`);
+        console.log('   Until it does, no backup runs on a schedule. Create it with a');
+        console.log('   Blueprint deploy of render.yaml.\n');
+        continue;
+      }
       console.error(`✗ no service named "${service}" on this account.`);
       console.error(`  Found: ${Object.keys(services).join(', ') || '(none)'}`);
       fatal = true;

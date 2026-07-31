@@ -60,7 +60,8 @@ Every `/api` request is resolved to an `Instance` via `apps/backend/middleware/r
 - Set it wherever an instance is born: `POST /api/instances`, `utils/oasGames.js`, `utils/synIdeas.js`.
 - **`gameNumber` belongs to `interview` alone.** `Instance.getDefault()` picks the lowest-numbered active instance, so a memorial or an idea holding one can become the platform default and start answering unrelated traffic.
 - Creating with `app: 'chorus'` provisions a working memorial (explore mode, curator key, seed vocabulary) via `utils/memorialDefaults.js`.
-- Rows predating the field are stamped by `scripts/backfill-instance-app.js` (dry run by default, `--write` to apply). **Dev is done; production still needs it.**
+- Rows predating the field are stamped by `scripts/backfill-instance-app.js` (dry run by default, `--write` to apply). **Dev and production are both done as of 2026-07-31** — every instance document carries a stored `app`. The script had been reporting "nothing to change" on exactly the rows it existed to fix: `app` is declared `default: 'interview'`, so a hydrated document reads `'interview'` where the field is absent in MongoDB, and the comparison always matched. It reads `.lean()` now. A default is a Mongoose-layer fiction — `find({ app: 'interview' })` runs in the database and matches no document that lacks the field.
+- `mompod` is a Spectrum edition that nothing stored on it identifies as one: no parent, an uninformative slug, and an interView-era `gameNumber`. It lives in the script's `KNOWN` override, without which every run reverts it. It still holds `gameNumber: 2`, which drives `/interview/g2`; that is the documented anti-pattern, harmless only while `g1` stays active and outranks it in `getDefault()`.
 
 Resolution order:
 1. `x-instance-id` request header

@@ -25,7 +25,18 @@ const WRITE = process.argv.includes('--write');
 // The historical evidence, in priority order. `parents` maps an instance id to
 // the slug of the top-level instance it hangs off, which is the strongest
 // signal available — On a Spectrum rooms and Synthesis ideas both carry it.
+// Instances whose app cannot be derived from anything stored on them. mompod
+// carries no parent, a slug that hints at nothing, and an interView-era
+// gameNumber — every rule below reads it as interView, and only Mark knows it
+// is a Spectrum edition. Without this the backfill silently reverts it on the
+// next run.
+const KNOWN = {
+  mompod: 'spectrum',
+};
+
 function inferApp(inst, parents) {
+  if (KNOWN[inst.slug]) return KNOWN[inst.slug];
+
   const parentSlug = inst.parentInstanceId ? parents.get(inst.parentInstanceId) : null;
   if (parentSlug === 'spectrum' || inst.slug === 'spectrum') return 'spectrum';
   if (parentSlug === 'synthesis' || inst.slug === 'synthesis') return 'synthesis';
@@ -52,13 +63,22 @@ async function main() {
 
   await mongoose.connect(process.env.MONGODB_URI);
 
-  const all = await Instance.find({});
+  // .lean() on purpose. Instance.app is declared `default: 'interview'`, and a
+  // hydrated document therefore reports 'interview' for a row where the field
+  // is ABSENT in MongoDB — so this script compared 'interview' to 'interview'
+  // and announced there was nothing to fix, on exactly the rows it exists to
+  // fix. A default is a Mongoose-layer fiction; `find({ app: 'interview' })`
+  // runs in the database and matches none of them.
+  const all = await Instance.find({}).lean();
   const parents = new Map(all.map(i => [i.id, i.slug]));
 
   const changes = [];
   for (const inst of all) {
     const app = inferApp(inst, parents);
-    if (inst.app !== app) changes.push({ inst, from: inst.app || '(unset)', to: app });
+    const stored = Object.prototype.hasOwnProperty.call(inst, 'app') ? inst.app : undefined;
+    if (stored !== app) {
+      changes.push({ inst, from: stored === undefined ? '(field absent)' : stored || '(empty)', to: app });
+    }
   }
 
   const counts = all.reduce((acc, i) => {
@@ -83,11 +103,21 @@ async function main() {
     return;
   }
 
+  // updateOne rather than save(): these are lean objects now, and a targeted
+  // $set writes the one field without rewriting the rest of the document from
+  // a snapshot taken before the read.
   for (const { inst, to } of changes) {
-    inst.app = to;
-    await inst.save();
+    await Instance.updateOne({ id: inst.id }, { $set: { app: to } });
   }
+
+  // Prove it landed in the database rather than trusting the write. The bug
+  // this script just carried was precisely a Mongoose-layer value standing in
+  // for a stored one.
+  const stillMissing = await Instance.collection.countDocuments({ app: { $exists: false } });
   console.log(`\n✓ Updated ${changes.length} instances.`);
+  console.log(stillMissing
+    ? `⚠️  ${stillMissing} document(s) still have no app field.`
+    : '✓ Every instance document now carries a stored app field.');
 }
 
 main()
