@@ -13,7 +13,7 @@
 // file NODE_ENV happens to select. Naming the target is the only step that
 // cannot be performed by accident.
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-require('dotenv').config({ path: envFile });
+require('dotenv').config({ path: require('node:path').join(__dirname, '..', envFile) });
 const mongoose = require('mongoose');
 
 const uri = process.env.MONGODB_URI;
@@ -61,7 +61,7 @@ const CLEAR = [
 ];
 
 async function main() {
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGODB_URI, { autoIndex: false });
   const db = mongoose.connection.db;
   const existing = new Set((await db.listCollections().toArray()).map(c => c.name));
 

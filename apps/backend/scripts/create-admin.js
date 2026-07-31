@@ -4,7 +4,7 @@
  */
 
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-require('dotenv').config({ path: envFile });
+require('dotenv').config({ path: require('node:path').join(__dirname, '..', envFile) });
 
 const mongoose = require('mongoose');
 const User = require('../models/User');
@@ -25,7 +25,7 @@ async function createAdmin() {
   try {
     // Connect to MongoDB
     console.log('Connecting to MongoDB...');
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect(process.env.MONGODB_URI, { autoIndex: false });
     console.log('✅ Connected to MongoDB');
 
     // Check if user already exists

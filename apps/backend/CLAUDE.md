@@ -61,6 +61,23 @@ PORT=4051 npm run start --workspace=apps/backend   # or on a spare port
 
 See root `CLAUDE.md` § *Working in a Shared Tree* for how to tell this apart from a bug in your own code.
 
+## Scripts connect with `autoIndex: false`. Always.
+
+`websocket-server.js` sets `autoIndex: process.env.NODE_ENV !== 'production'` so an index
+declaration added to `models/*.js` cannot build itself against production on deploy —
+`scripts/ensure-indexes.js` is meant to be the only path. **Every script in `scripts/` bypassed
+that**, because `mongoose.connect(uri)` with no options defaults `autoIndex` to true: requiring a
+model compiles its schema, and Mongoose then builds every declared index on the database that
+script happens to be pointed at.
+
+That is not theoretical. `scripts/backup-blobs.js` runs **nightly in production** from the Render
+cron and requires `models/Memory` and `models/Instance` — so an index added to the Chorus memory
+model reached production at 07:00 UTC the next morning, with no deploy and nothing printed. The two
+`users` token indexes got there the same way, via a one-off backfill run.
+
+So: `await mongoose.connect(uri, { autoIndex: false })`, in every script, including throwaways.
+The failure it prevents is invisible while collections are small and expensive exactly once.
+
 ## Backups: one bucket, two namespaces
 
 Dev and production have separate clusters, separate database names and separate Blob stores, but

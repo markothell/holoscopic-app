@@ -38,7 +38,7 @@
 // Requires BLOB_READ_WRITE_TOKEN for the destination store, plus the same
 // BACKUP_S3_* variables the mirror uses.
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-require('dotenv').config({ path: envFile });
+require('dotenv').config({ path: require('node:path').join(__dirname, '..', envFile) });
 
 const mongoose = require('mongoose');
 const Memory = require('../models/Memory');
@@ -71,7 +71,7 @@ async function main() {
   const ready = mirror.readiness();
   if (ready !== 'ready') throw new Error(`backup bucket is not configured (${ready})`);
 
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGODB_URI, { autoIndex: false });
 
   const Instance = require('../models/Instance');
   const inst = await Instance.findOne({ $or: [{ slug: INSTANCE }, { id: INSTANCE }] });

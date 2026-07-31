@@ -9,7 +9,7 @@
 // Run against production after the cutover push (needs MONGODB_URI in the
 // env file NODE_ENV selects).
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-require('dotenv').config({ path: envFile });
+require('dotenv').config({ path: require('node:path').join(__dirname, '..', envFile) });
 
 const mongoose = require('mongoose');
 const crypto = require('crypto');
@@ -54,7 +54,7 @@ async function main() {
     process.exit(1);
   }
   if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI not set');
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGODB_URI, { autoIndex: false });
 
   const Instance = require('../models/Instance');
   const Topic = require('../models/Topic');

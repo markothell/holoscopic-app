@@ -6,14 +6,14 @@
 //
 // Reads MONGODB_URI from .env.local (or .env.production with NODE_ENV).
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-require('dotenv').config({ path: envFile });
+require('dotenv').config({ path: require('node:path').join(__dirname, '..', envFile) });
 
 const mongoose = require('mongoose');
 const Instance = require('../models/Instance');
 
 async function main() {
   if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI not set');
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGODB_URI, { autoIndex: false });
 
   let instance = await Instance.findOne({ slug: 'spectrum' });
   if (instance) {

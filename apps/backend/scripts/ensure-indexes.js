@@ -25,7 +25,7 @@
 // Creation is serial and each step prints elapsed time plus the exact rollback
 // command, so a build that turns out to be slow can be stopped between steps.
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-require('dotenv').config({ path: envFile });
+require('dotenv').config({ path: require('node:path').join(__dirname, '..', envFile) });
 const { MongoClient } = require('mongodb');
 
 const DRY_RUN = process.argv.includes('--dry-run');
@@ -40,6 +40,23 @@ const INDEXES = [
 
   // --- polled by every signed-in client every 30s ---
   { collection: 'notifications', name: 'userId_createdAt', keys: { userId: 1, createdAt: -1 } },
+
+  // --- credential recovery: the only lookups that are not by id or email ---
+  // Both are read once per redeemed link, so the index is about not scanning
+  // the user table rather than about throughput. Left non-sparse deliberately:
+  // the field is null on nearly every document, so a sparse index would be
+  // smaller, but this script matches by KEY SHAPE and cannot tell the two
+  // apart — switching later means dropping by hand. Not worth it for a table
+  // of this size; revisit if users ever reaches six figures.
+  { collection: 'users', name: 'resetTokenHash_1', keys: { resetTokenHash: 1 } },
+  { collection: 'users', name: 'verifyTokenHash_1', keys: { verifyTokenHash: 1 } },
+  // NOT listed, and a real gap: users.email_1 and users.id_1 are UNIQUE, and
+  // createIndex below is called without options beyond `name`, so this script
+  // cannot reproduce a uniqueness constraint. Both exist in production today
+  // only because something built them from the schema. On a rebuilt database
+  // this script would leave the user table with no unique constraint on email
+  // and no complaint. Teaching it `unique` is the fix; until then, do not
+  // treat "ensure-indexes ran clean" as meaning the constraints are there.
 
   // --- fastest-growing collection: one row per bonus/stake/settlement ---
   { collection: 'holontransactions', name: 'userId_instanceId_createdAt', keys: { userId: 1, instanceId: 1, createdAt: -1 } },

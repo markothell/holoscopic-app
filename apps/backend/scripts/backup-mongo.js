@@ -27,13 +27,20 @@
 // Retention is NOT handled here on purpose. Lifecycle rules on the bucket own
 // it, so this script's credential never needs DeleteObject — a compromised
 // backend must not be able to erase its own backups.
+// Resolved against THIS FILE, never the shell's cwd. dotenv treats a bare
+// relative path as cwd-relative, so `node apps/backend/scripts/backup-mongo.js`
+// from the repo root found no file, reported nothing, and left the script on
+// whatever MONGODB_URI happened to be exported — the dev cluster. The run then
+// carried NODE_ENV=production against a dev host, which is exactly the state
+// utils/backupNamespace refuses to proceed in. The guard caught it; this is
+// why it had something to catch.
+const path = require('node:path');
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-require('dotenv').config({ path: envFile });
+require('dotenv').config({ path: path.join(__dirname, '..', envFile) });
 
 const { execFileSync, execFileSync: exec } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
-const path = require('node:path');
 const crypto = require('node:crypto');
 
 const DRY_RUN = process.argv.includes('--dry-run');
@@ -81,10 +88,12 @@ async function main() {
   const dbName = (uri.match(/\/([^/?]+)(\?|$)/) || [])[1] || 'holoscopic-db';
   const heartbeatUrl = process.env.BACKUP_HEARTBEAT_URL || null;
 
-  // Decide the prefix from the cluster, not from a variable. Both clusters are
-  // called holoscopic-db, so without this a dev dump overwrites production's
-  // latest.json — the pointer somebody follows during a restore. Throws rather
-  // than guessing when NODE_ENV claims production and the host disagrees.
+  // Decide the prefix from the cluster, not from a variable. The databases are
+  // named apart now (holoscopic-dev vs holoscopic-db), but the prefix is what
+  // keeps a dev dump out of production's latest.json — the pointer somebody
+  // follows during a restore — and a name is one rename away from colliding
+  // again. Throws rather than guessing when NODE_ENV claims production and the
+  // host disagrees.
   require('../utils/backupNamespace').apply({ uri });
 
   requireMongodump();

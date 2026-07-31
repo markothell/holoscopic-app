@@ -16,7 +16,7 @@
 //
 // Reads MONGODB_URI from .env.local (or .env.production with NODE_ENV).
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-require('dotenv').config({ path: envFile });
+require('dotenv').config({ path: require('node:path').join(__dirname, '..', envFile) });
 
 const mongoose = require('mongoose');
 
@@ -33,7 +33,7 @@ const confirm = process.argv.includes('--confirm');
 async function main() {
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error(`MONGODB_URI missing from ${envFile}`);
-  await mongoose.connect(uri);
+  await mongoose.connect(uri, { autoIndex: false });
   const db = mongoose.connection.db;
   console.log(`Connected to ${db.databaseName}${confirm ? '' : '  (DRY RUN — pass --confirm to drop)'}\n`);
 

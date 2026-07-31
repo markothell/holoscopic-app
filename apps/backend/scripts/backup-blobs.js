@@ -39,8 +39,13 @@
 // The decision logic is utils/blobMirror.js reconcileGone(), which is pure and
 // tested — whether you get paged should not depend on infrastructure being
 // available to exercise it.
+//
+// Resolved against THIS FILE, never the shell's cwd — see the note in
+// backup-mongo.js. A bare relative path silently loads nothing when the script
+// is run from anywhere but apps/backend, and the run then inherits whatever
+// MONGODB_URI is exported instead of the one the env file names.
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-require('dotenv').config({ path: envFile });
+require('dotenv').config({ path: require('node:path').join(__dirname, '..', envFile) });
 
 const mongoose = require('mongoose');
 const Memory = require('../models/Memory');
@@ -130,7 +135,7 @@ async function main() {
 
   console.log(DRY ? 'mode: DRY RUN — copying nothing\n' : 'mode: copy what is missing\n');
 
-  await mongoose.connect(uri);
+  await mongoose.connect(uri, { autoIndex: false });
   const s3 = mirror.makeClient();
 
   // Recordings. Only live/hidden memories — a removed one keeps its document

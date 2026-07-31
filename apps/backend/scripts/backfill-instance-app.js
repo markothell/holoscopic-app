@@ -15,7 +15,7 @@
 // Safe to re-run: it only fills rows whose stored app disagrees with what the
 // evidence says, and it reports every change before making it.
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-require('dotenv').config({ path: envFile });
+require('dotenv').config({ path: require('node:path').join(__dirname, '..', envFile) });
 
 const mongoose = require('mongoose');
 const Instance = require('../models/Instance');
@@ -61,7 +61,7 @@ async function main() {
   console.log(`cluster: ${host}  (${envFile})`);
   console.log(WRITE ? 'mode: WRITE\n' : 'mode: dry run — pass --write to apply\n');
 
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGODB_URI, { autoIndex: false });
 
   // .lean() on purpose. Instance.app is declared `default: 'interview'`, and a
   // hydrated document therefore reports 'interview' for a row where the field

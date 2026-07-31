@@ -3,7 +3,7 @@
 // surface against a locally running backend, asserts invariants, and cleans
 // everything up. Safe to re-run.
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-require('dotenv').config({ path: envFile });
+require('dotenv').config({ path: require('node:path').join(__dirname, '..', envFile) });
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 
@@ -38,7 +38,7 @@ async function call(method, path, { userId, body } = {}) {
 
 async function main() {
   if (!SECRET) throw new Error('No token secret in env — cannot mint test tokens');
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGODB_URI, { autoIndex: false });
   const User = require('../models/User');
   const InstanceMembership = require('../models/InstanceMembership');
   const Instance = require('../models/Instance');

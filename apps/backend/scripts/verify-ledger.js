@@ -16,7 +16,7 @@
 //   node scripts/verify-ledger.js            # summary + any mismatches
 //   node scripts/verify-ledger.js --verbose  # per-account detail
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-require('dotenv').config({ path: envFile });
+require('dotenv').config({ path: require('node:path').join(__dirname, '..', envFile) });
 const { MongoClient } = require('mongodb');
 
 const VERBOSE = process.argv.includes('--verbose');
