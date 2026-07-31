@@ -52,7 +52,14 @@ const DRY = process.argv.includes('--dry-run');
 // Deliberately outside the blob/ and mongo/ prefixes: those carry lifecycle
 // expiry rules, and the record of what was lost must outlive the backups it
 // describes.
-const STATUS_KEY = 'status/blob-gone.json';
+//
+// Scoped by BACKUP_BLOB_PREFIX because dev and production point at the SAME
+// bucket. reconcileGone rebuilds the set from the objects this run saw, which
+// is right within one environment — a removed memory should drop out — and
+// destructive across two: a dev sweep would erase production's record, and the
+// next production run would see three-year-old losses as brand new and page for
+// all of them. Give each environment its own prefix and they never touch.
+const STATUS_KEY = `status/${(process.env.BACKUP_BLOB_PREFIX || 'blob')}-gone.json`;
 
 // The set of objects already known to be unreachable. A missing document is the
 // normal first run, not an error — but any OTHER read failure is fatal, because
