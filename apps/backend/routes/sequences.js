@@ -15,15 +15,23 @@ async function hasEntered(activityId, userId) {
   return !!(await Entry.exists({ activityId, userId, position: { $ne: null } }));
 }
 
-// Get all sequences (admin)
-// Optional ?createdBy=userId to scope to a specific creator
+// Sequences created by one user — the legacy sequence builder's listing.
+//
+// `createdBy` is REQUIRED. Without it this returned Sequence.find({}): every
+// sequence on the platform, with every private one's invitedEmails, to any
+// caller. The name says admin; nothing here ever checked for one.
+//
+// x-user-id is not an authenticator (see backend CLAUDE.md) — this narrows the
+// blast radius to "you must name whose sequences you want" rather than
+// establishing that you are them. The listing carries guest lists, so a real
+// gate belongs here before sequences are used by anyone outside a cohort.
 router.get('/admin', async (req, res) => {
   try {
-    const query = {};
-    if (req.query.createdBy) {
-      query.createdBy = req.query.createdBy;
+    const createdBy = req.query.createdBy;
+    if (!createdBy) {
+      return res.status(400).json({ error: 'createdBy is required' });
     }
-    const sequences = await Sequence.find(query).sort({ createdAt: -1 });
+    const sequences = await Sequence.find({ createdBy }).sort({ createdAt: -1 });
     res.json(sequences);
   } catch (error) {
     console.error('Error fetching sequences:', error);
@@ -113,6 +121,73 @@ router.get('/public', async (req, res) => {
   } catch (error) {
     console.error('Error fetching public sequences:', error);
     res.status(500).json({ error: 'Failed to fetch public sequences' });
+  }
+});
+
+// Populate activity details onto a list of sequences.
+//
+// /waitlist, /public and /user each carry their own copy of this loop; this is
+// the shared one, and they should fold into it next time one of them changes.
+async function withActivityDetails(sequences) {
+  return Promise.all(
+    sequences.map(async (sequence) => ({
+      ...sequence.toObject(),
+      activities: await Promise.all(
+        sequence.activities.map(async (seqActivity) => {
+          const activity = await Activity.findOne({ id: seqActivity.activityId });
+          return {
+            ...seqActivity.toObject(),
+            activity: activity ? {
+              id: activity.id,
+              title: activity.title,
+              urlName: activity.urlName,
+              activityType: activity.activityType,
+              status: activity.status,
+              isDraft: activity.isDraft,
+              participants: activity.participants.length,
+              completedMappings: await completedMappings(activity.id),
+            } : null,
+          };
+        })
+      ),
+    }))
+  );
+}
+
+// GET /api/sequences/invitations — private sequences this caller was invited to.
+//
+// The dashboard used to answer this by calling GET /sequences/admin with no
+// arguments, which returns Sequence.find({}) — EVERY sequence on the platform,
+// each carrying its full invitedEmails list — and filtering client-side for the
+// caller's own address. Any signed-in user could read the guest list of every
+// private sequence, and did, on every dashboard load.
+//
+// The address comes from the User record, never from the request: taking an
+// email parameter would just move the same enumeration one endpoint over.
+router.get('/invitations', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    if (!userId) return res.json([]);
+
+    const user = await User.findByCustomId(userId);
+    if (!user || !user.email) return res.json([]);
+
+    const sequences = await Sequence.find({
+      requireInvitation: true,
+      invitedEmails: user.email.toLowerCase(),
+      status: { $in: ['active', 'waitlist'] },
+      'members.userId': { $ne: userId }, // already enrolled is not an invitation
+    }).sort({ createdAt: -1 });
+
+    const shaped = await withActivityDetails(sequences);
+    // Other people's addresses are never part of the answer to "what was I
+    // invited to" — which is the whole reason this route exists.
+    shaped.forEach(s => { delete s.invitedEmails; });
+
+    res.json(shaped);
+  } catch (error) {
+    console.error('Error fetching invitations:', error);
+    res.status(500).json({ error: 'Failed to fetch invitations' });
   }
 });
 

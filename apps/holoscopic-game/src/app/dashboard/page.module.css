@@ -405,6 +405,62 @@
   text-decoration: none !important;
 }
 
+/* ---- SUGGESTED GAMES ---- */
+/* Under the Games list: the games this account has not joined. A new user
+   arrives here straight from signup, so this is often the only populated
+   thing on the page. */
+
+.suggest {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--rule);
+}
+
+.suggestLabel {
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-light);
+  margin-bottom: 1.25rem;
+}
+
+.suggestRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1rem;
+}
+
+.suggestCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  text-decoration: none !important;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.suggestCard:hover {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.suggestTitle {
+  font-family: var(--font-barlow), sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.suggestDesc {
+  font-size: 0.9rem;
+  color: var(--ink-light);
+  line-height: 1.4;
+}
+
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }

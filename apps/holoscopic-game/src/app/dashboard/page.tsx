@@ -10,17 +10,33 @@ import { ActivityService } from '@/services/activityService';
 import { InstanceService, JoinedEdition, editionLabel } from '@/services/instanceService';
 import { useAuth } from '@/contexts/AuthContext';
 import UserMenu from '@/components/UserMenu';
-import { gamePath } from '@/lib/strings';
+import {
+  gameApp, gameEntryUrl, gameProductName, isExternalGame, SPECTRUM_URL, type GameApp,
+} from '@/lib/games';
 import { ActivityTypeIcon, getActivityTypeLabel } from '@hs/activities';
 import styles from './page.module.css';
 
 type TabType = 'games' | 'activities' | 'sequences';
+
+// The landers on this site, one per game. Shown for the games a user has not
+// joined, so the Games tab always answers "what could I do next".
+//
+// These point at the LANDER where one exists — /chorus explains what a memorial
+// is before handing off, which is the right first step for someone who has
+// never seen one. On a Spectrum has no lander on this site, so it goes straight
+// to its own domain, exactly as the homepage card does.
+const ALL_GAMES: { app: GameApp; title: string; desc: string; href: string }[] = [
+  { app: 'chorus', title: 'Chorus', desc: 'connecting stories and voices', href: '/chorus' },
+  { app: 'synthesis', title: 'Synthesis', desc: 'generating collective thought', href: '/synthesis' },
+  { app: 'spectrum', title: 'On a Spectrum', desc: 'revealing nuance', href: SPECTRUM_URL },
+  { app: 'interview', title: 'interView', desc: 'conversations that learn', href: '/interview' },
+];
 type SequenceFilterType = 'enrolled' | 'invitations' | 'open';
 type ActivityFilterType = 'open' | 'completed';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { userId, userEmail, isLoading: authLoading } = useAuth();
+  const { userId, isLoading: authLoading } = useAuth();
 
   const [activeTab, setActiveTab] = useState<TabType>('games');
   const [sequenceFilter, setSequenceFilter] = useState<SequenceFilterType>('enrolled');
@@ -48,12 +64,12 @@ export default function DashboardPage() {
         setLoading(true);
         setError(null);
 
-        // interView editions this user has joined — fails soft so the rest of
-        // the dashboard still loads if the endpoint errors.
+        // Every game this user has joined, in any app — fails soft so the rest
+        // of the dashboard still loads if the endpoint errors.
         try {
           setEditions(await InstanceService.getMine(userId));
         } catch (e) {
-          console.error('Error loading joined editions:', e);
+          console.error('Error loading joined games:', e);
           setEditions([]);
         }
 
@@ -65,14 +81,15 @@ export default function DashboardPage() {
         const notEnrolledPublic = publicData.filter(s => !enrolledIds.includes(s.id));
         setPublicSequences(notEnrolledPublic);
 
-        if (userEmail) {
-          const allPublicAndPrivate = await SequenceService.getAdminSequences();
-          const invited = allPublicAndPrivate.filter(seq =>
-            seq.requireInvitation &&
-            seq.invitedEmails?.includes(userEmail.toLowerCase()) &&
-            !enrolledIds.includes(seq.id)
-          );
-          setInvitedSequences(invited);
+        // Scoped server-side. This used to pull EVERY sequence on the platform
+        // — each with its full invitedEmails list — and filter here for the
+        // caller's own address, which handed every private sequence's guest
+        // list to anyone who opened this page.
+        try {
+          setInvitedSequences(await SequenceService.getInvitations(userId));
+        } catch (e) {
+          console.error('Error loading invitations:', e);
+          setInvitedSequences([]);
         }
 
         const allActivities = await ActivityService.getUserActivities(userId);
@@ -92,7 +109,7 @@ export default function DashboardPage() {
     };
 
     loadUserData();
-  }, [userId, userEmail]);
+  }, [userId]);
 
   const getSequenceStats = (sequence: Sequence) => {
     const total = sequence.activities.length;
@@ -143,6 +160,12 @@ export default function DashboardPage() {
   const filteredSequences = getFilteredSequences();
   const filteredActivities = getFilteredActivities();
 
+  // Games this account has no membership in. Derived from Instance.app, which
+  // the backend now returns on /instances/mine — before that this list had no
+  // stored answer to work from.
+  const joinedApps = new Set(editions.map(gameApp));
+  const unjoinedGames = ALL_GAMES.filter(g => !joinedApps.has(g.app));
+
   return (
     <div className={styles.page}>
       <div className={styles.grain} />
@@ -164,7 +187,7 @@ export default function DashboardPage() {
         {/* Header */}
         <div className={styles.header}>
           <h1 className={styles.title}>Dashboard</h1>
-          <p className={styles.subtitle}>Your sequences and activities</p>
+          <p className={styles.subtitle}>Everything you&apos;re part of, across the site</p>
         </div>
 
         <div className={styles.divider} />
@@ -236,51 +259,92 @@ export default function DashboardPage() {
 
         {/* Content */}
         {activeTab === 'games' ? (
-          editions.length === 0 ? (
-            <div className={styles.empty}>
-              You haven&apos;t joined an interView game yet.
-              <div>
-                <Link href="/interview" className={styles.emptyLink}>
-                  Explore interView &rarr;
-                </Link>
+          <>
+            {editions.length === 0 ? (
+              <div className={styles.empty}>
+                You haven&apos;t joined a game yet.
               </div>
-            </div>
-          ) : (
-            <div className={styles.list}>
-              {editions.map((ed, index) => {
-                const ended = ed.endDate ? new Date(ed.endDate) < new Date() : false;
-                const live = ed.active && !ended;
-                return (
-                  <div key={ed.id} className={styles.listItem}>
-                    <div className={styles.listRow}>
-                      <span className={styles.listNum}>{index + 1}.</span>
-                      <div className={styles.listBody}>
-                        <div className={styles.listHeader}>
-                          <Link href={gamePath(ed.slug, 'topics')} className={styles.listTitle}>
-                            inter<span style={{ color: '#C83B50' }}>View</span>
-                            {ed.gameNumber != null && ` ${editionLabel(ed)}`}
-                            {ed.name && ed.name.toLowerCase() !== 'interview' && ` · ${ed.name}`}
-                          </Link>
-                          <span className={`${styles.badge} ${live ? styles.badgeActive : styles.badgeCompleted}`}>
-                            {live ? 'Live' : 'Ended'}
-                          </span>
+            ) : (
+              <div className={styles.list}>
+                {editions.map((ed, index) => {
+                  const ended = ed.endDate ? new Date(ed.endDate) < new Date() : false;
+                  const live = ed.active && !ended;
+                  const app = gameApp(ed);
+                  const href = gameEntryUrl(ed);
+                  const external = isExternalGame(ed);
+                  // Editions are an interView concept; a memorial or a
+                  // Synthesis idea carrying a gameNumber is a data bug, so it
+                  // is only shown where it means something.
+                  const showEdition = app === 'interview' && ed.gameNumber != null;
+                  const linkProps = external
+                    ? { href, target: '_blank' as const, rel: 'noopener noreferrer' }
+                    : { href };
+
+                  return (
+                    <div key={ed.id} className={styles.listItem}>
+                      <div className={styles.listRow}>
+                        <span className={styles.listNum}>{index + 1}.</span>
+                        <div className={styles.listBody}>
+                          <div className={styles.listHeader}>
+                            <a {...linkProps} className={styles.listTitle}>
+                              {app === 'interview' ? (
+                                <>inter<span style={{ color: '#C83B50' }}>View</span></>
+                              ) : (
+                                gameProductName(ed)
+                              )}
+                              {showEdition && ` ${editionLabel(ed)}`}
+                              {ed.name && ed.name.toLowerCase() !== app && ` · ${ed.name}`}
+                            </a>
+                            <span className={`${styles.badge} ${live ? styles.badgeActive : styles.badgeCompleted}`}>
+                              {live ? 'Live' : 'Ended'}
+                            </span>
+                          </div>
+                          <div className={styles.listMeta}>
+                            {/* Chorus has no holon economy at all, so a
+                                balance of 0 there is a fact about the game
+                                rather than about this player. */}
+                            {app !== 'chorus' && <span>{ed.holonBalance} Holons</span>}
+                            {ed.joinedAt && (
+                              <span>Joined {new Date(ed.joinedAt).toLocaleDateString()}</span>
+                            )}
+                          </div>
                         </div>
-                        <div className={styles.listMeta}>
-                          <span>{ed.holonBalance} Holons</span>
-                          {ed.joinedAt && (
-                            <span>Joined {new Date(ed.joinedAt).toLocaleDateString()}</span>
-                          )}
-                        </div>
+                        <a {...linkProps} className={styles.viewLink}>
+                          Enter &rarr;
+                        </a>
                       </div>
-                      <Link href={gamePath(ed.slug, 'topics')} className={styles.viewLink}>
-                        Enter &rarr;
-                      </Link>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Somewhere to go. A new account lands here straight from signup,
+                and without this the first thing the platform shows a new user
+                is three empty tabs. */}
+            {unjoinedGames.length > 0 && (
+              <div className={styles.suggest}>
+                <p className={styles.suggestLabel}>
+                  {editions.length === 0 ? 'Start here' : 'Also on Holoscopic'}
+                </p>
+                <div className={styles.suggestRow}>
+                  {unjoinedGames.map(g => (
+                    <a
+                      key={g.app}
+                      href={g.href}
+                      {...(g.href.startsWith('http')
+                        ? { target: '_blank', rel: 'noopener noreferrer' }
+                        : {})}
+                      className={styles.suggestCard}
+                    >
+                      <span className={styles.suggestTitle}>{g.title}</span>
+                      <span className={styles.suggestDesc}>{g.desc}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         ) : activeTab === 'sequences' && filteredSequences.length === 0 ? (
           <div className={styles.empty}>
             {sequenceFilter === 'enrolled' && 'You haven\'t enrolled in any sequences yet.'}

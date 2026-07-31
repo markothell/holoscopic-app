@@ -145,9 +145,10 @@ function SequenceAdminContent() {
   };
 
   const handleDuplicateSequence = async (id: string) => {
+    if (!userId) return;
     try {
       const copy = await SequenceService.duplicateSequence(id);
-      const sequencesData = await SequenceService.getAdminSequences(userId || undefined);
+      const sequencesData = await SequenceService.getAdminSequences(userId);
       setSequences(sequencesData);
       alert(`Duplicated as "${copy.title}"`);
     } catch (err) {
@@ -189,8 +190,11 @@ function SequenceAdminContent() {
   };
 
   const handleSaveSequence = async (updatedSequence: Sequence) => {
+    // getAdminSequences is scoped to a creator now, so a refresh needs one.
+    // This page is login-gated, so the guard is for the type, not the flow.
+    if (!userId) return;
     try {
-      const sequencesData = await SequenceService.getAdminSequences(userId || undefined);
+      const sequencesData = await SequenceService.getAdminSequences(userId);
       setSequences(sequencesData);
     } catch (err) {
       console.error('Error reloading sequences:', err);

@@ -49,6 +49,12 @@ router.get('/mine', async (req, res) => {
           id: inst.id,
           name: inst.name,
           slug: inst.slug,
+          // Which game this instance belongs to. Without it the dashboard had
+          // no stored answer to work from and labelled every row "interView",
+          // linking all of them to /interview/<slug>/topics — so a Chorus or
+          // Synthesis membership appeared as an interView edition with a dead
+          // link. Read this field; never infer (root CLAUDE.md).
+          app: inst.app,
           gameNumber: inst.gameNumber,
           gameVersion: inst.gameVersion,
           active: inst.active,

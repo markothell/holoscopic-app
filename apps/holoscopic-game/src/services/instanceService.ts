@@ -1,10 +1,14 @@
 import { apiFetch } from '@/lib/api';
+import type { GameApp } from '@/lib/games';
 
-/** An interView edition the current user has joined (dashboard Games list). */
+/** A game the current user has joined, in any app (dashboard Games list). */
 export interface JoinedEdition {
   id: string;
   name: string;
   slug: string;
+  /** Which game this instance belongs to — the stored Instance.app. */
+  app?: GameApp;
+  /** interView only. A memorial or a Synthesis idea holding one is a bug. */
   gameNumber: number | null;
   gameVersion: string | null;
   active: boolean;
@@ -25,7 +29,7 @@ export function editionLabel(ed?: { gameVersion?: string | null; gameNumber?: nu
 }
 
 export const InstanceService = {
-  /** interView editions this user has joined/participated in. */
+  /** Every game this user has joined, across all four apps. */
   getMine: (userId: string) =>
     apiFetch('/instances/mine', { userId }).then(d => (d.instances ?? []) as JoinedEdition[]),
 };

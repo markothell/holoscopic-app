@@ -15,10 +15,14 @@ export interface MemberStat {
 // Sequence routes pass userId in the request body, not the x-user-id header.
 // Admin/manage routes that check identity also use body userId.
 export const SequenceService = {
-  getAdminSequences: (userId?: string): Promise<Sequence[]> =>
-    apiFetch(userId
-      ? `/sequences/admin?createdBy=${encodeURIComponent(userId)}`
-      : '/sequences/admin'),
+  // createdBy is required by the backend: without it this route returned every
+  // sequence on the platform, invitedEmails included, to any caller.
+  getAdminSequences: (userId: string): Promise<Sequence[]> =>
+    apiFetch(`/sequences/admin?createdBy=${encodeURIComponent(userId)}`),
+
+  /** Private sequences this user was invited to. Scoped server-side. */
+  getInvitations: (userId: string): Promise<Sequence[]> =>
+    apiFetch('/sequences/invitations', { userId }),
 
   getPublicSequences: (): Promise<Sequence[]> =>
     apiFetch('/sequences/public'),

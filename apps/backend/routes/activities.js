@@ -1,5 +1,7 @@
 const express = require('express');
 const Activity = require('../models/Activity');
+const Instance = require('../models/Instance');
+const InstanceMembership = require('../models/InstanceMembership');
 const Entry = require('../models/Entry');
 const Sequence = require('../models/Sequence');
 const FrameOfReference = require('../models/FrameOfReference');
@@ -253,14 +255,30 @@ module.exports = function(io) {
     }
   });
 
-  // Get activities a user has participated in.
-  // Each activity carries commentCount plus the caller's filled slots
-  // (mySlots) so dashboards don't need full entry payloads.
+  // Get activities a user has participated in, ACROSS EVERY INSTANCE THEY
+  // BELONG TO. Each activity carries commentCount plus the caller's filled
+  // slots (mySlots) so dashboards don't need full entry payloads.
+  //
+  // This used to filter `instanceId: req.instanceId`, which made the dashboard
+  // structurally incapable of showing a whole account: resolveInstance never
+  // fails, so a request from /dashboard — which deliberately sends no
+  // x-instance-id, see the frontend's SYSTEM_PATHS — fell through to
+  // getDefault(), one interView edition. A player of three games saw one.
+  //
+  // The instance set comes from membership, exactly as GET /users/:userId/games
+  // derives it (routes/users.js:36). `$in` over a denormalized indexed field is
+  // the same index scan, just with more than one key.
   router.get('/user/:userId', async (req, res) => {
     try {
       const { userId } = req.params;
+      const memberships = await InstanceMembership.find({ userId }).select('instanceId').lean();
+      // A user with no membership row can still be a participant in the
+      // instance this request resolved to, so that stays in the set — dropping
+      // it would trade one bug for a narrower one.
+      const instanceIds = [...new Set([...memberships.map(m => m.instanceId), req.instanceId])];
+
       const activities = await Activity.find({
-        instanceId: req.instanceId,
+        instanceId: { $in: instanceIds },
         'participants.id': userId,
         isDraft: { $ne: true },
       })
@@ -286,10 +304,20 @@ module.exports = function(io) {
         (slotsByActivity[e.activityId] ||= new Set()).add(e.slotNumber ?? 1);
       }
 
-      const windowHours = req.instance?.config?.quorum?.activityWindowHours ?? 168;
+      // The close window is per-instance config, and this response now spans
+      // instances — so read each activity's own rather than stamping the
+      // requesting instance's onto all of them. That would put a wrong
+      // deadline on every row belonging to another game.
+      const defaultWindow = req.instance?.config?.quorum?.activityWindowHours ?? 168;
+      const configs = await Instance.find({ id: { $in: instanceIds } })
+        .select('id config.quorum.activityWindowHours').lean();
+      const windowByInstance = Object.fromEntries(
+        configs.map(i => [i.id, i.config?.quorum?.activityWindowHours ?? defaultWindow])
+      );
+
       res.json({
         activities: activities.map(a => ({
-          ...serializeActivity(a, { windowHours }),
+          ...serializeActivity(a, { windowHours: windowByInstance[a.instanceId] ?? defaultWindow }),
           commentCount: commentCounts[a.id] ?? 0,
           mySlots: [...(slotsByActivity[a.id] ?? [])].sort((x, y) => x - y),
         })),
