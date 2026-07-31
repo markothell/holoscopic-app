@@ -102,13 +102,19 @@ async function main() {
   // service and then discovers the cron does not exist leaves you half done and
   // unsure which half.
   const work = [];
+  // Variables that are set locally but have nowhere to go, because the only
+  // service that carries them does not exist. Tracked separately so the summary
+  // cannot say "nothing to do" about a value the user just went and created.
+  const orphaned = [];
   let fatal = false;
 
   for (const { service, vars, optional } of PLAN) {
     const svc = services[service];
     if (!svc) {
       if (optional) {
+        const stranded = vars.filter(v => process.env[v]);
         console.log(`—  ${service} does not exist yet; skipping.`);
+        for (const v of stranded) orphaned.push({ service, name: v });
         console.log('   Until it does, no backup runs on a schedule. Create it with a');
         console.log('   Blueprint deploy of render.yaml.\n');
         continue;
@@ -146,8 +152,19 @@ async function main() {
     process.exit(1);
   }
 
+  // Report the stranded values before the all-clear. "Nothing to do" next to a
+  // variable that reached nothing is how a heartbeat URL ends up configured
+  // everywhere except the job that was supposed to send it.
+  if (orphaned.length) {
+    console.log(`⚠️  ${orphaned.length} variable(s) set in .env.local have nowhere to go yet:`);
+    for (const o of orphaned) console.log(`     ${o.name}  → ${o.service} (does not exist)`);
+    console.log('   Create that service, then re-run this script.\n');
+  }
+
   if (!work.length) {
-    console.log('✅ Render already matches .env.local — nothing to do.');
+    console.log(orphaned.length
+      ? '✅ Every service that exists matches .env.local.'
+      : '✅ Render already matches .env.local — nothing to do.');
     return;
   }
 
