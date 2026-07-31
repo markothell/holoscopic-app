@@ -395,15 +395,35 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
                     value={anon ? '' : sharerName}
                     onChange={e => setSharerName(e.target.value.slice(0, NAME_MAX))}
                     disabled={anon}
-                    placeholder={anon ? 'Anonymous' : 'Ruth'}
+                    // Points at the button beside it, because testers read the
+                    // two controls as unrelated choices — the field looked like
+                    // the only thing to do. A sample name ("Ruth") made that
+                    // worse once the placeholder became a sentence.
+                    //
+                    // 164px, against an inner width of 128px at 320px and
+                    // 168px at 360px. So it fits from a 360px phone up and
+                    // clips on a 320px one (an iPhone SE/5) — and a placeholder
+                    // clips from the RIGHT, meaning the arrow is what goes.
+                    // That is a DECIDED trade, not an oversight: the shorter
+                    // "Name or click →" fits everywhere, and the full wording
+                    // was chosen on the bet that this memorial's visitors are
+                    // mostly on current phones. Revisit it, don't silently
+                    // shorten it.
+                    placeholder={anon ? 'Anonymous' : 'Enter name or click →'}
                     className="min-w-0 flex-1 rounded-[3px] border border-[var(--rule-strong)]
                                bg-card-raised px-3.5 py-2.5 text-[1.0625rem] text-ink outline-none
                                placeholder:text-ink-faint focus:border-dial
                                disabled:bg-card disabled:text-ink-faint"
                   />
-                  {/* One tap, right beside the field. Anon has to be as easy
-                      as typing a name, or the people who feel they don't
-                      belong in the story don't post at all. */}
+                  {/* One tap, right beside the field. Posting unnamed has to be
+                      as easy as typing a name, or the people who feel they
+                      don't belong in the story don't post at all.
+
+                      Spelled out rather than "Anon": abbreviated, it read as a
+                      label on the field rather than an alternative to filling
+                      it in, and testers took the two controls for unrelated
+                      choices. It costs 46px of a 320px row, which is what the
+                      placeholder beside it gave up. */}
                   <button
                     type="button"
                     onClick={() => setAnon(a => !a)}
@@ -414,7 +434,7 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
                                   ? 'bg-dial text-card-raised'
                                   : 'border border-[var(--rule-strong)] text-ink-soft'}`}
                   >
-                    Anon
+                    Anonymous
                   </button>
                 </div>
               </div>
