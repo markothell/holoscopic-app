@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sheet from '@/components/ui/Sheet';
 import TagQuestion from './TagQuestion';
 import Recorder from './Recorder';
-import { ensureContributor, uploadRecording } from '@/services/api';
+import { ensureContributor, reportFailure, uploadRecording } from '@/services/api';
 import { useMemorial } from '@/components/MemorialProvider';
-import { clearStashedRecording, type Recording } from '@/lib/recorder';
+import { clearStashedRecording, readStashedRecording, type Recording } from '@/lib/recorder';
+import { classifyFailure, failureMessage } from '@/lib/submitFailure';
 import type { AddTarget, Memorial, Tag } from '@/lib/types';
 
 // Both ways into composing: the landing page's primary action, and "Add to
@@ -49,6 +50,23 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [recording, setRecording] = useState<Recording | null>(null);
   const [uploadPercent, setUploadPercent] = useState<number | null>(null);
+  // Whether the recording reached IndexedDB. The failure copy promises the
+  // recording is saved on this phone, and it may only say so when this is true.
+  const [stashed, setStashed] = useState(false);
+  const [restored, setRestored] = useState(false);
+  // Uploads have stopped working for this person. Everything else about the
+  // memory still works, so the sheet turns toward typing rather than leaving
+  // them holding a recording that will keep failing.
+  const [audioFailed, setAudioFailed] = useState(false);
+  // Set while the automatic second attempt is in flight, so a dropped
+  // connection resolves itself without the contributor reading an error at all.
+  const [retrying, setRetrying] = useState(false);
+
+  // A recording that reached Blob but whose memory failed to save. Keeping it
+  // means a retry posts the URL it already has rather than pushing three
+  // megabytes up a bad connection a second time — and leaving an orphan behind
+  // each time it does.
+  const uploadedRef = useRef<{ blob: Blob; url: string; pathname: string } | null>(null);
 
   // "Add to this memory" starts from the target's title and tags — you are
   // describing the same afternoon, so starting from a blank form would make
@@ -70,7 +88,11 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
 
   // A memory needs a name and a story — typed or spoken. The server enforces
   // the same rule; this just stops the button lying about being ready.
-  const hasStory = text.trim().length > 0 || recording !== null;
+  //
+  // When uploads are failing, a recording no longer counts as a story: sending
+  // would only fail again. Typed words are what can reach the wall right now,
+  // so the button waits for them.
+  const hasStory = text.trim().length > 0 || (recording !== null && !audioFailed);
   const canSend = title.trim().length > 0 && hasStory && step === 'writing';
 
   function openSheet() {
@@ -79,6 +101,73 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
     // Mint the anonymous identity now so the send is one round trip. Nobody
     // who only reads a memorial ever causes this call.
     void ensureContributor(api);
+    // A recording stashed by an earlier visit that never made it to a memory —
+    // a failed upload, a closed tab, a phone that rang. Writing it to
+    // IndexedDB was always half the safety net; this is the half that gives it
+    // back. Scoped to this memorial and to the last week, and only when the
+    // sheet is otherwise empty, so it can never overwrite live work.
+    if (!recording) {
+      void readStashedRecording(slug).then(rec => {
+        if (!rec) return;
+        setRecording(rec);
+        setStashed(true);
+        setRestored(true);
+        setMode('record');
+      });
+    }
+  }
+
+  /**
+   * One attempt at the whole send. Throws on failure so `send` can decide
+   * whether the failure deserves another one.
+   */
+  async function attempt() {
+    // The recording goes to Blob first, straight from the browser. If this
+    // fails we stop here — the recording is still in memory AND stashed in
+    // IndexedDB, so the sheet stays open holding a retryable draft rather
+    // than posting a memory whose audio silently went missing.
+    //
+    // Once uploads are known to be failing the memory goes without its audio.
+    // The alternative is a person in a room full of people, at the one moment
+    // they were moved to say something, watching the same upload fail again.
+    let audio = null;
+    if (recording && !audioFailed) {
+      const done = uploadedRef.current;
+      let url: string, pathname: string;
+      if (done && done.blob === recording.blob) {
+        ({ url, pathname } = done);
+      } else {
+        setUploadPercent(0);
+        try {
+          ({ url, pathname } = await uploadRecording(recording.blob, {
+            instance: slug,
+            mimeType: recording.mimeType,
+            onProgress: setUploadPercent,
+          }));
+        } catch (err) {
+          throw Object.assign(err instanceof Error ? err : new Error(String(err)), {
+            stage: 'upload' as const,
+          });
+        }
+        uploadedRef.current = { blob: recording.blob, url, pathname };
+      }
+      audio = {
+        url, pathname,
+        mimeType: recording.mimeType,
+        durationMs: recording.durationMs,
+        peaks: recording.peaks,
+      };
+    }
+
+    const { memory } = await api.create({
+      title: title.trim(),
+      sharerName: anon ? '' : sharerName.trim(),
+      subjectTags, experienceTags,
+      text: text.trim(),
+      audio,
+      replyToId: addTo?.id ?? null,
+    });
+    return memory;
   }
 
   async function send() {
@@ -89,50 +178,63 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
     const token = await ensureContributor(api);
     if (!token) {
       setStep('writing');
-      setError('Couldn’t reach the server. Your memory is still here — try again.');
+      setError('The server did not answer. Your memory is still here — tap Send to try again.');
       return;
     }
 
-    try {
-      // The recording goes to Blob first, straight from the browser. If this
-      // fails we stop here — the recording is still in memory AND stashed in
-      // IndexedDB, so the sheet stays open holding a retryable draft rather
-      // than posting a memory whose audio silently went missing.
-      let audio = null;
-      if (recording) {
-        setUploadPercent(0);
-        const { url, pathname } = await uploadRecording(recording.blob, {
-          instance: slug,
-          mimeType: recording.mimeType,
-          onProgress: setUploadPercent,
-        });
-        audio = {
-          url, pathname,
-          mimeType: recording.mimeType,
-          durationMs: recording.durationMs,
-          peaks: recording.peaks,
-        };
-      }
+    for (let attempts = 1; ; attempts++) {
+      try {
+        const memory = await attempt();
+        setCreatedId(memory.id);
+        setStep('done');
+        setRetrying(false);
+        // Only now is the recording safely somewhere other than this device —
+        // and only if it actually went. A memory posted as words while uploads
+        // were failing leaves the recording exactly where it was, which is the
+        // whole reason the stash is worth keeping.
+        if (!audioFailed) {
+          void clearStashedRecording();
+          uploadedRef.current = null;
+        }
+        router.refresh();   // the wall behind the sheet now includes this
+        return;
+      } catch (err) {
+        const stage = (err as { stage?: 'upload' | 'create' }).stage ?? 'create';
+        const failure = classifyFailure(err, stage);
 
-      const { memory } = await api.create({
-        title: title.trim(),
-        sharerName: anon ? '' : sharerName.trim(),
-        subjectTags, experienceTags,
-        text: text.trim(),
-        audio,
-        replyToId: addTo?.id ?? null,
-      });
-      setCreatedId(memory.id);
-      setStep('done');
-      // Only now is the recording safely somewhere other than this device.
-      void clearStashedRecording();
-      router.refresh();   // the wall behind the sheet now includes this
-    } catch (err) {
-      // Never close the sheet on failure: the draft in these fields is the
-      // only copy of something the person may have taken ten minutes to write.
-      setStep('writing');
-      setUploadPercent(null);
-      setError(err instanceof Error ? err.message : 'Something went wrong. Try again.');
+        // A dropped connection is the common case and fixes itself. Trying
+        // once more before saying anything means most people never see an
+        // error for something that was over in a second.
+        if (failure.kind === 'retry-now' && attempts === 1) {
+          setRetrying(true);
+          setUploadPercent(null);
+          await new Promise(r => setTimeout(r, 900));
+          continue;
+        }
+
+        // Never close the sheet on failure: the draft in these fields is the
+        // only copy of something the person may have taken ten minutes to write.
+        setRetrying(false);
+        setStep('writing');
+        setUploadPercent(null);
+        setError(failureMessage(failure, { hasRecording: recording !== null, stashed }));
+        // Send them to the keyboard, where the story can still be saved today.
+        if (failure.stage === 'upload' && failure.kind !== 'retry-now') {
+          setAudioFailed(true);
+          setMode('type');
+        }
+        void reportFailure(slug, {
+          stage: failure.stage,
+          kind: failure.kind,
+          code: failure.code,
+          detail: failure.detail,
+          mimeType: recording?.mimeType,
+          sizeBytes: recording?.blob.size,
+          durationMs: recording?.durationMs,
+          attempts,
+        });
+        return;
+      }
     }
   }
 
@@ -191,6 +293,15 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
             <p className="voice mt-3 text-[1.0625rem] leading-[1.6] text-ink-soft">
               Someone else remembers this too. Send it to them.
             </p>
+            {/* The recording is still on this phone and nowhere else. Say so on
+                the one screen they are certain to read, and name the way back:
+                the addition flow restores the stash into the same thread. */}
+            {audioFailed && (
+              <p className="mt-4 rounded-[3px] bg-card px-4 py-3 text-[0.9375rem] leading-[1.55] text-ink-soft">
+                Your recording is still on this phone. Come back to this memory and tap
+                “Add to this memory” — it will be waiting there.
+              </p>
+            )}
             <button
               type="button"
               onClick={share}
@@ -319,19 +430,33 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
                   />
                 ) : (
                   <div className="mt-2">
+                    {restored && recording && (
+                      <p className="mb-2 text-[0.8125rem] text-ink-soft">
+                        A recording you made here is still on this phone. Listen to it below,
+                        or record it again.
+                      </p>
+                    )}
                     <Recorder
                       maxSeconds={memorial.audioMaxSeconds}
                       recording={recording}
-                      onRecording={setRecording}
+                      onRecording={(rec, didStash) => {
+                        setRecording(rec);
+                        setStashed(rec ? didStash === true : false);
+                        setRestored(false);
+                        // A different recording invalidates the uploaded one.
+                        uploadedRef.current = null;
+                      }}
                     />
                   </div>
                 )}
 
                 {/* A recording made and then switched away from is easy to
-                    forget about; say plainly that it's still going to be sent. */}
+                    forget about; say plainly what is going to happen to it. */}
                 {mode === 'type' && recording && (
                   <p className="mt-2 text-[0.8125rem] text-ink-soft">
-                    Your recording is attached and will be sent with this memory.
+                    {audioFailed
+                      ? 'Your recording stays on this phone. Send the words now — you can add the recording once it is working again.'
+                      : 'Your recording is attached and will be sent with this memory.'}
                   </p>
                 )}
               </div>
@@ -353,9 +478,11 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
                            text-card-raised transition-opacity disabled:opacity-35"
               >
                 {step === 'sending'
-                  ? (uploadPercent !== null && uploadPercent < 100
-                      ? `Sending your recording… ${uploadPercent}%`
-                      : 'Sending…')
+                  ? (retrying
+                      ? 'Trying again…'
+                      : uploadPercent !== null && uploadPercent < 100
+                        ? `Sending your recording… ${uploadPercent}%`
+                        : 'Sending…')
                   : addTo ? 'Add this memory' : 'Share this memory'}
               </button>
             </div>

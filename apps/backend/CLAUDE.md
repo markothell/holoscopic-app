@@ -39,6 +39,7 @@ without exercising the feature:
 | `authConfigured` | yes → 503 | No token secret, so every identity-bearing write 503s while reads look fine |
 | `transcription` | **no** | `ready` \| `no-api-key` \| `no-secret` \| `no-callback-url` |
 | `mediaBackup` | **no** | `ready` \| `no-bucket` \| `no-credentials` \| `no-region` — whether recordings get an off-site copy |
+| `alerting` | **no** | `ready` \| `no-api-key` \| `no-recipient` — whether a client failure report reaches a person (`utils/alerts.js`, `RESEND_API_KEY` + `ALERT_EMAIL`) |
 
 The rule for adding a field: **gate health on it only if the platform is broken without it.**
 Chorus transcription is optional by design — audio records and plays without it — so it is
@@ -57,6 +58,35 @@ PORT=4051 npm run start --workspace=apps/backend   # or on a spare port
 ```
 
 See root `CLAUDE.md` § *Working in a Shared Tree* for how to tell this apart from a bug in your own code.
+
+## Rate limiting, and why Chorus has its own buckets
+
+`app.use('/api', apiLimiter)` is 100 req/min per IP for every router **except
+`/api/memorial`**, which is skipped. Chorus pages are Server Components, so a
+visitor's wall read reaches this server **from Vercel, not from their phone** —
+every reader of every memorial worldwide shares a handful of egress IPs. A
+per-IP ceiling therefore measures the wrong thing there: it throttles a
+popular memorial while a flood from one phone still looks like one visitor.
+
+Four buckets replace it, all tunable from Render without a deploy:
+
+| Bucket | Key | Default | Env |
+|---|---|---|---|
+| `memorialReadLimiter` | IP (in practice, aggregate for the whole app) | 600/min | `MEMORIAL_REQUESTS_PER_MIN_PER_IP` |
+| `memorialIpLimiter` | IP — the real abuse ceiling | 300 writes/hour | `MEMORIAL_WRITES_PER_HOUR_PER_IP` |
+| `memorialWriteLimiter` | **contributor token**, IP when absent | 30 writes/hour | `MEMORIAL_WRITES_PER_HOUR` |
+| `memorialEventLimiter` | IP | 60 reports/hour | — |
+
+Keying writes per contributor is what makes a wake work: forty phones on one
+venue wifi get forty budgets instead of splitting one. The token is
+client-supplied and freely re-mintable, so it is **not** the abuse ceiling —
+`memorialIpLimiter` is, and the per-contributor bucket may be generous only
+because that backstop exists.
+
+**`/session` is skipped by both write buckets.** A mint happens when somebody
+opens the compose sheet, so counting it means a room full of people opening the
+sheet exhausts the venue's budget before a single memory is written. It is a
+stateless HMAC with no database write; `memorialReadLimiter` is its ceiling.
 
 ## Authentication
 

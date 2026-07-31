@@ -39,6 +39,20 @@ export function canRecord(): boolean {
     && pickMimeType() !== null;
 }
 
+// The type WITHOUT its codecs parameter — `audio/webm;codecs=opus` → `audio/webm`.
+//
+// This is what gets declared to Vercel Blob, and it is not cosmetic. Blob
+// matches an upload's content type against `allowedContentTypes` by exact
+// string, and a MIME parameter may legally be written with or without a space
+// after the semicolon. Chrome reports `audio/webm;codecs=opus`, Safari reports
+// `audio/webm; codecs=opus`, and an allowlist can only ever spell one of them —
+// which is how the first iPhone recording died at the upload step while the
+// same code worked on Android. Stripping the parameter leaves one canonical
+// string per format, and the codecs are recoverable from the file itself.
+export function baseMimeType(mimeType: string): string {
+  return mimeType.split(';')[0].trim().toLowerCase();
+}
+
 export function fileExtensionFor(mimeType: string): string {
   if (mimeType.includes('mp4')) return 'm4a';
   if (mimeType.includes('ogg')) return 'ogg';
@@ -60,6 +74,10 @@ const DB_NAME = 'chorus';
 const STORE = 'stashed-recording';
 const STASH_KEY = 'current';
 
+// A stash older than this is a recording somebody walked away from weeks ago.
+// Restoring it into a fresh compose sheet would be a surprise, not a rescue.
+const STASH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
@@ -74,28 +92,40 @@ function openDb(): Promise<IDBDatabase> {
 // Every stash operation is best-effort. Private browsing, a full disk, or a
 // browser with IndexedDB disabled must degrade to "no safety net", never to a
 // thrown error in the middle of recording.
-export async function stashRecording(rec: Recording): Promise<void> {
+//
+// It RETURNS whether the write landed, and that return value is load-bearing:
+// the failure copy tells someone their recording is safe on this phone, and
+// that sentence may only be shown when this resolved true. A swallowed error
+// that nobody reads turns reassurance into a guess.
+export async function stashRecording(rec: Recording, slug: string): Promise<boolean> {
   try {
     const db = await openDb();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE, 'readwrite');
       tx.objectStore(STORE).put(
-        { blob: rec.blob, mimeType: rec.mimeType, durationMs: rec.durationMs, peaks: rec.peaks, at: Date.now() },
+        {
+          blob: rec.blob, mimeType: rec.mimeType, durationMs: rec.durationMs,
+          // One deployment serves every memorial, so the stash has to remember
+          // which one it was recorded for — otherwise a recording made for one
+          // family resurfaces in another family's compose sheet.
+          peaks: rec.peaks, slug, at: Date.now(),
+        },
         STASH_KEY,
       );
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
     db.close();
+    return true;
   } catch {
-    // no-op
+    return false;
   }
 }
 
-export async function readStashedRecording(): Promise<Recording | null> {
+export async function readStashedRecording(slug: string): Promise<Recording | null> {
   try {
     const db = await openDb();
-    const value = await new Promise<Recording | null>((resolve, reject) => {
+    const value = await new Promise<(Recording & { slug?: string; at?: number }) | null>((resolve, reject) => {
       const tx = db.transaction(STORE, 'readonly');
       const req = tx.objectStore(STORE).get(STASH_KEY);
       req.onsuccess = () => resolve(req.result ?? null);
@@ -103,7 +133,13 @@ export async function readStashedRecording(): Promise<Recording | null> {
     });
     db.close();
     if (!value?.blob) return null;
-    return value;
+    // A stash written before slugs were recorded is honoured: there is exactly
+    // one live memorial per phone in that window, and dropping a real
+    // recording is a worse outcome than restoring one into the wrong form,
+    // which the review player makes audible before anyone can send it.
+    if (value.slug && value.slug !== slug) return null;
+    if (value.at && Date.now() - value.at > STASH_MAX_AGE_MS) return null;
+    return { blob: value.blob, mimeType: value.mimeType, durationMs: value.durationMs, peaks: value.peaks };
   } catch {
     return null;
   }

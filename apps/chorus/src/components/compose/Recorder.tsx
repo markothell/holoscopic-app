@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  canRecord, pickMimeType, resamplePeaks, stashRecording, formatDuration,
-  type Recording,
+  canRecord, pickMimeType, resamplePeaks, stashRecording, clearStashedRecording,
+  formatDuration, type Recording,
 } from '@/lib/recorder';
+import { useMemorial } from '@/components/MemorialProvider';
 
 // Tap to start, tap to stop. NOT hold-to-record: holding a phone still for
 // ninety seconds is genuinely hard, and this app's whole premise is someone
@@ -20,10 +21,16 @@ type State = 'idle' | 'starting' | 'recording' | 'review';
 interface Props {
   maxSeconds: number;
   recording: Recording | null;
-  onRecording: (rec: Recording | null) => void;
+  /**
+   * `stashed` says whether the recording reached IndexedDB. It travels with
+   * the recording because the compose sheet's failure copy promises the
+   * recording is saved on this phone, and that promise has to be checkable.
+   */
+  onRecording: (rec: Recording | null, stashed?: boolean) => void;
 }
 
 export default function Recorder({ maxSeconds, recording, onRecording }: Props) {
+  const { slug } = useMemorial();
   const [state, setState] = useState<State>(recording ? 'review' : 'idle');
   const [elapsedMs, setElapsedMs] = useState(0);
   const [liveePeaks, setLivePeaks] = useState<number[]>([]);
@@ -43,6 +50,14 @@ export default function Recorder({ maxSeconds, recording, onRecording }: Props) 
   // canRecord() touches navigator, so it can only run after mount — deciding
   // during render would make the server and client disagree.
   useEffect(() => { setSupported(canRecord()); }, []);
+
+  // A recording restored from the stash arrives after this component has
+  // already mounted idle, so the initial state above misses it. Without this
+  // the recovered recording would be attached and invisible — the person
+  // would have no way to hear what they were about to send.
+  useEffect(() => {
+    if (recording) setState(s => (s === 'idle' ? 'review' : s));
+  }, [recording]);
 
   const teardown = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
@@ -146,9 +161,12 @@ export default function Recorder({ maxSeconds, recording, onRecording }: Props) 
     const rec: Recording = { blob, mimeType, durationMs, peaks };
     // Stashed BEFORE anything else can go wrong. From here a crash, a
     // refresh, or a failed upload can all be recovered from.
-    void stashRecording(rec);
     onRecording(rec);
     setState('review');
+    // Reported back rather than assumed: private browsing, a full disk or a
+    // browser with IndexedDB switched off all leave the recording in memory
+    // only, and the compose sheet says something different in that case.
+    void stashRecording(rec, slug).then(ok => onRecording(rec, ok));
   }
 
   function stop() {
@@ -162,6 +180,10 @@ export default function Recorder({ maxSeconds, recording, onRecording }: Props) 
       URL.revokeObjectURL(previewUrlRef.current);
       previewUrlRef.current = null;
     }
+    // Clear the stash too. "Record it again" is somebody deciding this take is
+    // wrong; leaving it on disk would hand it back to them the next time the
+    // sheet restores an unsent recording.
+    void clearStashedRecording();
     onRecording(null);
     setElapsedMs(0);
     setState('idle');

@@ -168,7 +168,7 @@ export async function uploadRecording(
   },
 ): Promise<{ url: string; pathname: string }> {
   const { upload } = await import('@vercel/blob/client');
-  const { fileExtensionFor } = await import('@/lib/recorder');
+  const { fileExtensionFor, baseMimeType } = await import('@/lib/recorder');
 
   // Namespaced per memorial from day one, so the multi-collection version
   // needs no reshuffle of existing objects (PLAN §11).
@@ -177,12 +177,43 @@ export async function uploadRecording(
   const result = await upload(pathname, blob, {
     access: 'public',
     handleUploadUrl: '/api/audio/upload',
-    contentType: mimeType,
+    // Parameters stripped: Blob's allowlist is an exact string match and the
+    // codecs parameter is spelled differently per browser (see baseMimeType).
+    contentType: baseMimeType(mimeType),
     multipart: true,
     onUploadProgress: onProgress ? (p) => onProgress(Math.round(p.percentage)) : undefined,
   });
 
   return { url: result.url, pathname: result.pathname };
+}
+
+// Tell the backend that a send failed on this phone.
+//
+// The recording goes browser → Blob directly, which is what makes a long
+// recording on a bad connection feasible and also means a failure there is
+// invisible to every server we own: the token mint returned 200, Render was
+// never called, and no row was ever written. The phone is the only machine
+// that knows. Without this beacon the first iPhone failure was findable only
+// because a person happened to be holding the phone and said so.
+//
+// Fire-and-forget in the strongest sense: a report that fails is swallowed,
+// because an error about an error helps nobody. `keepalive` lets it survive
+// the contributor closing the tab in frustration, which is the exact moment
+// the report matters most.
+export async function reportFailure(instance: string, payload: {
+  stage: string; kind: string; code: string; detail: string;
+  mimeType?: string; sizeBytes?: number; durationMs?: number; attempts?: number;
+}): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/memorial/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-instance-id': instance },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    });
+  } catch {
+    // no-op
+  }
 }
 
 // Mints an anonymous contributor identity if this browser doesn't have one,

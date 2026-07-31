@@ -4,6 +4,7 @@ const router = express.Router();
 
 const memories = require('../utils/memories');
 const transcribe = require('../utils/memorialTranscribe');
+const alerts = require('../utils/alerts');
 
 // Chorus — the REST surface for a memorial (apps/chorus). Thin wrappers over
 // utils/memories.js, the single write funnel; this file adds no funnel logic
@@ -194,6 +195,76 @@ router.post('/session', async (req, res) => {
 
   const id = crypto.randomUUID().substring(0, 12);
   res.json({ contributorId: id, token: signContributor(id) });
+});
+
+// ── Client failure reports ──────────────────────────────────────────────────
+//
+// The one place this app learns about failures it cannot otherwise see.
+//
+// A recording is uploaded browser → Vercel Blob directly, so when that upload
+// is refused, THIS SERVER IS NEVER CALLED and Vercel's own logs show the token
+// mint returning 200. The failure exists only on the phone. The first live
+// iPhone recording died that way — a content type Blob would not accept — and
+// nothing anywhere would have shown it without somebody reporting it by hand.
+//
+// Deliberately not a Memory-shaped write: no database, no instance data, just
+// a line in Render's log stream, which is where the operator is already
+// looking. Nothing here is trusted — every field is clamped, and the body
+// carries no memory text, no contributor name and no token.
+const EVENT_FIELD_MAX = 300;
+
+function clampField(value, max = 80) {
+  return String(value ?? '').replace(/[\r\n]+/g, ' ').trim().slice(0, max);
+}
+
+router.post('/events', (req, res) => {
+  // Answered before any work: a client reporting a failure is already having a
+  // bad time and must never wait on us, and a 204 gives a retry loop nothing
+  // to chew on.
+  res.status(204).end();
+
+  const event = {
+    instanceId: req.instanceId,
+    stage: clampField(req.body?.stage, 24),
+    kind: clampField(req.body?.kind, 24),
+    code: clampField(req.body?.code, 48),
+    detail: clampField(req.body?.detail, EVENT_FIELD_MAX),
+    mimeType: clampField(req.body?.mimeType, 80),
+    sizeBytes: Number(req.body?.sizeBytes) || 0,
+    durationMs: Number(req.body?.durationMs) || 0,
+    attempts: Number(req.body?.attempts) || 0,
+    // The whole diagnosis of the iPhone failure was "which browser wrote this
+    // MIME string", so the user agent is the single most useful field here.
+    ua: clampField(req.headers['user-agent'], 200),
+  };
+  console.error('[chorus:client-failure]', JSON.stringify(event));
+
+  // Email only the class that needs a person: `blocked` means no amount of
+  // retrying will help and the contributor has been told a report is on its
+  // way. Transient and rate-limit failures resolve themselves and stay in the
+  // log. Throttled to one per code per hour inside alertOnce.
+  if (event.kind === 'blocked') {
+    void alerts.alertOnce(
+      `chorus:${event.instanceId}:${event.code}`,
+      `Chorus: a memory could not be sent (${event.code})`,
+      [
+        'Somebody tried to leave a memory and could not. This needs a fix —',
+        'retrying will keep failing until it lands.',
+        '',
+        `memorial:  ${event.instanceId}`,
+        `stage:     ${event.stage}`,
+        `code:      ${event.code}`,
+        `detail:    ${event.detail}`,
+        `recording: ${event.mimeType || '(none)'} ${event.sizeBytes || 0} bytes ${event.durationMs || 0}ms`,
+        `browser:   ${event.ua}`,
+        '',
+        'Their words are still in the form and any recording is still on their',
+        'phone, so a fix within the hour probably loses nothing.',
+      ].join('\n'),
+    ).then(outcome => {
+      if (outcome !== 'sent') console.error('[chorus:client-failure] alert', outcome);
+    });
+  }
 });
 
 // ── Reading ─────────────────────────────────────────────────────────────────

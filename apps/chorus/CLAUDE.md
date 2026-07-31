@@ -240,6 +240,25 @@ already needs; set them on the **web service** too, or only the nightly half run
   when neither *was* clause exists — otherwise a memory with only an experience reads as "This is a
   story where having an experience of grief." It returns `null` when nothing was answered, so any
   caller that frames it (`border-y` on the memory page) must check first or frame an empty box.
+- **Audio: upload the BASE content type, with no codecs parameter.** Vercel Blob matches
+  `allowedContentTypes` by exact string and does no MIME parsing, so `audio/webm;codecs=opus` and
+  `audio/webm; codecs=opus` are two different entries — and the parameter's spacing is per browser.
+  Chrome writes it closed up, Safari writes it with a space. The first live iPhone recording died
+  on exactly that space while Android sailed through. `recorder.ts#baseMimeType` strips the
+  parameter before upload; the full string is still stored on the memory, which is what made the
+  failure diagnosable.
+- **A failure in the upload path is invisible to every server here.** The browser uploads straight
+  to Blob, so the token mint returns 200, Render is never called and no row is written. `POST
+  /api/memorial/events` (`services/api.ts#reportFailure`) is the only way any of it is knowable;
+  `blocked`-class failures also email via `utils/alerts.js`. Check `GET /health` → `alerting`.
+- **The stash is only worth writing if something reads it.** `readStashedRecording` runs when the
+  compose sheet opens — same memorial, within 7 days — so a recording that failed to upload is
+  handed back on the next visit, including through "Add to this memory". It is written on stop,
+  cleared on discard and on a send that actually carried the audio, and **kept** when the memory
+  posts as words because uploads were failing. It is per-device: that phone, that browser profile.
+  There is no way to attach audio to a memory that is already posted (see `editMemory`, which fires
+  neither the transcription nor the blob-mirror hook), so the recovery route is a new addition in
+  the same thread.
 - **Audio: never read duration off the file.** iOS writes MP4 with no duration metadata, which
   surfaces as `Infinity` in every player and an un-scrubbable track. The client times the recording
   and that stored number is what the player measures against.
@@ -294,6 +313,12 @@ cards each repeating the boilerplate is noise, not rhythm.
 Backend side: `BLOB_HOST_SUFFIX` (default `.public.blob.vercel-storage.com`), `MEMORIAL_IP_SALT`,
 and `GAME_TOKEN_SECRET`/`NEXTAUTH_SECRET` — the contributor token and the Deepgram callback token
 are both signed with the existing shared secret.
+
+`RESEND_API_KEY` + `ALERT_EMAIL` (optionally `ALERT_FROM`) turn client failure reports into email.
+Without them the report is still logged, and `/health` says `alerting: no-api-key`. The rate-limit
+knobs — `MEMORIAL_WRITES_PER_HOUR`, `MEMORIAL_WRITES_PER_HOUR_PER_IP`,
+`MEMORIAL_REQUESTS_PER_MIN_PER_IP` — are documented in `apps/backend/CLAUDE.md`; they exist so a
+gathering that is going faster than expected can be given room from the Render dashboard.
 
 Transcription needs `DEEPGRAM_API_KEY` plus a publicly reachable callback base. **Production derives
 that base from `RENDER_EXTERNAL_URL` and needs nothing set** — verified live: with `PUBLIC_API_URL`

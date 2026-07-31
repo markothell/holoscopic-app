@@ -19,6 +19,7 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const { v4: uuidv4 } = require('uuid');
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
 
 // Connection tracking and cleanup intervals
 const CONNECTIONS_CLEANUP_INTERVAL = process.env.NODE_ENV === 'production' ? 30 * 1000 : 10 * 1000;
@@ -101,13 +102,23 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Only health checks and local development bypass the limiter.
+    // Only health checks, Chorus, and local development bypass the limiter.
     //
     // This used to also skip `req.path.includes('/admin')`. That matched any
     // path *containing* the substring anywhere — so the bypass was selectable
     // by the caller, on unauthenticated routes, e.g. /activities/admin.
     // Admin routes get their own generous bucket below instead.
+    //
+    // Chorus is exempt because a per-IP ceiling means something different
+    // there: its pages are Server Components, so a visitor's wall read reaches
+    // this server FROM VERCEL, not from their phone. Every reader of every
+    // memorial worldwide therefore shares a handful of egress IPs, and at
+    // 100/min a memorial texted round a family group could rate-limit itself
+    // — while a genuine flood from one phone would still look like one
+    // visitor. It gets its own buckets instead, sized for a room full of
+    // people (memorialReadLimiter / memorialWriteLimiter).
     const isLocalhost = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
+    if (req.path.startsWith('/memorial')) return true;
     return req.path === '/health' || (isDevelopment && isLocalhost);
   }
 });
@@ -126,19 +137,40 @@ const adminLimiter = rateLimit({
   }
 });
 
-// Chorus memorial writes. Every other router requires a holoscopic account, so
-// the global apiLimiter is backstopped by auth; this one is not — anyone with
-// the link can post. Reads are skipped so browsing a memorial (which is most
-// of the traffic, and often a whole family on one household IP) is never
-// throttled by somebody else's contribution.
+// ── Chorus buckets ──────────────────────────────────────────────────────────
+//
+// Every other router requires a holoscopic account, so the global apiLimiter is
+// backstopped by auth. Chorus is open by design (PLAN.md D2), so its ceilings
+// are the whole of its abuse protection — and they are sized for the event this
+// app exists for: a wake, a birthday, a room of forty people passing a link
+// around on one venue wifi. Every one of them shares an IP.
+//
+// The knobs are env vars so launch night can be adjusted from the Render
+// dashboard without a deploy.
+const num = (name, fallback) => Number(process.env[name]) || fallback;
+
+// Per PERSON, not per IP: the contributor token is a browser's own identity, so
+// forty phones on one wifi get forty budgets instead of splitting one.
+//
+// The token is client-supplied and freely re-mintable, so this is emphatically
+// not the abuse ceiling — memorialIpLimiter below is. What it buys is that the
+// honest case (a room of people posting at once) never trips, which the old
+// 10/hour/IP did on the eleventh guest.
 const memorialWriteLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: isProduction ? 10 : 1000,
+  max: num('MEMORIAL_WRITES_PER_HOUR', isProduction ? 30 : 1000),
   message: {
     error: 'That is a lot of memories at once. Try again in a little while.'
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => {
+    const token = String(req.headers['x-contributor-token'] || '');
+    // The id half of `<id>.<mac>`. An unsigned or absent token falls back to
+    // the IP, so nobody can dodge the bucket by simply omitting the header.
+    const id = token.slice(0, token.lastIndexOf('.'));
+    return id ? `c:${id}` : ipKeyGenerator(req.ip);
+  },
   skip: (req) => {
     if (req.method === 'GET' || req.method === 'OPTIONS') return true;
     // /session is minted once per browser on first visit and must never be
@@ -148,9 +180,74 @@ const memorialWriteLimiter = rateLimit({
     // a per-IP contribution budget would throttle them the moment a memorial
     // gets busy.
     if (req.path.startsWith('/hooks/')) return true;
+    // Failure reports are the opposite of contributions: they happen when
+    // somebody could NOT post. Charging them to the same budget would mean a
+    // failing phone spends its owner's ten memories on error reports and is
+    // then rate-limited out of the retry that finally works. It has its own
+    // ceiling instead (memorialEventLimiter).
+    if (req.path === '/events') return true;
     const isLocalhost = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
     return isDevelopment && isLocalhost;
   }
+});
+
+// The actual abuse ceiling for Chorus writes, and the backstop that lets the
+// per-contributor bucket above be generous: a re-minted token gets a fresh
+// budget, but every one of them still lands on this IP.
+//
+// 300/hour is roughly a hundred people leaving three memories each in one hour
+// from a single venue wifi — comfortably above the busiest real gathering, and
+// far below anything worth calling a flood.
+const memorialIpLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: num('MEMORIAL_WRITES_PER_HOUR_PER_IP', isProduction ? 300 : 5000),
+  message: {
+    error: 'That is a lot of memories from this connection. Try again in a little while.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    if (req.method === 'GET' || req.method === 'OPTIONS') return true;
+    // Exactly the exemptions the per-contributor bucket makes, for the same
+    // reasons — and /session matters MORE here, not less. A mint happens when
+    // somebody opens the compose sheet, so a room of forty people opening it
+    // spends forty of this bucket before anyone has written a word. Minting is
+    // a stateless HMAC with no database write; memorialReadLimiter is the
+    // ceiling that keeps it from being free.
+    if (req.path === '/session') return true;
+    if (req.path.startsWith('/hooks/')) return true;
+    if (req.path === '/events') return true;
+    const isLocalhost = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
+    return isDevelopment && isLocalhost;
+  }
+});
+
+// Chorus reads, which the global apiLimiter now skips. Sized as an AGGREGATE
+// rather than a per-visitor allowance: server-rendered walls arrive from
+// Vercel's egress IPs, so this one bucket holds every reader of every memorial
+// at once. 600/min is ~10 page renders a second, sustained.
+const memorialReadLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: num('MEMORIAL_REQUESTS_PER_MIN_PER_IP', isProduction ? 600 : 10000),
+  message: { error: 'This memorial is very busy. Try again in a moment.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    const isLocalhost = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
+    return isDevelopment && isLocalhost;
+  }
+});
+
+// Chorus client failure reports. Higher than the contribution ceiling because
+// a phone that cannot post may legitimately report several times, and low
+// enough that nobody can use it to flood the log stream.
+const memorialEventLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: isProduction ? 60 : 1000,
+  message: { error: 'Too many reports' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS',
 });
 
 // WebSocket connection limiting
@@ -384,7 +481,16 @@ function loadAPIRoutes() {
       require('./utils/memories').setBlobMirror(
         require('./utils/blobMirror').mirrorMemory,
       );
-      app.use('/api/memorial', memorialWriteLimiter, memorialRoutes);
+      // Its own ceiling, mounted ahead of the contribution limiters, which all
+      // skip this path — see memorialEventLimiter.
+      app.use('/api/memorial/events', memorialEventLimiter);
+      app.use(
+        '/api/memorial',
+        // Order matters: the aggregate read ceiling sees every request, then
+        // the per-IP write backstop, then the per-contributor budget.
+        memorialReadLimiter, memorialIpLimiter, memorialWriteLimiter,
+        memorialRoutes,
+      );
 
       // Terminal handlers, registered last so they sit behind every route.
       // They live inside loadAPIRoutes for the same reason the routers do: at
@@ -504,6 +610,10 @@ const { readiness: transcriptionReadiness } = require('./utils/memorialTranscrib
 // but a mirror that has quietly stopped is invisible until the day the bytes
 // are needed, which is the worst possible day to find out.
 const { readiness: mediaBackupReadiness } = require('./utils/blobMirror');
+// Same rule again: unconfigured alerting leaves the platform working perfectly
+// except that nobody is ever told when a contributor cannot post. That silence
+// is the entire failure mode, so it has to be visible somewhere.
+const { readiness: alertingReadiness } = require('./utils/alerts');
 
 app.get('/health', (req, res) => {
   const capacityStatus = connectionCount >= MAX_CONNECTIONS ? 'full' :
@@ -520,6 +630,7 @@ app.get('/health', (req, res) => {
     authConfigured,
     transcription: transcriptionReadiness(),
     mediaBackup: mediaBackupReadiness(),
+    alerting: alertingReadiness(),
     connections: connectionCount,
     capacity: {
       current: connectionCount,
