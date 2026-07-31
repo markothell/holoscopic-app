@@ -1,10 +1,9 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sheet from '@/components/ui/Sheet';
-import PromptSentence, { type Slot } from '@/components/PromptSentence';
-import TagDrawer from './TagDrawer';
+import TagQuestion from './TagQuestion';
 import Recorder from './Recorder';
 import { ensureContributor, uploadRecording } from '@/services/api';
 import { useMemorial } from '@/components/MemorialProvider';
@@ -29,6 +28,7 @@ type Mode = 'type' | 'record';
 
 interface Props {
   memorial: Memorial;
+  /** Both vocabularies, most-used first — the questions show the head of each. */
   tags: { role: Tag[]; experience: Tag[] };
   variant: 'primary' | 'secondary';
   label: string;
@@ -43,7 +43,6 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
   const { slug, api } = useMemorial();
   const base = `/c/${slug}`;
   const [open, setOpen] = useState(false);
-  const [slot, setSlot] = useState<Slot | null>(null);
   const [step, setStep] = useState<Step>('writing');
   const [mode, setMode] = useState<Mode>('type');
   const [error, setError] = useState<string | null>(null);
@@ -59,42 +58,9 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
   const [anon, setAnon] = useState(false);
   const [text, setText] = useState('');
   const [subjectTags, setSubjectTags] = useState<string[]>(addTo?.subjectTags ?? []);
-  const [selfTags, setSelfTags] = useState<string[]>(addTo?.selfTags ?? []);
   const [experienceTags, setExperienceTags] = useState<string[]>(addTo?.experienceTags ?? []);
 
   const name = memorial.subjectName;
-
-  // The sentence renders Tag objects; the draft holds labels, because that's
-  // what the server takes and what a just-typed word is. Only the label is
-  // ever displayed, so a placeholder id is enough for the ones not yet minted.
-  const asTags = useCallback((labels: string[], set: 'role' | 'experience'): Tag[] => {
-    const vocab = set === 'role' ? tags.role : tags.experience;
-    return labels.map(label => {
-      const known = vocab.find(t => t.label.toLowerCase() === label.toLowerCase());
-      return known ?? { id: `new:${label}`, set, label, useCount: 0, origin: 'contributed' as const };
-    });
-  }, [tags]);
-
-  const slotConfig = useMemo(() => ({
-    subject: {
-      prompt: `${name} was…`,
-      vocabulary: tags.role,
-      selected: subjectTags,
-      onChange: setSubjectTags,
-    },
-    self: {
-      prompt: 'And I was…',
-      vocabulary: tags.role,
-      selected: selfTags,
-      onChange: setSelfTags,
-    },
-    experience: {
-      prompt: 'Having an experience of…',
-      vocabulary: tags.experience,
-      selected: experienceTags,
-      onChange: setExperienceTags,
-    },
-  }), [name, tags, subjectTags, selfTags, experienceTags]);
 
   // A memory needs a name and a story — typed or spoken. The server enforces
   // the same rule; this just stops the button lying about being ready.
@@ -145,7 +111,7 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
       const { memory } = await api.create({
         title: title.trim(),
         sharerName: anon ? '' : sharerName.trim(),
-        subjectTags, selfTags, experienceTags,
+        subjectTags, experienceTags,
         text: text.trim(),
         audio,
         replyToId: addTo?.id ?? null,
@@ -242,15 +208,25 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
                 <p className="eyebrow pt-1 pb-3">Adding to “{addTo.title}”</p>
               )}
 
-              {/* The sentence is the first thing, and filling it is the whole
-                  interaction. Everything below is bookkeeping. */}
-              <div className="py-2">
-                <PromptSentence
-                  subjectName={name}
-                  subjectTags={asTags(subjectTags, 'role')}
-                  selfTags={asTags(selfTags, 'role')}
-                  experienceTags={asTags(experienceTags, 'experience')}
-                  onSlotTap={setSlot}
+              {/* Two questions, each with its likely answers already on the
+                  page. This used to be the prompt sentence with three tappable
+                  blanks — the same data, but it read as something to decode
+                  rather than something to answer. The sentence is still how a
+                  finished memory reads; it is no longer how one is written. */}
+              <div className="flex flex-col gap-7 py-2">
+                <TagQuestion
+                  question={`Who was ${name} in this story?`}
+                  vocabulary={tags.role}
+                  selected={subjectTags}
+                  onChange={setSubjectTags}
+                  allowCustom={memorial.allowCustomTags}
+                />
+                <TagQuestion
+                  question="What was this an experience of?"
+                  vocabulary={tags.experience}
+                  selected={experienceTags}
+                  onChange={setExperienceTags}
+                  allowCustom={memorial.allowCustomTags}
                 />
               </div>
 
@@ -380,18 +356,6 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
           </>
         )}
       </Sheet>
-
-      {slot && (
-        <TagDrawer
-          open
-          onClose={() => setSlot(null)}
-          prompt={slotConfig[slot].prompt}
-          vocabulary={slotConfig[slot].vocabulary}
-          selected={slotConfig[slot].selected}
-          onChange={slotConfig[slot].onChange}
-          allowCustom={memorial.allowCustomTags}
-        />
-      )}
     </>
   );
 }

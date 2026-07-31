@@ -11,11 +11,17 @@ const mongoose = require('mongoose');
 // Entry would mean four new optional subdocuments on the repo's hottest
 // collection. Same call Synthesis made with SynNode; Entry is untouched here.
 //
-// THE PROMPT is a sentence with three blanks, filled from TWO vocabularies
+// A MEMORY READS as a sentence with three slots, filled from TWO vocabularies
 // (see MemoryTag): "This is a story where <Name> was ___ and I was ___ having
-// an experience of ___." The first two blanks share the `role` vocabulary on
+// an experience of ___." The first two slots share the `role` vocabulary on
 // purpose — filtering on "stubborn" then surfaces every story where *somebody*
 // was stubborn, whichever side of it the sharer was on.
+//
+// THE CLIENT ONLY FILLS TWO OF THEM (PLAN D12). Composing is two direct
+// questions now, and "I was ___" is no longer asked. `selfTags` stays exactly
+// as it is: every memory written before that change carries it, it is part of
+// the `allTags` union those memories are filtered by, and the edit path still
+// accepts it. Do not drop the field or backfill it away.
 //
 // AUTHORSHIP is anonymous by design (PLAN §5, D2). `contributorId` is a
 // server-minted browser identity that buys exactly two things — the right to

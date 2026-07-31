@@ -78,7 +78,12 @@ export interface ComposeDraft {
   title: string;
   sharerName: string;
   subjectTags: string[];
-  selfTags: string[];
+  /**
+   * "I was ___". Optional because the compose sheet stopped asking it — the
+   * model, the wire and every memory written before the change still carry it,
+   * so it reads and filters exactly as it always did.
+   */
+  selfTags?: string[];
   experienceTags: string[];
   text: string;
   /** Set once the recording has landed in Blob. The server validates the host. */
@@ -97,7 +102,6 @@ export interface AddTarget {
   id: string;
   title: string;
   subjectTags: string[];
-  selfTags: string[];
   experienceTags: string[];
 }
 

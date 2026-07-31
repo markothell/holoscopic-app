@@ -13,8 +13,14 @@
 
 const crypto = require('crypto');
 
-// Deliberately a mix of roles and adjectives — the blank reads "<name> was ___
-// and I was ___", and both kinds of word fit there.
+// Deliberately a mix of roles and adjectives — the question is "Who was <name>
+// in this story?", and both kinds of word answer it.
+//
+// The order here does NOT decide what a contributor sees first. The compose
+// form shows the head of the vocabulary ranked by useCount (listTags sorts
+// `{useCount:-1, label:1}`), so on a memorial with no memories yet every count
+// is 0 and the tie breaks alphabetically — "a neighbour, a stranger, a teacher"
+// lead. Fixing that means an explicit rank on MemoryTag, not a reshuffle here.
 const SEED_ROLE_TAGS = [
   'stubborn', 'a teacher', 'the new kid', 'patient', 'in over my head',
   'a stranger', 'funny', 'scared', 'a neighbour', 'young',

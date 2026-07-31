@@ -4,7 +4,12 @@ import { useMemo, useState } from 'react';
 import Sheet from '@/components/ui/Sheet';
 import type { Tag } from '@/lib/types';
 
-// The drawer behind one blank in the prompt.
+// The whole vocabulary for one question, opened by the ＋ chip in TagQuestion.
+//
+// It is a MULTI-SELECT and has to look like one on arrival — chips stay lit,
+// Done closes. That is stated at the top rather than the bottom, because a
+// long vocabulary pushes the footer off a phone screen and someone who never
+// saw it treats the first tap as their answer.
 //
 // The search field IS the "add your own" field. Typing filters the existing
 // vocabulary and, when nothing matches what you typed, offers to coin it —
@@ -88,15 +93,29 @@ export default function TagDrawer({
 
   return (
     <Sheet open={open} onClose={onClose} label={prompt} height="tall" z={50}>
-      <div className="flex items-baseline justify-between px-5 pt-2 pb-3">
-        <h2 className="voice text-[1.25rem] text-ink">{prompt}</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="-mr-2 px-2 py-1 text-[0.9375rem] font-medium text-dial"
-        >
-          Done
-        </button>
+      <div className="px-5 pt-2 pb-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="voice text-[1.25rem] leading-snug text-ink">{prompt}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="-mr-2 shrink-0 px-2 py-1 text-[0.9375rem] font-medium text-dial"
+          >
+            Done
+          </button>
+        </div>
+        {/* Said at the top, where somebody decides how to use this screen. The
+            same sentence used to live in the footer, below the fold on a phone
+            with a long vocabulary — which is why people took it for a picker
+            that closes on the first tap. */}
+        <p className="mt-1.5 text-[0.875rem] text-ink-soft">
+          Tap as many as fit — they stay lit, and you tap Done when you&apos;re finished.
+          {selected.length > 0 && (
+            <span className="text-dial">
+              {' '}{selected.length} chosen.
+            </span>
+          )}
+        </p>
       </div>
 
       <div className="px-5 pb-3">
@@ -168,7 +187,7 @@ export default function TagDrawer({
         <p className="text-[0.8125rem] text-ink-faint">
           {atSlotCap
             ? `That's ${TAGS_PER_SLOT_MAX} — remove one to choose another.`
-            : 'Choose as many as fit. Or none.'}
+            : `Up to ${TAGS_PER_SLOT_MAX} words.`}
         </p>
       </div>
     </Sheet>

@@ -17,14 +17,21 @@ Local dev port **4005**. Ships to `chorus.holoscopic.io` (add to backend `CLIENT
 ## 1. The product in one screen
 
 A visitor lands on a photo of Ellen, her name, a few lines about her, and a wall of memories other
-people left. One button: **Share a memory.** The compose flow is a sentence with blanks:
+people left. One button: **Share a memory.** The compose flow opens on two questions:
 
-> This is a story where **Ellen** was `[ + ]` and I was `[ + ]` having an experience of `[ + ]`.
+> **Who was Ellen in this story?**  `young` `stubborn` `a teacher` `funny` … `＋ More, or your own`
+>
+> **What was this an experience of?**  `being seen` `getting lost` `grief` … `＋ More, or your own`
 
-Tapping a blank opens a drawer of tag chips; you pick as many as fit, or type your own. The
-sentence fills in as readable prose — that filled sentence *is* the thing people screenshot and
-send on. Then a short name for the memory, your name (or one tap for **anon**), and the story
-itself: typed, or spoken into the phone.
+The most-used words from each vocabulary sit right on the form; tapping one lights it, and **＋**
+opens a drawer with the whole list and a field that doubles as *type your own*. Then a short name
+for the memory, your name (or one tap for **anon**), and the story itself: typed, or spoken into
+the phone.
+
+What gets stored still renders as a sentence — *"This is a story where **Ellen** was stubborn
+having an experience of being seen."* — and that filled sentence *is* the thing people screenshot
+and send on. **Writing it and reading it are now two different objects** (see §10 D12); reading is
+the one that had to stay beautiful.
 
 Anyone can browse, filter by tag, read, and listen. On any memory: **Add to this memory** — you
 were there too, or you remember it differently. Linked memories travel together.
@@ -57,18 +64,22 @@ That's the whole app. Everything below is in service of not making it bigger tha
 
 ### 2.1 The two tag vocabularies
 
-The prompt has three blanks but only **two** vocabularies — settled by the request, and it's the
-right call:
+Two vocabularies, one per question:
 
-- **`role`** — fills *both* "**Ellen** was ___" and "**I** was ___". One shared word list.
+- **`role`** — answers "Who was **Ellen** in this story?"
   (*teacher, the new kid, stubborn, patient, in over my head, a stranger*)
-- **`experience`** — fills "having an experience of ___".
+- **`experience`** — answers "What was this an experience of?"
   (*being seen, getting lost, first jobs, grief, laughing too hard, being forgiven*)
 
-Sharing one vocabulary across the first two blanks is the good accident: filtering on `stubborn`
-surfaces every story where *somebody* was stubborn, whichever side of it they were on. Keep that.
+Each question is **multi-select**, capped at 5 with at most 2 newly coined words. Chips join with
+`&` in the rendered sentence.
 
-Each slot is **multi-select**. Chips join with `&` in the rendered sentence.
+**Three storage slots, two questions.** `selfTags` ("I was ___") also drew on `role`, and the
+shared vocabulary was the good accident — filtering on `stubborn` surfaced every story where
+*somebody* was stubborn, whichever side of it they were on. That slot is no longer collected (D12),
+but nothing about it was deleted: the field, the wire and the `allTags` union are untouched, so
+every memory written before the change still reads and filters exactly as it did. New memories
+simply have one slot empty.
 
 ---
 
@@ -366,11 +377,15 @@ Synthesis and spectrum. **No NextAuth** — the first app here without it.
 
 ```
 ┌──────────────────────────────┐
-│  This is a story where       │
-│  Ellen was  [ + ]            │   ← tap a blank → bottom drawer of chips
-│  and I was  [ + ]            │     search field doubles as "＋ add 'stubborn'"
-│  having an experience of     │     multi-select, joins with &
-│  [ + ]                       │
+│  Who was Ellen in this       │
+│  story?                      │   ← the most-used words, already on the form
+│  (young)(stubborn)(funny)    │     tap to light; capped at 5
+│  (＋ More, or your own)       │   → drawer: whole list + search-is-add field
+├──────────────────────────────┤
+│  What was this an            │
+│  experience of?              │
+│  (being seen)(getting lost)  │
+│  (＋ More, or your own)       │
 ├──────────────────────────────┤
 │  Give it a short name        │
 │  Your name    [ anon ]       │   ← one tap greys the field
@@ -384,8 +399,13 @@ Synthesis and spectrum. **No NextAuth** — the first app here without it.
 └──────────────────────────────┘
 ```
 
-The sentence must stay readable as it fills. That's the whole design bet: it turns a form into a
-piece of writing you're proud of before you've written anything.
+**The first screen has to be answerable without being decoded.** The original bet was that the
+sentence could be the form — tap the blanks, watch prose assemble. It made a beautiful artifact and
+a form people could not start: testers read three clauses of grammar before finding anything to do,
+and the bare `＋` sitting on a ruled line read as punctuation rather than a control. A direct
+question with its likely answers underneath is answerable at a glance, and it shows what other
+people reached for, which the blank never could. The sentence keeps its job on the read side, where
+it was always the thing that worked (D12).
 
 Post-submit lands on `/m/[id]` with a `navigator.share` sheet prefilled — *"Send this to someone
 who knew Ellen."* Dignified, not celebratory: no confetti on a memorial.
@@ -560,7 +580,8 @@ Four things the design above didn't anticipate, all now in the code and the test
 - **D1** — One instance = one person. Multi-collection is a later routing change, not a data change (§11).
 - **D2** — No accounts for contributors, ever. Anonymous signed contributor token, ownership + throttling only.
 - **D3** — Live on submit; curator removes. Never a pre-publish approval queue — it kills the share moment.
-- **D4** — Two tag vocabularies, three slots. `role` fills both "they were" and "I was."
+- **D4** — Two tag vocabularies, three storage slots. `role` fills both "they were" and "I was."
+  Superseded on the write side by D12; still exactly true of what is stored and read.
 - **D5** — Contributors mint tags; dedupe on normalized key; `useCount` ranks the picker.
 - **D6** — Vercel Blob + Deepgram. Audio bytes never pass through Render. No transcoding, no HLS.
 - **D7** — Threads are a flat `threadId`, not a link array — *add-to* can't merge threads, so it's sufficient.
@@ -568,6 +589,17 @@ Four things the design above didn't anticipate, all now in the code and the test
 - **D9** — No holon economy, no quorum. Instance runs `config.mode: 'explore'`.
 - **D10** — Curator authenticates with a URL key, not an account.
 - **D11** — All subject data lives in `Instance.config.memorial`, never in env or the frontend build.
+- **D12** — **Composing is two direct questions; the sentence is read-only.** The fill-in-the-blank
+  sentence stays as the artifact on memory pages and wall cards, and stops being the input. Three
+  clauses were too much to parse before acting, and the bare `＋` did not read as a control. The
+  middle slot ("I was ___") is dropped rather than rephrased: it asked about the contributor at the
+  moment they were trying to talk about someone else. `selfTags` is preserved everywhere it is
+  stored — no migration, no backfill, older memories unchanged.
+- **D13** — **A memorial's subject photo is uploaded, not linked.** The platform admin downscales to
+  1600px in the browser and posts to its own `/api/memorial-photo`, which puts it in the same Blob
+  store Chorus uses for audio. Pasting a URL still works and writes the same field. It does NOT go
+  to the Render backend: that service has no persistent disk, so a photo written there would 404
+  after the next deploy.
 
 ### Deliberately not in v1
 

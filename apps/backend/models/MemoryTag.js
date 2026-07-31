@@ -2,15 +2,20 @@ const mongoose = require('mongoose');
 
 // MemoryTag — one chip in a Chorus memorial's tag vocabulary.
 //
-// TWO VOCABULARIES, THREE BLANKS (PLAN §2.1, D4):
-//   • role       — fills BOTH "<Name> was ___" and "I was ___". One shared
-//                  word list across the two blanks, deliberately.
-//   • experience — fills "having an experience of ___".
+// TWO VOCABULARIES, THREE STORAGE SLOTS (PLAN §2.1, D4, D12):
+//   • role       — answers "Who was <Name> in this story?", and historically
+//                  also filled "I was ___". One shared word list, deliberately.
+//   • experience — answers "What was this an experience of?".
 //
 // The shared `role` list is the good accident: filtering on "stubborn"
 // surfaces every story where *somebody* was stubborn, whichever side of it the
 // sharer was on. Don't split it into two vocabularies later without
 // understanding that's the feature you're removing.
+//
+// `useCount` IS NOW LOAD-BEARING IN THE UI, not just an ordering hint: the
+// compose form shows the head of each vocabulary on the form itself, so the
+// most-used words are the ones a contributor sees before opening anything.
+// A wrong delta here is visible on the first screen of the app.
 //
 // SEEDED BY THE CURATOR, EXTENDED BY CONTRIBUTORS. A contributed tag becomes
 // visible to everyone on first use, and `useCount` orders the picker, so the

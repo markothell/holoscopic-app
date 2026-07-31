@@ -70,6 +70,9 @@ export default async function MemoryPage({
 
   const { memory, thread } = detail;
   const name = config.memorial.subjectName;
+  // Every word on this memory, in sentence order. Drives both the sentence
+  // frame above and the "find more like this" row below.
+  const answeredTags = [...memory.subjectTags, ...memory.selfTags, ...memory.experienceTags];
 
   return (
     <main className="mx-auto max-w-md px-5 pb-24">
@@ -104,15 +107,18 @@ export default async function MemoryPage({
           )}
         </p>
 
-        {/* The screenshot artifact. */}
-        <div className="my-7 border-y border-rule py-6">
-          <PromptSentence
-            subjectName={name}
-            subjectTags={memory.subjectTags}
-            selfTags={memory.selfTags}
-            experienceTags={memory.experienceTags}
-          />
-        </div>
+        {/* The screenshot artifact. A memory that answered neither question is
+            all story and no sentence — the rules would frame an empty box. */}
+        {answeredTags.length > 0 && (
+          <div className="my-7 border-y border-rule py-6">
+            <PromptSentence
+              subjectName={name}
+              subjectTags={memory.subjectTags}
+              selfTags={memory.selfTags}
+              experienceTags={memory.experienceTags}
+            />
+          </div>
+        )}
 
         {memory.body.audio && (
           <div className="mb-7">
@@ -141,11 +147,11 @@ export default async function MemoryPage({
 
         {/* The same words, now as a way out into everyone else's stories.
             Reading one memory is the moment you most want the next one. */}
-        {[...memory.subjectTags, ...memory.selfTags, ...memory.experienceTags].length > 0 && (
+        {answeredTags.length > 0 && (
           <div className="mt-8 border-t border-rule pt-5">
             <p className="eyebrow mb-3">Find more like this</p>
             <div className="flex flex-wrap gap-2">
-              {[...memory.subjectTags, ...memory.selfTags, ...memory.experienceTags]
+              {answeredTags
                 // A tag chosen in two slots is one word, not two chips.
                 .filter((t, i, all) => all.findIndex(x => x.id === t.id) === i)
                 .map(tag => (
@@ -176,7 +182,9 @@ export default async function MemoryPage({
       </div>
 
       {/* Prefilled with this memory's title and tags — you're describing the
-          same afternoon as the person you're answering. */}
+          same afternoon as the person you're answering. Its `selfTags` are
+          deliberately left behind: that slot described who THEY were, and it
+          is not a question this form asks any more. */}
       <div className="mt-8">
         <ComposeButton
           memorial={config.memorial}
@@ -187,7 +195,6 @@ export default async function MemoryPage({
             id: memory.id,
             title: memory.title,
             subjectTags: memory.subjectTags.map(t => t.label),
-            selfTags: memory.selfTags.map(t => t.label),
             experienceTags: memory.experienceTags.map(t => t.label),
           }}
         />

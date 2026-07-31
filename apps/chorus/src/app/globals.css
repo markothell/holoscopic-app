@@ -99,19 +99,9 @@ body {
   -webkit-box-decoration-break: clone;
 }
 
-/* An unfilled blank: the ruled line with nothing written on it yet.
-   line-height MUST stay 1 here. An inline-block inherits the paragraph's line
-   height for its own box, so at the sentence's airy leading the box grows tall
-   and its border-bottom drifts half a line below the baseline — the rule
-   detaches from the ＋ sitting on it and reads as a stray mark. */
-.blank-empty {
-  display: inline-block;
-  min-width: 4.5em;
-  line-height: 1;
-  padding-bottom: 0.12em;
-  border-bottom: 1px solid var(--rule-strong);
-  vertical-align: baseline;
-}
+/* There is no `.blank-empty` any more. An unfilled blank only existed while
+   the sentence WAS the form; composing is two direct questions now, and a
+   memory renders only the clauses it actually has (PromptSentence). */
 
 /* The quiet connectives between answers — "was", "and I was". They carry the
    grammar without competing with the words the sharer actually chose. */

@@ -140,7 +140,10 @@ export function memorialApiFor(instance: string) {
         // The server takes LABELS, not ids, for all three slots — that's what
         // makes a picked tag and a typed-in one the same code path.
         subjectTags: draft.subjectTags,
-        selfTags: draft.selfTags,
+        // Still sent, always empty: the route treats an absent key as "leave
+        // whatever is there" (resolveSlots), which is right for the edit path
+        // and wrong for a create, where it would look like a dropped field.
+        selfTags: draft.selfTags ?? [],
         experienceTags: draft.experienceTags,
         body: { text: draft.text, audio: draft.audio ?? undefined },
         replyToId: draft.replyToId ?? null,
