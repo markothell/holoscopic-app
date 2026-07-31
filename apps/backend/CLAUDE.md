@@ -18,6 +18,8 @@ Express + Socket.IO + Mongoose server. Single entry point: `websocket-server.js`
 | `models/Instance.js` | Per-deployment config: which `app` it belongs to, holons, quorum, domains, access |
 | `utils/memorialDefaults.js` | What a new Chorus memorial starts life with — shared by `POST /instances` and `scripts/seed-memorial.js` so both make the same product |
 | `utils/blobMirror.js` | Off-site copy of Chorus media. Vercel Blob has no snapshots or undelete, so recordings are mirrored to the backup bucket on write and reconciled nightly |
+| `utils/backupNamespace.js` | Which part of the shared backup bucket a run may write to, decided from the cluster it connected to rather than from a variable somebody has to set |
+| `utils/email.js` | The only place mail leaves this platform. One Resend call, never throws — a send is always a side effect of something that already succeeded. `utils/alerts.js` adds throttling on top for operator mail |
 | `models/InstanceMembership.js` | Per-user per-instance Holon balance |
 | `models/Topic.js` | Community topic nominations with supporter wager system |
 | `models/Algorithm.js` | Published conversation patterns with fork lineage |
@@ -58,6 +60,23 @@ PORT=4051 npm run start --workspace=apps/backend   # or on a spare port
 ```
 
 See root `CLAUDE.md` § *Working in a Shared Tree* for how to tell this apart from a bug in your own code.
+
+## Backups: one bucket, two namespaces
+
+Dev and production have separate clusters, separate database names and separate Blob stores, but
+they still share **one backup bucket**. `utils/backupNamespace.js` decides the prefix from the
+cluster actually connected, never from a variable:
+
+| | Mongo | Blob | Lifecycle |
+|---|---|---|---|
+| Dev | `mongo-dev/holoscopic-dev/` | `blob-dev/` | deleted after 7 days |
+| Production | `mongo/holoscopic-db/` | `blob/` | kept |
+
+It fails closed both ways, because each direction has a silent failure: a dev dump under the
+production prefix overwrites the `latest.json` somebody follows during a restore, and a production
+dump under the dev prefix inherits the 7-day expiry while every run keeps reporting success. That
+second one is why an unrecognised host is **fatal** under `NODE_ENV=production` rather than being
+treated as dev — a cluster migration must break the backup loudly.
 
 ## Rate limiting, and why Chorus has its own buckets
 

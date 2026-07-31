@@ -141,16 +141,22 @@ Allowed origins from `CLIENT_URL` env var (comma-separated) in `apps/backend/.en
 - If you need a stable backend while others are working, run it without the file watcher: `npm run start --workspace=apps/backend`. Leave their `turbo dev` alone; start yours on a spare port (`PORT=4051`) so you are not fighting for `4001`.
 - Frontends are unaffected — Next's dev server hot-reloads per app and does not restart on backend writes.
 
-**There are two Atlas clusters, and they share a database name.** Both are called `holoscopic-db`, which makes them easy to confuse — check the *host*, never the database name:
+**There are two Atlas clusters, and two Vercel Blob stores. Dev and production are separated in both** (2026-07-31 — see `PLATFORM_NEXT.md` §1 and §2 for why and how):
 
-| | Host | Used by |
-|---|---|---|
-| Dev | `cluster0.38i5zna` | `apps/backend/.env.local` — every local dev server and every script run without `NODE_ENV=production` |
-| **Production** | `live.ofmfipp` | `apps/backend/.env.production`, and what Render serves holoscopic.io from |
+| | Cluster host | Database | Blob store | Used by |
+|---|---|---|---|---|
+| Dev | `cluster0.38i5zna` | `holoscopic-dev` | `holoscopic-dev-store` (`lerhz8d7q5cbk9pb`) | `apps/backend/.env.local` — every local dev server and every script run without `NODE_ENV=production` |
+| **Production** | `live.ofmfipp` | `holoscopic-db` | `holoscopic-app-chorus-blob` (`eiuui62jhmfnk5es`) | `apps/backend/.env.production`, and what Render serves holoscopic.io from |
+
+Both clusters used to host a database called `holoscopic-db`, so the only thing telling them apart in a connection string was the host — the part nobody reads. Dev was renamed; production kept its name, so **`holoscopic-db` still means production**, and a URI naming it is pointed at live data whatever else the line says. The blob stores are scoped by Vercel environment: Development resolves `BLOB_READ_WRITE_TOKEN` to the dev store, Production to its own. Neither separation is enforced by anything except which env file you loaded, so still check the host before writing.
 
 - Anything in `scripts/` run with `NODE_ENV=production` hits the live site's data. Read the script first — `reset-db-for-launch.js` deletes 14 collections.
 - Dev runs `autoIndex: true`, so editing an index declaration in `models/*.js` creates that index on the **dev** cluster as soon as nodemon restarts. Production is `autoIndex: false`, so the same edit reaches production only via `scripts/ensure-indexes.js` with `NODE_ENV=production`. **A model index change is not live until you run that script against production** — the two clusters drift apart silently otherwise.
-- Verify which cluster you are on before writing. `node -e "require('dotenv').config({path:'.env.local'});console.log(process.env.MONGODB_URI.match(/@([^/?]+)/)[1])"` prints the host.
+- Verify which cluster you are on before writing — host *and* database name, since they now agree with each other and either one gives the answer:
+
+      node -e "require('dotenv').config({path:'.env.local'});const u=process.env.MONGODB_URI;console.log(u.match(/@([^/?]+)/)[1], u.match(/\/([^/?]+)\?/)[1])"
+
+- The same question for Blob is which token you loaded, not which host a URL has: `console.log(process.env.BLOB_READ_WRITE_TOKEN.split('_')[3])` prints the store id. A URL alone is not evidence — reading an object proves nothing about which store a *write* will land in.
 
 **Don't fix failing tests in another app's area.** A red test in a file you did not touch is usually an agent mid-change. Report it; do not "helpfully" repair it and collide with their next write.
 

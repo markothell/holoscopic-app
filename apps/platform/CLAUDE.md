@@ -25,10 +25,13 @@ Chorus memorials get their subject photo here. The file is downscaled to 1600px 
 `memorial/<slug>/photo/…`; the returned URL fills the photo field, and **Save is still what
 persists it**. Pasting a URL writes the same field and still works.
 
-- **It requires `BLOB_READ_WRITE_TOKEN`**, which in production comes from *connecting* the
-  `chorus-memories` Blob store to this Vercel project — the same store the Chorus app uses. A store
-  connected to nothing leaves production with no token while local dev keeps working from
-  `.env.local`, so the route answers a named **503** rather than a generic 500.
+- **It requires `BLOB_READ_WRITE_TOKEN`**, which comes from *connecting* a Blob store to this
+  Vercel project. There are two, one per environment — `holoscopic-app-chorus-blob` for Production
+  and `holoscopic-dev-store` for Development — and this project needs **both**, because photos and
+  Chorus recordings share a store per environment (`apps/chorus/CLAUDE.md`). Environment scope
+  alone decides which one a write lands in. A store connected to nothing leaves that environment
+  with no token while the other keeps working, so the route answers a named **503** rather than a
+  generic 500.
 - **It is admin-gated by spending the caller's own bearer token** on `GET /api/instances/:id`,
   which already sits behind `requireAdmin`. There is one definition of "admin" and it re-reads the
   User row, so a demoted admin cannot still upload. A 404 from that call is reported as a missing

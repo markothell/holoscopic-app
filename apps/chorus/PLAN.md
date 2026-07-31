@@ -461,7 +461,8 @@ behind the same funnel — deliberately not in v1.
 
 Ship-worthy at **M3**; do not launch a memorial without **M4** close behind.
 
-**M2 is verified end to end except for browser capture.** With the `chorus-memories` Blob store,
+**M2 is verified end to end except for browser capture.** With the Blob store of the day
+(`chorus-memories`, since superseded twice — see `apps/chorus/CLAUDE.md`),
 `DEEPGRAM_API_KEY`, and a cloudflared tunnel supplying `PUBLIC_API_URL`, a real speech file
 (generated with macOS `say`) went the whole way: uploaded to Blob → `POST /memories` → the funnel's
 hook enqueued Deepgram → Deepgram fetched the audio from Blob → posted back through the tunnel →

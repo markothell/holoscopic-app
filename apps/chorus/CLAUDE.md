@@ -26,20 +26,38 @@ called `chorus`, and a `.vercel/project.json` naming one is a stale link that ma
 `vercel env pull` / `env ls` in this directory fail with "project was either deleted or
 transferred". Repair with `vercel link --yes --project holoscopic-app-chorus`.
 
-Blob store: **`holoscopic-app-chorus-blob`** (public, `store_eIUuI62jhmFnk5eS`, host
-`eiuui62jhmfnk5es.public.blob.vercel-storage.com`). **TWO projects write to it** — the Chorus app
-for recordings, the platform admin for memorial subject photos — so both need it connected.
+**Two blob stores, one per environment** (separated 2026-07-31 — `PLATFORM_NEXT.md` §2):
 
-**Recording works only if that store is CONNECTED to the project.** Connecting is what injects
-`BLOB_READ_WRITE_TOKEN` into each environment. A store connected to nothing
-(`vercel blob list-stores` → `Projects: –`) leaves production with no token while local development
-keeps working from whatever is in `.env.local`, so this fails in exactly one place and looks like a
-code bug. The browser reports it as *"Vercel Blob: Failed to retrieve the client token"*, which is
-the SDK's message for any non-token response; `/api/audio/upload` answers a named 503 first so the
-cause is readable.
+| Environment | Store | Id / host |
+|---|---|---|
+| Production | `holoscopic-app-chorus-blob` | `store_eIUuI62jhmFnk5eS` / `eiuui62jhmfnk5es.…` |
+| Development | `holoscopic-dev-store` | `store_LERHz8d7Q5CbK9pB` / `lerhz8d7q5cbk9pb.…` |
 
-**A replaced store leaves dead URLs behind, and nothing detects it.** This store superseded
-`chorus-memories` / `store_ELLOQEAjs3dvD6g5` on 2026-07-31. A token for a deleted store fails with
+**TWO projects write to each** — the Chorus app for recordings, the platform admin for memorial
+subject photos — so both need both connected. Which one a write lands in is decided by **Vercel
+environment scope alone**: the same bare `BLOB_READ_WRITE_TOKEN` resolves to the dev store in
+Development and the production store in Production. There is no prefixed variable to read and no
+conditional to get wrong (the auto-created `DEV_BLOB_READ_WRITE_TOKEN` is left in place, unread).
+
+They were one store until a local test overwrote an object a live memorial was serving. Both
+environments have a memorial slugged `chorus`, so their objects interleaved under the same
+`memorial/chorus/` prefix, told apart only by the hash in each filename.
+
+**This means `.env.local` and production talk to different stores, and a token for one cannot see,
+delete, or even acknowledge the other's objects** — it answers *"Access denied, please provide a
+valid token for this resource"*, which reads like a permissions bug and is not one. Deleted objects
+also keep serving 200 from the CDN edge for up to a year (`cacheControlMaxAge`), so a live URL is
+not evidence an object still exists. `list()` under the right token is.
+
+**Recording works only if the store for that environment is CONNECTED to the project.** Connecting
+is what injects `BLOB_READ_WRITE_TOKEN`. A store connected to nothing (`vercel blob list-stores` →
+`Projects: –`) leaves production with no token while local development keeps working from
+`.env.local`, so this fails in exactly one place and looks like a code bug. The browser reports it
+as *"Vercel Blob: Failed to retrieve the client token"*, which is the SDK's message for any
+non-token response; `/api/audio/upload` answers a named 503 first so the cause is readable.
+
+**A replaced store leaves dead URLs behind, and nothing detects it.** The production store
+superseded `chorus-memories` / `store_ELLOQEAjs3dvD6g5` on 2026-07-31. A token for a deleted store fails with
 *"This store does not exist"* — again, reads like a code bug and is not one — and, worse, every
 `body.audio.url` already stored in Mongo still points at the old host and now 404s. Those memories
 keep rendering a play button that fails. **Audio is the one thing in this app with no second
@@ -53,7 +71,7 @@ The backend's allowlist is a SUFFIX match (`BLOB_HOST_SUFFIX`, default
 `.public.blob.vercel-storage.com`), so a new store id passes without a backend change. Pinning that
 variable to a store-specific host on Render would reject every new recording.
 
-    vercel blob list-stores                       # Projects column must name BOTH projects
+    vercel blob list-stores                       # both stores, each naming BOTH projects
     curl -X POST https://chorus.holoscopic.io/api/audio/upload \
       -H 'Content-Type: application/json' -d '{}'  # 503 = no token, 400 = token present
 
@@ -173,7 +191,8 @@ deletion with their documents intact and their audio URLs pointing at nothing.
   it. It re-uploads at the same pathname and **rewrites `Memory.body.audio.url`**,
   which is the step a naive backup forgets: the store id is baked into the
   hostname, so a restore into a new store leaves every document pointing at the
-  old one.
+  old one. `--migrate` moves objects between stores on the same principle, and
+  is what carried dev's objects into `holoscopic-dev-store`.
 - **`GET /health` reports `mediaBackup`** — `ready` | `no-bucket` |
   `no-credentials`. A mirror that has quietly stopped is invisible until the day
   the bytes are needed.

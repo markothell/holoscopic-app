@@ -2,19 +2,21 @@
 // the cluster it is actually connected to rather than from a variable somebody
 // has to remember to set.
 //
-// WHY. Dev and production share one bucket, one Vercel Blob store, and — the
-// part that bites — one database NAME. Both clusters call it `holoscopic-db`,
-// so scripts/backup-mongo.js writes `<prefix>/holoscopic-db/latest.json` for
-// both. With the prefixes equal, a dev dump lands in production's folder and
-// overwrites the pointer whose whole purpose is to answer "which archive do I
-// restore?" during an incident. Nothing looks wrong: the JSON is well-formed,
-// the checksum matches, the archive restores cleanly. It is simply the wrong
-// database, and somebody restores dev over production while following the
-// documented procedure.
+// WHY. Dev and production share one backup bucket, and until 2026-07-31 they
+// also shared one Vercel Blob store and — the part that bit — one database
+// NAME. Both clusters called it `holoscopic-db`, so scripts/backup-mongo.js
+// wrote `<prefix>/holoscopic-db/latest.json` for both. With the prefixes equal,
+// a dev dump landed in production's folder and overwrote the pointer whose
+// whole purpose is to answer "which archive do I restore?" during an incident.
+// Nothing looks wrong: the JSON is well-formed, the checksum matches, the
+// archive restores cleanly. It is simply the wrong database, and somebody
+// restores dev over production while following the documented procedure.
 //
-// Until now the only thing standing between that and production was two lines
-// in an untracked .env.local. This module makes the separation a property of
-// the connection instead.
+// Dev has since been renamed to `holoscopic-dev` and given its own blob store,
+// so the collision no longer needs this module to be avoided — but the bucket
+// is still shared, the paths are still built from a name, and a name is one
+// rename away from colliding again. The separation stays a property of the
+// connection rather than of two lines in an untracked .env.local.
 //
 // IT FAILS CLOSED IN BOTH DIRECTIONS, because each has a silent failure:
 //
