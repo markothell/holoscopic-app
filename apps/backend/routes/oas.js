@@ -5,6 +5,7 @@ const entryUtils = require('../utils/entries');
 const OasGame = require('../models/OasGame');
 const OasNomination = require('../models/OasNomination');
 const User = require('../models/User');
+const requireEmailVerified = require('../middleware/requireEmailVerified');
 
 // On a Spectrum — REST surface. Thin wrappers over utils/oasGames.js (phase
 // machine + token economy + per-map activity machine). Mounted behind
@@ -114,7 +115,13 @@ module.exports = function (io) {
 
   // Create a game — creator is host and first participant, and gets the
   // room's starting tokens on the spot.
-  router.post('/games', async (req, res) => {
+  //
+  // Confirmed address required, and ONLY here: the host names the room, runs
+  // its phases, and is the person the room belongs to. Joining one is
+  // deliberately left open — On a Spectrum is played by people in a room
+  // together passing a code around, and a confirmation email sitting unopened
+  // must not be what stops somebody joining the game in front of them.
+  router.post('/games', requireEmailVerified, async (req, res) => {
     try {
       const user = await userFrom(req, res);
       if (!user) return;

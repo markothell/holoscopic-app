@@ -10,6 +10,7 @@ const nodeFunnel = require('../utils/synNodes');
 const entryUtils = require('../utils/entries');
 const ideaFunnel = require('../utils/synIdeas');
 const statementFunnel = require('../utils/synStatements');
+const requireEmailVerified = require('../middleware/requireEmailVerified');
 const synthesis = require('../utils/synUnion');
 const { getSynthesisModel } = require('../llm/chatModel');
 
@@ -175,7 +176,15 @@ async function resolveAxes(req, specs, membership) {
 // handle. Seeds the idea's title as the home hub at the centre of the
 // drafter's map — the map is the idea's thought space, so it starts with the
 // idea in it.
-router.post('/ideas', async (req, res) => {
+//
+// Confirmed address required, on BOTH create and join — unlike On a Spectrum,
+// where only creating is gated. The difference is the tempo: a Spectrum room is
+// people together passing a code around, where an unopened confirmation email
+// must not stop somebody joining the game in front of them. Joining an idea is
+// enrolling in a small, long-running group of pseudonymous writers who will be
+// reading each other for weeks, which is the same act as enrolling in a
+// sequence and carries the same reason to be reachable.
+router.post('/ideas', requireEmailVerified, async (req, res) => {
   try {
     const userId = await requireUser(req, res);
     if (!userId) return;
@@ -204,7 +213,7 @@ router.post('/ideas', async (req, res) => {
 // per-idea handle uniqueness are enforced in utils/synIdeas.js. Joining seeds
 // the same home hub, so a new collaborator's map opens on the idea rather
 // than on nothing.
-router.post('/ideas/:code/join', async (req, res) => {
+router.post('/ideas/:code/join', requireEmailVerified, async (req, res) => {
   try {
     const userId = await requireUser(req, res);
     if (!userId) return;

@@ -1,11 +1,37 @@
 const User = require('../models/User');
 
-// Gate for actions that establish a MEMBERSHIP.
+// Gate for entering a space that belongs to a group of named people.
 //
-// The access policy, in one line: public activities are open to anyone signed
-// in; joining something that has a membership needs a confirmed address. So
-// this is deliberately NOT applied at a router mount — it goes on the specific
-// routes where somebody asks to be let into a group.
+// "Membership" was the first word for this and it was the wrong one: FOUR
+// different code paths create an InstanceMembership, including simply reading a
+// holon balance, so membership is not a deliberate act and cannot be the line.
+// The line is joining or owning a room, and it is drawn per route:
+//
+//   GATED
+//     POST /sequences/:id/enroll        enrolling in a cohort
+//     POST /oas/games                   creating an On a Spectrum room
+//     POST /synthesis/ideas             creating an idea
+//     POST /synthesis/ideas/:code/join  joining an idea
+//
+//   DELIBERATELY OPEN
+//     POST /oas/games/:code/join        a Spectrum room is joined by people
+//                                       standing together passing a code; an
+//                                       unopened confirmation email must not
+//                                       be what stops somebody joining the
+//                                       game in front of them. Only the host,
+//                                       who names and runs the room, is gated.
+//     POST /activities/:id/participants THIS IS public interView play. You
+//                                       must be a participant to submit an
+//                                       entry, so gating it would gate the
+//                                       open map — the exact thing the policy
+//                                       protects.
+//     everything inside a space you    entries, votes, topics, nominations,
+//     are already in                   stakes, replies.
+//
+// `Instance.access.mode` ('public' | 'invite') looks like it should decide this
+// and does not: it is declared on the model, returned by toPublicJSON, and
+// enforced nowhere. Do not reach for it as a signal without making it real
+// first.
 //
 // NOT the same thing as middleware/verifyUser.js, despite the names being one
 // word apart. That one asks "is this request really from the user it claims to
