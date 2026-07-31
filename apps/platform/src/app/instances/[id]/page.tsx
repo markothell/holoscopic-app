@@ -14,7 +14,7 @@ interface OasConfig { startingTokens: number; quorum: number; votesPerUser: numb
 // memories for. Held on the Instance rather than in the frontend build so a
 // new memorial is a config change, not a deploy (apps/chorus/PLAN.md §11).
 interface MemorialConfig {
-  subjectName: string; subjectPhotoUrl: string; blurb: string; lifespan: string;
+  subjectName: string; shortName: string; subjectPhotoUrl: string; blurb: string; lifespan: string;
   seedRoleTags: string[]; seedExperienceTags: string[];
   allowCustomTags: boolean; audioMaxSeconds: number;
   curatorKey: string; accent: string;
@@ -373,6 +373,49 @@ const primaryBtn: React.CSSProperties = {
   background: 'var(--ink)', color: '#fff', fontWeight: 600, fontSize: '0.8rem',
 };
 
+const toLines = (v: string) => v.split('\n').map(s => s.trim()).filter(Boolean);
+
+// A list of words edited as one-per-line text.
+//
+// THE TEXTAREA OWNS ITS OWN TEXT while it is being edited. Deriving the value
+// from the parsed array instead — `value={tags.join('\n')}` — is what made the
+// Enter key appear to do nothing: pressing it produces a trailing empty line,
+// `toLines` drops it, the array comes back identical, and the re-render puts
+// the text back exactly as it was. The same round trip ate a leading space the
+// moment you typed it.
+//
+// So `raw` is what you typed and the parsed array is what leaves. They are only
+// re-synced when the parent's value stops matching what the text represents —
+// a fresh load — which is never true of your own keystrokes.
+function LinesField({
+  label, value, onChange,
+}: {
+  label: string;
+  value: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const [raw, setRaw] = useState(() => (value || []).join('\n'));
+
+  useEffect(() => {
+    const incoming = (value || []).join('\n');
+    setRaw(current => (toLines(current).join('\n') === incoming ? current : incoming));
+  }, [value]);
+
+  return (
+    <FieldGroup label={label}>
+      <textarea
+        value={raw}
+        rows={8}
+        onChange={e => {
+          setRaw(e.target.value);
+          onChange(toLines(e.target.value));
+        }}
+        style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
+      />
+    </FieldGroup>
+  );
+}
+
 // The subject photo: choose a file, or paste a URL if the photo already lives
 // somewhere. Both write the same one field, and neither saves anything on its
 // own — Save is still Save.
@@ -512,8 +555,6 @@ function MemorialFields({
   const set = <K extends keyof MemorialConfig>(key: K, value: MemorialConfig[K]) =>
     setMemorial(m => m && { ...m, [key]: value });
 
-  const lines = (v: string[]) => (v || []).join('\n');
-  const toLines = (v: string) => v.split('\n').map(s => s.trim()).filter(Boolean);
 
   return (
     <>
@@ -523,9 +564,20 @@ function MemorialFields({
           effect on the next page load. Nothing about the subject is baked into a build.
         </p>
         <div style={{ display: 'grid', gap: '0.75rem' }}>
-          <FieldGroup label="subject name">
+          <FieldGroup label="subject name" hint="the headline, and what a shared link says">
             <input value={memorial.subjectName} placeholder="Ellen Vance"
               onChange={e => set('subjectName', e.target.value)} style={inputStyle} />
+          </FieldGroup>
+          <FieldGroup
+            label="short name"
+            hint={`what to call ${memorial.subjectName || 'her'} in the questions — blank uses “${(memorial.subjectName || '').trim().split(/\s+/)[0] || 'the first word'}”`}
+          >
+            <input
+              value={memorial.shortName || ''}
+              placeholder={(memorial.subjectName || '').trim().split(/\s+/)[0] || 'Ellen'}
+              onChange={e => set('shortName', e.target.value)}
+              style={inputStyle}
+            />
           </FieldGroup>
           <PhotoField
             url={memorial.subjectPhotoUrl}
@@ -547,25 +599,30 @@ function MemorialFields({
 
       <Section title="Starting vocabulary">
         <p style={{ fontSize: '0.75rem', color: 'var(--ink-light)', margin: '0 0 0.75rem', maxWidth: '32rem' }}>
-          One per line. These answer the two questions the compose form asks — <em>role</em> answers
-          &ldquo;Who was {memorial.subjectName || 'she'} in this story?&rdquo; and{' '}
-          <em>experience</em> answers &ldquo;What was this an experience of?&rdquo;. The most-used
+          {/* Every space that touches a tag or an expression is written as
+              {' '} on purpose. Left as plain source whitespace it disappears
+              from the rendered text here — "rolefills both", "Ellen Vancewas". */}
+          One per line. These answer the two questions the compose form asks —{' '}
+          <em>role</em>{' '}answers &ldquo;Who was{' '}
+          {memorial.shortName || (memorial.subjectName || '').trim().split(/\s+/)[0] || 'she'}{' '}
+          in this story?&rdquo; and{' '}
+          <em>experience</em>{' '}answers &ldquo;What was this an experience of?&rdquo;. The most-used
           few appear on the form itself, so put the likeliest answers here. Contributors add their
           own words from here, so this only has to be good enough to show people the shape of an
           answer. Adding a line here makes it appear in the picker immediately; removing one leaves
           any memory already using it untouched.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(16rem, 1fr))', gap: '0.75rem' }}>
-          <FieldGroup label="role tags">
-            <textarea value={lines(memorial.seedRoleTags)} rows={8}
-              onChange={e => set('seedRoleTags', toLines(e.target.value))}
-              style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }} />
-          </FieldGroup>
-          <FieldGroup label="experience tags">
-            <textarea value={lines(memorial.seedExperienceTags)} rows={8}
-              onChange={e => set('seedExperienceTags', toLines(e.target.value))}
-              style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }} />
-          </FieldGroup>
+          <LinesField
+            label="role tags"
+            value={memorial.seedRoleTags}
+            onChange={v => set('seedRoleTags', v)}
+          />
+          <LinesField
+            label="experience tags"
+            value={memorial.seedExperienceTags}
+            onChange={v => set('seedExperienceTags', v)}
+          />
         </div>
       </Section>
 
