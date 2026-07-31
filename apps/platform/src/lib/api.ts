@@ -53,3 +53,40 @@ export async function apiFetch(
   }
   return res.json();
 }
+
+// Sends a memorial's subject photo to this app's own /api/memorial-photo,
+// which stores it in Vercel Blob and hands back the public URL. Separate from
+// apiFetch because it posts multipart to Next rather than JSON to the backend
+// — but it reads the same session, so an operator whose token expired mid-edit
+// lands on the login form here too rather than getting a bare 401.
+export async function uploadMemorialPhoto(
+  file: Blob,
+  { instanceId, slug, filename }: { instanceId: string; slug: string; filename: string },
+): Promise<string> {
+  const token = storedToken();
+  if (!token) {
+    signOutAndRedirect();
+    throw new Error('Your session has expired. Please sign in again.');
+  }
+
+  const form = new FormData();
+  form.append('file', file, filename);
+  form.append('instanceId', instanceId);
+  form.append('slug', slug);
+
+  // No Content-Type header: the browser has to set it, boundary and all.
+  const res = await fetch('/api/memorial-photo', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    signOutAndRedirect();
+    throw new Error('Your session has expired. Please sign in again.');
+  }
+
+  const data = await res.json().catch(() => ({ error: res.statusText }));
+  if (!res.ok) throw new Error(data.error || 'Upload failed');
+  return data.url as string;
+}

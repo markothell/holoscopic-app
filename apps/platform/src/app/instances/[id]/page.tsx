@@ -4,7 +4,8 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, uploadMemorialPhoto } from '@/lib/api';
+import { prepareImage } from '@/lib/image';
 
 interface HolonConfig { startingStake: number; nominationCost: number; supportCost: number; algorithmPublishCost: number; sessionHostReward: number; sessionParticipantReward: number; topicQuorumReward: number; algorithmRoyaltyPercent: number; forkRoyaltyDecayPercent: number; forkDepthCap: number; }
 interface QuorumConfig { topicSupportThreshold: number; topicWindowHours: number; inquiryMinParticipants: number; frameVoteThreshold: number; algorithmSessionQuorum: number; algorithmProposalWindowHours: number; }
@@ -261,7 +262,12 @@ export default function EditInstancePage({ params }: { params: Promise<{ id: str
 
         {tab === 'config' && isMemorial && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            <MemorialFields memorial={memorial} setMemorial={setMemorial} slug={instance.slug} />
+            <MemorialFields
+              memorial={memorial}
+              setMemorial={setMemorial}
+              slug={instance.slug}
+              instanceId={instance.id}
+            />
           </div>
         )}
 
@@ -367,6 +373,111 @@ const primaryBtn: React.CSSProperties = {
   background: 'var(--ink)', color: '#fff', fontWeight: 600, fontSize: '0.8rem',
 };
 
+// The subject photo: choose a file, or paste a URL if the photo already lives
+// somewhere. Both write the same one field, and neither saves anything on its
+// own — Save is still Save.
+//
+// A chosen file is downscaled in the browser (lib/image.ts) and then posted to
+// /api/memorial-photo, which puts it in Vercel Blob. Pasting a URL used to be
+// the only way, which meant the person setting up a memorial had to go and find
+// image hosting first, on the day they were least able to.
+function PhotoField({
+  url, onChange, instanceId, slug,
+}: {
+  url: string;
+  onChange: (url: string) => void;
+  instanceId: string;
+  slug: string;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function choose(file: File | undefined) {
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { blob, filename } = await prepareImage(file);
+      onChange(await uploadMemorialPhoto(blob, { instanceId, slug, filename }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+      <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-light)' }}>
+        photo
+      </span>
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {url ? (
+          <img
+            src={url}
+            alt=""
+            style={{
+              width: 72, height: 72, objectFit: 'cover', borderRadius: 6,
+              border: '1px solid var(--border)', flexShrink: 0,
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: 72, height: 72, borderRadius: 6, flexShrink: 0,
+              border: '1px dashed var(--border)', background: '#fff',
+            }}
+          />
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: 0, flex: 1 }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <label
+              style={{
+                ...primaryBtn,
+                display: 'inline-block',
+                cursor: busy ? 'default' : 'pointer',
+                opacity: busy ? 0.5 : 1,
+              }}
+            >
+              {busy ? 'Uploading…' : url ? 'Replace photo' : 'Choose a photo'}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={busy}
+                onChange={e => { void choose(e.target.files?.[0]); e.target.value = ''; }}
+                style={{ display: 'none' }}
+              />
+            </label>
+            {url && !busy && (
+              <button
+                type="button"
+                onClick={() => onChange('')}
+                style={{ ...primaryBtn, background: 'transparent', color: 'var(--ink-light)', border: '1px solid var(--border)' }}
+              >
+                Remove
+              </button>
+            )}
+          </div>
+
+          <input
+            value={url}
+            placeholder="…or paste a URL"
+            onChange={e => onChange(e.target.value)}
+            style={{ ...inputStyle, fontSize: '0.75rem' }}
+          />
+        </div>
+      </div>
+
+      {error && (
+        <p style={{ fontSize: '0.75rem', color: 'var(--accent)', margin: 0 }}>{error}</p>
+      )}
+    </div>
+  );
+}
+
 // ── Chorus memorial ─────────────────────────────────────────────────────────
 // Where the memorial and curate links point. One deployed Chorus frontend
 // serves every memorial, addressed by /c/<slug> — so this is a single value,
@@ -378,11 +489,13 @@ const CHORUS_URL = process.env.NEXT_PUBLIC_CHORUS_URL || 'https://chorus.holosco
 // migration, because the frontend reads every one of them from GET /config at
 // request time (apps/chorus/PLAN.md §11, D11).
 function MemorialFields({
-  memorial, setMemorial, slug,
+  memorial, setMemorial, slug, instanceId,
 }: {
   memorial: MemorialConfig | null;
   setMemorial: (fn: (m: MemorialConfig | null) => MemorialConfig | null) => void;
   slug: string;
+  /** Proves to /api/memorial-photo that the uploader is an admin. */
+  instanceId: string;
 }) {
   // Creating an instance with app &ldquo;Chorus&rdquo; provisions all of this,
   // so an empty block means the instance was switched to Chorus by hand and
@@ -414,10 +527,12 @@ function MemorialFields({
             <input value={memorial.subjectName} placeholder="Ellen Vance"
               onChange={e => set('subjectName', e.target.value)} style={inputStyle} />
           </FieldGroup>
-          <FieldGroup label="photo url">
-            <input value={memorial.subjectPhotoUrl} placeholder="https://…"
-              onChange={e => set('subjectPhotoUrl', e.target.value)} style={inputStyle} />
-          </FieldGroup>
+          <PhotoField
+            url={memorial.subjectPhotoUrl}
+            onChange={url => set('subjectPhotoUrl', url)}
+            instanceId={instanceId}
+            slug={slug}
+          />
           <FieldGroup label="lifespan (free text, optional)">
             <input value={memorial.lifespan} placeholder="1941 – 2024"
               onChange={e => set('lifespan', e.target.value)} style={inputStyle} />
@@ -432,11 +547,13 @@ function MemorialFields({
 
       <Section title="Starting vocabulary">
         <p style={{ fontSize: '0.75rem', color: 'var(--ink-light)', margin: '0 0 0.75rem', maxWidth: '32rem' }}>
-          One per line. These seed the two blanks in the prompt — <em>role</em> fills both
-          &ldquo;{memorial.subjectName || 'she'} was ___&rdquo; and &ldquo;I was ___&rdquo;.
-          Contributors add their own words from here, so this only has to be good enough to show
-          people the shape of an answer. Adding a line here makes it appear in the picker
-          immediately; removing one leaves any memory already using it untouched.
+          One per line. These answer the two questions the compose form asks — <em>role</em> answers
+          &ldquo;Who was {memorial.subjectName || 'she'} in this story?&rdquo; and{' '}
+          <em>experience</em> answers &ldquo;What was this an experience of?&rdquo;. The most-used
+          few appear on the form itself, so put the likeliest answers here. Contributors add their
+          own words from here, so this only has to be good enough to show people the shape of an
+          answer. Adding a line here makes it appear in the picker immediately; removing one leaves
+          any memory already using it untouched.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(16rem, 1fr))', gap: '0.75rem' }}>
           <FieldGroup label="role tags">

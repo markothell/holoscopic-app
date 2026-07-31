@@ -8,13 +8,34 @@ Admin app for managing instances. Runs on port 3002. See root `CLAUDE.md` for mo
 apps/platform/
 └── src/
     ├── app/
+    │   ├── api/memorial-photo/  # the one server route — Blob upload for Chorus subject photos
     │   ├── login/
-    │   └── instances/       # list, new, [id]
+    │   └── instances/           # list, new, [id]
     ├── contexts/
     │   └── AuthContext.tsx
     └── lib/
-        └── api.ts
+        ├── api.ts
+        └── image.ts             # browser downscale, run before any photo upload
 ```
+
+## The one server route: `/api/memorial-photo`
+
+Chorus memorials get their subject photo here. The file is downscaled to 1600px in the browser
+(`lib/image.ts`), posted as multipart, and written to Vercel Blob at
+`memorial/<slug>/photo/…`; the returned URL fills the photo field, and **Save is still what
+persists it**. Pasting a URL writes the same field and still works.
+
+- **It requires `BLOB_READ_WRITE_TOKEN`**, which in production comes from *connecting* the
+  `chorus-memories` Blob store to this Vercel project — the same store the Chorus app uses. A store
+  connected to nothing leaves production with no token while local dev keeps working from
+  `.env.local`, so the route answers a named **503** rather than a generic 500.
+- **It is admin-gated by spending the caller's own bearer token** on `GET /api/instances/:id`,
+  which already sits behind `requireAdmin`. There is one definition of "admin" and it re-reads the
+  User row, so a demoted admin cannot still upload. A 404 from that call is reported as a missing
+  instance, never as "sign in required" — sending an operator to re-authenticate over a problem
+  login cannot fix is its own bug.
+- **It does NOT go to the Render backend.** That service has no persistent disk in `render.yaml`,
+  so anything written to its filesystem is gone at the next deploy (apps/chorus/PLAN.md D13).
 
 ## Auth
 
