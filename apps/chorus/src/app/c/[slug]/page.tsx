@@ -6,6 +6,7 @@ import FilterRail from '@/components/tags/FilterRail';
 import TagPortrait from '@/components/tags/TagPortrait';
 import SortBar from '@/components/tags/SortBar';
 import LiveWall from '@/components/LiveWall';
+import MemorialFooter from '@/components/MemorialFooter';
 import { activeTagIds, activeSort } from '@/lib/filters';
 import type { ConfigResponse, WallResponse } from '@/lib/types';
 
@@ -41,14 +42,28 @@ export default async function MemorialWall({
   } catch {
     // An error page here is a dead end for someone who was invited to
     // contribute, so it says what to do next rather than what went wrong.
+    //
+    // The retry is a plain <a> to this same URL, not a button: this is a Server
+    // Component and the thing that just failed was a server fetch, so a full
+    // request is exactly what has to happen again. It also means the recovery
+    // works with no JavaScript at all — which is the state a phone on one bar
+    // is closest to. Without it the copy said "try again" while offering no way
+    // to, and a reload was the visitor's problem to think of.
     return (
       <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 text-center">
         <p className="voice text-[1.25rem] text-ink-soft">
           These memories can&apos;t be reached right now.
         </p>
         <p className="mt-2 text-[0.9375rem] text-ink-faint">
-          Try again in a moment — nothing has been lost.
+          Nothing has been lost.
         </p>
+        <a
+          href={base}
+          className="mt-7 w-full rounded-[3px] bg-dial px-5 py-3.5 text-[1rem] font-medium
+                     text-card-raised"
+        >
+          Try again
+        </a>
       </main>
     );
   }
@@ -166,6 +181,8 @@ export default async function MemorialWall({
       </section>
 
       <TagPortrait base={base} tags={config.tags.role} subjectName={name} params={params} />
+
+      <MemorialFooter />
     </main>
   );
 }

@@ -9,6 +9,7 @@ import LiveWall from '@/components/LiveWall';
 import ReportMemory from '@/components/ReportMemory';
 import { ApiError } from '@/services/api';
 import type { Memory } from '@/lib/types';
+import MemorialFooter from '@/components/MemorialFooter';
 
 // One memory, at full size, with everything linked to it.
 //
@@ -199,6 +200,8 @@ export default async function MemoryPage({
           }}
         />
       </div>
+
+      <MemorialFooter />
     </main>
   );
 }

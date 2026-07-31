@@ -61,6 +61,8 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
   // Set while the automatic second attempt is in flight, so a dropped
   // connection resolves itself without the contributor reading an error at all.
   const [retrying, setRetrying] = useState(false);
+  // What the share button did, on browsers with no share sheet to speak for it.
+  const [shareState, setShareState] = useState<'idle' | 'copied' | 'copy-failed'>('idle');
 
   // A recording that reached Blob but whose memory failed to save. Keeping it
   // means a retry posts the URL it already has rather than pushing three
@@ -246,11 +248,27 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
       text: `I left a memory of ${fullName}. Add yours.`,
       url,
     };
+    // The share sheet is its own confirmation; copying to the clipboard is
+    // silent. Without this, tapping the primary button on the post-submit
+    // screen in any browser without navigator.share — desktop Firefox, older
+    // Safari — looks like nothing happened, on the one screen that decides
+    // whether the memorial spreads.
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // A cancelled share sheet is a normal outcome, not a failure.
+      }
+      return;
+    }
+
     try {
-      if (navigator.share) await navigator.share(shareData);
-      else await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(url);
+      setShareState('copied');
     } catch {
-      // A cancelled share sheet is a normal outcome, not a failure.
+      // Clipboard access can be denied outright. Saying so is better than
+      // showing a success the visitor cannot check.
+      setShareState('copy-failed');
     }
   }
 
@@ -310,6 +328,15 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
             >
               Send this to someone who knew {name}
             </button>
+            {/* Only ever set where there is no share sheet to confirm for
+                itself — aria-live so it is announced rather than only seen. */}
+            {shareState !== 'idle' && (
+              <p className="mt-2 text-[0.875rem] text-ink-faint" aria-live="polite">
+                {shareState === 'copied'
+                  ? 'Link copied — paste it into a message.'
+                  : 'Copy the link from your address bar to send it.'}
+              </p>
+            )}
             <button
               type="button"
               onClick={finish}
