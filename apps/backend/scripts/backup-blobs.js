@@ -58,8 +58,12 @@ const DRY = process.argv.includes('--dry-run');
 // is right within one environment — a removed memory should drop out — and
 // destructive across two: a dev sweep would erase production's record, and the
 // next production run would see three-year-old losses as brand new and page for
-// all of them. Give each environment its own prefix and they never touch.
-const STATUS_KEY = `status/${(process.env.BACKUP_BLOB_PREFIX || 'blob')}-gone.json`;
+// all of them.
+//
+// A function rather than a constant, because utils/backupNamespace derives that
+// prefix from the cluster once main() knows which one it is. A module-scope
+// constant would have been frozen before that ran.
+const statusKey = () => `status/${process.env.BACKUP_BLOB_PREFIX || 'blob'}-gone.json`;
 
 // The set of objects already known to be unreachable. A missing document is the
 // normal first run, not an error — but any OTHER read failure is fatal, because
@@ -68,12 +72,12 @@ const STATUS_KEY = `status/${(process.env.BACKUP_BLOB_PREFIX || 'blob')}-gone.js
 async function loadGone(s3, bucket) {
   const { GetObjectCommand } = require('@aws-sdk/client-s3');
   try {
-    const obj = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: STATUS_KEY }));
+    const obj = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: statusKey() }));
     const parsed = JSON.parse(await obj.Body.transformToString());
     return parsed.gone || {};
   } catch (err) {
     if (err.name === 'NoSuchKey' || err.name === 'NotFound') return {};
-    throw new Error(`could not read ${STATUS_KEY}: ${err.name} — ${err.message}`);
+    throw new Error(`could not read ${statusKey()}: ${err.name} — ${err.message}`);
   }
 }
 
@@ -81,7 +85,7 @@ async function saveGone(s3, bucket, gone) {
   const { PutObjectCommand } = require('@aws-sdk/client-s3');
   await s3.send(new PutObjectCommand({
     Bucket: bucket,
-    Key: STATUS_KEY,
+    Key: statusKey(),
     Body: JSON.stringify({ updatedAt: new Date().toISOString(), count: Object.keys(gone).length, gone }, null, 2),
     ContentType: 'application/json',
   }));
@@ -116,6 +120,14 @@ async function main() {
   if (!uri) throw new Error('MONGODB_URI_BACKUP (or MONGODB_URI) not set');
   const host = uri.match(/@([^/?]+)/)?.[1];
   console.log(`cluster: ${host}  (${envFile})`);
+
+  // Before anything computes a key. mirror.keyFor(), loadGone() and saveGone()
+  // all read the prefix from the environment, and this is what decides it —
+  // from the cluster above rather than from whatever the variables happen to
+  // say, so a rebuilt .env.local cannot point a dev sweep at production's
+  // record of which recordings are lost.
+  require('../utils/backupNamespace').apply({ uri });
+
   console.log(DRY ? 'mode: DRY RUN — copying nothing\n' : 'mode: copy what is missing\n');
 
   await mongoose.connect(uri);
@@ -146,7 +158,7 @@ async function main() {
   const bucket = mirror.config().bucket;
   const previous = await loadGone(s3, bucket);
   const knownGone = Object.keys(previous).length;
-  if (knownGone) console.log(`${knownGone} object(s) already recorded as gone in ${STATUS_KEY}\n`);
+  if (knownGone) console.log(`${knownGone} object(s) already recorded as gone in ${statusKey()}\n`);
 
   if (DRY) {
     for (const t of targets) {
@@ -204,7 +216,7 @@ async function main() {
   }
 
   if (stillGone.length) {
-    console.log(`⚠️  ${stillGone.length} recording(s) remain unrecoverable — see ${STATUS_KEY}`);
+    console.log(`⚠️  ${stillGone.length} recording(s) remain unrecoverable — see ${statusKey()}`);
   }
   console.log('✅ every reachable recording and photo has an off-site copy');
   await heartbeat(true, `${targets.length} objects, ${tally.copied} new, ${stillGone.length} gone`);

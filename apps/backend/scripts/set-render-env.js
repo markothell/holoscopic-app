@@ -28,7 +28,20 @@
 // restart, and see root CLAUDE.md § Working in a Shared Tree for what that
 // costs everyone else.
 const path = require('node:path');
-require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
+const here = f => path.join(__dirname, '..', f);
+
+// .env.production FIRST, then .env.local. dotenv does not overwrite a variable
+// that is already set, so production values win — which is what this script is
+// for, since it configures production services.
+//
+// The order matters more than it looks. MONGODB_URI_BACKUP and
+// BACKUP_HEARTBEAT_URL point at the live cluster and the live alarm, so they
+// live in .env.production and NOT in .env.local: a dev file holding them
+// redirects every local script run at production, and a local run then pings
+// the production heartbeat and hides a dead cron. .env.local supplies only
+// RENDER_API_KEY and the dev-side prefixes.
+require('dotenv').config({ path: here('.env.production') });
+require('dotenv').config({ path: here('.env.local') });
 
 const WRITE = process.argv.includes('--write');
 const API = 'https://api.render.com/v1';

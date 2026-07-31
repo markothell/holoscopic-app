@@ -81,6 +81,12 @@ async function main() {
   const dbName = (uri.match(/\/([^/?]+)(\?|$)/) || [])[1] || 'holoscopic-db';
   const heartbeatUrl = process.env.BACKUP_HEARTBEAT_URL || null;
 
+  // Decide the prefix from the cluster, not from a variable. Both clusters are
+  // called holoscopic-db, so without this a dev dump overwrites production's
+  // latest.json — the pointer somebody follows during a restore. Throws rather
+  // than guessing when NODE_ENV claims production and the host disagrees.
+  require('../utils/backupNamespace').apply({ uri });
+
   requireMongodump();
 
   const bucket = requireEnv('BACKUP_S3_BUCKET');
@@ -182,4 +188,14 @@ async function main() {
   }
 }
 
-main();
+// The inner try/catch covers the dump and upload. This covers everything
+// BEFORE it — most importantly utils/backupNamespace refusing to run when
+// NODE_ENV claims production and the cluster disagrees. Without it that
+// refusal printed a raw stack trace and pinged nothing, so the one failure
+// designed to be loud was the one the dead-man's switch never heard about
+// until the grace window expired.
+main().catch(async (err) => {
+  console.error('\n❌ backup FAILED:', err.message);
+  await heartbeat(process.env.BACKUP_HEARTBEAT_URL, false, err.message);
+  process.exit(1);
+});
