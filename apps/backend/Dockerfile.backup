@@ -27,10 +27,21 @@ WORKDIR /app
 COPY apps/backend/package.json apps/backend/package-lock.json* ./
 RUN npm install --omit=dev --no-audit --no-fund
 
+# scripts/backup-blobs.js reads the database to learn which recordings SHOULD
+# exist, so the models and the mirror util travel with it. Without these the
+# cron image builds fine and fails at 07:00 with a module-not-found.
 COPY apps/backend/scripts ./scripts
+COPY apps/backend/models ./models
+COPY apps/backend/utils ./utils
 
 # Fail the BUILD if mongodump is missing, so a broken image never reaches the
 # schedule and starts silently "succeeding".
 RUN mongodump --version
 
-CMD ["node", "scripts/backup-mongo.js"]
+# Both backups, every night, independently reported.
+#
+# Run unconditionally rather than chained with && — a failing mongodump must
+# not also skip the media copy and hide a second problem behind the first. The
+# exit code is the worse of the two, so the cron's dead-man's-switch fires if
+# EITHER half failed.
+CMD ["sh", "-c", "node scripts/backup-mongo.js; m=$?; node scripts/backup-blobs.js; b=$?; [ $m -gt $b ] && exit $m || exit $b"]

@@ -377,6 +377,13 @@ function loadAPIRoutes() {
       require('./utils/memories').setTranscriber(
         require('./utils/memorialTranscribe').requestTranscript,
       );
+      // Off-site copy of the recording, injected the same way. Until this
+      // runs a voice exists only in Vercel Blob, and a deleted store takes it
+      // with no way back. scripts/backup-blobs.js sweeps up whatever this
+      // drops.
+      require('./utils/memories').setBlobMirror(
+        require('./utils/blobMirror').mirrorMemory,
+      );
       app.use('/api/memorial', memorialWriteLimiter, memorialRoutes);
 
       // Terminal handlers, registered last so they sit behind every route.
@@ -492,6 +499,11 @@ if (process.env.MONGODB_URI) {
 // recording and waiting. Same reasoning that put authConfigured here.
 const { isAuthConfigured } = require('./middleware/verifyUser');
 const { readiness: transcriptionReadiness } = require('./utils/memorialTranscribe');
+// `mediaBackup` follows the same rule as `transcription`: reported, never
+// gating. An unmirrored recording is not a reason to take the platform down —
+// but a mirror that has quietly stopped is invisible until the day the bytes
+// are needed, which is the worst possible day to find out.
+const { readiness: mediaBackupReadiness } = require('./utils/blobMirror');
 
 app.get('/health', (req, res) => {
   const capacityStatus = connectionCount >= MAX_CONNECTIONS ? 'full' :
@@ -507,6 +519,7 @@ app.get('/health', (req, res) => {
     apiRoutesLoaded,
     authConfigured,
     transcription: transcriptionReadiness(),
+    mediaBackup: mediaBackupReadiness(),
     connections: connectionCount,
     capacity: {
       current: connectionCount,

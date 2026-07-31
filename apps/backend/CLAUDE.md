@@ -17,6 +17,7 @@ Express + Socket.IO + Mongoose server. Single entry point: `websocket-server.js`
 | `models/Sequence.js` | Ordered collection of activities with members and round visibility |
 | `models/Instance.js` | Per-deployment config: which `app` it belongs to, holons, quorum, domains, access |
 | `utils/memorialDefaults.js` | What a new Chorus memorial starts life with — shared by `POST /instances` and `scripts/seed-memorial.js` so both make the same product |
+| `utils/blobMirror.js` | Off-site copy of Chorus media. Vercel Blob has no snapshots or undelete, so recordings are mirrored to the backup bucket on write and reconciled nightly |
 | `models/InstanceMembership.js` | Per-user per-instance Holon balance |
 | `models/Topic.js` | Community topic nominations with supporter wager system |
 | `models/Algorithm.js` | Published conversation patterns with fork lineage |
@@ -37,6 +38,7 @@ without exercising the feature:
 | `mongodb`, `apiRoutesLoaded` | yes → 503 | Routes never mounted; every `/api` 404s |
 | `authConfigured` | yes → 503 | No token secret, so every identity-bearing write 503s while reads look fine |
 | `transcription` | **no** | `ready` \| `no-api-key` \| `no-secret` \| `no-callback-url` |
+| `mediaBackup` | **no** | `ready` \| `no-bucket` \| `no-credentials` — whether recordings get an off-site copy |
 
 The rule for adding a field: **gate health on it only if the platform is broken without it.**
 Chorus transcription is optional by design — audio records and plays without it — so it is

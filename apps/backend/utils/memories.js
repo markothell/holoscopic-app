@@ -95,6 +95,33 @@ function fireTranscription(memory) {
     .catch(err => console.error('[memories] transcription hook failed:', err.message));
 }
 
+// ── Off-site copy hook ──────────────────────────────────────────────────────
+// Same injection shape as the transcriber, and for the same reason: this file
+// must not import an S3 client. Wired in websocket-server.js to
+// utils/blobMirror.js#mirrorMemory.
+//
+// A recording lives in exactly one place — Vercel Blob — until this runs, and
+// a deleted store takes it with no repair path. Firing here rather than only
+// in the nightly sweep is what closes the gap for somebody who records once
+// and never comes back; scripts/backup-blobs.js is the backstop that catches
+// whatever this drops.
+//
+// Fire-and-forget for the same reason transcription is: a backup is a
+// nice-to-have at submit time, and a memory is not. Nothing here may reach the
+// person who just pressed Share.
+let blobMirror = null;
+
+function setBlobMirror(fn) {
+  blobMirror = fn;
+}
+
+function fireBlobMirror(memory) {
+  if (!blobMirror || !memory?.body?.audio?.url) return;
+  Promise.resolve()
+    .then(() => blobMirror({ memory }))
+    .catch(err => console.error('[memories] blob mirror hook failed:', err.message));
+}
+
 // ── Store: default Mongoose-backed implementation ───────────────────────────
 const mongoStore = {
   async getInstance(instanceId) { return Instance.findOne({ id: instanceId }); },
@@ -549,6 +576,7 @@ async function createMemory({
   });
 
   fireTranscription(memory);
+  fireBlobMirror(memory);
   return memory;
 }
 
@@ -860,6 +888,7 @@ async function getMemoryWithThread({
 module.exports = {
   setIO,
   setTranscriber,
+  setBlobMirror,
   syncThreadCount,
   SORTS,
   DEFAULT_SORT,

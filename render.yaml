@@ -72,6 +72,24 @@ services:
       # recording and waiting to see if text appears.
       - key: DEEPGRAM_API_KEY
         sync: false
+      # ── Off-site media copy (utils/blobMirror.js) ───────────────────────
+      # The SAME bucket the nightly cron writes to. Set here as well so a
+      # recording is copied the moment it is made rather than waiting until
+      # 07:00 — for a contributor who records once and never returns, that
+      # window is the entire risk.
+      #
+      # Unset = no mirroring, reported by /health as `mediaBackup`. Recording
+      # still works; the voice just lives in one place.
+      - key: BACKUP_S3_BUCKET
+        sync: false
+      - key: BACKUP_S3_ENDPOINT
+        sync: false
+      - key: BACKUP_S3_REGION
+        sync: false
+      - key: BACKUP_S3_ACCESS_KEY_ID
+        sync: false
+      - key: BACKUP_S3_SECRET_ACCESS_KEY
+        sync: false
       # Optional. Error reporting (observability.js). Unset = disabled, no
       # behaviour change. Request bodies, headers and cookies are never sent,
       # and /api/memorial context is withheld entirely — Chorus stores stories
@@ -79,12 +97,22 @@ services:
       - key: SENTRY_DSN
         sync: false
 
-  # Off-site logical backup, daily at 07:00 UTC.
+  # Off-site backup, daily at 07:00 UTC. TWO jobs in one image:
+  #   scripts/backup-mongo.js  → mongodump of the database
+  #   scripts/backup-blobs.js  → every recording and subject photo the database
+  #                              references, copied to the same bucket
   #
-  # Atlas M10 continuous backup + PITR is the primary recovery path. This is
-  # the independent second copy: Atlas snapshots live in the same Atlas
-  # account, so they do not survive account compromise, an accidentally
-  # deleted cluster, or somebody running reset-db-for-launch.js against prod.
+  # Atlas M10 continuous backup + PITR is the primary recovery path for the
+  # DATABASE. This is the independent second copy: Atlas snapshots live in the
+  # same Atlas account, so they do not survive account compromise, an
+  # accidentally deleted cluster, or somebody running reset-db-for-launch.js
+  # against prod.
+  #
+  # Vercel Blob has NO equivalent — no snapshots, no versioning, no undelete.
+  # Until backup-blobs.js ran, every recorded voice in Chorus existed in exactly
+  # one place, and a deleted store took it with the Memory documents left
+  # behind pointing at nothing. utils/blobMirror.js also copies each recording
+  # on write; this sweep is the backstop that catches what that missed.
   #
   # A separate service, not a job inside the web process — mongodump competes
   # for the same memory and would die on deploy.
@@ -103,6 +131,14 @@ services:
   #   3. Set BACKUP_HEARTBEAT_URL to a dead-man's-switch (healthchecks.io) so
   #      a MISSING backup pages you. A backup nobody is alerted about is not a
   #      backup.
+  #
+  # The SAME BACKUP_S3_* values belong on the web service too — that is what
+  # lets utils/blobMirror.js copy a recording the moment it is made, instead of
+  # leaving it unprotected until the next 07:00. GET /health reports
+  # `mediaBackup` so you can tell from outside whether it is actually on.
+  #
+  # Restore is scripts/restore-blobs.js. Do a --dry-run once now; a copy nobody
+  # has ever restored from is a guess, not a backup.
   - type: cron
     name: holoscopic-mongo-backup
     runtime: docker

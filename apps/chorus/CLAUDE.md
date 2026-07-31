@@ -148,6 +148,39 @@ Never write `Memory` or `MemoryTag` outside `apps/backend/utils/memories.js`. It
 Funnel functions take an injectable `store` defaulting to `mongoStore`, so `memories.test.js` runs
 under `node --test` with no DB, no Blob, no Deepgram. Keep that when adding functions.
 
+## Where the data lives, and what protects it
+
+| | Holds | Protection |
+|---|---|---|
+| **MongoDB** | `Memory` docs (text, tags, thread, transcript, audio *metadata*), `MemoryTag`, `Instance.config.memorial` | Atlas continuous + PITR, **and** the nightly `mongodump` (`scripts/backup-mongo.js`) |
+| **Vercel Blob** | The bytes — `memorial/<slug>/*.webm` voices, `memorial/<slug>/photo/*` | `utils/blobMirror.js` on write, **and** the nightly sweep (`scripts/backup-blobs.js`) |
+
+That second row is the one that matters. **Vercel Blob has no snapshots, no
+versioning and no undelete**, and a lost recording is a dead person's voice with
+no second take — while a lost `Memory` document costs somebody a paragraph they
+could retype. This has already happened once: three memories survived a store
+deletion with their documents intact and their audio URLs pointing at nothing.
+
+- **On write** — `memories.js#fireBlobMirror` copies the recording seconds after
+  it is created. Fire-and-forget, structurally unable to fail a submission, same
+  contract as the transcription hook. It exists because the person who records
+  once and never returns is the whole risk the nightly sweep alone leaves open.
+- **Nightly** — `scripts/backup-blobs.js` walks the database for what *should*
+  exist and copies whatever is missing, recordings and subject photos alike. The
+  database is the source of truth for what to keep; an unreferenced object is an
+  abandoned draft.
+- **Restore** — `scripts/restore-blobs.js`. Run `--dry-run` once before you need
+  it. It re-uploads at the same pathname and **rewrites `Memory.body.audio.url`**,
+  which is the step a naive backup forgets: the store id is baked into the
+  hostname, so a restore into a new store leaves every document pointing at the
+  old one.
+- **`GET /health` reports `mediaBackup`** — `ready` | `no-bucket` |
+  `no-credentials`. A mirror that has quietly stopped is invisible until the day
+  the bytes are needed.
+
+All of it is configured from the `BACKUP_S3_*` variables `backup-mongo.js`
+already needs; set them on the **web service** too, or only the nightly half runs.
+
 ## Gotchas
 
 - **Resolve the three tag slots sequentially, sharing one cache.** `subjectTags` and `selfTags`
