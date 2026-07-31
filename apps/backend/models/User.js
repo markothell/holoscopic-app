@@ -87,6 +87,25 @@ const userSchema = new mongoose.Schema({
     default: false
   },
 
+  // Self-serve password reset (routes/auth.js).
+  //
+  // The HASH of the token, never the token — a reset link is a bearer
+  // credential for the account, so a database read must not be enough to mint
+  // one. Same reason the password field beside it is bcrypted.
+  //
+  // SHA-256 rather than bcrypt here on purpose: this value is 32 bytes of
+  // crypto randomness with a 60-minute life, so there is nothing to brute
+  // force, and the lookup has to be an indexed equality match on a field
+  // nobody has the plaintext of.
+  resetTokenHash: {
+    type: String,
+    index: true
+  },
+
+  resetTokenExpiresAt: {
+    type: Date
+  },
+
   // Migration support: link old localStorage IDs to new accounts
   legacyUserIds: [{
     type: String
@@ -132,10 +151,16 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Don't return password in JSON
+// Don't return password in JSON.
+//
+// The reset fields go with it: resetTokenHash is not the token, but publishing
+// it and its expiry tells anyone reading a user payload that a reset is
+// currently outstanding, which is the half of the secret they don't have.
 userSchema.methods.toJSON = function() {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.resetTokenHash;
+  delete obj.resetTokenExpiresAt;
   return obj;
 };
 

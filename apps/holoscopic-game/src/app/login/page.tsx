@@ -10,6 +10,10 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  // /signup and /reset-password both hand off here with ?message= after doing
+  // their work. Nothing rendered it, so "Account created. Please sign in."
+  // arrived as a blank sign-in form and read as the signup having failed.
+  const message = searchParams.get('message');
   const { data: session, status } = useSession();
 
   const [email, setEmail] = useState('');
@@ -79,6 +83,8 @@ function LoginForm() {
         <div className={styles.card}>
           <h1 className={styles.cardTitle}>Sign In</h1>
 
+          {message && <div className={styles.notice}>{message}</div>}
+
           <form onSubmit={handleSubmit} className={styles.form}>
             <div>
               <label htmlFor="email" className={styles.fieldLabel}>
@@ -123,6 +129,12 @@ function LoginForm() {
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
+
+          <div className={styles.forgot}>
+            <Link href="/forgot-password" className={styles.dividerLink}>
+              Forgot your password?
+            </Link>
+          </div>
 
           <div className={styles.divider}>
             <span className={styles.dividerText}>Don&apos;t have an account? </span>

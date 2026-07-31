@@ -1,4 +1,10 @@
-/* Login — warm editorial */
+/* Credential pages — warm editorial.
+ *
+ * Shared by /forgot-password and /reset-password. It is the same design as
+ * login/page.module.css and signup/page.module.css, which each carry their own
+ * copy; this file exists so the reset pair does not add a third and fourth.
+ * Fold those two in here when something next needs changing across all of them.
+ */
 
 .page {
   --bg: #F7F4EF;
@@ -76,6 +82,13 @@
   text-transform: uppercase;
   letter-spacing: -0.01em;
   color: var(--ink);
+  margin-bottom: 0.75rem;
+}
+
+/* Sits under the title: what this page is for, and what will happen. */
+.lede {
+  color: var(--ink-light);
+  font-size: 1rem;
   margin-bottom: 2rem;
 }
 
@@ -157,22 +170,17 @@
   cursor: not-allowed;
 }
 
-/* Handoff message from /signup or /reset-password (?message=). Deliberately
-   not styled as an error — it reports something that went right. */
-.notice {
-  font-size: 0.95rem;
-  color: var(--ink-light);
-  border-left: 2px solid var(--accent);
-  padding: 0.35rem 0 0.35rem 0.75rem;
-  margin-bottom: 1.5rem;
+/* ---- SENT / CONFIRMATION ---- */
+
+.sent {
+  color: var(--ink);
+  font-size: 1.05rem;
 }
 
-/* ---- FORGOT PASSWORD ---- */
-
-.forgot {
-  text-align: center;
-  margin-top: 1.25rem;
-  font-size: 0.9rem;
+.sentNote {
+  color: var(--ink-light);
+  font-size: 0.95rem;
+  margin-top: 1rem;
 }
 
 /* ---- DIVIDER ---- */

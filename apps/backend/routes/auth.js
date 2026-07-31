@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
@@ -6,6 +7,7 @@ const router = express.Router();
 const User = require('../models/User');
 const InstanceMembership = require('../models/InstanceMembership');
 const { transact } = require('../utils/holons');
+const { sendEmail, appUrl } = require('../utils/email');
 const { requireSelf, requireVerified } = require('../middleware/verifyUser');
 
 const SECRET = process.env.GAME_TOKEN_SECRET || process.env.NEXTAUTH_SECRET || null;
@@ -196,6 +198,162 @@ router.post('/login', loginLimiter, async (req, res) => {
       success: false,
       error: 'Login failed'
     });
+  }
+});
+
+// ── Password reset ────────────────────────────────────────────────────────
+//
+// Before this existed, a user who forgot their password had no way back into
+// their account: the only reset was POST /api/admin/users/:id/reset-password,
+// which is admin-only and hands the new password to the ADMIN in plaintext. So
+// recovery required emailing a human who then had to send a password over the
+// same channel. That endpoint stays as the manual backstop.
+//
+// The token is 32 random bytes; only its SHA-256 lands in the database, so a
+// database read cannot mint a login (see models/User.js).
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+
+function hashResetToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+// Two buckets, because the two ends of this flow are attacked differently.
+//
+// Requesting a reset is an unauthenticated write that sends mail to an address
+// the requester chooses — i.e. a way to make this server email a stranger.
+// The ceiling is per IP-and-email, matching loginLimiter, so one attacker
+// cannot exhaust an office NAT's budget for everyone behind it.
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: isProduction ? 5 : 1000,
+  keyGenerator: (req) => `${ipKeyGenerator(req.ip)}:${String(req.body?.email || '').toLowerCase()}`,
+  // Same body whatever happens — see the enumeration note below. A distinct
+  // 429 here would still be honest: it says the requester asked too often, not
+  // whether the account exists.
+  message: { success: false, error: 'Too many reset requests. Try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Redeeming one is a guessing game against 32 bytes of randomness, which is
+// unwinnable — but an unthrottled endpoint is still free CPU, and this one
+// hashes on every call.
+const resetPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: isProduction ? 20 : 1000,
+  message: { success: false, error: 'Too many attempts. Try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// POST /api/auth/forgot-password — begin a reset.
+//
+// ALWAYS returns the same 200 body, whether or not the address has an account.
+// This endpoint is unauthenticated and anyone may call it, so a response that
+// differed would turn it into a membership oracle: paste a list of addresses,
+// learn which of them are on the platform. That matters more here than on most
+// sites — an account on Holoscopic is tied to what somebody said inside a
+// small group, and the mere fact of membership is part of what they shared.
+//
+// The cost is a real one: a user who mistypes their address gets the same
+// reassuring screen as one who did not, and simply never receives the mail.
+// The copy on /forgot-password says "if there's an account" for that reason.
+router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
+  const accepted = { success: true };
+  try {
+    const cleanEmail = String(req.body?.email || '').trim().toLowerCase();
+    if (cleanEmail.length > EMAIL_MAX || !EMAIL_RE.test(cleanEmail)) {
+      // Even a malformed address gets the accepting response. Rejecting it
+      // would leak nothing about accounts, but it trains a caller to read the
+      // status code, and the next thing they try is a well-formed address.
+      return res.json(accepted);
+    }
+
+    const user = await User.findByEmail(cleanEmail);
+    if (!user || !user.isActive) return res.json(accepted);
+
+    const token = crypto.randomBytes(32).toString('hex');
+    user.resetTokenHash = hashResetToken(token);
+    user.resetTokenExpiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+    await user.save();
+
+    const link = `${appUrl()}/reset-password?token=${token}`;
+    const outcome = await sendEmail({
+      to: user.email,
+      subject: 'Reset your Holoscopic password',
+      text: [
+        `Someone asked to reset the password for this address on Holoscopic.`,
+        ``,
+        `Open this link within the hour to choose a new one:`,
+        link,
+        ``,
+        `If it wasn't you, nothing has changed and you can ignore this. Your`,
+        `current password still works.`,
+      ].join('\n'),
+    });
+
+    // Logged, not returned. The user is told the same thing either way, so
+    // this line is the only place the difference is visible — which makes it
+    // the thing to check when somebody reports the mail never came.
+    if (outcome !== 'sent') {
+      console.warn(`[auth] password reset mail for ${user.email}: ${outcome}`);
+      // Local dev has no Resend key, so without this the reset flow cannot be
+      // walked at all — the token exists only as a hash in the database. Never
+      // in production: this line puts a working credential in the log stream.
+      if (!isProduction) console.log(`[auth] dev reset link: ${link}`);
+    }
+
+    res.json(accepted);
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    // Still accepting: a 500 here is a difference an oracle can measure, and
+    // the user can do nothing with it either way.
+    res.json(accepted);
+  }
+});
+
+// POST /api/auth/reset-password — redeem a token and set a new password.
+//
+// Single use: the token fields are cleared on success, so a link forwarded or
+// left in a mailbox stops working the moment it is used.
+router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
+  try {
+    const { token, password } = req.body || {};
+    if (!token || !password) {
+      return res.status(400).json({ success: false, error: 'Token and password are required' });
+    }
+    // Same rule as signup. Checked before the lookup so a valid token is not
+    // spent on a password that was going to be rejected anyway.
+    if (String(password).length < 8) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+    }
+
+    const user = await User.findOne({
+      resetTokenHash: hashResetToken(String(token)),
+      resetTokenExpiresAt: { $gt: new Date() },
+    });
+    // One message for "wrong token" and "expired token" — the difference is
+    // only useful to somebody who did not receive the mail.
+    if (!user || !user.isActive) {
+      return res.status(400).json({
+        success: false,
+        error: 'This reset link has expired or has already been used. Request a new one.',
+      });
+    }
+
+    user.password = String(password); // the pre-save hook bcrypts it
+    user.resetTokenHash = undefined;
+    user.resetTokenExpiresAt = undefined;
+    await user.save();
+    console.log(`[auth] password reset completed for ${user.email}`);
+
+    // Returned so the client can sign in immediately — whoever holds the link
+    // has proven control of the mailbox, which is the same claim login makes.
+    res.json({ success: true, user: sessionUser(user) });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ success: false, error: 'Failed to reset password' });
   }
 });
 
