@@ -47,7 +47,8 @@ export default function SequenceGraphView({
       const activity = node.data.activity as SequenceActivity;
       const act = activity.activity;
       if (act && activity.openedAt && isEnrolled) {
-        router.push(`/${act.urlName}?sequence=${sequenceId}`);
+        // /a/<urlName> — activities live under /a; a root-level push 404s.
+        router.push(`/a/${act.urlName}?sequence=${sequenceId}`);
       }
     },
     [router, sequenceId, isEnrolled]

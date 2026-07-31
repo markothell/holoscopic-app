@@ -59,7 +59,7 @@ import type { HoloscopicActivity, ResultsViewProps } from '@hs/activities';
 Activities are displayed in two fundamentally different contexts. Always identify which one you're in before changing comment panels, headers, or results layout.
 
 ### 1. ActivityPageModal (`components/ActivityPageModal.tsx`)
-Used for standalone activity pages and sequence activities. Entry point: `/[activityName]` and `/sequence/[urlName]`.
+Used for standalone activity pages and sequence activities. Entry point: `/a/[activityName]` and `/sequence/[urlName]`. **There is no root-level `/[activityName]` route** — this file said there was, and two call sites believed it, so every enrolled member clicking "Participate" in a sequence got a 404.
 - Comment panel header = **"Comments"** (not the commentQuestion — it clutters the space)
 - This is the relationship blueprint / sequence gamespace
 - Touch this file for: sequences, direct activity URLs, the resolve/snapshot/dissolve results views in that context

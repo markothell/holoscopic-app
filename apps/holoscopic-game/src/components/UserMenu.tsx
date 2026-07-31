@@ -12,7 +12,10 @@ function notificationHref(n: AppNotification): string {
   const validRef = n.refId && n.refId !== 'undefined' && n.refId !== 'null';
   if (n.refType === 'topic' && validRef) {
     if (n.type === 'topic_confirmed') return `/create/activity?topicId=${n.refId}`;
-    if (n.type === 'inquiry_linked') return `/inquiry/${n.refId}`;
+    // `inquiry_linked` used to route to /inquiry/<id>, a route that does not
+    // exist in this app — so the notification 404'd. Nothing in the backend
+    // creates one either (the type survives only in Notification.js's enum),
+    // so it falls through to the default below rather than to a dead URL.
   }
   if (n.type === 'algorithm_session_ready' && n.refType === 'sequence' && n.refId) {
     return `/sequence/${n.refId}`;
@@ -339,11 +342,16 @@ export default function UserMenu({ gameLinks }: { gameLinks?: GameLink[] } = {})
             </div>
           )}
 
+          {/* `Create` used to sit between Admin and Settings, pointing at
+              /create — the 2024-era Map + Sequence panel. It was the only
+              creation entry point anywhere in the signed-in UI, so the menu
+              read as though that legacy tool were the platform. Those tools
+              are still live and still reachable, from the /map-sequence lander
+              that already frames them as the original ones. */}
           {[
             { label: 'Profile', path: `/profile/${userId}` },
             { label: 'Dashboard', path: '/dashboard' },
             ...(userRole === 'admin' ? [{ label: 'Admin', path: '/admin' }] : []),
-            { label: 'Create', path: '/create' },
             { label: 'Settings', path: '/settings' },
           ].map((item) => (
             <button

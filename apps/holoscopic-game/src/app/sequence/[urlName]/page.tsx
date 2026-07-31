@@ -475,9 +475,15 @@ export default function SequenceDetailPage() {
                                   </div>
                                 )}
 
+                                {/* /a/<urlName>, not /<urlName>: activities live
+                                    under /a and there is no root dynamic
+                                    segment, so this 404'd for every enrolled
+                                    member who clicked Participate — including
+                                    anyone following the Relationship Blueprint
+                                    demo linked from /map-sequence. */}
                                 {activity && seqActivity.openedAt && isEnrolled && (
                                   <Link
-                                    href={`/${activity.urlName}?sequence=${sequence.id}`}
+                                    href={`/a/${activity.urlName}?sequence=${sequence.id}`}
                                     className={styles.activityLink}
                                   >
                                     {status.text === 'Closed' ? 'View Results →' : 'Participate →'}
