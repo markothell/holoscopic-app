@@ -4,6 +4,7 @@ const Sequence = require('../models/Sequence');
 const Activity = require('../models/Activity');
 const Entry = require('../models/Entry');
 const User = require('../models/User');
+const requireEmailVerified = require('../middleware/requireEmailVerified');
 
 // Positioned-entry count for one activity (a "completed mapping")
 function completedMappings(activityId) {
@@ -516,7 +517,10 @@ router.post('/:id/members', async (req, res) => {
 });
 
 // Enroll in sequence (user self-enrollment)
-router.post('/:id/enroll', async (req, res) => {
+// Enrolling is the one place on this router where somebody asks to be let into
+// a group, so it is where the confirmed-address requirement lands. Reading a
+// public sequence, and every activity inside one, stays open.
+router.post('/:id/enroll', requireEmailVerified, async (req, res) => {
   try {
     const { id } = req.params;
     const { userId, email, displayName } = req.body;

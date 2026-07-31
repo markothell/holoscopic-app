@@ -10,6 +10,7 @@ import { ActivityService } from '@/services/activityService';
 import { InstanceService, JoinedEdition, editionLabel } from '@/services/instanceService';
 import { useAuth } from '@/contexts/AuthContext';
 import UserMenu from '@/components/UserMenu';
+import VerifyEmailNotice from '@/components/VerifyEmailNotice';
 import {
   gameApp, gameEntryUrl, gameProductName, isExternalGame, SPECTRUM_URL, type GameApp,
 } from '@/lib/games';
@@ -191,6 +192,8 @@ export default function DashboardPage() {
         </div>
 
         <div className={styles.divider} />
+
+        <VerifyEmailNotice />
 
         {/* Main Tabs */}
         <div className={styles.tabs}>

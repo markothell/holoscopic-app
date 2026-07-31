@@ -106,6 +106,23 @@ const userSchema = new mongoose.Schema({
     type: Date
   },
 
+  // Email verification (routes/auth.js). Same shape and same reasoning as the
+  // reset pair above: the hash, never the token.
+  //
+  // `emailVerified` predates this by a long way and was never set by anything.
+  // Accounts created before verification existed are stamped true by
+  // scripts/backfill-email-verified.js — an unverifiable account holder who
+  // was already using the platform must not be locked out by a feature that
+  // arrived after them.
+  verifyTokenHash: {
+    type: String,
+    index: true
+  },
+
+  verifyTokenExpiresAt: {
+    type: Date
+  },
+
   // Migration support: link old localStorage IDs to new accounts
   legacyUserIds: [{
     type: String
@@ -161,6 +178,8 @@ userSchema.methods.toJSON = function() {
   delete obj.password;
   delete obj.resetTokenHash;
   delete obj.resetTokenExpiresAt;
+  delete obj.verifyTokenHash;
+  delete obj.verifyTokenExpiresAt;
   return obj;
 };
 

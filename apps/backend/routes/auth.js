@@ -24,7 +24,16 @@ function generateUserId() {
 // lastLoginAt — into the NextAuth JWT on every login, and to anonymous
 // callers on every profile read.
 function sessionUser(user) {
-  return { id: user.id, email: user.email, name: user.name, role: user.role };
+  // emailVerified is additive — the three NextAuth authorize() callbacks named
+  // below read specific fields, so a new one costs them nothing and saves the
+  // client a round trip to find out whether to nag.
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    emailVerified: Boolean(user.emailVerified),
+  };
 }
 
 // What a stranger may see. Deliberately no email and no role: `role` is what
@@ -124,6 +133,12 @@ router.post('/signup', signupLimiter, async (req, res) => {
     const instanceId = req.instanceId || 'default';
     await InstanceMembership.getOrCreate(user.id, instanceId);
 
+    // Verification is sent, never awaited for correctness: the account exists
+    // and works either way, and a Resend outage must not fail a signup. What
+    // it gates is joining something that has a membership — see
+    // middleware/requireEmailVerified.js.
+    await sendVerificationEmail(user);
+
     res.status(201).json({
       success: true,
       user: sessionUser(user)
@@ -214,7 +229,10 @@ router.post('/login', loginLimiter, async (req, res) => {
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
-function hashResetToken(token) {
+// Shared by password reset and email verification. Both store 32 bytes of
+// crypto randomness under SHA-256: nothing to brute force, and the lookup has
+// to be an indexed equality match on a value nobody has the plaintext of.
+function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
@@ -274,7 +292,7 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
     if (!user || !user.isActive) return res.json(accepted);
 
     const token = crypto.randomBytes(32).toString('hex');
-    user.resetTokenHash = hashResetToken(token);
+    user.resetTokenHash = hashToken(token);
     user.resetTokenExpiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
     await user.save();
 
@@ -330,7 +348,7 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
     }
 
     const user = await User.findOne({
-      resetTokenHash: hashResetToken(String(token)),
+      resetTokenHash: hashToken(String(token)),
       resetTokenExpiresAt: { $gt: new Date() },
     });
     // One message for "wrong token" and "expired token" — the difference is
@@ -354,6 +372,130 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ success: false, error: 'Failed to reset password' });
+  }
+});
+
+// ── Email verification ────────────────────────────────────────────────────
+//
+// `User.emailVerified` has existed since the schema was written and nothing
+// ever set it. It is set here now, and it gates ONE thing:
+//
+//   public activities stay open to anyone signed in;
+//   anything that establishes a MEMBERSHIP requires a verified address.
+//
+// That line is deliberate. Blocking play on an email that landed in a spam
+// folder is a bad first five minutes, and most of this platform is meant to be
+// walked into. What membership implies is different — a cohort, other people's
+// names, a sequence someone was invited to by address — and an address nobody
+// has proven control of is exactly the wrong basis for that.
+//
+// Enforcement lives in middleware/requireEmailVerified.js, applied where a
+// membership is requested rather than sprinkled through route bodies.
+
+const VERIFY_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Mint a verification token and mail it. Returns the send outcome.
+ *
+ * A whole week, where a password reset gets an hour: the two are asked for at
+ * opposite moments. A reset is requested by somebody sitting at the login
+ * screen right now; a verification arrives unbidden while you are busy, and the
+ * common case is finding it that evening. An expiry short enough to be
+ * routinely missed just teaches people the link never works.
+ */
+async function sendVerificationEmail(user) {
+  const token = crypto.randomBytes(32).toString('hex');
+  user.verifyTokenHash = hashToken(token);
+  user.verifyTokenExpiresAt = new Date(Date.now() + VERIFY_TOKEN_TTL_MS);
+  await user.save();
+
+  const link = `${appUrl()}/verify-email?token=${token}`;
+  const outcome = await sendEmail({
+    to: user.email,
+    subject: 'Confirm your email for Holoscopic',
+    text: [
+      `Welcome to Holoscopic.`,
+      ``,
+      `Confirm this address so you can join games with other people:`,
+      link,
+      ``,
+      `The link works for a week. You can look around without it — this only`,
+      `matters when you go to join something.`,
+    ].join('\n'),
+  });
+  if (outcome !== 'sent') {
+    console.warn(`[auth] verification mail for ${user.email}: ${outcome}`);
+    if (!isProduction) console.log(`[auth] dev verify link: ${link}`);
+  }
+  return outcome;
+}
+
+const resendVerificationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: isProduction ? 5 : 1000,
+  keyGenerator: (req) => `${ipKeyGenerator(req.ip)}:${String(req.body?.email || '').toLowerCase()}`,
+  message: { success: false, error: 'Too many requests. Try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// POST /api/auth/verify-email — redeem a verification token.
+//
+// Idempotent on the happy path: a second click of the same link finds the token
+// already cleared, and rather than an error the caller is told the address is
+// verified, because it is. People forward these to themselves and tap twice.
+router.post('/verify-email', resendVerificationLimiter, async (req, res) => {
+  try {
+    const { token } = req.body || {};
+    if (!token) return res.status(400).json({ success: false, error: 'Token is required' });
+
+    const user = await User.findOne({
+      verifyTokenHash: hashToken(String(token)),
+      verifyTokenExpiresAt: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        error: 'This confirmation link has expired or has already been used.',
+      });
+    }
+
+    user.emailVerified = true;
+    user.verifyTokenHash = undefined;
+    user.verifyTokenExpiresAt = undefined;
+    await user.save();
+    console.log(`[auth] email verified for ${user.email}`);
+
+    res.json({ success: true, user: sessionUser(user) });
+  } catch (error) {
+    console.error('Verify email error:', error);
+    res.status(500).json({ success: false, error: 'Failed to confirm your email' });
+  }
+});
+
+// POST /api/auth/resend-verification — send another confirmation.
+//
+// Same no-enumeration rule as forgot-password: one response for a real address,
+// an unknown one, and an already-verified one alike. This endpoint is
+// unauthenticated, so a response that differed would answer "does this person
+// have an account here" to anyone who asked.
+router.post('/resend-verification', resendVerificationLimiter, async (req, res) => {
+  const accepted = { success: true };
+  try {
+    const cleanEmail = String(req.body?.email || '').trim().toLowerCase();
+    if (cleanEmail.length > EMAIL_MAX || !EMAIL_RE.test(cleanEmail)) return res.json(accepted);
+
+    const user = await User.findByEmail(cleanEmail);
+    // Nothing to do for an unknown account, a disabled one, or one that is
+    // already verified — and all three look identical from outside.
+    if (!user || !user.isActive || user.emailVerified) return res.json(accepted);
+
+    await sendVerificationEmail(user);
+    res.json(accepted);
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.json(accepted);
   }
 });
 
