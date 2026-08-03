@@ -21,6 +21,7 @@
 //   node scripts/ensure-indexes.js --dry-run     # show the plan, touch nothing
 //   node scripts/ensure-indexes.js               # create missing indexes
 //   node scripts/ensure-indexes.js --drop-stale  # also drop superseded indexes
+//   node scripts/ensure-indexes.js --create-missing  # also create absent collections
 //
 // Creation is serial and each step prints elapsed time plus the exact rollback
 // command, so a build that turns out to be slow can be stopped between steps.
@@ -30,6 +31,9 @@ const { MongoClient } = require('mongodb');
 
 const DRY_RUN = process.argv.includes('--dry-run');
 const DROP_STALE = process.argv.includes('--drop-stale');
+// Materialize a collection that does not exist yet so its indexes — above all
+// its unique ones — are in place before the first row is written.
+const CREATE_MISSING = process.argv.includes('--create-missing');
 
 // Every index is explicitly named so rollback is unambiguous and so a rerun
 // never creates a duplicate under a driver-generated name.
@@ -160,16 +164,32 @@ async function main() {
   for (const spec of INDEXES) {
     const label = `${spec.collection}.${spec.name}`;
 
-    if (!present.has(spec.collection)) {
+    if (!present.has(spec.collection) && !CREATE_MISSING) {
       // Creating an index implicitly creates the collection. Harmless, but
       // silently materializing collections is a surprise worth avoiding.
-      console.log(`SKIP   ${label} — collection does not exist yet`);
+      //
+      // It is NOT harmless to skip when the index is a unique constraint on a
+      // collection that is about to start filling. Production runs
+      // autoIndex:false, so the first write creates the collection with no
+      // constraint at all; by the time anyone runs this script the duplicates
+      // it was meant to prevent already exist, and the build then fails on
+      // them. The index has to be there BEFORE the first row — which is what
+      // --create-missing is for, and why deploying a new counted collection
+      // means running this first, not afterwards.
+      console.log(`SKIP   ${label} — collection does not exist yet${spec.options?.unique ? '  ⚠ UNIQUE: create it before any write lands' : ''}`);
       skipped++;
       continue;
     }
 
     const col = db.collection(spec.collection);
-    const existing = await col.indexes();
+    // A collection that does not exist yet has no indexes, but asking for them
+    // throws `ns does not exist` rather than answering the empty list — which
+    // only shows up on the --create-missing path, where the whole point is
+    // that the collection is absent.
+    const existing = await col.indexes().catch(err => {
+      if (/ns does not exist/i.test(err.message)) return [];
+      throw err;
+    });
     const want = signature(spec.keys);
     const already = existing.find((i) => signature(i.key) === want);
     const indexName = defaultName(spec.keys);
