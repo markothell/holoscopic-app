@@ -199,11 +199,31 @@ export default function Recorder({ maxSeconds, recording, onRecording }: Props) 
 
   const remaining = maxSeconds * 1000 - elapsedMs;
   const nearlyUp = state === 'recording' && remaining <= 30_000;
+  const minutes = Math.round(maxSeconds / 60);
 
   if (state === 'review' && recording) {
     if (!previewUrlRef.current) previewUrlRef.current = URL.createObjectURL(recording.blob);
+    // Read off the recording rather than remembered in state, so it survives a
+    // toggle to Type and back — which remounts this component — and so a
+    // recording restored from the stash still explains itself. The timer checks
+    // every 200ms, so an auto-stop lands just past the limit; anyone who tapped
+    // Stop inside the last half-second was cut off in every sense that matters.
+    const timedOut = recording.durationMs >= maxSeconds * 1000 - 500;
     return (
       <div className="rounded-[3px] bg-card px-4 py-4">
+        {/* Two things, in this order: what you said is here, and here is how to
+            say the rest. Somebody cut off mid-story assumes the take is ruined
+            and starts over — which loses the ten minutes they just spent. */}
+        {timedOut && (
+          <p
+            role="status"
+            className="mb-3 rounded-[3px] bg-card-raised px-3.5 py-3 text-[0.9375rem]
+                       leading-[1.55] text-ink-soft"
+          >
+            Time ran out at {minutes} minutes, and everything up to there is here.
+            Send this memory — once it lands, tap “Add to this memory” and carry on.
+          </p>
+        )}
         <div className="flex items-center gap-3">
           <Waveform peaks={recording.peaks} />
           <span className="shrink-0 text-[0.875rem] tabular-nums text-ink-soft">
@@ -267,7 +287,9 @@ export default function Recorder({ maxSeconds, recording, onRecording }: Props) 
           <p className="mt-4 text-[0.9375rem] text-ink-soft">
             {state === 'starting'
               ? 'Waiting for the microphone — allow it if your browser asks.'
-              : `Tap to record. Up to ${Math.round(maxSeconds / 60)} minutes.`}
+              // The length is named up front AND the way past it, because the
+              // people who hit the limit are the ones with the most to say.
+              : `Tap to record. Up to ${minutes} minutes, and you can add more after.`}
           </p>
         </>
       )}
