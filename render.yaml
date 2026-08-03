@@ -1,8 +1,15 @@
 services:
   - type: web
-    # The deployed service is holoscopic-websocket-server. This file said
-    # holoscopic-socket-server, which matched nothing on the account.
-    name: holoscopic-websocket-server
+    # The live service is `whorl-websocket-server`, serving
+    # https://whorl-websocket-server.onrender.com — which is what every
+    # frontend's NEXT_PUBLIC_API_URL actually points at, and the only one of
+    # the three names this file has carried that resolves. The two before it
+    # (holoscopic-socket-server, then holoscopic-websocket-server) each matched
+    # nothing on the account, so this block has never been what created the
+    # service; it was adopted from a service made by hand, and `name` here is
+    # the join key to it. Renaming this line does not rename the service — it
+    # detaches this file from it.
+    name: whorl-websocket-server
     env: node
     rootDir: apps/backend
     buildCommand: npm install
