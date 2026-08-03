@@ -29,10 +29,15 @@ there was no write-loss window on a live memorial.
 
 Backup paths are now `mongo-dev/holoscopic-dev/` and `mongo/holoscopic-db/`.
 
-**Residual, and deliberately not done:** production is still called `holoscopic-db`. Less
-self-documenting than `holoscopic-prod`, but the hazard is gone, and renaming it means a cutover
-with real downtime for cosmetics. Do it during any planned maintenance, or never. The old dev
-`holoscopic-db` still exists as a rollback — drop it once you are confident, it is the only undo.
+**Renaming production is CLOSED, decided against.** `holoscopic-db` is production and stays that
+way. `holoscopic-prod` would read better, the hazard this section existed for is already gone, and
+the rename costs a cutover with real downtime for cosmetics. It is not deferred work and should not
+be picked up as any.
+
+**Still open:** the old dev `holoscopic-db` on `cluster0.38i5zna` is still there (5.4 MB, verified
+2026-08-03) as the rollback for the copy above. It is the only undo. Drop it once you are confident
+— until then, that cluster has both names on it, which is the exact ambiguity this section removed
+everywhere else.
 
 ## ✅ 2. Separate the dev and production Vercel Blob stores — DONE 2026-07-31
 
