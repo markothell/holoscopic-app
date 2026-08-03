@@ -34,10 +34,18 @@ way. `holoscopic-prod` would read better, the hazard this section existed for is
 the rename costs a cutover with real downtime for cosmetics. It is not deferred work and should not
 be picked up as any.
 
-**Still open:** the old dev `holoscopic-db` on `cluster0.38i5zna` is still there (5.4 MB, verified
-2026-08-03) as the rollback for the copy above. It is the only undo. Drop it once you are confident
-— until then, that cluster has both names on it, which is the exact ambiguity this section removed
-everywhere else.
+**The rollback copy is gone — dropped from `cluster0.38i5zna` on 2026-08-03**, which is what finishes
+this section. Until then that cluster still carried a database called `holoscopic-db` alongside
+`holoscopic-dev`, so the name meant production on one host and stale dev leftovers on the other —
+the exact ambiguity this work removed everywhere else, surviving in the one place nobody looked.
+
+`holoscopic-db` now exists on exactly one cluster. Verified after the drop: `cluster0.38i5zna` holds
+`holoscopic-dev` and no `holoscopic-db`; `live.ofmfipp` holds `holoscopic-db` and nothing else. The
+rule in the root `CLAUDE.md` — *a URI naming `holoscopic-db` is pointed at live data* — is now true
+without qualification rather than true-unless-you-are-on-the-dev-host.
+
+There is no undo for the rename any more. That is the intended end state, not an oversight: the
+nightly `mongodump` is the recovery path for dev, the same as for everything else.
 
 ## ✅ 2. Separate the dev and production Vercel Blob stores — DONE 2026-07-31
 
