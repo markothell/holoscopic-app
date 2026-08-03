@@ -54,15 +54,32 @@ const INDEXES = [
   // of this size; revisit if users ever reaches six figures.
   { collection: 'users', name: 'resetTokenHash_1', keys: { resetTokenHash: 1 } },
   { collection: 'users', name: 'verifyTokenHash_1', keys: { verifyTokenHash: 1 } },
-  // NOT listed, and still a real gap: users.email_1 and users.id_1 are UNIQUE
-  // and appear nowhere in this file, so on a rebuilt database this script
-  // would leave the user table with no unique constraint on email and no
-  // complaint. The mechanism to fix that now exists — specs take an `options`
-  // object, and the traffic entries at the bottom use it for `unique` and
-  // `expireAfterSeconds` — so what remains is adding the two user entries.
-  // That is deliberately not done here: it is an auth-adjacent change to a
-  // live collection and wants its own review. Until then, do not treat
-  // "ensure-indexes ran clean" as meaning the user constraints are there.
+
+  // --- the two account constraints ---
+  //
+  // A no-op against any database that already has them, which is both of the
+  // current ones. They are here for the database that does NOT: production
+  // runs autoIndex:false, so `unique: true` in models/User.js never reaches
+  // Mongo, and until now this file did not list them either — so a database
+  // the application populates rather than one mongorestore rebuilds would come
+  // up with no constraint on email, and this script would report clean.
+  //
+  // That is not theoretical about collections generally: the traffic
+  // collections below hit exactly this on 2026-08-03 and had to be created
+  // ahead of the first write. `users` needs a whole fresh database to be
+  // exposed, which the staging backend in PLATFORM_NEXT.md §4 would be.
+  //
+  // What it protects: signup (routes/auth.js) is check-then-act —
+  // findByEmail, reject if found, else create. This index is the only thing
+  // closing the race between two concurrent signups on one address. Without
+  // it two accounts can share an email, after which findByEmail is a findOne
+  // returning an arbitrary one and login, reset and verification each pick a
+  // different winner.
+  //
+  // `email` is `lowercase: true` in the schema, so the constraint applies to
+  // the normalized value and Mo@x.com collides with mo@x.com as intended.
+  { collection: 'users', name: 'email_1', keys: { email: 1 }, options: { unique: true } },
+  { collection: 'users', name: 'id_1', keys: { id: 1 }, options: { unique: true } },
 
   // --- fastest-growing collection: one row per bonus/stake/settlement ---
   { collection: 'holontransactions', name: 'userId_instanceId_createdAt', keys: { userId: 1, instanceId: 1, createdAt: -1 } },
@@ -160,6 +177,18 @@ async function main() {
   let skipped = 0;
   let dropped = 0;
   const rollback = [];
+  // A build that fails must not take the rest of the run with it.
+  //
+  // Before this, one throw propagated to main().catch and exited — so a single
+  // unbuildable index meant every index AFTER it in the list was silently
+  // never attempted, and the run's last line was one error about one
+  // collection. The list is ordered by collection, so a failure in `users`
+  // (early) would quietly skip activities, entries, memories and traffic
+  // (late) while looking like a single narrow problem.
+  //
+  // The realistic cause is a unique index on data that already violates it,
+  // which is exactly when you most need to know what ELSE is missing.
+  const failures = [];
 
   for (const spec of INDEXES) {
     const label = `${spec.collection}.${spec.name}`;
@@ -219,11 +248,28 @@ async function main() {
     } else {
       const n = await col.countDocuments();
       const t0 = Date.now();
-      await col.createIndex(spec.keys, { name: indexName, ...(spec.options || {}) });
-      const ms = Date.now() - t0;
-      console.log(`CREATE ${label} — { ${fmtKeys(spec.keys)} }  ${n} docs, ${ms}ms`);
-      rollback.push(`db.${spec.collection}.dropIndex("${indexName}")`);
-      created++;
+      try {
+        await col.createIndex(spec.keys, { name: indexName, ...(spec.options || {}) });
+        const ms = Date.now() - t0;
+        console.log(`CREATE ${label} — { ${fmtKeys(spec.keys)} }  ${n} docs, ${ms}ms`);
+        rollback.push(`db.${spec.collection}.dropIndex("${indexName}")`);
+        created++;
+      } catch (err) {
+        console.log(`FAIL   ${label} — ${err.message}`);
+        // E11000 on a unique build names the offending value but not how many
+        // there are, and "how bad is it" is the first thing anyone asks. The
+        // query is printed rather than run: it is a full group-by on a
+        // collection that just proved it is not in the state we expected.
+        if (spec.options?.unique) {
+          const fields = Object.keys(spec.keys);
+          const groupKey = fields.length === 1
+            ? `"$${fields[0]}"`
+            : `{ ${fields.map(f => `${f}: "$${f}"`).join(', ')} }`;
+          console.log(`         duplicates must be resolved first. Find them with:`);
+          console.log(`         db.${spec.collection}.aggregate([{ $group: { _id: ${groupKey}, n: { $sum: 1 } } }, { $match: { n: { $gt: 1 } } }])`);
+        }
+        failures.push({ label, message: err.message });
+      }
     }
 
     // Indexes fully contained in a new one are dead weight on every write.
@@ -240,13 +286,22 @@ async function main() {
     }
   }
 
-  console.log(`\ncreated: ${created}  dropped: ${dropped}  skipped: ${skipped}`);
+  console.log(`\ncreated: ${created}  dropped: ${dropped}  skipped: ${skipped}  failed: ${failures.length}`);
   if (rollback.length) {
     console.log('\nRollback:');
     rollback.forEach((r) => console.log(`  ${r}`));
   }
+  if (failures.length) {
+    console.log('\nFAILED:');
+    failures.forEach((f) => console.log(`  ${f.label} — ${f.message}`));
+  }
 
   await client.close();
+
+  // Exit non-zero so a run that failed anything is still a failure to whatever
+  // invoked it, even though every remaining index was attempted. Reported
+  // after close so the summary above is never lost to an abrupt exit.
+  if (failures.length) process.exitCode = 1;
 }
 
 main().catch((err) => {
