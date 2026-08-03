@@ -47,8 +47,8 @@ export default function ContactForm() {
           Got it — thank you. I read these myself, and I&apos;ll write back to {email}.
         </p>
         <p className={styles.sentNote}>
-          Give it a day or two. If it&apos;s urgent, mo@holoscopic.io reaches the
-          same inbox.
+          You&apos;ll hear from me within a day. If it&apos;s urgent,
+          mo@holoscopic.io reaches the same inbox.
         </p>
       </>
     );

@@ -1,4 +1,9 @@
 const ABOUT_URL = process.env.NEXT_PUBLIC_ABOUT_URL || 'https://holoscopic.io/chorus';
+// A way to reach a person. The curator setting a memorial up and the
+// contributor whose recording failed have the same question and, until now,
+// the same answer: nothing on the page. The form at the other end is read by
+// hand and answered the same day.
+const CONTACT_URL = process.env.NEXT_PUBLIC_CONTACT_URL || 'https://holoscopic.io/contact';
 
 // One line at the foot of a memorial, naming what this is.
 //
@@ -20,7 +25,10 @@ export default function MemorialFooter() {
         <a href={ABOUT_URL} className="underline decoration-rule underline-offset-4">
           Chorus
         </a>
-        , an activity from Holoscopic
+        , an activity from Holoscopic.{' '}
+        <a href={CONTACT_URL} className="underline decoration-rule underline-offset-4">
+          Contact
+        </a>
       </p>
     </footer>
   );
