@@ -195,12 +195,18 @@ services:
   # objects under blob/ are recorded voices with no second take, and an
   # age-based expiry applied bucket-wide would delete them on a timer.
   #
-  # STILL REQUIRED:
-  #   1. Create a read-only Atlas user (readAnyDatabase) → MONGODB_URI_BACKUP.
-  #      A leaked backup credential must not be able to write.
-  #   2. Set BACKUP_HEARTBEAT_URL to a dead-man's-switch (healthchecks.io) so
-  #      a MISSING backup pages you. A backup nobody is alerted about is not a
-  #      backup.
+  # BOTH SATISFIED, verified 2026-08-03 against the live cluster and bucket:
+  #   1. MONGODB_URI_BACKUP authenticates as `mo_db_user`, a DIFFERENT user from
+  #      the app's, holding exactly [{readAnyDatabase, admin}] — so a leaked
+  #      backup credential cannot write. Re-check without touching data:
+  #        db.adminCommand({connectionStatus: 1}).authInfo.authenticatedUserRoles
+  #   2. BACKUP_HEARTBEAT_URL points at hc-ping.com, so a MISSING backup pages
+  #      you. A backup nobody is alerted about is not a backup.
+  #
+  # It runs. 2026-08-03 07:00 UTC wrote mongo/holoscopic-db/latest.json (a
+  # 25.7 KB archive, dumped in 5.9s, with its sha256) and status/blob-gone.json
+  # (count 0, nothing unreachable). Ask S3, not the app: reading those two keys
+  # is the only check that distinguishes "configured" from "landing data".
   #
   # The SAME BACKUP_S3_* values belong on the web service too — that is what
   # lets utils/blobMirror.js copy a recording the moment it is made, instead of
