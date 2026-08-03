@@ -64,13 +64,16 @@ const S3_VARS = [
   'BACKUP_S3_SECRET_ACCESS_KEY',
 ];
 
-// The live service is holoscopic-websocket-server. render.yaml calls it
-// holoscopic-socket-server, which is wrong and is fixed there too.
+// These are service NAMES, matched against the `name` field of
+// GET /v1/services — never against a hostname. The web service is named
+// holoscopic-websocket-server and serves whorl-websocket-server.onrender.com,
+// because an onrender.com host is minted from the name at creation and does
+// not follow a rename. This list has been right since it was written and is
+// what proved render.yaml wrong on 2026-08-03; see the comment there.
 //
-// holoscopic-mongo-backup does NOT exist yet — render.yaml declares the cron
-// but Render only creates it on a Blueprint deploy. It is marked optional so
-// this script can configure the web service today; until that cron exists,
-// nothing runs on a schedule.
+// Both services now exist. The cron stays `optional` so a run can still
+// configure the web service if it is ever missing, rather than resolving
+// nothing and leaving you unsure which half was applied.
 const PLAN = [
   { service: 'holoscopic-websocket-server', vars: S3_VARS },
   { service: 'holoscopic-mongo-backup', optional: true, vars: [...S3_VARS, 'MONGODB_URI_BACKUP', 'BACKUP_HEARTBEAT_URL'] },
