@@ -44,7 +44,28 @@ type Payload = {
   slug?: string;
 };
 
-function send(payload: Payload) {
+/**
+ * Run after the page has finished loading and the main thread is free.
+ *
+ * A view report is worth nothing to the person reading the page, so it must
+ * never compete with the page for a phone's one slow connection. Firing on
+ * mount put it in flight alongside the app's own late-loading chunks — after
+ * first paint, but inside the window where the browser is still working and
+ * still showing a loading indicator.
+ *
+ * The 2s timeout is the ceiling: on a busy page idle may never come, and a
+ * view that is never reported is a wrong number rather than a cheap one.
+ */
+function whenIdle(fn: () => void) {
+  const run = () => {
+    if ('requestIdleCallback' in window) window.requestIdleCallback(fn, { timeout: 2000 });
+    else setTimeout(fn, 0);   // Safari has no requestIdleCallback
+  };
+  if (document.readyState === 'complete') run();
+  else window.addEventListener('load', run, { once: true });
+}
+
+function post(payload: Payload) {
   try {
     void fetch(`${API_BASE}/traffic/collect`, {
       method: 'POST',
@@ -59,6 +80,15 @@ function send(payload: Payload) {
     // A blocked request, an ad blocker, an offline phone. Analytics failing is
     // never allowed to surface anywhere near a reader.
   }
+}
+
+function send(payload: Payload) {
+  // Clicks are NOT deferred. A click is usually a navigation, and waiting for
+  // idle on a page that is already unloading loses the event — which is the
+  // one thing keepalive exists to prevent. A click also costs nothing to send
+  // immediately: the page it would compete with is on its way out.
+  if (payload.type === 'click') post(payload);
+  else whenIdle(() => post(payload));
 }
 
 export default function Beacon({ app, instanceId, slug, trackClicks = false }: Props) {
