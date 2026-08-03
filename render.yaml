@@ -1,15 +1,23 @@
 services:
   - type: web
-    # The live service is `whorl-websocket-server`, serving
-    # https://whorl-websocket-server.onrender.com — which is what every
-    # frontend's NEXT_PUBLIC_API_URL actually points at, and the only one of
-    # the three names this file has carried that resolves. The two before it
-    # (holoscopic-socket-server, then holoscopic-websocket-server) each matched
-    # nothing on the account, so this block has never been what created the
-    # service; it was adopted from a service made by hand, and `name` here is
-    # the join key to it. Renaming this line does not rename the service — it
-    # detaches this file from it.
-    name: whorl-websocket-server
+    # The live service is NAMED `holoscopic-websocket-server` (srv-d2s9auf…)
+    # and SERVES https://whorl-websocket-server.onrender.com. Those disagree on
+    # purpose: an onrender.com hostname is minted from the name at creation and
+    # never follows a rename, so this service kept the hostname of the name it
+    # was born with. The URL every frontend's NEXT_PUBLIC_API_URL points at is
+    # therefore evidence about the hostname and NOTHING about the name.
+    #
+    # `name` is this block's join key to that service, and it is an identity,
+    # not a label: Render does not rename a tracked resource when this line
+    # changes — it goes looking for a service by the new name and CREATES one
+    # when it finds none. Setting it to `whorl-websocket-server` (commit
+    # f2e4891, reverted here) did exactly that: a second starter-plan web
+    # service holding none of the `sync: false` secrets below, failing its
+    # health check forever, while the blueprint quietly stopped managing the
+    # real one. Verify against the API before touching this line, never against
+    # a hostname:
+    #   GET https://api.render.com/v1/services  → .name, not .serviceDetails.url
+    name: holoscopic-websocket-server
     env: node
     rootDir: apps/backend
     buildCommand: npm install
