@@ -119,6 +119,13 @@ const apiLimiter = rateLimit({
     // people (memorialReadLimiter / memorialWriteLimiter).
     const isLocalhost = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
     if (req.path.startsWith('/memorial')) return true;
+    // The traffic beacon is exempt for the mirror-image reason: it fires from
+    // the visitor's own browser, so a shared connection — a venue wifi, an
+    // office, a school — puts everybody's page views on one IP. At 100/min
+    // that connection stops being *measured* long before it is anywhere near
+    // abusive, and analytics quietly under-reports exactly the busy day it
+    // exists to show. Its own bucket below is sized for that.
+    if (req.path.startsWith('/traffic/collect')) return true;
     return req.path === '/health' || (isDevelopment && isLocalhost);
   }
 });
@@ -245,6 +252,23 @@ const memorialEventLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: isProduction ? 60 : 1000,
   message: { error: 'Too many reports' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS',
+});
+
+// The traffic beacon. Keyed per IP, which is the right key here precisely
+// because — unlike a Chorus wall read — this call is made by the visitor's own
+// browser rather than by Vercel on their behalf.
+//
+// 300/min is roughly fifty people on one connection each moving between pages
+// every ten seconds: far above any real shared wifi, far below a flood. It
+// exists to bound the damage, never to shape the data, so it is set where a
+// legitimate visitor can never reach it.
+const trafficLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: Number(process.env.TRAFFIC_EVENTS_PER_MIN_PER_IP) || (isProduction ? 300 : 5000),
+  message: { error: 'Too many events' },
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.method === 'OPTIONS',
@@ -496,6 +520,17 @@ function loadAPIRoutes() {
         memorialRoutes,
       );
 
+      // Site traffic — page views from every frontend, plus link clicks on the
+      // homepage. Mounted bare like /api/memorial, because /collect is called
+      // by anonymous readers who will never have an account; /summary inside
+      // it carries requireAdmin. Its own bucket, which the global apiLimiter
+      // skips (see trafficLimiter).
+      //
+      // Distinct from /api/analytics above, which reports participation inside
+      // activities rather than web traffic.
+      const trafficRoutes = require('./routes/traffic');
+      app.use('/api/traffic', trafficLimiter, trafficRoutes);
+
       // Terminal handlers, registered last so they sit behind every route.
       // They live inside loadAPIRoutes for the same reason the routers do: at
       // module scope they would be registered BEFORE the routes and would
@@ -539,7 +574,17 @@ if (process.env.MONGODB_URI) {
     maxPoolSize: process.env.NODE_ENV === 'production' ? 20 : 3,
     minPoolSize: process.env.NODE_ENV === 'production' ? 5 : 1,
     maxIdleTimeMS: process.env.NODE_ENV === 'production' ? 30000 : 15000,
-    serverSelectionTimeoutMS: 5000,
+    // How long a request waits for a healthy server after the driver has
+    // marked one Unknown. This is the setting that decides whether an Atlas
+    // node blip is invisible or a 500: a network error clears that node's
+    // pool, and everything queued on it fails with PoolClearedError until
+    // rediscovery finds a primary. Atlas elections routinely take 5-15s and
+    // heartbeatFrequencyMS is 10000, so the old 5000 gave a request less than
+    // one heartbeat to recover — reads and writes are both retryable
+    // (retryWrites=true in the URI), and this is the window they retry inside.
+    // 15000 rides out an ordinary election; the driver default of 30000 would
+    // also make a genuinely dead cluster hang every request for half a minute.
+    serverSelectionTimeoutMS: 15000,
     socketTimeoutMS: 45000,
     connectTimeoutMS: 10000,
     heartbeatFrequencyMS: 10000,

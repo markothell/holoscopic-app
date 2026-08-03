@@ -19,6 +19,7 @@ Express + Socket.IO + Mongoose server. Single entry point: `websocket-server.js`
 | `utils/memorialDefaults.js` | What a new Chorus memorial starts life with — shared by `POST /instances` and `scripts/seed-memorial.js` so both make the same product |
 | `utils/blobMirror.js` | Off-site copy of Chorus media. Vercel Blob has no snapshots or undelete, so recordings are mirrored to the backup bucket on write and reconciled nightly |
 | `utils/backupNamespace.js` | Which part of the shared backup bucket a run may write to, decided from the cluster it connected to rather than from a variable somebody has to set |
+| `utils/traffic.js` | Site traffic write funnel — page views and link clicks, two storage tiers. **Not** `routes/analytics.js`, which counts participation inside activities |
 | `utils/email.js` | The only place mail leaves this platform. One Resend call, never throws — a send is always a side effect of something that already succeeded. `utils/alerts.js` adds throttling on top for operator mail |
 | `models/InstanceMembership.js` | Per-user per-instance Holon balance |
 | `models/Topic.js` | Community topic nominations with supporter wager system |
@@ -123,6 +124,44 @@ because that backstop exists.
 opens the compose sheet, so counting it means a room full of people opening the
 sheet exhausts the venue's budget before a single memory is written. It is a
 stateless HMAC with no database write; `memorialReadLimiter` is its ceiling.
+
+## Site traffic (`/api/traffic`)
+
+Page views from every frontend, plus link clicks on the holoscopic.io homepage.
+Read it in the platform admin at **`/traffic`**. Two endpoints with opposite postures:
+`POST /collect` is open to the internet (every visitor's browser calls it, so the router is
+mounted bare like `/api/memorial` and the global `apiLimiter` skips it in favour of
+`trafficLimiter`, 300/min/IP, `TRAFFIC_EVENTS_PER_MIN_PER_IP`); `GET /summary` is `requireAdmin`.
+
+**Two tiers, and the split is the whole storage design.** `TrafficEvent` is raw detail with a
+30-day TTL; `TrafficDaily` is a permanent counter per `(day, app, type, key)`, written in the same
+call rather than by a nightly job. Nothing in the raw tier is the only copy of anything, so the TTL
+can drop it without a chart losing history.
+
+- **`app` is sent by the beacon and validated against an allowlist**, never inferred from `Origin`
+  — same reasoning as `Instance.app`. `resolveInstance`'s fallback is deliberately unused here: it
+  never fails, so it would attribute a memorial's traffic to the default interView edition.
+  holoscopic.io reports as three apps (`site` / `interview` / `map-sequence`), split by path in its
+  own beacon, because that app is the only thing that knows its routes.
+- **Visitors are anonymous and single-day by construction.** `visitorHashFor` puts the calendar day
+  *inside* an HMAC of IP + user-agent, so there is no salt to rotate and yesterday's hash for a
+  given phone is not recomputable. No cookie, no localStorage, no id. Chorus in particular has no
+  accounts by design, and a durable visitor id there would break that.
+- **`visitors` is only maintained on the `key: '*'` rows** and must never be summed across paths —
+  one person viewing five pages is one visitor. `TrafficVisitorDay` decides "new today?" via a
+  unique-index duplicate-key error, which makes the count exact rather than estimated.
+- **Three of these indexes are correctness, not speed** (see `scripts/ensure-indexes.js`): without
+  `unique` on `trafficvisitordays`, every view reports a new person and People silently equals
+  Visits; without `unique` on `trafficdailies`, concurrent beacons create duplicate rows that both
+  get summed; without the TTL on `trafficevents`, the raw tier never stops growing.
+- Query strings are stripped before storage — `?k=` on a Chorus curate link is a credential — and
+  an outbound click is recorded as scheme + host only.
+- `node scripts/seed-traffic.js` writes 30 days of demo rollup rows (`--clear` removes them). It
+  refuses production by database name and by `NODE_ENV`.
+
+**`scripts/ensure-indexes.js` specs now take an `options` object** (`unique`, `expireAfterSeconds`).
+A shape-matched index whose options differ is reported as `DRIFT` with the drop command — Mongo
+cannot change those in place.
 
 ## Authentication
 

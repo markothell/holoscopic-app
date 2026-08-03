@@ -50,13 +50,15 @@ const INDEXES = [
   // of this size; revisit if users ever reaches six figures.
   { collection: 'users', name: 'resetTokenHash_1', keys: { resetTokenHash: 1 } },
   { collection: 'users', name: 'verifyTokenHash_1', keys: { verifyTokenHash: 1 } },
-  // NOT listed, and a real gap: users.email_1 and users.id_1 are UNIQUE, and
-  // createIndex below is called without options beyond `name`, so this script
-  // cannot reproduce a uniqueness constraint. Both exist in production today
-  // only because something built them from the schema. On a rebuilt database
-  // this script would leave the user table with no unique constraint on email
-  // and no complaint. Teaching it `unique` is the fix; until then, do not
-  // treat "ensure-indexes ran clean" as meaning the constraints are there.
+  // NOT listed, and still a real gap: users.email_1 and users.id_1 are UNIQUE
+  // and appear nowhere in this file, so on a rebuilt database this script
+  // would leave the user table with no unique constraint on email and no
+  // complaint. The mechanism to fix that now exists — specs take an `options`
+  // object, and the traffic entries at the bottom use it for `unique` and
+  // `expireAfterSeconds` — so what remains is adding the two user entries.
+  // That is deliberately not done here: it is an auth-adjacent change to a
+  // live collection and wants its own review. Until then, do not treat
+  // "ensure-indexes ran clean" as meaning the user constraints are there.
 
   // --- fastest-growing collection: one row per bonus/stake/settlement ---
   { collection: 'holontransactions', name: 'userId_instanceId_createdAt', keys: { userId: 1, instanceId: 1, createdAt: -1 } },
@@ -87,6 +89,33 @@ const INDEXES = [
   { collection: 'oasframes', name: 'parentInstanceId_createdAt', keys: { parentInstanceId: 1, createdAt: -1 } },
   // Queried once per spectrum in a loop (up to 50 per pulse request).
   { collection: 'oasnominations', name: 'frameSlate_frameId', keys: { 'frameSlate.frameId': 1 } },
+
+  // --- Site traffic. The only entries here whose OPTIONS are load-bearing ---
+  //
+  // Two of these three are not performance at all. The unique index on
+  // trafficvisitordays is the visitor count: utils/traffic.js#claimVisitor
+  // reads its duplicate-key error as "already counted today", so without the
+  // constraint every page view reports a new person and the People column
+  // silently equals the Visits column. The unique index on trafficdailies is
+  // what makes two beacons landing in the same millisecond increment one
+  // counter instead of racing to create two rows that then both get summed.
+  //
+  // The TTL on trafficevents is the entire retention design: the raw tier is
+  // meant to hold 30 days and hand everything longer-lived to the rollup. With
+  // no TTL it never stops growing, and nothing anywhere would report that.
+  { collection: 'trafficevents', name: 'createdAt_1', keys: { createdAt: 1 },
+    options: { expireAfterSeconds: 30 * 24 * 60 * 60 } },
+  { collection: 'trafficevents', name: 'app_type_createdAt', keys: { app: 1, type: 1, createdAt: -1 } },
+  { collection: 'trafficevents', name: 'instanceId_createdAt', keys: { instanceId: 1, createdAt: -1 } },
+
+  { collection: 'trafficdailies', name: 'day_app_type_key', keys: { day: 1, app: 1, type: 1, key: 1 },
+    options: { unique: true } },
+  { collection: 'trafficdailies', name: 'day_type', keys: { day: -1, type: 1 } },
+
+  { collection: 'trafficvisitordays', name: 'day_app_visitorHash', keys: { day: 1, app: 1, visitorHash: 1 },
+    options: { unique: true } },
+  { collection: 'trafficvisitordays', name: 'createdAt_1', keys: { createdAt: 1 },
+    options: { expireAfterSeconds: 2 * 24 * 60 * 60 } },
 ];
 
 function fmtKeys(keys) {
@@ -146,7 +175,23 @@ async function main() {
     const indexName = defaultName(spec.keys);
 
     if (already) {
-      console.log(`OK     ${label} — already present as "${already.name}"`);
+      // Shape match is not the whole story once options are in play. An index
+      // that exists WITHOUT `unique` where unique is wanted looks identical
+      // here and enforces nothing — and for TrafficVisitorDay that is not a
+      // performance difference but a wrong number: the visitor count is
+      // derived from the duplicate-key error, so a non-unique index makes
+      // every view a new visitor. Mongo cannot change these in place, so this
+      // reports rather than fixes; the remedy is dropIndex then rerun.
+      const drift = [];
+      for (const [k, v] of Object.entries(spec.options || {})) {
+        if (already[k] !== v) drift.push(`${k}: have ${JSON.stringify(already[k])}, want ${JSON.stringify(v)}`);
+      }
+      if (drift.length) {
+        console.log(`DRIFT  ${label} — present as "${already.name}" but ${drift.join('; ')}`);
+        console.log(`         fix: db.${spec.collection}.dropIndex("${already.name}") then rerun`);
+      } else {
+        console.log(`OK     ${label} — already present as "${already.name}"`);
+      }
       skipped++;
     } else if (DRY_RUN) {
       const n = await col.countDocuments();
@@ -154,7 +199,7 @@ async function main() {
     } else {
       const n = await col.countDocuments();
       const t0 = Date.now();
-      await col.createIndex(spec.keys, { name: indexName });
+      await col.createIndex(spec.keys, { name: indexName, ...(spec.options || {}) });
       const ms = Date.now() - t0;
       console.log(`CREATE ${label} — { ${fmtKeys(spec.keys)} }  ${n} docs, ${ms}ms`);
       rollback.push(`db.${spec.collection}.dropIndex("${indexName}")`);
