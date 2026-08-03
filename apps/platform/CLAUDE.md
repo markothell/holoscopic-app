@@ -11,12 +11,23 @@ apps/platform/
     │   ├── api/memorial-photo/  # the one server route — Blob upload for Chorus subject photos
     │   ├── login/
     │   └── instances/           # list, new, [id]
+    ├── components/
+    │   └── AdminNav.tsx         # the one header — every page uses it
     ├── contexts/
     │   └── AuthContext.tsx
     └── lib/
         ├── api.ts
+        ├── adminApi.ts          # the /api/admin surface, moved here from the game app
         └── image.ts             # browser downscale, run before any photo upload
 ```
+
+**Platform administration lives here now, not in the game.** `/users`, `/waitlist` and the
+platform counters were a `/admin` page inside `apps/holoscopic-game`, reached from an "Admin" entry
+in the game's own `UserMenu`. Managing the platform meant signing into the thing being managed, and
+every admin's game nav carried an item that had nothing to do with playing. The backend routes did
+not change — only the caller. The old `userId` argument is gone with them: it travelled as
+`x-user-id`, which is a header, not a credential; identity is the bearer token `lib/api.ts`
+attaches, and `routes/admin.js` re-reads the User row on every call.
 
 ## The one server route: `/api/memorial-photo`
 
@@ -46,7 +57,24 @@ persists it**. Pasting a URL writes the same field and still works.
 
 ## Pages
 
+All pages share `components/AdminNav.tsx` — extracted when the app went from two pages to five and
+the header had already been copy-pasted twice.
+
+- `/` — **Overview**: the six all-time platform counters (users, activities, sequences,
+  participants, comments, votes) plus shortcuts. It used to redirect to `/instances`.
+- `/users` — roles, active/inactive, one-shot password reset. **You cannot change your own role or
+  status** — on a platform that can have one admin, self-demotion is the fastest way to lock
+  everybody out. A reset password is shown once in a `prompt()` and stored nowhere.
+- `/waitlist` — signups grouped by sequence. Emails stay collapsed behind a per-sequence toggle,
+  because a page that prints every address on open is one that gets left on a screen in a room.
 - `/login` — credential form
+- `/traffic` — site traffic: visits and people per app, visits per day, which homepage links get
+  taken, busiest pages. Reads `GET /api/traffic/summary` (admin-gated), which is served from the
+  permanent daily rollup — so a 90-day range costs counters, not a scan, and it keeps answering
+  after the raw tier's 30-day TTL. **This is arrival, not participation**; the activity stats on an
+  instance page are the other thing. App colours are a fixed categorical set validated for
+  colour-vision deficiency (worst adjacent CVD ΔE 9.1); three sit under 3:1 on white, which is why
+  every bar carries a visible label and every figure is also a table row.
 - `/instances` — table of all instances
 - `/instances/new` — create (**app**, name, slug, domains, access, dates)
 - `/instances/[id]` — edit; two tabs: **Basic** and **Config**

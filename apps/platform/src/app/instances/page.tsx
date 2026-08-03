@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import AdminNav from '@/components/AdminNav';
 import { apiFetch } from '@/lib/api';
 
 // Optional because rows created before Instance.app existed carry no value
@@ -64,15 +65,7 @@ export default function InstancesPage() {
 
   return (
     <div style={{ minHeight: '100vh' }}>
-      <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '0 1.5rem' }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Holoscopic Platform</span>
-          <button onClick={() => { localStorage.removeItem('hs_platform_user'); router.replace('/login'); }}
-            style={{ ...mono, background: 'none', border: 'none', color: 'var(--ink-light)', cursor: 'pointer' }}>
-            Sign out
-          </button>
-        </div>
-      </header>
+      <AdminNav />
 
       <main style={{ maxWidth: 960, margin: '0 auto', padding: '2rem 1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>

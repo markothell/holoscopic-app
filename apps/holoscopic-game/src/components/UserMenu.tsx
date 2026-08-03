@@ -348,10 +348,15 @@ export default function UserMenu({ gameLinks }: { gameLinks?: GameLink[] } = {})
               read as though that legacy tool were the platform. Those tools
               are still live and still reachable, from the /map-sequence lander
               that already frames them as the original ones. */}
+          {/* No Admin entry: platform administration — users, waitlist,
+              platform totals — moved to the platform admin app, which is
+              where instances and traffic already live. Administering the
+              platform from inside the thing being administered meant signing
+              into the game to change somebody's role, and it put a menu item
+              in every admin's game nav that had nothing to do with playing. */}
           {[
             { label: 'Profile', path: `/profile/${userId}` },
             { label: 'Dashboard', path: '/dashboard' },
-            ...(userRole === 'admin' ? [{ label: 'Admin', path: '/admin' }] : []),
             { label: 'Settings', path: '/settings' },
           ].map((item) => (
             <button
