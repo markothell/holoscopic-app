@@ -6,6 +6,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { InstanceProvider } from "@/contexts/InstanceContext";
 import ServiceWorkerRegistration from "@/components/pwa/ServiceWorkerRegistration";
 import InstanceEndedBanner from "@/components/InstanceEndedBanner";
+import Beacon from "@/components/Beacon";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -138,6 +139,12 @@ export default function RootLayout({
           <InstanceProvider>
             <AuthProvider>
               <InstanceEndedBanner />
+              {/* Page views for all three products this deployment serves —
+                  the beacon splits them by path, because this app is the only
+                  thing that knows its own routes. Link clicks are recorded on
+                  the homepage alone, which is where the question 'which of
+                  these do people take' is being asked. */}
+              <Beacon clickPaths={["/"]} />
               {children}
               <ServiceWorkerRegistration />
             </AuthProvider>

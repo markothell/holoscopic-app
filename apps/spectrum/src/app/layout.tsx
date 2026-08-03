@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Barlow_Condensed, DM_Mono, Cormorant_Garamond } from 'next/font/google';
 import { AuthProvider } from '@/contexts/AuthContext';
+import Beacon from '@/components/Beacon';
 import './globals.css';
 
 const barlow = Barlow_Condensed({
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${barlow.variable} ${dmMono.variable} ${cormorant.variable}`}>
       <body>
+        <Beacon app="spectrum" />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

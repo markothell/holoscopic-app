@@ -1,0 +1,111 @@
+'use client';
+
+import { usePathname } from 'next/navigation';
+import { useEffect, useRef } from 'react';
+
+// The traffic beacon. One page view per navigation, and — where a page asks
+// for it — one event per link click.
+//
+// THIS FILE IS MIRRORED, byte for byte apart from its `App` union, in
+// apps/spectrum, apps/synthesis and apps/holoscopic-game. It is not in a shared
+// package because the apps that need it do not share one: chorus, spectrum and
+// platform have no dependency on @hs/activities, and giving a memorial app the
+// whole activity engine to import forty lines of fetch would be a worse trade
+// than four copies of a leaf file that changes approximately never. If you
+// change the wire shape here, change it in all four — the server validates
+// `app` against an allowlist (utils/traffic.js#APPS), so a drifted copy fails
+// loudly as a dropped event rather than quietly as a wrong number.
+//
+// WHAT IT DOES NOT DO is the reason it can run without a cookie banner: no
+// cookie, no localStorage, no id of any kind. The server derives an anonymous
+// per-day visitor hash from the connection (see models/TrafficEvent.js), and
+// this file has no way to influence or even observe it.
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+
+type App = 'synthesis';
+
+interface Props {
+  app: App;
+  /** Set on pages that belong to one tenant, so a memorial has its own numbers. */
+  instanceId?: string;
+  slug?: string;
+  /** Delegated click tracking. Off unless a page opts in. */
+  trackClicks?: boolean;
+}
+
+type Payload = {
+  app: App;
+  type: 'view' | 'click';
+  path: string;
+  target?: string;
+  label?: string;
+  instanceId?: string;
+  slug?: string;
+};
+
+function send(payload: Payload) {
+  try {
+    void fetch(`${API_BASE}/traffic/collect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      // Survives the navigation that caused it. Without this a click on an
+      // outbound link is a race between the request and the page unloading,
+      // and the outbound links are the ones worth counting.
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // A blocked request, an ad blocker, an offline phone. Analytics failing is
+    // never allowed to surface anywhere near a reader.
+  }
+}
+
+export default function Beacon({ app, instanceId, slug, trackClicks = false }: Props) {
+  const pathname = usePathname();
+  // React runs effects twice in development's StrictMode, and the App Router
+  // re-runs this on every navigation. Without remembering the last path sent,
+  // dev double-counts everything and a shallow re-render inflates a real page.
+  const lastSent = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!pathname || lastSent.current === pathname) return;
+    lastSent.current = pathname;
+    send({ app, type: 'view', path: pathname, instanceId, slug });
+  }, [app, pathname, instanceId, slug]);
+
+  useEffect(() => {
+    if (!trackClicks) return;
+
+    // Delegated rather than per-link, so it covers links this component has
+    // never heard of — including ones rendered by a server component after
+    // hydration — without any of them needing to know analytics exists.
+    function onClick(event: MouseEvent) {
+      const el = event.target as HTMLElement | null;
+      const anchor = el?.closest?.('a');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href || href.startsWith('#')) return;
+
+      send({
+        app,
+        type: 'click',
+        path: pathname || '/',
+        target: href,
+        // What the link SAID. The wording of a homepage link is the thing
+        // being tested; the href alone cannot tell you which wording won.
+        label: (anchor.textContent || '').trim().slice(0, 80),
+        instanceId,
+        slug,
+      });
+    }
+
+    // Capture phase: a React onClick handler that calls preventDefault or
+    // stops propagation would otherwise swallow the event before it bubbles
+    // to the document, and those are exactly the interesting buttons.
+    document.addEventListener('click', onClick, { capture: true });
+    return () => document.removeEventListener('click', onClick, { capture: true });
+  }, [app, pathname, instanceId, slug, trackClicks]);
+
+  return null;
+}

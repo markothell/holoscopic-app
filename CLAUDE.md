@@ -51,6 +51,23 @@ npm run dev:synthesis   # port 4004
 npm run dev:chorus      # port 4005
 ```
 
+## Site Traffic
+
+Every frontend carries a `Beacon` client component reporting page views to `POST /api/traffic/collect`;
+the holoscopic.io homepage also reports link clicks. Read it in the platform admin at **`/traffic`**.
+Details in `apps/backend/CLAUDE.md` § *Site traffic*.
+
+**`src/components/Beacon.tsx` is mirrored in four apps** — chorus, spectrum, synthesis and
+holoscopic-game. Not a shared package, because chorus and spectrum have no dependency on
+`@hs/activities` and a memorial app should not import the activity engine for forty lines of
+`fetch`. The game app's copy is the one that differs beyond its type union: it splits `site` /
+`interview` / `map-sequence` by path, since three products share that deployment. Change the wire
+shape in one, change it in all four — the server validates `app` against an allowlist, so a drifted
+copy fails as a dropped event.
+
+No cookie, no localStorage, no visitor id: the server derives an anonymous hash with the calendar
+day inside the digest, so it cannot link anyone across two days.
+
 ## Multi-Tenancy
 
 Every `/api` request is resolved to an `Instance` via `apps/backend/middleware/resolveInstance.js`.

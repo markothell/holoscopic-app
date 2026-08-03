@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Fraunces, Space_Grotesk, IBM_Plex_Mono } from 'next/font/google';
 import { AuthProvider } from '@/contexts/AuthContext';
+import Beacon from '@/components/Beacon';
 import './globals.css';
 
 const fraunces = Fraunces({
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${fraunces.variable} ${spaceGrotesk.variable} ${plexMono.variable}`}>
       <body>
+        <Beacon app="synthesis" />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

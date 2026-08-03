@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { memorialApiFor } from '@/services/api';
 import { MemorialProvider } from '@/components/MemorialProvider';
+import Beacon from '@/components/Beacon';
 
 // Everything under /c/<slug> is one memorial.
 //
@@ -70,6 +71,13 @@ export default async function MemorialLayout({
       instanceId={memorial.instanceId}
       subjectName={memorial.subjectName}
     >
+      {/* Counted here rather than in the root layout, because this is the only
+          place the memorial is known — one deployment serves every one of
+          them, so a view without a slug attributes a family's traffic to
+          nothing. Clicks stay off: a memorial is somewhere people write about
+          someone they lost, and instrumenting what they touch there buys a
+          number nobody should want. */}
+      <Beacon app="chorus" instanceId={memorial.instanceId} slug={slug} />
       {children}
     </MemorialProvider>
   );
