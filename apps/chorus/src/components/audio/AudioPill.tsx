@@ -1,7 +1,6 @@
 'use client';
 
-import { usePlayer } from './PlayerProvider';
-import { formatDuration } from '@/lib/recorder';
+import { usePlayer, formatDuration } from '@hs/audio';
 import type { MemoryAudio } from '@/lib/types';
 
 // Playback in two sizes, both driven by the one shared audio element.

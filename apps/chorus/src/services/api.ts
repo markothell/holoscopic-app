@@ -168,7 +168,7 @@ export async function uploadRecording(
   },
 ): Promise<{ url: string; pathname: string }> {
   const { upload } = await import('@vercel/blob/client');
-  const { fileExtensionFor, baseMimeType } = await import('@/lib/recorder');
+  const { fileExtensionFor, baseMimeType } = await import('@hs/audio');
 
   // Namespaced per memorial from day one, so the multi-collection version
   // needs no reshuffle of existing objects (PLAN §11).

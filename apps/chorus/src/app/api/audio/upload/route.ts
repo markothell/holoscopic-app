@@ -20,7 +20,7 @@ const MAX_BYTES = 25 * 1024 * 1024;
 // no MIME parsing, so `audio/webm;codecs=opus` and `audio/webm; codecs=opus`
 // are two different entries and a browser that writes the second one is
 // rejected with "Content type mismatch". The client now sends the base type
-// with the parameter stripped (see recorder.ts#baseMimeType), so only the
+// with the parameter stripped (see @hs/audio#baseMimeType), so only the
 // first four entries can arrive from current code; the parameterised
 // spellings stay for a phone still holding the previous bundle, which is
 // exactly the phone in the middle of recording when a deploy lands.

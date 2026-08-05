@@ -6,16 +6,20 @@ import {
 
 // ONE audio element for the whole app.
 //
-// A wall of memories with an <audio> per card gives you two voices talking over
-// each other the moment somebody taps a second one — on a memorial that isn't a
-// glitch, it's grotesque. A single shared element makes "only one at a time"
-// structural rather than something every player has to remember to enforce.
+// A wall of recordings with an <audio> per card gives you two voices talking
+// over each other the moment somebody taps a second one — on a memorial that
+// isn't a glitch, it's grotesque, and in a ranking task it makes comparison
+// impossible. A single shared element makes "only one at a time" structural
+// rather than something every player has to remember to enforce.
 //
-// It also means playback survives navigation between the wall and a memory
-// page, so tapping through to read a story doesn't cut the voice off.
+// It also means playback survives navigation, so tapping through to read
+// something doesn't cut the voice off.
+//
+// This provider renders NO markup — only context — which is what lets it be
+// shared while each app keeps its own player chrome.
 
 interface PlayerState {
-  /** Memory id currently loaded, playing or paused. */
+  /** Id of the clip currently loaded, playing or paused. */
   currentId: string | null;
   playing: boolean;
   positionMs: number;

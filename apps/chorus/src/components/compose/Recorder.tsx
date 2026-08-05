@@ -1,22 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  canRecord, pickMimeType, resamplePeaks, stashRecording, clearStashedRecording,
-  formatDuration, type Recording,
-} from '@/lib/recorder';
+import { useRecorder, formatDuration, type Recording, type RecorderErrorCode } from '@hs/audio';
+import { recordingStash } from '@/lib/stash';
 import { useMemorial } from '@/components/MemorialProvider';
 
+// Chorus's recorder: all of the look and all of the words, none of the browser.
+//
+// The MediaRecorder lifecycle, the AudioContext analyser, the timed duration
+// and the stash all live in @hs/audio#useRecorder. What stays here is what is
+// Chorus's alone — the radio-dial palette, and copy written for an audience
+// who may be recording their grandmother's voice.
+//
 // Tap to start, tap to stop. NOT hold-to-record: holding a phone still for
 // ninety seconds is genuinely hard, and this app's whole premise is someone
 // talking for longer than they would type.
-
-// 'starting' covers the gap between the tap and the microphone actually
-// opening. getUserMedia does not resolve while a permission prompt is on
-// screen — which is the FIRST time every contributor uses this — so without
-// this state the button sits there looking dead and takes a second tap that
-// would open a second recorder.
-type State = 'idle' | 'starting' | 'recording' | 'review';
 
 interface Props {
   maxSeconds: number;
@@ -29,167 +26,27 @@ interface Props {
   onRecording: (rec: Recording | null, stashed?: boolean) => void;
 }
 
+// The hook reports a code; the words are Chorus's. Every one of these ends by
+// naming the way through, because somebody who cannot record can still type.
+const ERROR_COPY: Record<RecorderErrorCode, string> = {
+  denied: 'Your browser blocked the microphone. Allow it and tap Record again, or type instead.',
+  failed: 'Couldn’t start recording. You can type your memory instead.',
+  empty: 'That recording came out empty. Try once more, or type instead.',
+};
+
 export default function Recorder({ maxSeconds, recording, onRecording }: Props) {
   const { slug } = useMemorial();
-  const [state, setState] = useState<State>(recording ? 'review' : 'idle');
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const [liveePeaks, setLivePeaks] = useState<number[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [supported, setSupported] = useState(true);
+  const rec = useRecorder({
+    maxSeconds,
+    recording,
+    onRecording,
+    stash: recordingStash,
+    // One deployment serves every memorial, so the stash has to remember which
+    // one this was recorded for.
+    scope: slug,
+  });
 
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
-  const samplesRef = useRef<number[]>([]);
-  const startedAtRef = useRef(0);
-  const rafRef = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const previewUrlRef = useRef<string | null>(null);
-
-  // canRecord() touches navigator, so it can only run after mount — deciding
-  // during render would make the server and client disagree.
-  useEffect(() => { setSupported(canRecord()); }, []);
-
-  // A recording restored from the stash arrives after this component has
-  // already mounted idle, so the initial state above misses it. Without this
-  // the recovered recording would be attached and invisible — the person
-  // would have no way to hear what they were about to send.
-  useEffect(() => {
-    if (recording) setState(s => (s === 'idle' ? 'review' : s));
-  }, [recording]);
-
-  const teardown = useCallback(() => {
-    cancelAnimationFrame(rafRef.current);
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = null;
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current = null;
-    audioCtxRef.current?.close().catch(() => {});
-    audioCtxRef.current = null;
-    recorderRef.current = null;
-  }, []);
-
-  useEffect(() => () => {
-    teardown();
-    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-  }, [teardown]);
-
-  async function start() {
-    if (state === 'starting' || state === 'recording') return;
-    setError(null);
-    setState('starting');
-    chunksRef.current = [];
-    samplesRef.current = [];
-    setLivePeaks([]);
-    setElapsedMs(0);
-
-    try {
-      // getUserMedia must be reached directly from the tap on iOS — an await
-      // before this line loses the user-gesture context and the prompt never
-      // appears.
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
-      });
-      streamRef.current = stream;
-
-      const mimeType = pickMimeType();
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      recorderRef.current = recorder;
-
-      recorder.ondataavailable = e => { if (e.data.size) chunksRef.current.push(e.data); };
-      recorder.onstop = handleStop;
-      recorder.start();
-
-      // Duration is TIMED, never read back off the file: iOS writes MP4 with
-      // no duration metadata, which surfaces as an Infinity in every player
-      // and an un-scrubbable track.
-      startedAtRef.current = Date.now();
-      timerRef.current = setInterval(() => {
-        const ms = Date.now() - startedAtRef.current;
-        setElapsedMs(ms);
-        if (ms >= maxSeconds * 1000) stop();
-      }, 200);
-
-      // Amplitude for the waveform, sampled off the live stream.
-      const ctx = new AudioContext();
-      audioCtxRef.current = ctx;
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 1024;
-      ctx.createMediaStreamSource(stream).connect(analyser);
-      const buffer = new Uint8Array(analyser.frequencyBinCount);
-
-      const sample = () => {
-        analyser.getByteTimeDomainData(buffer);
-        let peak = 0;
-        for (let i = 0; i < buffer.length; i++) {
-          const v = Math.abs(buffer[i] - 128) / 128;
-          if (v > peak) peak = v;
-        }
-        samplesRef.current.push(peak);
-        setLivePeaks(resamplePeaks(samplesRef.current, 40));
-        rafRef.current = requestAnimationFrame(sample);
-      };
-      rafRef.current = requestAnimationFrame(sample);
-
-      setState('recording');
-    } catch (err) {
-      teardown();
-      setState('idle');
-      const name = err instanceof Error ? err.name : '';
-      setError(
-        name === 'NotAllowedError'
-          ? 'Your browser blocked the microphone. Allow it and tap Record again, or type instead.'
-          : 'Couldn’t start recording. You can type your memory instead.',
-      );
-    }
-  }
-
-  function handleStop() {
-    const durationMs = Date.now() - startedAtRef.current;
-    const mimeType = recorderRef.current?.mimeType || pickMimeType() || 'audio/webm';
-    const blob = new Blob(chunksRef.current, { type: mimeType });
-    const peaks = resamplePeaks(samplesRef.current, 48);
-    teardown();
-
-    if (!blob.size) {
-      setState('idle');
-      setError('That recording came out empty. Try once more, or type instead.');
-      return;
-    }
-
-    const rec: Recording = { blob, mimeType, durationMs, peaks };
-    // Stashed BEFORE anything else can go wrong. From here a crash, a
-    // refresh, or a failed upload can all be recovered from.
-    onRecording(rec);
-    setState('review');
-    // Reported back rather than assumed: private browsing, a full disk or a
-    // browser with IndexedDB switched off all leave the recording in memory
-    // only, and the compose sheet says something different in that case.
-    void stashRecording(rec, slug).then(ok => onRecording(rec, ok));
-  }
-
-  function stop() {
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = null;
-    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
-  }
-
-  function discard() {
-    if (previewUrlRef.current) {
-      URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = null;
-    }
-    // Clear the stash too. "Record it again" is somebody deciding this take is
-    // wrong; leaving it on disk would hand it back to them the next time the
-    // sheet restores an unsent recording.
-    void clearStashedRecording();
-    onRecording(null);
-    setElapsedMs(0);
-    setState('idle');
-  }
-
-  if (!supported) {
+  if (!rec.supported) {
     return (
       <p className="rounded-[3px] bg-card px-4 py-3 text-[0.9375rem] text-ink-soft">
         This browser can’t record audio. You can still type your memory above.
@@ -197,24 +54,17 @@ export default function Recorder({ maxSeconds, recording, onRecording }: Props) 
     );
   }
 
-  const remaining = maxSeconds * 1000 - elapsedMs;
-  const nearlyUp = state === 'recording' && remaining <= 30_000;
+  const nearlyUp = rec.state === 'recording' && rec.remainingMs <= 30_000;
   const minutes = Math.round(maxSeconds / 60);
+  const error = rec.error ? ERROR_COPY[rec.error] : null;
 
-  if (state === 'review' && recording) {
-    if (!previewUrlRef.current) previewUrlRef.current = URL.createObjectURL(recording.blob);
-    // Read off the recording rather than remembered in state, so it survives a
-    // toggle to Type and back — which remounts this component — and so a
-    // recording restored from the stash still explains itself. The timer checks
-    // every 200ms, so an auto-stop lands just past the limit; anyone who tapped
-    // Stop inside the last half-second was cut off in every sense that matters.
-    const timedOut = recording.durationMs >= maxSeconds * 1000 - 500;
+  if (rec.state === 'review' && recording) {
     return (
       <div className="rounded-[3px] bg-card px-4 py-4">
         {/* Two things, in this order: what you said is here, and here is how to
             say the rest. Somebody cut off mid-story assumes the take is ruined
             and starts over — which loses the ten minutes they just spent. */}
-        {timedOut && (
+        {rec.timedOut && (
           <p
             role="status"
             className="mb-3 rounded-[3px] bg-card-raised px-3.5 py-3 text-[0.9375rem]
@@ -230,10 +80,12 @@ export default function Recorder({ maxSeconds, recording, onRecording }: Props) 
             {formatDuration(recording.durationMs)}
           </span>
         </div>
-        <audio controls preload="metadata" src={previewUrlRef.current} className="mt-3 w-full" />
+        {rec.previewUrl && (
+          <audio controls preload="metadata" src={rec.previewUrl} className="mt-3 w-full" />
+        )}
         <button
           type="button"
-          onClick={discard}
+          onClick={rec.discard}
           className="mt-3 text-[0.9375rem] text-dial underline decoration-dial-soft underline-offset-4"
         >
           Record it again
@@ -244,7 +96,7 @@ export default function Recorder({ maxSeconds, recording, onRecording }: Props) 
 
   return (
     <div className="rounded-[3px] bg-card px-4 py-5 text-center">
-      {state === 'recording' ? (
+      {rec.state === 'recording' ? (
         <>
           <div className="mb-4 flex items-center justify-center gap-3">
             <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-dial" aria-hidden />
@@ -253,18 +105,18 @@ export default function Recorder({ maxSeconds, recording, onRecording }: Props) 
               role="timer"
               aria-live="off"
             >
-              {formatDuration(elapsedMs)}
+              {formatDuration(rec.elapsedMs)}
             </span>
             {nearlyUp && (
               <span className="text-[0.8125rem] text-dial">
-                {formatDuration(remaining)} left
+                {formatDuration(rec.remainingMs)} left
               </span>
             )}
           </div>
-          <Waveform peaks={liveePeaks} live />
+          <Waveform peaks={rec.livePeaks} live />
           <button
             type="button"
-            onClick={stop}
+            onClick={rec.stop}
             className="mt-5 w-full rounded-[3px] bg-dial px-5 py-3.5 text-[1rem] font-medium text-card-raised"
           >
             Stop
@@ -274,8 +126,8 @@ export default function Recorder({ maxSeconds, recording, onRecording }: Props) 
         <>
           <button
             type="button"
-            onClick={start}
-            disabled={state === 'starting'}
+            onClick={rec.start}
+            disabled={rec.state === 'starting'}
             className="mx-auto flex h-20 w-20 items-center justify-center rounded-full
                        bg-dial text-card-raised shadow-[var(--shadow-card)]
                        transition-transform active:scale-95
@@ -285,7 +137,7 @@ export default function Recorder({ maxSeconds, recording, onRecording }: Props) 
             <span className="h-6 w-6 rounded-full bg-card-raised" aria-hidden />
           </button>
           <p className="mt-4 text-[0.9375rem] text-ink-soft">
-            {state === 'starting'
+            {rec.state === 'starting'
               ? 'Waiting for the microphone — allow it if your browser asks.'
               // The length is named up front AND the way past it, because the
               // people who hit the limit are the ones with the most to say.

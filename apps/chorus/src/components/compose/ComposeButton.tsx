@@ -7,7 +7,8 @@ import TagQuestion from './TagQuestion';
 import Recorder from './Recorder';
 import { ensureContributor, reportFailure, uploadRecording } from '@/services/api';
 import { useMemorial } from '@/components/MemorialProvider';
-import { clearStashedRecording, readStashedRecording, type Recording } from '@/lib/recorder';
+import { type Recording } from '@hs/audio';
+import { recordingStash } from '@/lib/stash';
 import { classifyFailure, failureMessage } from '@/lib/submitFailure';
 import type { AddTarget, Memorial, Tag } from '@/lib/types';
 
@@ -109,7 +110,7 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
     // back. Scoped to this memorial and to the last week, and only when the
     // sheet is otherwise empty, so it can never overwrite live work.
     if (!recording) {
-      void readStashedRecording(slug).then(rec => {
+      void recordingStash.read(slug).then(rec => {
         if (!rec) return;
         setRecording(rec);
         setStashed(true);
@@ -195,7 +196,7 @@ export default function ComposeButton({ memorial, tags, variant, label, addTo = 
         // were failing leaves the recording exactly where it was, which is the
         // whole reason the stash is worth keeping.
         if (!audioFailed) {
-          void clearStashedRecording();
+          void recordingStash.clear();
           uploadedRef.current = null;
         }
         router.refresh();   // the wall behind the sheet now includes this

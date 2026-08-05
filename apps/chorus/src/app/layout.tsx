@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Newsreader, Archivo } from 'next/font/google';
-import PlayerProvider from '@/components/audio/PlayerProvider';
+import { PlayerProvider } from '@hs/audio';
 import './globals.css';
 
 // Newsreader carries the voice — the prompt sentence and the stories. Archivo
