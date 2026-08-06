@@ -190,6 +190,20 @@ async function mirrorMemory({ memory, env = process.env, s3 = null, fetchImpl = 
   });
 }
 
+// The same job for a Threshold share. Sibling of mirrorMemory rather than a
+// generalisation of it: where the audio lives on a document is that model's
+// business, and keeping both shapes here means neither funnel has to know what
+// an S3 key looks like.
+async function mirrorShare({ share, env = process.env, s3 = null, fetchImpl = globalThis.fetch }) {
+  const audio = share?.audio;
+  if (!audio?.url) return { status: 'no-audio' };
+  return mirrorObject({
+    url: audio.url,
+    pathname: pathnameFor(audio),
+    env, s3, fetchImpl,
+  });
+}
+
 // ── Which failures are worth waking somebody for ────────────────────────────
 //
 // mirrorObject reports every failure the same way, but they are not the same
@@ -260,6 +274,7 @@ module.exports = {
   makeClient,
   mirrorObject,
   mirrorMemory,
+  mirrorShare,
   isPermanentlyGone,
   reconcileGone,
 };

@@ -147,7 +147,7 @@ const instanceSchema = new mongoose.Schema({
   // it existed.
   app: {
     type: String,
-    enum: ['interview', 'spectrum', 'synthesis', 'chorus'],
+    enum: ['interview', 'spectrum', 'synthesis', 'chorus', 'threshold'],
     default: 'interview',
   },
 

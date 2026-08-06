@@ -8,7 +8,7 @@ const { provisionMemorial } = require('../utils/memorialDefaults');
 
 // Kept in step with the enum on Instance.app by hand, so a bad value is a 400
 // here rather than a Mongoose validation 500 further in.
-const APPS = ['interview', 'spectrum', 'synthesis', 'chorus'];
+const APPS = ['interview', 'spectrum', 'synthesis', 'chorus', 'threshold'];
 
 function generateId() {
   return Math.random().toString(36).substring(2, 10);
@@ -168,6 +168,12 @@ router.post('/', async (req, res) => {
     });
 
     if (app === 'chorus') provisionMemorial(instance);
+    // Threshold has no holon economy (apps/threshold/PLAN.md D7) — nothing in
+    // it is scarce, so there is nothing to stake on. Explore mode is what turns
+    // the economy off, same as a Chorus memorial.
+    if (app === 'threshold') {
+      instance.config = { ...(instance.config || {}), mode: 'explore' };
+    }
     await instance.save();
 
     // Planting the seed vocabulary is what makes the prompt's two blanks

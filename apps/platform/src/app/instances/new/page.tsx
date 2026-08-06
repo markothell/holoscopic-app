@@ -10,7 +10,7 @@ import { apiFetch } from '@/lib/api';
 // the field: it decides whether the backend hands out an edition number, which
 // config surface the edit page shows, and — for Chorus — whether the instance
 // arrives already provisioned as a working memorial.
-type AppId = 'interview' | 'spectrum' | 'synthesis' | 'chorus';
+type AppId = 'interview' | 'spectrum' | 'synthesis' | 'chorus' | 'threshold';
 
 const APPS: { id: AppId; label: string; hint: string }[] = [
   { id: 'interview', label: 'interView',
@@ -21,6 +21,8 @@ const APPS: { id: AppId; label: string; hint: string }[] = [
     hint: 'A thought space. Ideas are normally created by collaborators in the app itself — make one here only to set up a parent or repair one.' },
   { id: 'spectrum', label: 'On a Spectrum',
     hint: 'Rooms are created by players in the app. Make one here only to set up a parent instance.' },
+  { id: 'threshold', label: 'Threshold',
+    hint: 'Where a group’s dividing line falls on a polarity. Circles are created by facilitators in the app — make one here to set up the parent instance. Economy off.' },
 ];
 
 export default function NewInstancePage() {

@@ -492,6 +492,30 @@ function loadAPIRoutes() {
       // no io needs to be threaded through here.
       const synthesisRoutes = require('./routes/synthesis');
       app.use('/api/synthesis', enforceVerifiedUser, synthesisRoutes);
+      // Threshold — account holders, no holon economy (apps/threshold/PLAN.md
+      // D6/D7). Requiring this router is ALSO what registers the 'threshold'
+      // activity module with utils/circleActivities.js, and it happens here,
+      // before startJobs() below — so the circle round ticker can never reach a
+      // threshold circle whose module is missing.
+      const thresholdRoutes = require('./routes/threshold');
+      // The Deepgram callback FIRST and outside enforceVerifiedUser — the
+      // vendor has no account here. It authenticates on its own `?t=` HMAC and
+      // reads its share from `?s=`, never from req.instanceId.
+      app.use('/api/threshold/hooks', thresholdRoutes.hooks);
+      app.use('/api/threshold', enforceVerifiedUser, thresholdRoutes);
+      // Off-site copy of a shared recording, injected exactly as Chorus's is.
+      // Until this runs a voice exists only in Vercel Blob, which has no
+      // snapshots and no undelete; scripts/backup-blobs.js sweeps up whatever
+      // it drops.
+      require('./utils/threshold').setBlobMirror(
+        require('./utils/blobMirror').mirrorShare,
+      );
+      // Transcription, over the same utils/transcribe.js core Chorus uses.
+      // Optional by design: with no DEEPGRAM_API_KEY this is a no-op and shares
+      // stay 'skipped', which is the normal local state and not an error.
+      require('./utils/threshold').setTranscriber(
+        require('./utils/thresholdTranscribe').requestTranscript,
+      );
       // Chorus memorials — the ONLY router mounted without enforceVerifiedUser,
       // because its contributors deliberately have no holoscopic account
       // (apps/chorus/PLAN.md D2). Anonymous writes are the abuse surface, so

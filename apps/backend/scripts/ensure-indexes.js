@@ -111,6 +111,36 @@ const INDEXES = [
   // Queried once per spectrum in a loop (up to 50 per pulse request).
   { collection: 'oasnominations', name: 'frameSlate_frameId', keys: { 'frameSlate.frameId': 1 } },
 
+  // --- Circles (Threshold and any later activity built on utils/circles.js) ---
+  //
+  // The unique index is correctness, not speed: utils/circles.js#createCircle
+  // checks for a duplicate urlName and then creates, which is a race between
+  // two requests. Scoped to the instance, unlike Sequence's global urlName.
+  //
+  // status_updatedAt is the round ticker's only query (jobs/index.js, every
+  // 60s), so it runs on every deployment whether or not anyone is using a
+  // circle — a collection scan here would be a permanent background cost.
+  { collection: 'circles', name: 'instanceId_urlName', keys: { instanceId: 1, urlName: 1 },
+    options: { unique: true } },
+  { collection: 'circles', name: 'status_updatedAt', keys: { status: 1, updatedAt: -1 } },
+  { collection: 'circles', name: 'members_userId', keys: { 'members.userId': 1 } },
+  // routes/threshold.js finds a circle by a seed id rather than making the
+  // client carry both ids.
+  { collection: 'circles', name: 'instanceId_seeds_id', keys: { instanceId: 1, 'seeds.id': 1 } },
+
+  // --- Threshold. Both unique indexes are correctness, not speed ---
+  //
+  // seedId_userId_pole IS the share upsert key (D10: one story per pole), and
+  // seedId_rankerId is the ranking's. Without them a double submit creates a
+  // second document that computeResult then counts twice, which shifts the
+  // agreement fraction the whole reveal is built on.
+  { collection: 'thresholdshares', name: 'seedId_userId_pole', keys: { seedId: 1, userId: 1, pole: 1 },
+    options: { unique: true } },
+  { collection: 'thresholdshares', name: 'seedId_createdAt', keys: { seedId: 1, createdAt: 1 } },
+  { collection: 'thresholdrankings', name: 'seedId_rankerId', keys: { seedId: 1, rankerId: 1 },
+    options: { unique: true } },
+  { collection: 'thresholdrankings', name: 'seedId_submittedAt', keys: { seedId: 1, submittedAt: 1 } },
+
   // --- Site traffic. The only entries here whose OPTIONS are load-bearing ---
   //
   // Two of these three are not performance at all. The unique index on
