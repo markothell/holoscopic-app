@@ -1,0 +1,88 @@
+// circleActivities — the registry that makes utils/circles.js generic.
+//
+// A circle knows how to run rounds. It does not know what a round CONTAINS,
+// what a seed IS, or what makes a member "done". An activity module supplies
+// those, and registers itself here under the key stored on Circle.activity.
+//
+// This is the server-side sibling of packages/activities' REGISTRY, which maps
+// an activity type to its React components. Same idea, opposite end.
+//
+// See apps/threshold/PLAN.md §3.4. Consumer #1 is utils/threshold.js.
+
+// Called for hooks a module chose not to implement, so utils/circles.js can
+// call all of them unconditionally rather than guarding every site.
+const NOOP = async () => {};
+
+const REQUIRED = ['normalizeSeed', 'isMemberDone'];
+
+const OPTIONAL = {
+  onPhaseOpen: NOOP,
+  onPhaseClose: NOOP,
+  onCycleReveal: NOOP,
+  onCircleComplete: NOOP,
+  // Returning null means "this person has nothing to do" — the main lever
+  // against a 12-seed circle sending 400+ messages (PLAN §3.6).
+  notificationFor: async () => null,
+};
+
+const REGISTRY = new Map();
+
+/**
+ * Register an activity module.
+ *
+ * @param {string} key            matches Circle.activity
+ * @param {object} mod
+ * @param {function} mod.normalizeSeed   (payload, {circle, userId}) -> payload; throws to reject
+ * @param {string[]} mod.phases          ordered per-cycle phases, e.g. ['share','rank'].
+ *                                       'revealed' is terminal and implicit — never list it.
+ * @param {function} mod.isMemberDone    ({circle, seed, phase, userId, store}) -> Promise<boolean>
+ */
+function register(key, mod) {
+  if (!key || typeof key !== 'string') throw new Error('circleActivities: key required');
+  if (!mod || typeof mod !== 'object') throw new Error(`circleActivities: ${key} module required`);
+
+  for (const fn of REQUIRED) {
+    if (typeof mod[fn] !== 'function') {
+      throw new Error(`circleActivities: ${key} must implement ${fn}()`);
+    }
+  }
+  if (!Array.isArray(mod.phases) || mod.phases.length === 0) {
+    throw new Error(`circleActivities: ${key} must declare a non-empty phases[]`);
+  }
+  // 'pending' and 'revealed' are the machine's own terminal states. A module
+  // listing either would create a phase the machine can never leave.
+  for (const p of mod.phases) {
+    if (p === 'pending' || p === 'revealed') {
+      throw new Error(`circleActivities: ${key} may not use reserved phase '${p}'`);
+    }
+  }
+
+  REGISTRY.set(key, { ...OPTIONAL, ...mod, phases: [...mod.phases] });
+  return REGISTRY.get(key);
+}
+
+/**
+ * Look up a module. Throws on an unknown key rather than returning null: a
+ * circle referencing an activity nobody registered cannot advance, and
+ * failing at the tick is how that becomes visible.
+ */
+function get(key) {
+  const mod = REGISTRY.get(key);
+  if (!mod) {
+    const known = [...REGISTRY.keys()].join(', ') || 'none';
+    throw new Error(`circleActivities: no module registered for '${key}' (registered: ${known})`);
+  }
+  return mod;
+}
+
+function has(key) {
+  return REGISTRY.has(key);
+}
+
+// Test seam only — lets a spec register a stub without leaking it into the
+// next file's registry.
+function reset() {
+  REGISTRY.clear();
+}
+
+module.exports = { register, get, has, reset, REQUIRED };
