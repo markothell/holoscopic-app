@@ -23,12 +23,17 @@ interface MemorialConfig {
 // before it existed the admin had no way to say, so everything created here
 // was an interView edition and a memorial could only be made by running
 // scripts/seed-memorial.js.
-type AppId = 'interview' | 'spectrum' | 'synthesis' | 'chorus';
+// KEEP IN STEP with the enum on Instance.app, routes/instances.js#APPS and the
+// create form. The picker below is built from this map, so an app missing here
+// is worse than unlisted: the select falls back to its first option, and saving
+// the page rewrites a perfectly good instance's app to 'interview'.
+type AppId = 'interview' | 'spectrum' | 'synthesis' | 'chorus' | 'threshold';
 const APP_LABELS: Record<AppId, string> = {
   interview: 'interView',
   spectrum: 'On a Spectrum',
   synthesis: 'Synthesis',
   chorus: 'Chorus (memorial)',
+  threshold: 'Threshold',
 };
 
 interface InstanceData {

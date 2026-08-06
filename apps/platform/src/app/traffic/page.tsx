@@ -25,15 +25,22 @@ const APP_LABELS: Record<string, string> = {
   spectrum: 'On a Spectrum',
   synthesis: 'Synthesis',
   chorus: 'Chorus',
+  threshold: 'Threshold',
 };
 
 // Categorical slots in FIXED order — colour follows the app, never its rank, so
 // a quiet week cannot repaint the chart and make two screenshots incomparable.
-// Validated as a set against the white card surface: worst adjacent CVD ΔE 9.1,
-// worst adjacent normal-vision ΔE 19.6. Three of them sit under 3:1 against
-// white, which is why every bar in here carries a visible label and every
-// figure also exists as a table row — that is the relief the contrast warning
-// requires, not a nicety.
+// Validated as a set against the white card surface: worst pair under simulated
+// deuteranopia is interview/spectrum at ΔE2000 9.4, worst under normal vision is
+// chorus/map-sequence at 20.0. Four of them sit under 3:1 against white, which
+// is why every bar in here carries a visible label and every figure also exists
+// as a table row — that is the relief the contrast warning requires, not a
+// nicety.
+//
+// ADDING ONE means re-running that check, not eyeballing a gap in the hue
+// wheel. Threshold's violet was picked because it leaves both worst pairs
+// exactly where they were; the obvious blue-violets collapse against `site`
+// under deuteranopia (ΔE 2.2–3.9) while looking perfectly distinct to me.
 const APP_COLORS: Record<string, string> = {
   site: '#2a78d6',
   interview: '#eb6834',
@@ -41,6 +48,7 @@ const APP_COLORS: Record<string, string> = {
   spectrum: '#eda100',
   synthesis: '#e87ba4',
   'map-sequence': '#008300',
+  threshold: '#a349a4',
 };
 
 const RANGES = [

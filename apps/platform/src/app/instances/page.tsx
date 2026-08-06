@@ -14,6 +14,7 @@ const APP_LABELS: Record<string, string> = {
   spectrum: 'On a Spectrum',
   synthesis: 'Synthesis',
   chorus: 'Chorus',
+  threshold: 'Threshold',
 };
 
 interface Instance {
