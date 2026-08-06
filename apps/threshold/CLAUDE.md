@@ -78,10 +78,18 @@ the round may have turned over.
 - **`gameNumber` must stay null.** `Instance.getDefault()` picks the lowest-numbered active
   instance, so a Threshold instance holding a number can become the platform default and start
   answering interView traffic.
+- **One parent instance holds every circle, and membership is the access boundary** (D20). The
+  tenant is the `Circle` at `/t/<urlName>`, never its own `Instance` — a circle has no economy and
+  no per-tenant config, since its clocks, members and invitations all live on the `Circle`
+  document. Consequence: every circle in a deployment shares one instance, so `assertMember` is the
+  only thing between two of them. `listShares` and both result routes assert it; the circle shell
+  (title, phase, member count) stays readable so somebody following an invitation can see what they
+  are joining.
 - **`resolveInstance` never fails**, so `routes/threshold.js` checks `Instance.app === 'threshold'`
   itself and 404s anything else. A wrong `NEXT_PUBLIC_INSTANCE_ID` therefore reads as "circle not
   found" rather than as an auth or CORS error — worth knowing before you go looking in the wrong
-  place.
+  place. Leave it unset if the instance is slugged `threshold`; `x-instance-id` takes an id or a
+  slug, id first.
 - **404 everywhere, never 403.** An absent circle and one you are not a member of look identical
   from outside, so no page can say which it was.
 - **Audio: `@hs/audio` owns the three browser rules, so use it rather than reimplementing around

@@ -292,8 +292,16 @@ async function deleteShare({ store = mongoStore, circleId, seedId, userId, pole 
  *                 yours anchors the whole group on whoever posted first (D17).
  *   rank phase  — all of them, with authorship withheld (D9).
  *   revealed    — all of them, attributed.
+ *
+ * Membership is the access boundary here, and it is checked on the way IN
+ * rather than left to the caller. A circle's urlName is chosen by a facilitator
+ * and travels in links, so it is a name, not a secret — anybody signed in to
+ * this instance could otherwise read a group's stories by guessing one. The
+ * instance is not the boundary: every circle in a Threshold deployment shares
+ * it, so this check is the only thing standing between two circles.
  */
 async function listShares({ store = mongoStore, circle, seedId, viewerId = null }) {
+  assertMember(circle, viewerId);
   const seed = seedById(circle, seedId);
   const all = await store.listShares(seedId);
 
@@ -626,6 +634,7 @@ activities.register('threshold', createModule());
 
 module.exports = {
   normalizeSeed,
+  assertMember,
   submitShare,
   deleteShare,
   listShares,

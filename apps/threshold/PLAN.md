@@ -1,12 +1,13 @@
 # Threshold — Master Plan (draft v0.1)
 
-**Status:** design, nothing built.
+**Status:** the backend is built and green (M0–M3a); the frontend is a scaffold. §6.2, §6.3 and
+§9.2 are the three surfaces still to design — see `DESIGN-QUESTIONS.md`.
 **Local dev port:** 4006. **Ships to:** `threshold.holoscopic.io` (add to backend `CLIENT_URL` at cutover).
-**Backend surface:** `apps/backend/routes/threshold.js` + `utils/threshold.js`, on top of a new
-generic **Circle** layer (§3) that Threshold is the first consumer of.
+**Backend surface:** `apps/backend/routes/threshold.js` + `utils/threshold.js`, on the generic
+**Circle** layer (§3) that Threshold is the first consumer of.
 
 This file is the source of truth for the design. Sections are numbered so code comments and
-commits can cite them. Settled decisions are D1–D14 in §12; open questions in §13.
+commits can cite them. Settled decisions are D1–D20 in §12; open questions in §13.
 
 ---
 
@@ -263,6 +264,24 @@ Chorus decision, not a pattern.
 **No holon economy** (**D7**). The instance runs `config.mode: 'explore'`, like Chorus. Nothing in
 Threshold is scarce: everybody shares, everybody ranks, and there is nothing to stake on. No
 `transact`, no `spend`, no `InstanceMembership` balance.
+
+**One parent instance holds every circle** (**D20**). The tenant here is the `Circle`, addressed at
+`/t/<urlName>`, not the `Instance` — `NEXT_PUBLIC_INSTANCE_ID` names the parent, exactly as
+spectrum's does, and one deployment serves unlimited circles.
+
+The other two shapes in this repo are both answers to a question Threshold does not ask. Chorus
+makes a memorial an `Instance` because a memorial is created *in the admin* and carries per-memorial
+config an `Instance` is built to hold — curator key, seed vocabulary, subject photo. On a Spectrum
+gives each room a child `Instance` because each room runs *its own token economy*, with balances on
+`InstanceMembership`. Threshold circles are created in the app by facilitators, and there is no
+economy at all (D7); a circle's whole configuration — phase clocks, `advanceOnComplete`, members,
+invited emails — already lives on the `Circle` document. A child instance per circle would be an
+empty shell, and each one is another row that can win `Instance.getDefault()`.
+
+The consequence to hold onto: **the instance is not an access boundary here, membership is.** Every
+circle in a deployment shares one instance, so `assertMember` is the only thing standing between two
+circles (§8.1). A deployment serving more than one *parent* would need Chorus's answer — the tenant
+in the path — and nothing today needs that.
 
 `Instance.app` gains `'threshold'` (`models/Instance.js:150`), plus the `POST /api/instances` create
 path and the platform admin's app picker. Note the standing rule: **`gameNumber` belongs to
@@ -570,6 +589,13 @@ This is the platform's existing rule (`entries.toRedacted`) and it is not negoti
 return another user's identity — redaction happens in the API layer, never client-side.* Shipping
 attribution to the browser and hiding it in CSS is the failure mode this rule exists to prevent.
 
+**Underneath all three, membership decides who reads anything at all.** `listShares` asserts it on
+the way in, and so do the two result routes. A `urlName` is chosen by a facilitator and travels in
+links — it is a name, not a secret — and every circle in a deployment shares one instance (D20), so
+this check is the whole boundary between two circles. The circle *shell* — title, phase, member
+count — stays readable to anyone signed in, because somebody following an invitation has to see
+what they are being asked to join.
+
 **Say the honest thing in the UI, though.** In a small circle a voice recording identifies its
 speaker regardless of what the payload says. The compose surface should tell people that before
 they record, not imply an anonymity the medium cannot provide.
@@ -679,6 +705,9 @@ M0 and M1 are the whole architectural bet and neither needs a designer. Start th
 - **D19** — Deepgram transcription is **one shared core** (`utils/transcribe.js`) with a thin
   adapter per app, not a sibling per app. The callback token is an HMAC over the bare id and must
   never be namespaced — that would silently drop every transcript in flight across a deploy. §7
+- **D20** — **One parent instance holds every circle.** The tenant is the `Circle` at
+  `/t/<urlName>`; a circle is never its own `Instance`. Membership, not the instance, is the access
+  boundary. §4, §8.1
 
 ---
 

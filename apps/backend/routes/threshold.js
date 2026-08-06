@@ -100,8 +100,13 @@ router.get('/circles/:urlName', async (req, res) => {
 
     const userId = userIdOf(req);
     const payload = circles.toClient(circle, { userId });
+
+    // The shell — title, phase, member count — stays readable to anyone signed
+    // in, because somebody following an invitation has to be able to see what
+    // they are being asked to join before they join it. The STORIES do not:
+    // those need membership, and toClient carries no share content.
     const seed = circles.activeSeed(circle);
-    if (seed) {
+    if (seed && payload.isMember) {
       payload.shares = await threshold.listShares({ store, circle, seedId: seed.id, viewerId: userId });
       const ranking = await store.findRanking(seed.id, userId);
       payload.myRanking = ranking
@@ -172,6 +177,7 @@ router.get('/circles/:id/result', async (req, res) => {
   try {
     const circle = await loadCircle(req, res);
     if (!circle) return;
+    threshold.assertMember(circle, userIdOf(req));
     if (circle.phase !== 'complete') return res.status(404).json({ error: 'This circle is still running' });
     res.json({ result: threshold.circleResult(circle) });
   } catch (err) {
@@ -281,6 +287,7 @@ router.get('/seeds/:seedId/result', async (req, res) => {
   try {
     const found = await loadSeed(req, res);
     if (!found) return;
+    threshold.assertMember(found.circle, userIdOf(req));
     if (found.seed.phase !== 'revealed' || !found.seed.result) {
       return res.status(404).json({ error: 'This topic has not been revealed yet' });
     }

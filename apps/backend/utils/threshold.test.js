@@ -360,6 +360,37 @@ test('a typed share never calls the mirror', async () => {
 // Visibility (D9 / D17)
 // ---------------------------------------------------------------------------
 
+test('a stranger who knows the urlName still cannot read the stories', async () => {
+  const store = memStore();
+  useStore(store);
+  const circle = await runningCircle(store, { members: 3 });
+  const seed = circle.seeds[0];
+
+  for (const u of ['u1', 'u2', 'u3']) {
+    await threshold.submitShare({
+      store, circleId: circle.id, seedId: seed.id, userId: u, username: u.toUpperCase(),
+      pole: 'A', text: `story from ${u}`,
+    });
+  }
+  assert.equal(seed.phase, 'rank', 'everyone shared, so the stories are open to the circle');
+
+  // A urlName is chosen by a facilitator and travels in links — a name, not a
+  // secret. Every circle in a Threshold deployment shares one instance, so
+  // membership is the only boundary between two of them.
+  await assert.rejects(
+    () => threshold.listShares({ store, circle, seedId: seed.id, viewerId: 'outsider' }),
+    /Not a member/,
+  );
+  await assert.rejects(
+    () => threshold.listShares({ store, circle, seedId: seed.id, viewerId: null }),
+    /Not a member/,
+  );
+
+  // And a member is unaffected.
+  const wire = await threshold.listShares({ store, circle, seedId: seed.id, viewerId: 'u2' });
+  assert.equal(wire.length, 3);
+});
+
 test('during the share phase you see only your own stories (D17)', async () => {
   const store = memStore();
   useStore(store);
