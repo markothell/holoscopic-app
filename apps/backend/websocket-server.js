@@ -57,6 +57,54 @@ const { requestId, notFound, errorHandler, setReporter } = require('./middleware
 setReporter(observability.report);
 app.use(requestId);
 
+// Reject requests whose Host header names neither this server's own Render
+// hostname nor a domain in CLIENT_URL. A scanner hitting the bare IP sends no
+// Origin — CORS below never sees it, since CORS is a browser mechanism a raw
+// HTTP client just ignores — but HTTP still requires some Host header, and a
+// direct-IP hit is almost never one of ours. Sitting ahead of CORS,
+// resolveInstance and Mongo, this turns that hit into one Set lookup instead
+// of a full request cycle that still ends in resolveInstance's default-instance
+// fallback and a 200 (root CLAUDE.md: "resolveInstance never fails" is
+// intentional multi-tenancy behavior for recognized-but-unmatched Origins —
+// this check runs before that logic even starts, for requests that were never
+// addressed to a real hostname at all).
+//
+// Dev is exempt: localhost:PORT never matches CLIENT_URL, and there is no
+// scanner to defend against on a machine that is not listening on the public
+// internet.
+if (process.env.NODE_ENV === 'production') {
+  const allowedHosts = new Set(
+    allowedOrigins
+      .map(url => { try { return new URL(url).hostname; } catch { return null; } })
+      .filter(Boolean)
+  );
+  if (process.env.RENDER_EXTERNAL_URL) {
+    try { allowedHosts.add(new URL(process.env.RENDER_EXTERNAL_URL).hostname); } catch {}
+  }
+
+  // Temporary diagnostic, added while chasing the July 31 – Aug 4 traffic
+  // spike: Render's dashboard could show neither a Host nor a Path for that
+  // traffic, and this app has no access-log middleware, so nothing about it
+  // ever reached a log line. Logs each distinct (method, host, path) combo
+  // once — bounded by how many distinct combos actually show up, not by
+  // request volume — so a repeat is identifiable immediately instead of
+  // showing up only as an unlabeled bucket in Render's metrics. Remove once
+  // the cause is confirmed.
+  const seenRejections = new Set();
+
+  app.use((req, res, next) => {
+    if (req.path === '/health') return next();
+    const host = (req.headers.host || '').split(':')[0];
+    if (allowedHosts.has(host)) return next();
+    const key = `${req.method} ${host || '(none)'} ${req.path}`;
+    if (!seenRejections.has(key)) {
+      seenRejections.add(key);
+      console.log(`[host-reject] ${key} ip=${req.ip} ua=${req.headers['user-agent'] || '(none)'}`);
+    }
+    res.status(400).end();
+  });
+}
+
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
