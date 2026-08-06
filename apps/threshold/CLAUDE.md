@@ -84,10 +84,11 @@ the round may have turned over.
   place.
 - **404 everywhere, never 403.** An absent circle and one you are not a member of look identical
   from outside, so no page can say which it was.
-- **Audio, when M3b builds it:** upload the BASE content type with no `codecs` parameter (Blob
-  matches by exact string and the spacing differs per browser); feature-detect the mime type;
-  never read duration off the file. All three are paid-for bugs from Chorus, and `@hs/audio`
-  already handles them — the point is not to reintroduce them around it.
+- **Audio: `@hs/audio` owns the three browser rules, so use it rather than reimplementing around
+  it.** Upload the BASE content type with no `codecs` parameter — Blob matches by exact string and
+  the spacing differs per browser. Feature-detect the mime type: Chrome/Android/Firefox give
+  WebM/Opus, Safari and all iOS give MP4/AAC. Take duration from the client's own timer, since iOS
+  MP4 carries no duration metadata and every player reads it as `Infinity`.
 
 ## Environment
 

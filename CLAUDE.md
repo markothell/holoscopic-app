@@ -67,9 +67,6 @@ lines of `fetch`. The game app's copy is the one that differs beyond its type un
 the wire shape in one, change it in all five — the server validates `app` against an allowlist, so
 a drifted copy fails as a dropped event.
 
-(The four older copies still carry an inline comment saying "four" and naming three siblings. The
-allowlist in `utils/traffic.js` is the authority, and it has all five.)
-
 No cookie, no localStorage, no visitor id: the server derives an anonymous hash with the calendar
 day inside the digest, so it cannot link anyone across two days.
 

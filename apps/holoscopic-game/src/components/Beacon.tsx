@@ -6,16 +6,16 @@ import { useEffect, useRef } from 'react';
 // The traffic beacon. One page view per navigation, and — where a page asks
 // for it — one event per link click.
 //
-// MIRRORED in apps/chorus, apps/spectrum and apps/synthesis. This copy is the
-// one that differs beyond its type union, because holoscopic.io is THREE
-// products served from one Next deployment and only this app knows which of its
-// own routes is which. It is not in a shared package because the apps that need
-// it do not share one: chorus and spectrum have no dependency on
-// @hs/activities, and giving a memorial app the whole activity engine to import
-// forty lines of fetch would be a worse trade than four copies of a leaf file
-// that changes approximately never. The server validates `app` against an
-// allowlist (utils/traffic.js#APPS), so a drifted copy fails loudly as a
-// dropped event rather than quietly as a wrong number.
+// MIRRORED in apps/chorus, apps/spectrum, apps/synthesis and apps/threshold.
+// This copy is the one that differs beyond its type union, because
+// holoscopic.io is THREE products served from one Next deployment and only this
+// app knows which of its own routes is which. It is not in a package because
+// the apps that need it do not share one: chorus, spectrum and threshold have
+// no dependency on @hs/activities, and giving a memorial app the whole activity
+// engine to import forty lines of fetch would be a worse trade than five copies
+// of a leaf file that changes approximately never. The server validates `app`
+// against an allowlist (utils/traffic.js#APPS), so a drifted copy fails loudly
+// as a dropped event rather than quietly as a wrong number.
 //
 // WHAT IT DOES NOT DO is the reason it can run without a cookie banner: no
 // cookie, no localStorage, no id of any kind. The server derives an anonymous
