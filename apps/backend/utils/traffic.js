@@ -34,6 +34,7 @@ const APPS = new Set([
   'spectrum',
   'synthesis',
   'chorus',
+  'threshold',
 ]);
 
 const TYPES = new Set(['view', 'click']);

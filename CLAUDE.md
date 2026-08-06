@@ -1,13 +1,14 @@
 # Holoscopic Monorepo (GitHub: markothell/holoscopic-app)
 
 `main` is the production branch: pushing it deploys the backend (Render) and the frontends (Vercel). The games (newest first, as on the holoscopic.io homepage):
+- **Threshold** — `apps/threshold`, where a group's dividing line falls on a polarity (backend surface: `apps/backend/routes/threshold.js` + `utils/threshold.js`, on the generic `Circle` layer; see `apps/threshold/CLAUDE.md`). Backend built and tested; **the frontend is a scaffold and the visual language does not exist yet**. Ships to threshold.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover. The only app whose rounds advance on a **background tick** rather than sweep-on-read — nobody has the page open, so a phase transition is what sends the mail that brings people back.
 - **Chorus** — `apps/chorus`, memories about one person, collected from anyone with the link (backend surface: `apps/backend/routes/memorial.js`; see `apps/chorus/CLAUDE.md`). In development; ships to chorus.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover. **The only app with no accounts, no holon economy, and a route mounted without `enforceVerifiedUser`** — all three are deliberate, see its `PLAN.md` §10. One deployment serves every memorial: a memorial is `/c/<slug>`, and creating one is a row in the platform admin, not a deploy.
 - **Synthesis** — `apps/synthesis`, a networked pseudonymous group blog (backend surface: `apps/backend/routes/synthesis.js`; see `apps/synthesis/CLAUDE.md`). In development on branch `unison-m0-m1-loop` (branch predates the rename); ships to synthesis.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover.
 - **On a Spectrum** — `apps/spectrum`, at spectrum.holoscopic.io (backend surface: `apps/backend/routes/oas.js`; see `apps/spectrum/CLAUDE.md`). `routes/spectrum.js`, `models/SpectrumGame.js`, and `utils/spectrumGames.js` are mounted but dormant, and get deleted post-cutover.
 - **interView** — `apps/holoscopic-game`, the production game app at holoscopic.io
 - **Map + Sequence** — the original create-panel + sequence-builder tools inside `apps/holoscopic-game` (`/create`, `/create/sequences`), presented as the first game behind `/map-sequence`
 
-Local dev ports: spectrum 4000, backend 4001, platform 4002, game 4003, synthesis 4004, chorus 4005.
+Local dev ports: spectrum 4000, backend 4001, platform 4002, game 4003, synthesis 4004, chorus 4005, threshold 4006.
 
 Holoscopic is a collective-sensemaking platform where groups map their perspectives on a 2D grid, leave comments, and vote on each other's views. It is multi-tenant: one backend serves multiple isolated deployments ("instances"), each with its own holon economy, quorum rules, and data scope.
 
@@ -27,6 +28,7 @@ Holoscopic is a collective-sensemaking platform where groups map their perspecti
 ```
 holoscopic/
 ├── apps/
+│   ├── threshold/         Threshold — Next.js frontend (port 4006)  → see apps/threshold/CLAUDE.md
 │   ├── chorus/            Chorus — Next.js frontend (port 4005)  → see apps/chorus/CLAUDE.md
 │   ├── synthesis/         Synthesis — Next.js frontend (port 4004)  → see apps/synthesis/CLAUDE.md
 │   ├── spectrum/          On a Spectrum — Next.js frontend (port 4000)  → see apps/spectrum/CLAUDE.md
@@ -57,13 +59,16 @@ Every frontend carries a `Beacon` client component reporting page views to `POST
 the holoscopic.io homepage also reports link clicks. Read it in the platform admin at **`/traffic`**.
 Details in `apps/backend/CLAUDE.md` § *Site traffic*.
 
-**`src/components/Beacon.tsx` is mirrored in four apps** — chorus, spectrum, synthesis and
-holoscopic-game. Not a shared package, because chorus and spectrum have no dependency on
-`@hs/activities` and a memorial app should not import the activity engine for forty lines of
-`fetch`. The game app's copy is the one that differs beyond its type union: it splits `site` /
-`interview` / `map-sequence` by path, since three products share that deployment. Change the wire
-shape in one, change it in all four — the server validates `app` against an allowlist, so a drifted
-copy fails as a dropped event.
+**`src/components/Beacon.tsx` is mirrored in five apps** — chorus, spectrum, synthesis, threshold
+and holoscopic-game. Not a shared package, because chorus, spectrum and threshold have no
+dependency on `@hs/activities` and a memorial app should not import the activity engine for forty
+lines of `fetch`. The game app's copy is the one that differs beyond its type union: it splits
+`site` / `interview` / `map-sequence` by path, since three products share that deployment. Change
+the wire shape in one, change it in all five — the server validates `app` against an allowlist, so
+a drifted copy fails as a dropped event.
+
+(The four older copies still carry an inline comment saying "four" and naming three siblings. The
+allowlist in `utils/traffic.js` is the authority, and it has all five.)
 
 No cookie, no localStorage, no visitor id: the server derives an anonymous hash with the calendar
 day inside the digest, so it cannot link anyone across two days.

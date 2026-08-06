@@ -26,15 +26,21 @@ Nothing below can be done from the repo; each one creates or configures an accou
 
 ## Mine — buildable the moment the above exists
 
-- [ ] `apps/threshold` scaffold: Next 16 + React 19 + Tailwind v4, `@theme inline`, port 4006.
+- [x] **`apps/threshold` scaffold** — Next 16 + React 19 + Tailwind v4, `@theme inline`, port 4006.
+      Every route in PLAN §9.1 exists, plus the NextAuth stack, the API client and the wire types.
+      `/t/<urlName>` does a real snapshot fetch and routes to the live phase; the four undesigned
+      surfaces render a placeholder naming the § that will decide them. Builds clean, 12 routes,
+      `tsc --noEmit` passes. **The visual language in `globals.css` is a holding pattern, not a
+      decision** — §9.2 is still open, and so are Q10/Q11.
+- [x] `Beacon.tsx` — the fifth copy, and `'threshold'` added to `utils/traffic.js#APPS`.
 - [ ] `/api/audio/upload` — the Blob client-token route. One route, copied in shape from Chorus's,
       with `allowedContentTypes` taking the **base** mime type only (no `codecs` parameter — the
       spacing differs per browser and Blob matches by exact string).
 - [ ] The recorder UI driving `@hs/audio`'s `useRecorder`, with the seed's `secondsPerNote` as the
       hard cap. The hook already auto-stops; what is new is the visible countdown and Threshold's
       own words for the three error codes.
-- [ ] Playback inside the ranking surface, driving `usePlayer`.
-- [ ] `Beacon.tsx` — the fifth copy, plus `'threshold'` in the server's traffic allowlist.
+- [ ] Playback inside the ranking surface, driving `usePlayer`. **Blocked on §6.2** — there is no
+      ranking surface to put a player inside of until the gesture is decided (Q1).
 
 ## Transcription — **DONE**, and it needed no provisioning
 

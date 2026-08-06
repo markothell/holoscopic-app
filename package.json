@@ -20,6 +20,7 @@
     "dev:platform": "npm run dev --workspace=apps/platform",
     "dev:synthesis": "npm run dev --workspace=apps/synthesis",
     "dev:chorus": "npm run dev --workspace=apps/chorus",
+    "dev:threshold": "npm run dev --workspace=apps/threshold",
     "build": "turbo build",
     "dev": "turbo dev",
     "dev:tunnel": "node apps/backend/scripts/dev-tunnel.js"
