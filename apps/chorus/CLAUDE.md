@@ -65,7 +65,10 @@ copy**, so treat replacing a store as data loss and check what is referencing it
 
     node -e "require('dotenv').config({path:'.env.production'});…"   # HEAD every body.audio.url
 
-Three production memories were left dead this way (all titled *Lost Dog*, all test content).
+Production currently has three memories whose audio 404s, all titled *Lost Dog*. **They are not an
+example of this**: they were test junk, and their objects were deleted by hand on purpose. The
+documents were left behind. Do not read them as evidence that a store change has ever cost real
+audio here — it has not.
 
 The backend's allowlist is a SUFFIX match (`BLOB_HOST_SUFFIX`, default
 `.public.blob.vercel-storage.com`), so a new store id passes without a backend change. Pinning that

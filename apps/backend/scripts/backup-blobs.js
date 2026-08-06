@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Nightly reconcile: every recording referenced by a Memory document has an
-// off-site copy.
+// Nightly reconcile: every recording the database references — a Chorus
+// Memory, a Threshold share, a memorial's subject photo — has an off-site copy.
 //
 //   node scripts/backup-blobs.js               # dev cluster, report + copy
 //   node scripts/backup-blobs.js --dry-run     # report only, copy nothing
@@ -50,6 +50,7 @@ require('dotenv').config({ path: require('node:path').join(__dirname, '..', envF
 const mongoose = require('mongoose');
 const Memory = require('../models/Memory');
 const Instance = require('../models/Instance');
+const ThresholdShare = require('../models/ThresholdShare');
 const mirror = require('../utils/blobMirror');
 
 const DRY = process.argv.includes('--dry-run');
@@ -153,12 +154,21 @@ async function main() {
     .map(i => ({ url: i.config?.memorial?.subjectPhotoUrl || '', slug: i.slug }))
     .filter(p => p.url.includes('.public.blob.vercel-storage.com'));
 
+  // Threshold shares. Same rule and the same reason as a memory's audio: the
+  // story was told once, and nothing here is regenerable. Kept in this one job
+  // rather than a second cron so "is every recording backed up?" stays a single
+  // question with a single answer.
+  const shares = await ThresholdShare.find({
+    'audio.url': { $exists: true, $ne: '' },
+  }).lean();
+
   const targets = [
     ...memories.map(m => ({ label: m.title || m.id, url: m.body.audio.url, pathname: mirror.pathnameFor(m.body.audio) })),
+    ...shares.map(s => ({ label: `${s.title || s.id} (threshold)`, url: s.audio.url, pathname: mirror.pathnameFor(s.audio) })),
     ...photos.map(p => ({ label: `${p.slug} (photo)`, url: p.url, pathname: '' })),
   ].map(t => ({ ...t, key: mirror.keyFor(t.pathname || mirror.pathnameFor({ url: t.url })) }));
 
-  console.log(`${targets.length} objects referenced (${memories.length} recordings, ${photos.length} photos)\n`);
+  console.log(`${targets.length} objects referenced (${memories.length} recordings, ${shares.length} threshold shares, ${photos.length} photos)\n`);
 
   const bucket = mirror.config().bucket;
   const previous = await loadGone(s3, bucket);
