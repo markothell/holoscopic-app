@@ -4,8 +4,8 @@ import { SessionProvider } from '@/components/SessionProvider';
 import Beacon from '@/components/Beacon';
 import './globals.css';
 
-// Provisional, like the rest of globals.css — a reading serif and a working
-// sans so the skeleton is legible. PLAN.md §9.2 has not been answered.
+// A reading serif for the things people wrote, a working sans for the chrome
+// around them. The palette they sit on is PLAN.md §9.2, in globals.css.
 const serif = Source_Serif_4({
   subsets: ['latin'],
   weight: ['400', '600'],
