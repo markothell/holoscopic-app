@@ -98,12 +98,26 @@ the round may have turned over.
 - **Say the honest thing anyway.** In a twelve-person circle a voice recording identifies its
   speaker no matter what the payload strips. The compose surface has to tell people that *before*
   they record.
-- **Your own story is placed by telling it, and that lives in two places** (D22). The ranking client
-  seeds its local placements from `shares` where `isMine`, and the snapshot's `waitingShareIds`
-  excludes them. Both are needed and neither is stored: without the first, submit refuses a
-  complete-looking sort because your own story was never placed; without the second, the circle
-  page says three stories are waiting when two are. There is no server-side pre-placement to find —
-  a draft ranking is written the first time you place something, never on the phase opening.
+- **Your own story is placed by telling it, once, at the phase boundary** (D22).
+  `utils/threshold.js#preplaceOwnStories` runs from `onPhaseOpen` when a cycle enters `rank` and
+  writes each teller a **draft** ranking holding their own story on the pole they chose. Everything
+  downstream then needs no special case: `waitingShareIds` subtracts placements and your own drop
+  out by themselves, and the ranking client seeds nothing. The first cut did it in the client *and*
+  in the waiting marker, and two clients that have to agree is a bug waiting for a third — with
+  only one of them, submit either refuses a sort that looks complete or the circle page overstates
+  what is waiting. A draft is not a submission, so this touches neither the gradient nor
+  advancement, and it is idempotent.
+- **An author may tell their story on their own topic while it is still queued** (D34), and nobody
+  else may — `utils/threshold.js#assertOpenForStories` is the rule. People propose a topic because
+  something happened to them, and a topic can sit in the queue for weeks; but a topic nobody backs
+  never runs, so asking the other eleven for a story that may go unread is the work the queue exists
+  to let them skip. Nothing leaks either way: `listShares` returns own-only for `pending` as well as
+  `share`.
+- **A mutation route must serialize what the FUNNEL returned, never what it loaded.** `loadCircle`
+  and the funnel each `findOne` their own Mongoose document, so the route's copy never sees the
+  write — `routes/threshold.js#fresh` is the one line that keeps them straight. This was invisible
+  for weeks because every client re-fetched; it surfaced the first time a surface trusted the
+  response, as a "post a topic" answer describing the circle before the topic.
 - **A ranking is one document, and submit is all-or-nothing** (D11). Drafts save as you sort and
   count toward nothing; `submittedAt` is what makes it real. A partial ranking would make the
   agreement fraction depend on who bothered.

@@ -771,6 +771,104 @@ test('circleResult reports the topic that split the group hardest', async () => 
   assert.equal(final.mostContested, circle.seeds[1].id);
 });
 
+test('an author may tell their story on their own topic while it is queued', async () => {
+  const store = memStore();
+  useStore(store);
+  const circle = await runningCircle(store, { members: 3, seeds: 2 });
+  const queued = circle.seeds[1];
+  assert.equal(queued.phase, 'pending');
+
+  // People propose a topic BECAUSE something happened to them, and a topic can
+  // sit in the queue for weeks before it runs.
+  await threshold.submitShare({
+    store, circleId: circle.id, seedId: queued.id, userId: 'u2', username: 'U2',
+    pole: 'A', text: 'the reason I put this topic up',
+  });
+  assert.equal(store._shares.length, 1);
+
+  // Everybody else waits for it to run — a topic nobody backs never runs, and
+  // asking them for a story that may never be read is the work the queue exists
+  // to let them skip.
+  await assert.rejects(
+    () => threshold.submitShare({
+      store, circleId: circle.id, seedId: queued.id, userId: 'u3', username: 'U3',
+      pole: 'A', text: 'early',
+    }),
+    /not open for stories/,
+  );
+
+  // And nothing leaks: a story told early is as unread as one told on time.
+  const seen = await threshold.listShares({ store, circle, seedId: queued.id, viewerId: 'u3' });
+  assert.deepEqual(seen, []);
+  const own = await threshold.listShares({ store, circle, seedId: queued.id, viewerId: 'u2' });
+  assert.equal(own.length, 1);
+
+  // The author can take it back for as long as they could have told it.
+  await threshold.deleteShare({ store, circleId: circle.id, seedId: queued.id, userId: 'u2', pole: 'A' });
+  assert.equal(store._shares.length, 0);
+});
+
+test('opening the rank phase places every story on the side its teller chose (D22)', async () => {
+  const store = memStore();
+  useStore(store);
+  const circle = await runningCircle(store, { members: 3 });
+  const seed = circle.seeds[0];
+
+  const poles = { u1: 'A', u2: 'B', u3: 'A' };
+  for (const u of ['u1', 'u2', 'u3']) {
+    await threshold.submitShare({
+      store, circleId: circle.id, seedId: seed.id, userId: u, username: u,
+      pole: poles[u], text: `${u} told it`,
+    });
+  }
+  assert.equal(seed.phase, 'rank', 'the last story advanced the phase');
+
+  // One draft each, holding their own story on their own side — and nobody
+  // else's, because that is the question ranking is about to ask them.
+  for (const u of ['u1', 'u2', 'u3']) {
+    const draft = await store.findRanking(seed.id, u);
+    assert.ok(draft, `${u} has a draft ranking`);
+    assert.equal(draft.submittedAt, null, 'a draft, never a submission');
+    assert.equal(draft.placements.length, 1);
+    const own = store._shares.find(s => s.seedId === seed.id && s.userId === u);
+    assert.deepEqual(draft.placements[0], { shareId: own.id, pole: poles[u] });
+  }
+
+  // A draft is not a submission, so it feeds neither advancement nor the
+  // gradient — the cycle is still waiting on all three rankings.
+  assert.equal(seed.phase, 'rank');
+  assert.equal((await store.listSubmittedRankings(seed.id)).length, 0);
+});
+
+test('pre-placement is idempotent and never touches a submitted ranking', async () => {
+  const store = memStore();
+  useStore(store);
+  const circle = await runningCircle(store, { members: 2 });
+  const seed = circle.seeds[0];
+
+  for (const u of ['u1', 'u2']) {
+    await threshold.submitShare({
+      store, circleId: circle.id, seedId: seed.id, userId: u, username: u, pole: 'A', text: u,
+    });
+  }
+  const ids = (await store.listShares(seed.id)).map(s => s.id);
+
+  // u1 finishes the whole sort and sends it in.
+  await threshold.submitRanking({
+    store, circleId: circle.id, seedId: seed.id, userId: 'u1',
+    placements: ids.map(id => ({ shareId: id, pole: 'B' })),
+  });
+  const submitted = await store.findRanking(seed.id, 'u1');
+  const before = JSON.stringify(submitted.placements);
+
+  // Running the boundary again must change nothing for either of them: u1's
+  // ranking is sent, and u2's already holds their own story.
+  await threshold.preplaceOwnStories({ store, circle, seed });
+
+  assert.equal(JSON.stringify((await store.findRanking(seed.id, 'u1')).placements), before);
+  assert.equal((await store.findRanking(seed.id, 'u2')).placements.length, 1);
+});
+
 test('a skipped topic keeps every story, and reveals them attributed (D30)', async () => {
   const store = memStore();
   useStore(store);
@@ -846,12 +944,15 @@ test('the queue: support decides what runs next, and a late joiner takes full pa
   });
   assert.equal(live.phase, 'rank');
 
-  // And with no ranking of their own, every story reads as still waiting on
-  // them — the marker is that difference, derived and never stored (D32).
+  // Everything except their own story reads as waiting on them — the marker is
+  // that difference, derived and never stored (D32). Their own is already
+  // placed, because telling it placed it (D22).
   const shares = await threshold.listShares({ store, circle, seedId: live.id, viewerId: 'u3' });
   const mine = await store.findRanking(live.id, 'u3');
-  assert.equal(mine, null);
   assert.equal(shares.length, 3);
+  assert.equal(mine.placements.length, 1);
+  const placed = new Set(mine.placements.map(p => p.shareId));
+  assert.deepEqual(shares.filter(s => !placed.has(s.id)).length, 2);
 });
 
 // ---------------------------------------------------------------------------

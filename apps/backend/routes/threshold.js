@@ -53,6 +53,9 @@ function fail(res, err) {
   return res.status(400).json({ error: message });
 }
 
+// Existence and instance scoping only. The document it returns is a DIFFERENT
+// Mongoose instance from the one the funnel loads through the store, so it goes
+// stale the moment a funnel call writes — see `fresh()`.
 async function loadCircle(req, res) {
   const circle = await Circle.findOne({ id: req.params.id, instanceId: req.instanceId });
   if (!circle) {
@@ -60,6 +63,21 @@ async function loadCircle(req, res) {
     return null;
   }
   return circle;
+}
+
+/**
+ * Serialize what the FUNNEL returned, never the document this route loaded.
+ *
+ * Every funnel call re-loads the circle through the store, mutates that copy and
+ * saves it — so the copy `loadCircle` handed back never sees the write. Every
+ * mutation route here used to answer with that copy, which meant the response to
+ * "post a topic" was the circle as it stood before the topic, and the response
+ * to "support this" carried the old count. Invisible wherever the client
+ * re-fetches, and wrong the moment one trusts the answer.
+ */
+function fresh(result, fallback) {
+  if (!result) return fallback;
+  return result.circle || (result.id ? result : fallback);
 }
 
 // --- circles ---------------------------------------------------------------
@@ -119,13 +137,12 @@ router.get('/circles/:urlName', async (req, res) => {
       // needs no special handling: they have no ranking, so everything reads as
       // waiting. Do NOT add a per-share "heard it" flag to get this.
       //
-      // Your OWN stories are never waiting on you: choosing a pole is how you
-      // entered the compose surface, so telling one placed it (D22). Counting
-      // them here would ask somebody to sort a story they already sorted, and
-      // would overstate the marker by however many they told.
+      // Your own stories need no special case here: opening the rank phase
+      // placed them (utils/threshold.js#preplaceOwnStories, D22), so they are
+      // already in `placements` and drop out of this by themselves.
       const placed = new Set((ranking?.placements || []).map(p => p.shareId));
       payload.waitingShareIds = seed.phase === 'rank'
-        ? payload.shares.filter(s => !s.isMine && !placed.has(s.id)).map(s => s.id)
+        ? payload.shares.filter(s => !placed.has(s.id)).map(s => s.id)
         : [];
     }
     res.json({ circle: payload });
@@ -139,11 +156,11 @@ router.post('/circles/:id/join', async (req, res) => {
   try {
     const circle = await loadCircle(req, res);
     if (!circle) return;
-    await circles.joinCircle({
+    const after = await circles.joinCircle({
       store, circleId: circle.id, userId: userIdOf(req),
       username: usernameOf(req), email: req.body.email || '',
     });
-    res.json({ circle: circles.toClient(circle, { userId: userIdOf(req) }) });
+    res.json({ circle: circles.toClient(fresh(after, circle), { userId: userIdOf(req) }) });
   } catch (err) {
     fail(res, err);
   }
@@ -155,7 +172,7 @@ router.post('/circles/:id/start', async (req, res) => {
     const circle = await loadCircle(req, res);
     if (!circle) return;
     const result = await circles.startCircle({ store, circleId: circle.id, userId: userIdOf(req) });
-    res.json({ circle: circles.toClient(result.circle || circle, { userId: userIdOf(req) }) });
+    res.json({ circle: circles.toClient(fresh(result, circle), { userId: userIdOf(req) }) });
   } catch (err) {
     fail(res, err);
   }
@@ -168,8 +185,8 @@ router.post('/circles/:id/advance', async (req, res) => {
   try {
     const circle = await loadCircle(req, res);
     if (!circle) return;
-    await circles.advanceCircle({ store, circleId: circle.id, userId: userIdOf(req) });
-    res.json({ circle: circles.toClient(circle, { userId: userIdOf(req) }) });
+    const after = await circles.advanceCircle({ store, circleId: circle.id, userId: userIdOf(req) });
+    res.json({ circle: circles.toClient(fresh(after, circle), { userId: userIdOf(req) }) });
   } catch (err) {
     fail(res, err);
   }
@@ -182,8 +199,8 @@ router.post('/circles/:id/skip', async (req, res) => {
   try {
     const circle = await loadCircle(req, res);
     if (!circle) return;
-    await circles.skipSeed({ store, circleId: circle.id, userId: userIdOf(req) });
-    res.json({ circle: circles.toClient(circle, { userId: userIdOf(req) }) });
+    const after = await circles.skipSeed({ store, circleId: circle.id, userId: userIdOf(req) });
+    res.json({ circle: circles.toClient(fresh(after, circle), { userId: userIdOf(req) }) });
   } catch (err) {
     fail(res, err);
   }
@@ -195,8 +212,8 @@ router.post('/circles/:id/close', async (req, res) => {
   try {
     const circle = await loadCircle(req, res);
     if (!circle) return;
-    await circles.closeCircle({ store, circleId: circle.id, userId: userIdOf(req) });
-    res.json({ circle: circles.toClient(circle, { userId: userIdOf(req) }) });
+    const after = await circles.closeCircle({ store, circleId: circle.id, userId: userIdOf(req) });
+    res.json({ circle: circles.toClient(fresh(after, circle), { userId: userIdOf(req) }) });
   } catch (err) {
     fail(res, err);
   }
@@ -210,14 +227,14 @@ router.post('/circles/:id/seeds', async (req, res) => {
   try {
     const circle = await loadCircle(req, res);
     if (!circle) return;
-    await circles.addSeed({
+    const after = await circles.addSeed({
       store,
       circleId: circle.id,
       userId: userIdOf(req),
       payload: req.body.seed || req.body,
       seedId: req.body.seedId || null,
     });
-    res.status(201).json({ circle: circles.toClient(circle, { userId: userIdOf(req) }) });
+    res.status(201).json({ circle: circles.toClient(fresh(after, circle), { userId: userIdOf(req) }) });
   } catch (err) {
     fail(res, err);
   }
@@ -257,10 +274,13 @@ router.put('/seeds/:seedId/support', async (req, res) => {
   try {
     const found = await loadSeed(req, res);
     if (!found) return;
-    const { supported } = await circles.supportSeed({
+    const after = await circles.supportSeed({
       store, circleId: found.circle.id, seedId: found.seed.id, userId: userIdOf(req),
     });
-    res.json({ supported, circle: circles.toClient(found.circle, { userId: userIdOf(req) }) });
+    res.json({
+      supported: after.supported,
+      circle: circles.toClient(fresh(after, found.circle), { userId: userIdOf(req) }),
+    });
   } catch (err) {
     fail(res, err);
   }
@@ -273,10 +293,10 @@ router.post('/seeds/:seedId/promote', async (req, res) => {
   try {
     const found = await loadSeed(req, res);
     if (!found) return;
-    await circles.promoteSeed({
+    const after = await circles.promoteSeed({
       store, circleId: found.circle.id, seedId: found.seed.id, userId: userIdOf(req),
     });
-    res.json({ circle: circles.toClient(found.circle, { userId: userIdOf(req) }) });
+    res.json({ circle: circles.toClient(fresh(after, found.circle), { userId: userIdOf(req) }) });
   } catch (err) {
     fail(res, err);
   }

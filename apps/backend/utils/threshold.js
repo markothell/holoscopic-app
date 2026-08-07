@@ -171,6 +171,28 @@ function assertMember(circle, userId) {
   }
 }
 
+/**
+ * Who may tell a story on this topic, and when.
+ *
+ * The live cycle's share phase, obviously. Plus **an author on their own topic
+ * while it is still queued**: people propose a topic because something happened
+ * to them, so the moment of proposing is the moment they have the story, and a
+ * topic can sit in the queue for weeks before it runs.
+ *
+ * Deliberately NOT everybody on a queued topic. A topic nobody backs never
+ * runs, and asking eleven people to tell a story that may never be read is
+ * asking for work the queue exists to let them skip. Their turn is when it runs.
+ *
+ * Nothing leaks either way: listShares() returns own-stories-only for both
+ * 'pending' and 'share', so a story told early is as unread as one told on time
+ * (D17).
+ */
+function assertOpenForStories(seed, userId) {
+  if (seed.phase === 'share') return;
+  if (seed.phase === 'pending' && seed.authorId === userId) return;
+  throw new Error('This topic is not open for stories');
+}
+
 // A title is what the ranking surface has to compare, so a share always gets
 // one — falling back to the opening of the story rather than showing "Untitled"
 // on a card somebody has to make a judgment about.
@@ -197,7 +219,7 @@ async function submitShare({
   assertMember(circle, userId);
 
   const seed = seedById(circle, seedId);
-  if (seed.phase !== 'share') throw new Error('This topic is not open for stories');
+  assertOpenForStories(seed, userId);
   assertPole(pole);
 
   const body = String(text || '').trim().slice(0, TEXT_MAX);
@@ -274,12 +296,12 @@ function normalizeAudio(audio) {
   };
 }
 
-/** Withdraw one of your stories, while the share phase is still open. */
+/** Withdraw one of your stories, for as long as you could have told it. */
 async function deleteShare({ store = mongoStore, circleId, seedId, userId, pole }) {
   const circle = await store.findCircleById(circleId);
   if (!circle) throw new Error('Circle not found');
   const seed = seedById(circle, seedId);
-  if (seed.phase !== 'share') throw new Error('This topic is no longer open for changes');
+  assertOpenForStories(seed, userId);
   assertPole(pole);
   await store.removeShare(seedId, userId, pole);
   return { ok: true };
@@ -410,6 +432,56 @@ async function saveRankingDraft({ store = mongoStore, circleId, seedId, userId, 
     placements: normalized,
     submittedAt: null,
   });
+}
+
+/**
+ * When ranking opens, every story is already placed by whoever told it (D22).
+ *
+ * Choosing a pole is how you entered the compose surface, so you answered this
+ * question at submit; asking again is asking a question you have answered. It
+ * also keeps your own story out of "waiting on you", which would read as work
+ * outstanding on a story you told.
+ *
+ * THIS IS THE ONE PLACE IT HAPPENS. The first cut did it in the ranking client
+ * and again in the snapshot's waiting marker, and two clients that have to
+ * agree is a bug waiting for a third — with only one of them, submit either
+ * refuses a sort that looks complete, or the circle page overstates what is
+ * waiting by however many stories you told.
+ *
+ * A draft, never a submission: `submittedAt` stays null, so this touches
+ * neither the gradient (only submitted rankings feed it) nor advancement (only
+ * `submittedAt` makes a member done). It is idempotent — a placement already
+ * there is left alone, and a submitted ranking is never touched.
+ */
+async function preplaceOwnStories({ store = mongoStore, circle, seed }) {
+  const shares = await store.listShares(seed.id);
+
+  const byAuthor = new Map();
+  for (const s of shares) {
+    if (!byAuthor.has(s.userId)) byAuthor.set(s.userId, []);
+    byAuthor.get(s.userId).push({ shareId: s.id, pole: s.pole });
+  }
+
+  for (const [userId, mine] of byAuthor) {
+    const existing = await store.findRanking(seed.id, userId);
+    if (!existing) {
+      await store.createRanking({
+        instanceId: circle.instanceId,
+        circleId: circle.id,
+        seedId: seed.id,
+        rankerId: userId,
+        placements: mine,
+        submittedAt: null,
+      });
+      continue;
+    }
+    if (existing.submittedAt) continue;
+    const already = new Set(existing.placements.map(p => p.shareId));
+    const missing = mine.filter(p => !already.has(p.shareId));
+    if (missing.length === 0) continue;
+    existing.placements = [...existing.placements, ...missing];
+    await store.saveRanking(existing);
+  }
 }
 
 /**
@@ -596,6 +668,13 @@ function createModule({ store = mongoStore } = {}) {
       return true;
     },
 
+    // The boundary where every story becomes a placement its teller already
+    // made (D22). Runs once per cycle, on the transition into ranking.
+    async onPhaseOpen({ circle, seed, phase }) {
+      if (phase !== 'rank') return;
+      await preplaceOwnStories({ store, circle, seed });
+    },
+
     async onCycleReveal({ seed }) {
       seed.result = await computeResult({ store, seed });
     },
@@ -668,6 +747,8 @@ module.exports = {
   toClientShare,
   saveRankingDraft,
   submitRanking,
+  preplaceOwnStories,
+  assertOpenForStories,
   computeResult,
   circleResult,
   createModule,

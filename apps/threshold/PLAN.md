@@ -1,16 +1,15 @@
 # Threshold — Master Plan (draft v0.1)
 
-**Status:** design is ahead of code, deliberately — read §11 before assuming a section describes
-something that exists. **Built:** the backend through M3a, and a frontend scaffold. **Designed and
-not built:** the three surfaces (§6.2, §6.3, §9.2) and the topic queue (§3.3), which reworks the
-round machine M0 shipped — what runs today still has a blocking seeding round and a circle that
-completes when its seeds run out.
+**Status:** read §11 before assuming a section describes something that exists. **Built:** the
+backend through M3a including the topic queue (§3.3), and the participant's path end to end —
+the circle page, the seed form, the share surface and the ranking queue, in the tide-line language.
+**Designed and not built:** the two reveals (§6.3) and M3b, audio.
 **Local dev port:** 4006. **Ships to:** `threshold.holoscopic.io` (add to backend `CLIENT_URL` at cutover).
 **Backend surface:** `apps/backend/routes/threshold.js` + `utils/threshold.js`, on the generic
 **Circle** layer (§3) that Threshold is the first consumer of.
 
 This file is the source of truth for the design. Sections are numbered so code comments and
-commits can cite them. Settled decisions are D1–D33 in §12; open questions in §13.
+commits can cite them. Settled decisions are D1–D35 in §12; open questions in §13.
 
 ---
 
@@ -859,10 +858,10 @@ step before it settled.
    `circle`-mode circle (D30). `components/TideLine.tsx` is the app's one mark and
    `components/Shell.tsx` its real chrome; `Scaffold.tsx` is now only for surfaces still unbuilt.
    Verified in a browser against a real circle: support, promote and skip all round-trip.
-3. ~~**The share surface, typed first** — pick a pole to enter it (D22).~~ **Done.** Text-only, so
-   the flow is verifiable before the browser-dependent part lands on it. The two ends are the entry;
-   the anonymity line is said before anything is written, and M3b adds the recognisable-voice
-   caveat in the same place.
+3. ~~**The share surface, typed first** — pick a pole to enter it (D22).~~ **Done**, and with it
+   the **seed form** (D34): the topic goes up on its own, then the two poles are offered. Text-only,
+   so the flow is verifiable before the browser-dependent part lands on it. The anonymity line is
+   said before anything is written, and M3b adds the recognisable-voice caveat in the same place.
 4. **M3b — audio**: the recorder with the hard cap, `/api/audio/upload`, playback. The riskiest
    part per-browser, and it changes nothing about the flow around it. Two places already reserve
    its seams: the compose surface's anonymity line is where the recognisable-voice caveat goes, and
@@ -961,6 +960,18 @@ gradient are unchanged by everything above.
 - **D33** — **A single-topic circle closes when its one topic reveals**, and its `/result` routes to
   that reveal rather than drawing a one-node graph. The only behavioural difference between the two
   modes, and it is the ending rather than the mechanic. §3.3
+- **D34** — **Posting a topic offers the story, and never demands it.** The seed form saves the
+  topic, then offers the two poles: tell it now, or leave it until the topic runs. **Only the
+  author, and only on their own queued topic** — everybody else's turn is when it runs. Putting a
+  topic up has to stay cheap, because the queue's premise is that a topic nobody backs costs
+  nothing, which only holds if proposing one costs nothing either; but people propose a topic
+  *because* something happened to them, and a topic can sit in the queue for weeks. Asking the other
+  eleven for a story on a topic that may never run is exactly the work the queue exists to let them
+  skip. §6.2, §9.1
+- **D35** — **The placement D22 describes is written once, server-side, when the cycle enters
+  `rank`** — a draft ranking per teller holding their own story on the pole they chose. Doing it in
+  the client needs the waiting marker to special-case it too, and two clients that must agree is a
+  bug waiting for a third. §6.2
 
 ---
 

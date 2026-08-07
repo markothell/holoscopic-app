@@ -63,14 +63,11 @@ export default function RankPage({ params }: { params: Promise<{ urlName: string
       setCircle(circle);
       setError(null);
 
+      // Your own story arrives ALREADY PLACED, on the side you chose when you
+      // told it (D22) — the server does that when the rank phase opens, so
+      // there is nothing to seed here and nothing for this client to get wrong.
+      // You can move it like any other.
       const next: Record<string, Pole> = {};
-      // Your own story is pre-placed on the side you chose when you told it
-      // (D22). You already declared a side at submit, so asking again is asking
-      // a question you have answered — and it keeps your own story out of the
-      // queue of things still waiting, which would read as work outstanding on
-      // a story you told. It counts in the aggregate either way, and you can
-      // move it here like any other.
-      for (const s of circle.shares ?? []) if (s.isMine) next[s.id] = s.pole;
       for (const p of circle.myRanking?.placements ?? []) next[p.shareId] = p.pole;
       setPlacements(next);
       // Somebody returning to a finished sort wants the whole set, not the
