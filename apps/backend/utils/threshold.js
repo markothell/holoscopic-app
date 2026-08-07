@@ -62,6 +62,37 @@ const TEXT_MAX = 2000;
 
 const POLES = ['A', 'B'];
 
+/**
+ * Where Threshold lives, for links in mail.
+ *
+ * Its OWN variable rather than utils/email.js#appUrl(), which falls back to the
+ * first entry of CLIENT_URL — one backend serves five apps, so that first entry
+ * is whichever app happens to be listed first, and circle mail would link
+ * people into a different product.
+ */
+function thresholdUrl() {
+  const base = process.env.THRESHOLD_URL || 'http://localhost:4006';
+  return base.replace(/\/$/, '');
+}
+
+/**
+ * EVERY EMAIL LINKS TO THE CIRCLE, never to a phase surface (§9.1).
+ *
+ * A round advances on a 60s tick and the mail is read whenever somebody opens
+ * their inbox, so a link to `/t/<urlName>/rank` is the most likely thing in the
+ * system to be stale by the time it is clicked. The circle page reads the
+ * snapshot and routes to whatever is actually live, which is the one link that
+ * cannot go wrong.
+ */
+function circleUrl(circle) {
+  return `${thresholdUrl()}/t/${circle.urlName}`;
+}
+
+/** D31 — a logged-in settings page, so there is nothing to sign and nothing to forge. */
+function notificationsUrl() {
+  return `${thresholdUrl()}/notifications`;
+}
+
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
@@ -694,6 +725,12 @@ function createModule({ store = mongoStore } = {}) {
 
     async notificationFor({ circle, seed, phase, userId }) {
       const topic = seed ? (seed.payload || {}).topic : '';
+      // Every message ends the same way: where to go, and how to stop being
+      // told. The unsubscribe url also becomes the List-Unsubscribe header.
+      const sign = body => ({
+        text: `${body}\n\n${circleUrl(circle)}\n\nTo stop emails from this circle: ${notificationsUrl()}`,
+        unsubscribeUrl: notificationsUrl(),
+      });
 
       // The queue is empty and the circle is waiting for somebody to think of
       // something. This is the ask a seeding round used to make once, made
@@ -701,7 +738,7 @@ function createModule({ store = mongoStore } = {}) {
       if (phase === 'idle') {
         return {
           subject: `${circle.title}: the circle is open for a topic`,
-          text: `Nothing is running right now. Post a topic and the two ends of its polarity, or support one somebody else has already put up — the one with the most support goes next.`,
+          ...sign(`Nothing is running right now. Post a topic and the two ends of its polarity, or back one somebody else has already put up — the most-backed topic goes next.`),
         };
       }
       if (phase === 'share') {
@@ -710,7 +747,7 @@ function createModule({ store = mongoStore } = {}) {
         if (await store.countSharesByUser(seed.id, userId) > 0) return null;
         return {
           subject: `${circle.title}: share a story about ${topic}`,
-          text: `${topic} — ${poleLabel(seed, 'A')} or ${poleLabel(seed, 'B')}. Tell us about a time it was one of those. You have up to ${(seed.payload || {}).secondsPerNote || DEFAULT_SECONDS} seconds.`,
+          ...sign(`${topic} — ${poleLabel(seed, 'A')} or ${poleLabel(seed, 'B')}. Tell us about a time it was one of those. Record up to ${(seed.payload || {}).secondsPerNote || DEFAULT_SECONDS} seconds, or type it.`),
         };
       }
       if (phase === 'rank') {
@@ -718,13 +755,13 @@ function createModule({ store = mongoStore } = {}) {
         if (ranking && ranking.submittedAt) return null;
         return {
           subject: `${circle.title}: sort the stories about ${topic}`,
-          text: `Everyone has shared. Listen, then put each story on the side you think it belongs — ${poleLabel(seed, 'A')} or ${poleLabel(seed, 'B')}.`,
+          ...sign(`Everyone has shared. Listen, then put each story on the side you think it belongs — ${poleLabel(seed, 'A')} or ${poleLabel(seed, 'B')}.`),
         };
       }
       if (phase === 'revealed') {
         return {
           subject: `${circle.title}: where the group landed on ${topic}`,
-          text: `The sorting is in. See which stories everyone read the same way, and which ones split the group.`,
+          ...sign(`The sorting is in. See which stories everyone read the same way, and which ones split the group.`),
         };
       }
       if (phase === 'skipped') {
@@ -732,13 +769,13 @@ function createModule({ store = mongoStore } = {}) {
         // an invitation to read it rather than an apology for dropping it.
         return {
           subject: `${circle.title}: ${topic} has moved on`,
-          text: `The circle moved on from ${topic}. The stories people told are there, with wherever the sorting had got to.`,
+          ...sign(`The circle moved on from ${topic}. The stories people told are there, with wherever the sorting had got to.`),
         };
       }
       if (phase === 'closed') {
         return {
           subject: `${circle.title} has closed`,
-          text: `The circle is finished. Every topic it ran is there together — a record of the conversation.`,
+          ...sign(`The circle is finished. Every topic it ran is there together — a record of the conversation.`),
         };
       }
       return null;
@@ -768,6 +805,8 @@ module.exports = {
   normalizeAudio,
   deriveTitle,
   poleLabel,
+  circleUrl,
+  notificationsUrl,
   setBlobMirror,
   setTranscriber,
   attachTranscript,

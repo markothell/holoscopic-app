@@ -315,6 +315,31 @@ async function addSeed({ store = mongoStore, circleId, userId, payload, seedId =
 }
 
 /**
+ * Mute or unmute this circle's mail, for me.
+ *
+ * Per-circle rather than global, because the thing somebody wants to stop is
+ * usually one group and not the platform (D31). It suppresses MAIL ONLY — the
+ * in-app notification still lands, so muting a circle never means missing what
+ * happened in it, only not being told by email.
+ *
+ * `invitedEmails` is a join-time gate and never a mail list, so every recipient
+ * of circle mail is a member with an account. That is what lets this be an
+ * ordinary authenticated write, with nothing signed and no unauthenticated
+ * endpoint to defend.
+ */
+async function setEmailOptOut({ store = mongoStore, circleId, userId, optOut }) {
+  const circle = await store.findCircleById(circleId);
+  if (!circle) throw new Error('Circle not found');
+
+  const me = circle.members.find(m => m.userId === userId);
+  if (!me) throw new Error('Not a member of this circle');
+
+  me.emailOptOut = Boolean(optOut);
+  await store.saveCircle(circle);
+  return { circle, emailOptOut: me.emailOptOut };
+}
+
+/**
  * Toggle my support for a queued topic. One per member, freely taken back.
  *
  * Only while it is still pending: supporting a topic that is already running or
@@ -699,7 +724,16 @@ async function dispatch({ store, circle, pending }) {
         });
 
         if (member.email && !member.emailOptOut) {
-          await store.sendEmail({ to: member.email, subject: msg.subject, text: msg.text });
+          // `unsubscribeUrl` is the module's to supply — the machine has no
+          // idea which app's settings page a member of THIS circle should be
+          // sent to, and guessing one is how mail ends up pointing at the
+          // wrong product.
+          await store.sendEmail({
+            to: member.email,
+            subject: msg.subject,
+            text: msg.text,
+            headers: msg.unsubscribeUrl ? { 'List-Unsubscribe': `<${msg.unsubscribeUrl}>` } : undefined,
+          });
         }
       } catch (err) {
         console.error(`[circles] notify failed for ${member.userId} on ${circle.id}:`, err.message);
@@ -771,6 +805,10 @@ function toClient(circle, { userId = null } = {}) {
     mySeedIds: userId ? circle.seeds.filter(s => s.authorId === userId).map(s => s.id) : [],
     isCreator: userId ? circle.createdBy === userId : false,
     isMember: userId ? circle.members.some(m => m.userId === userId) : false,
+    // Mine only. Another member's mail preference is theirs.
+    myEmailOptOut: userId
+      ? Boolean(circle.members.find(m => m.userId === userId)?.emailOptOut)
+      : false,
     startedAt: circle.startedAt,
     completedAt: circle.completedAt,
   };
@@ -802,6 +840,7 @@ module.exports = {
   addSeed,
   supportSeed,
   promoteSeed,
+  setEmailOptOut,
   skipSeed,
   closeCircle,
   startCircle,

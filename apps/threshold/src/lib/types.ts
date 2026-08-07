@@ -105,6 +105,9 @@ export interface Circle {
   mySeedIds: string[];
   isCreator: boolean;
   isMember: boolean;
+  /** MY mail preference for this circle, never anybody else's (D31). Mail only:
+   *  the in-app notification lands either way. */
+  myEmailOptOut: boolean;
   startedAt: string | null;
   completedAt: string | null;
 
@@ -198,4 +201,20 @@ export interface CircleResult {
    *  (D25). This screen is a record of a conversation, so it names no winner
    *  and draws no conclusion. An earlier cut computed one; adding it back is
    *  adding a verdict to a sharing circle. */
+}
+
+/**
+ * One thing the circle told you. Every phase transition of every activity built
+ * on the Circle layer is written under ONE notification type (`circle_phase`) —
+ * the phase name lives in the message, because a type derived from the phase
+ * would fail the model's closed enum for any activity nobody had added to it,
+ * silently, since utils/notify.js swallows the error.
+ */
+export interface ThresholdNotification {
+  id: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+  /** Null if the circle has since been removed. */
+  circle: { id: string; title: string; urlName: string } | null;
 }

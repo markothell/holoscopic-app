@@ -3,7 +3,8 @@
 **Status:** read §11 before assuming a section describes something that exists. **Built:** the
 backend through M3a including the topic queue (§3.3), and the participant's path end to end —
 the circle page, the seed form, the share surface and the ranking queue, in the tide-line language.
-**Designed and not built:** M3b (audio) and M4 (mail) — every participant surface is built.
+**Designed and not built:** nothing, other than the two things that need a person — a recording on
+a physical phone (M3b) and a real inbox (M4) — plus **M6, the launch pass**.
 **Local dev port:** 4006. **Ships to:** `threshold.holoscopic.io` (add to backend `CLIENT_URL` at cutover).
 **Backend surface:** `apps/backend/routes/threshold.js` + `utils/threshold.js`, on the generic
 **Circle** layer (§3) that Threshold is the first consumer of.
@@ -840,7 +841,7 @@ validates against the allowlist, so a drifted copy fails silently as a dropped e
 | **M3a** | Threshold audio — **durability DONE** | `ThresholdShare.audio.pathname`, `blobMirror.mirrorShare`, the fire-and-forget hook in `utils/threshold.js` (injected in `loadAPIRoutes`), and a Threshold pass in `scripts/backup-blobs.js`. | 284 backend tests pass, including that a recorded share is mirrored, that a **failing** mirror cannot reject the story, and that a typed share never calls it. The nightly sweep counts shares (`0 threshold shares` on dev today). |
 | **M3b** | Threshold audio — the app half — **BUILT, AWAITING A DEVICE** | `/api/audio/upload` (the Blob client-token route), `components/Recorder.tsx` driving `useRecorder` at the seed's own cap, `components/Playback.tsx` driving `usePlayer`, `PlayerProvider` in the root layout. Both compose paths offer recording and typing side by side; the transcript gates nothing. | Builds clean at 13 routes; the upload route refuses a foreign prefix, mints a token for its own, and 503s specifically with no token. **What is left is the part a machine cannot do:** a real recording on a physical iPhone and on Android, round-tripping upload → mirror → transcript → playback inside the ranking queue. |
 | | ↳ **the scaffold** — **DONE** | `apps/threshold` on port 4006: every §9.1 route, the NextAuth stack, `services/api.ts`, `lib/types.ts` mirroring both serializers, the fifth `Beacon` copy + `'threshold'` in `utils/traffic.js#APPS`. `/t/<urlName>` fetches the snapshot and routes to the live phase. | Builds clean (12 routes), `tsc --noEmit` passes, all routes serve 200 locally, `/api/auth/game-token` 401s unauthenticated. **`globals.css` is a placeholder, not §9.2** — the four undesigned surfaces render a marker naming the section that decides them, so nothing gets built on top of a guess. |
-| **M4** | Async + email | Transition mail, `Notification` rows, dedupe, opt-out, `/me`. | A circle advances and mails with every browser closed — the failure the ticker exists to prevent (§3.5). Verified by watching an inbox, not by reading `/health`. |
+| **M4** | Async + email — **BUILT** | Transition mail carrying the circle link and `List-Unsubscribe`, `Notification` rows, dedupe, per-circle mute on `members[].emailOptOut`, `/notifications` and a real `/me`. `THRESHOLD_URL` is the app's own base for links — `email.js#appUrl()` falls back to the first entry of `CLIENT_URL`, and one backend serves five apps. | **19 integration checks**, including the exact mail payload a transition produces, asserted through the real machine and database. **What is left is an inbox:** locally the fixture's members carry no address so nothing can send, and preview has no `RESEND_API_KEY` by design — a preview circle advancing would otherwise mail real people. |
 | **M5** | Design — **DONE** | §6.2 the ranking queue, §6.3 both displays, §9.2 the tide-line language and its measured palette. D21–D26. | Specified to the gesture, the grouping and the colour values. Nothing here is built. |
 | **M6** | Launch | Accessibility + performance pass, `CLIENT_URL`, Vercel project, Beacon, `ensure-indexes.js` against production. | — |
 | | ↳ **indexes before the first write** | Three of the new indexes are `unique` and therefore correctness, not speed. `ensure-indexes.js` **skips a collection that does not exist yet**, and it says so — so running it once against production before Threshold takes any traffic is the whole job, and running it after means building a unique index over rows that may already violate it. Order matters here in a way it does not for the performance indexes. | `ensure-indexes.js` under `NODE_ENV=production` reports the three as created, with no SKIP lines for `circles`, `thresholdshares` or `thresholdrankings`. |
@@ -880,8 +881,12 @@ step before it settled.
    bar, at the same control — which answers **Q1**: the cutoff a bar needs across topics is the
    reveal's own, which is what makes the two screens one idea at two scales. `mostContested` is gone
    from the payload, as §6.3 said it should be when this was built.
-7. **M4 — mail and `/notifications`** (D31). The ticker already advances rounds; this is what makes
-   an advance reach a person.
+7. ~~**M4 — mail and `/notifications`** (D31).~~ **Built.** Every message links to the circle and
+   never to a phase surface, and carries `List-Unsubscribe` pointing at a logged-in settings page —
+   which is safe precisely because `invitedEmails` is a join-time gate and never a mail list, so
+   every recipient has an account. Muting is per circle and stops MAIL ONLY: the in-app
+   notification still lands, so muting never means missing what happened. **Outstanding: watching a
+   real inbox**, which needs a sending domain and addresses belonging to somebody.
 8. **M6 — launch pass.**
 
 M0 and M1 were the architectural bet and it paid off: the funnel, the redaction rules and the

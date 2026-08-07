@@ -55,10 +55,18 @@ if (dbName !== 'holoscopic-dev' || process.env.NODE_ENV === 'production') {
 const INSTANCE = 'threshold-smoke';
 const USERS = ['smoke-u1', 'smoke-u2', 'smoke-u3'];
 
-// Real Mongo for everything; mail and notifications stubbed so this never
-// sends to the invented addresses it creates. Note that sweepCircles() below
-// deliberately uses the DEFAULT store instead, exercising the real notify.
-const store = { ...threshold.mongoStore, async sendEmail() {}, async notify() {} };
+// Real Mongo for everything; mail CAPTURED rather than sent, because the
+// addresses below are invented and a bounce lands on the reputation of the
+// domain that also carries password resets. Capturing is not a weaker check
+// than sending — what matters is the payload, and this asserts it byte for
+// byte. Note that sweepCircles() further down deliberately uses the DEFAULT
+// store instead, exercising the real notify.
+const mail = [];
+const store = {
+  ...threshold.mongoStore,
+  async sendEmail(args) { mail.push(args); },
+  async notify() {},
+};
 
 const passed = [];
 const ok = (label) => { passed.push(label); console.log(`  ✔ ${label}`); };
@@ -92,10 +100,12 @@ async function main() {
   const circle = await circles.createCircle({
     store, instanceId: INSTANCE, activity: 'threshold',
     title: 'Smoke circle', urlName: 'smoke', createdBy: USERS[0],
-    creatorName: 'One', requireInvitation: false,
+    creatorName: 'One', creatorEmail: 'smoke-u1@threshold.invalid', requireInvitation: false,
   });
   for (const u of USERS.slice(1)) {
-    await circles.joinCircle({ store, circleId: circle.id, userId: u, username: u });
+    // Addresses, so the mail path is exercised rather than skipped as
+    // 'no-recipient'. They are invented, and nothing is ever sent to them.
+    await circles.joinCircle({ store, circleId: circle.id, userId: u, username: u, email: `${u}@threshold.invalid` });
   }
   await circles.startCircle({ store, circleId: circle.id, userId: USERS[0] });
 
@@ -204,6 +214,35 @@ async function main() {
   const notes = await require('../models/Notification').countDocuments({ userId: { $in: USERS } });
   assert.ok(notes > 0, 'no notifications were written — check Notification.type against the enum');
   ok(`in-app notifications actually landed (${notes} rows)`);
+
+  console.log('\nthe mail a transition sends:');
+
+  // Members need addresses before any of this is exercised at all.
+  assert.ok(mail.length > 0, 'no mail was attempted — check members have emails');
+  const lastMail = mail[mail.length - 1];
+
+  // Every message links to the CIRCLE, never to a phase surface: a round
+  // advances on a 60s tick, so a link to /rank is the likeliest thing in the
+  // system to be stale by the time somebody opens their inbox (§9.1).
+  const base = process.env.THRESHOLD_URL || 'http://localhost:4006';
+  assert.ok(lastMail.text.includes(`${base}/t/smoke`), 'the mail links to the circle');
+  assert.equal(/\/(rank|share|seed)\b/.test(lastMail.text), false, 'and never to a phase surface');
+
+  // D31 — how to stop, in the body and in the header Gmail reads.
+  assert.ok(lastMail.text.includes(`${base}/notifications`), 'the body says how to stop');
+  assert.equal(lastMail.headers['List-Unsubscribe'], `<${base}/notifications>`);
+  assert.equal('List-Unsubscribe-Post' in (lastMail.headers || {}), false,
+    'no one-click: that would need an unauthenticated mutation endpoint, which D31 exists to avoid');
+  ok(`transition mail links to the circle and carries List-Unsubscribe (${mail.length} messages)`);
+
+  // Muting is per-circle and suppresses MAIL ONLY.
+  await circles.setEmailOptOut({ store, circleId: circle.id, userId: USERS[1], optOut: true });
+  fresh = await Circle.findOne({ id: circle.id });
+  assert.equal(fresh.members.find(m => m.userId === USERS[1]).emailOptOut, true,
+    'members[].emailOptOut was rejected by the schema');
+  assert.equal(circles.toClient(fresh, { userId: USERS[1] }).myEmailOptOut, true);
+  assert.equal(circles.toClient(fresh, { userId: USERS[2] }).myEmailOptOut, false, 'mine only');
+  ok('a per-circle mute persisted, and is visible only to its owner');
 
   console.log('\nthe facilitator tools:');
 

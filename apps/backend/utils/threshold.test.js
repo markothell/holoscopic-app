@@ -994,6 +994,61 @@ test('the queue: support decides what runs next, and a late joiner takes full pa
 // Notifications
 // ---------------------------------------------------------------------------
 
+test('every message links to the circle and says how to stop (D31, §9.1)', async () => {
+  const store = memStore();
+  useStore(store);
+  process.env.THRESHOLD_URL = 'https://threshold.example';
+  const circle = await runningCircle(store, { members: 2 });
+  const mod = activities.get('threshold');
+  const seed = circle.seeds[0];
+
+  for (const [phase, s2] of [['idle', null], ['share', seed], ['rank', seed], ['revealed', seed], ['skipped', seed], ['closed', null]]) {
+    const msg = await mod.notificationFor({ circle, seed: s2, phase, userId: 'u2' });
+    assert.ok(msg, `${phase} produces a message`);
+
+    // The circle page, never a phase surface: a round advances on a 60s tick,
+    // so a link to /rank is the likeliest thing in the system to be stale by
+    // the time somebody opens their inbox.
+    assert.ok(msg.text.includes('https://threshold.example/t/authority'), `${phase} links to the circle`);
+    assert.equal(msg.text.includes('/rank'), false, `${phase} does not link to a phase surface`);
+
+    // And how to stop — which also becomes the List-Unsubscribe header.
+    assert.equal(msg.unsubscribeUrl, 'https://threshold.example/notifications');
+    assert.ok(msg.text.includes(msg.unsubscribeUrl));
+  }
+  delete process.env.THRESHOLD_URL;
+});
+
+test('muting a circle stops the mail and keeps the notification (D31)', async () => {
+  const store = memStore();
+  useStore(store);
+  const circle = await runningCircle(store, { members: 3 });
+  circle.members.forEach(m => { m.email = `${m.userId}@example.com`; });
+
+  await circles.setEmailOptOut({ store, circleId: circle.id, userId: 'u2', optOut: true });
+  assert.equal(circles.toClient(circle, { userId: 'u2' }).myEmailOptOut, true);
+  assert.equal(circles.toClient(circle, { userId: 'u3' }).myEmailOptOut, false, 'mine only');
+
+  const mailBefore = store._emails.length;
+  const notesBefore = store._notifications.length;
+  await circles.advanceCircle({ store, circleId: circle.id, userId: 'u1' });
+
+  const sent = store._emails.slice(mailBefore).map(e => e.to);
+  const notified = store._notifications.slice(notesBefore).map(n => n.userId);
+  assert.equal(sent.includes('u2@example.com'), false, 'no mail');
+  assert.ok(notified.includes('u2'), 'muting a circle never means missing what happened in it');
+
+  // And the mail that did go carries the header, once per recipient.
+  const withHeader = store._emails.slice(mailBefore).filter(e => e.headers?.['List-Unsubscribe']);
+  assert.equal(withHeader.length, sent.length);
+  assert.match(withHeader[0].headers['List-Unsubscribe'], /^<https?:\/\/.+\/notifications>$/);
+
+  await assert.rejects(
+    () => circles.setEmailOptOut({ store, circleId: circle.id, userId: 'stranger', optOut: true }),
+    /Not a member/,
+  );
+});
+
 test('the share nudge skips people who already shared', async () => {
   const store = memStore();
   useStore(store);

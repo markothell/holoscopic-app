@@ -24,7 +24,11 @@ integration checks in `scripts/check-circles.js` against a real database.
 the ranking queue and inside the reveal's expanded story. What is left is a real recording on a
 physical iPhone and on Android — Safari takes the MP4/AAC branch, writes no duration metadata and
 spells the `codecs` parameter with a space, and a laptop's WebM take exercises none of the three.
-**Not built: M4, mail.**
+**M4, mail, is built**: transition mail with the circle link and `List-Unsubscribe`, per-circle
+mute, `/notifications`, and a real `/me`. What is outstanding there is a real inbox — locally the
+fixture's members carry no address, so nothing can send.
+
+**Not built: M6, the launch pass.**
 
 `components/TideLine.tsx` is the app's one mark and `components/Shell.tsx` its chrome.
 `components/Scaffold.tsx` is now unused by any route and should be deleted with the M3b work.
@@ -129,6 +133,19 @@ the round may have turned over.
   (D16), and a circle configured with none is a purely hand-driven one.
 - **A seed id is unique across circles**, so `/seeds/:seedId/*` finds its circle by it. The client
   never carries both ids.
+- **Mail links to the circle, never to a phase surface**, and its base is `THRESHOLD_URL` — never
+  `email.js#appUrl()`, which falls back to the first entry of `CLIENT_URL`, and one backend serves
+  five apps. A round advances on a 60s tick, so `/t/<urlName>/rank` in an email is the likeliest
+  thing in the system to be stale by the time somebody opens their inbox.
+- **Muting a circle stops mail and never notifications** (D31). Somebody who mutes has said "stop
+  emailing me", not "stop telling me". `List-Unsubscribe` points at the logged-in `/notifications`
+  page with no `List-Unsubscribe-Post`: one-click would need an unauthenticated mutation endpoint,
+  and the reason none is needed is that `invitedEmails` is a join-time gate and never a mail list,
+  so every recipient of circle mail has an account.
+- **The dev fixture's members carry no email address, on purpose.** `RESEND_API_KEY` is usually set
+  in `.env.local`, so a fixture whose members had addresses would mail them on every transition —
+  and a bounce to an invented address lands on the reputation of the domain that also carries
+  password resets. Notifications still land, so `/notifications` is fully exercised locally.
 - **`gameNumber` must stay null.** `Instance.getDefault()` picks the lowest-numbered active
   instance, so a Threshold instance holding a number can become the platform default and start
   answering interView traffic.
@@ -189,6 +206,8 @@ the round may have turned over.
 ## Environment
 
 - `NEXT_PUBLIC_API_URL` (default `http://localhost:4001/api`)
+- `THRESHOLD_URL` **on the backend** — where links in circle mail point (default
+  `http://localhost:4006`). Unset in production means every email links at localhost
 - `NEXT_PUBLIC_INSTANCE_ID` (default `threshold`)
 - `NEXTAUTH_URL`, `NEXTAUTH_SECRET` — must match the backend's `GAME_TOKEN_SECRET`/`NEXTAUTH_SECRET`
 - `BLOB_READ_WRITE_TOKEN` — required for recording, once M3b exists

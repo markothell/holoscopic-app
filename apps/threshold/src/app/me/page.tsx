@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { thresholdApi, ApiError } from '@/services/api';
 import type { Circle } from '@/lib/types';
-import { Page, Title, Note } from '@/components/Scaffold';
+import { Page, Band, Action, Quiet, Muted } from '@/components/Shell';
+import { TideLine, Polarity } from '@/components/TideLine';
 
-// Circles I'm in, and what is waiting on me. The in-app half of M4 — the other
-// half is the mail that a phase transition sends, and this is what somebody
-// lands on when mail is off or opted out of.
+// Circles I'm in, and what each is doing. The in-app half of M4 — the other
+// half is the mail a phase transition sends, and this is where somebody lands
+// when mail is off, muted, or simply not read.
+
 export default function MePage() {
   const { data: session, status } = useSession();
   const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
@@ -24,34 +26,85 @@ export default function MePage() {
       .catch(e => setError(e instanceof ApiError ? e.message : 'Could not load your circles'));
   }, [userId]);
 
-  if (status === 'loading') return <Page><Note>…</Note></Page>;
+  if (status === 'loading') return <Page><Muted>…</Muted></Page>;
 
   if (!userId) {
     return (
       <Page>
-        <Title>Sign in</Title>
-        <Link href="/login" className="underline underline-offset-4">Sign in</Link>
+        <h1 className="mb-2 font-[family-name:var(--font-source-serif)] text-3xl">Sign in</h1>
+        <Muted>Your circles are tied to your account.</Muted>
+        <div className="mt-5"><Action href="/login">Sign in</Action></div>
       </Page>
     );
   }
 
   return (
     <Page>
-      <Title>Your circles</Title>
-      {error && <Note>{error}</Note>}
-      {circles?.length === 0 && <Note>Nothing yet.</Note>}
-      <ul className="space-y-3">
-        {circles?.map(c => (
-          <li key={c.id}>
-            <Link href={`/t/${c.urlName}`} className="underline underline-offset-4">{c.title}</Link>
-            <span className="text-ink-faint text-sm">
-              {' '}— {c.phase === 'cycle' && c.currentSeed
-                ? `${c.currentSeed.payload.topic}, ${c.currentSeed.phase}`
-                : c.phase}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <header className="mb-8">
+        <h1 className="font-[family-name:var(--font-source-serif)] text-3xl leading-tight">
+          Your circles
+        </h1>
+        <p className="mt-1 mb-4 text-sm text-ink-faint">What each one is doing.</p>
+        <TideLine />
+      </header>
+
+      {error && <p className="mb-6 text-sm text-pole-b">{error}</p>}
+
+      {circles?.length === 0 ? (
+        <Muted>You are not in a circle yet. One reaches you by invitation, or by its link.</Muted>
+      ) : (
+        <ul className="space-y-5">
+          {circles?.map(c => <CircleRow key={c.id} circle={c} />)}
+        </ul>
+      )}
+
+      <div className="mt-10 border-t border-[var(--rule)] pt-6">
+        <Band>Being told</Band>
+        <Muted>Everything the circles have told you, and which ones may email.</Muted>
+        <div className="mt-3"><Quiet href="/notifications">Notifications and email</Quiet></div>
+      </div>
     </Page>
+  );
+}
+
+/**
+ * What this circle is doing, in its own words.
+ *
+ * The list route serves the circle alone — no stories and no ranking — so this
+ * says what is RUNNING rather than counting what is waiting on you. The count
+ * lives on the circle page, where the snapshot that carries it is already
+ * being fetched, and asking for it here would be one extra query per circle to
+ * say something the next tap says anyway.
+ */
+function CircleRow({ circle }: { circle: Circle }) {
+  const seed = circle.currentSeed;
+  return (
+    <li>
+      <Link
+        href={`/t/${circle.urlName}`}
+        className="block rounded-lg px-3 py-2 -mx-3 transition-colors hover:bg-ground-deep"
+      >
+        <span className="font-[family-name:var(--font-source-serif)] text-lg">{circle.title}</span>
+
+        {circle.phase === 'cycle' && seed ? (
+          <>
+            <p className="text-sm text-ink-soft">
+              {seed.payload.topic} — {seed.phase === 'share' ? 'telling stories' : 'sorting them'}
+            </p>
+            <Polarity poleA={seed.payload.poleA} poleB={seed.payload.poleB} className="mt-1" />
+          </>
+        ) : (
+          <p className="text-sm text-ink-soft">
+            {circle.phase === 'idle' && 'Open, waiting for a topic'}
+            {circle.phase === 'draft' && 'Not started yet'}
+            {circle.phase === 'closed' && 'Closed'}
+          </p>
+        )}
+
+        {circle.myEmailOptOut && (
+          <p className="mt-1 text-xs text-ink-faint">email muted</p>
+        )}
+      </Link>
+    </li>
   );
 }

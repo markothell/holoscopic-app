@@ -7,6 +7,7 @@ const circles = require('../utils/circles');
 const threshold = require('../utils/threshold');
 const thresholdTranscribe = require('../utils/thresholdTranscribe');
 const Circle = require('../models/Circle');
+const Notification = require('../models/Notification');
 
 // Threshold — REST surface. Thin wrappers over utils/circles.js (the generic
 // round machine) and utils/threshold.js (the activity: shares, rankings, the
@@ -240,6 +241,25 @@ router.post('/circles/:id/seeds', async (req, res) => {
   }
 });
 
+// Mute or unmute this circle's mail, for me (D31). Mail only — the in-app
+// notification still lands, so muting never means missing what happened.
+router.put('/circles/:id/mail', async (req, res) => {
+  if (!assertOwnApp(req, res)) return;
+  try {
+    const circle = await loadCircle(req, res);
+    if (!circle) return;
+    const after = await circles.setEmailOptOut({
+      store, circleId: circle.id, userId: userIdOf(req), optOut: req.body.optOut === true,
+    });
+    res.json({
+      emailOptOut: after.emailOptOut,
+      circle: circles.toClient(fresh(after, circle), { userId: userIdOf(req) }),
+    });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 // Readable at ANY time (D29) — a record of the conversation so far, never a
 // terminal state you unlock.
 router.get('/circles/:id/result', async (req, res) => {
@@ -436,6 +456,55 @@ hooks.post('/deepgram', async (req, res) => {
 });
 
 // --- mine -------------------------------------------------------------------
+
+/**
+ * My circle notifications.
+ *
+ * Threshold's own rather than the platform's `/api/notifications`, which
+ * authenticates on the `x-user-id` header alone. Every route in this router
+ * sits behind enforceVerifiedUser (D6), and a list of what somebody has been
+ * told — which circles they are in, which topics ran — should not be readable
+ * by anyone who can type a user id.
+ */
+router.get('/me/notifications', async (req, res) => {
+  if (!assertOwnApp(req, res)) return;
+  try {
+    const userId = userIdOf(req);
+    const rows = await Notification.find({ userId, type: 'circle_phase' })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+
+    // The refId is a circle id; the page wants its name and its link.
+    const circleIds = [...new Set(rows.map(n => n.refId).filter(Boolean))];
+    const named = await Circle.find({ instanceId: req.instanceId, id: { $in: circleIds } })
+      .select('id title urlName')
+      .lean();
+    const byId = new Map(named.map(c => [c.id, c]));
+
+    res.json({
+      notifications: rows.map(n => ({
+        id: n.id,
+        message: n.message,
+        read: n.read,
+        createdAt: n.createdAt,
+        circle: byId.get(n.refId) || null,
+      })),
+    });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.post('/me/notifications/read', async (req, res) => {
+  if (!assertOwnApp(req, res)) return;
+  try {
+    await Notification.updateMany({ userId: userIdOf(req), read: false }, { $set: { read: true } });
+    res.json({ ok: true });
+  } catch (err) {
+    fail(res, err);
+  }
+});
 
 router.get('/me/circles', async (req, res) => {
   if (!assertOwnApp(req, res)) return;

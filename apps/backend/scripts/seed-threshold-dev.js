@@ -47,14 +47,25 @@ if (dbName !== 'holoscopic-dev' || process.env.NODE_ENV === 'production') {
 const SLUG = 'threshold';
 const URL_NAME = 'tuesday';
 const PASSWORD = 'threshold123';
+// `email` is the SIGN-IN address on the User account. It is deliberately NOT
+// copied onto the circle membership — see the note on `store` above.
 const PEOPLE = [
   { id: 'thr-dev-1', name: 'Mara', email: 'mara@threshold.dev' },
   { id: 'thr-dev-2', name: 'Ivo', email: 'ivo@threshold.dev' },
   { id: 'thr-dev-3', name: 'Nell', email: 'nell@threshold.dev' },
 ];
 
-// Real Mongo for everything; mail and notifications stubbed, because these
-// addresses are invented and nobody should be sending to them.
+// Real Mongo for everything; mail and notifications stubbed while BUILDING the
+// fixture. What protects you afterwards is different and stronger: the members
+// this creates have NO email address, so utils/circles.js#dispatch skips the
+// mail branch entirely and Resend is never called — even when you advance a
+// phase from the browser, which goes through the real store.
+//
+// That matters because RESEND_API_KEY is usually set in .env.local. A fixture
+// whose members had addresses would mail them on every transition, and a bounce
+// to an invented address lands on the reputation of the domain that also
+// carries password resets. Notifications still land, so /notifications is fully
+// exercised locally.
 const store = { ...threshold.mongoStore, async sendEmail() {}, async notify() {} };
 
 // Stories carry NO author name in their text. The ranking surface withholds
@@ -136,11 +147,11 @@ async function main() {
     urlName: URL_NAME,
     createdBy: host_.id,
     creatorName: host_.name,
-    creatorEmail: host_.email,
+    // No address on the membership, on purpose. See the note on `store`.
     requireInvitation: false,
   });
   for (const p of rest) {
-    await circles.joinCircle({ store, circleId: circle.id, userId: p.id, username: p.name, email: p.email });
+    await circles.joinCircle({ store, circleId: circle.id, userId: p.id, username: p.name });
   }
   await circles.startCircle({ store, circleId: circle.id, userId: host_.id });
 

@@ -11,7 +11,10 @@
 // scope. getGameToken() does call a same-origin route, so it only works in the
 // browser — server-side reads have to pass a token in explicitly.
 
-import type { Circle, CircleResult, Placement, Pole, Share, MyRanking, SeedResult, Seed } from '@/lib/types';
+import type {
+  Circle, CircleResult, Placement, Pole, Share, MyRanking, SeedResult, Seed,
+  ThresholdNotification,
+} from '@/lib/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 
@@ -224,6 +227,24 @@ export const thresholdApi = {
    *  circle has no completion condition, so this never 404s on a running one. */
   circleResult(circleId: string, userId?: string | null) {
     return apiFetch<{ result: CircleResult }>(`/threshold/circles/${circleId}/result`, { userId });
+  },
+
+  /** Mail for this circle, for me. Mail only — the in-app notification still
+   *  lands, so muting never means missing what happened (D31). */
+  setCircleMail(circleId: string, optOut: boolean, userId: string) {
+    return apiFetch<{ emailOptOut: boolean; circle: Circle }>(
+      `/threshold/circles/${circleId}/mail`, { method: 'PUT', body: { optOut }, userId },
+    );
+  },
+
+  /** Threshold's own, behind enforceVerifiedUser — the platform's
+   *  `/api/notifications` authenticates on the x-user-id header alone. */
+  myNotifications(userId: string) {
+    return apiFetch<{ notifications: ThresholdNotification[] }>('/threshold/me/notifications', { userId });
+  },
+
+  markNotificationsRead(userId: string) {
+    return apiFetch<{ ok: true }>('/threshold/me/notifications/read', { method: 'POST', userId });
   },
 
   myCircles(userId: string) {

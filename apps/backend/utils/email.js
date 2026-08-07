@@ -65,7 +65,7 @@ function appUrl() {
  * pixel, and cannot be the reason a reset link is unclickable in someone's
  * mail client.
  */
-async function sendEmail({ to, subject, text, from, replyTo }) {
+async function sendEmail({ to, subject, text, from, replyTo, headers }) {
   if (!RESEND_API_KEY) return 'unconfigured';
   const recipients = (Array.isArray(to) ? to : [to]).filter(Boolean);
   if (recipients.length === 0) return 'no-recipient';
@@ -80,6 +80,19 @@ async function sendEmail({ to, subject, text, from, replyTo }) {
     // Set on contact mail so hitting reply in your client answers the person
     // who wrote in, rather than the noreply box.
     if (replyTo) payload.reply_to = replyTo;
+    // Extra headers, for `List-Unsubscribe` on recurring mail.
+    //
+    // DELIVERABILITY IS THE REASON, not compliance. A spam complaint lands on
+    // the sending domain, and that domain also carries password resets and
+    // operator alerts — so making it easy to stop is protecting the mail that
+    // has to arrive. The header gives Gmail a native unsubscribe affordance
+    // that routes somebody to a setting instead of to the spam button.
+    //
+    // URL only, with no `List-Unsubscribe-Post`. One-click would need an
+    // unauthenticated mutation endpoint, and D31's whole point is that every
+    // recipient of circle mail has an account, so a logged-in page needs
+    // nothing signed and exposes nothing to forge.
+    if (headers && Object.keys(headers).length) payload.headers = headers;
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
