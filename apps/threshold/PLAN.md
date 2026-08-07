@@ -859,8 +859,10 @@ step before it settled.
    `circle`-mode circle (D30). `components/TideLine.tsx` is the app's one mark and
    `components/Shell.tsx` its real chrome; `Scaffold.tsx` is now only for surfaces still unbuilt.
    Verified in a browser against a real circle: support, promote and skip all round-trip.
-3. **The share surface, typed first** — pick a pole to enter it (D22). Text-only, exactly as M1 was
-   built, so the flow is verifiable before the browser-dependent part lands.
+3. ~~**The share surface, typed first** — pick a pole to enter it (D22).~~ **Done.** Text-only, so
+   the flow is verifiable before the browser-dependent part lands on it. The two ends are the entry;
+   the anonymity line is said before anything is written, and M3b adds the recognisable-voice
+   caveat in the same place.
 4. **M3b — audio**: the recorder with the hard cap, `/api/audio/upload`, playback. The riskiest
    part per-browser, and it changes nothing about the flow around it.
 5. **The ranking queue** (§6.2): the queue, then the review screen that owns submit. Needs stories

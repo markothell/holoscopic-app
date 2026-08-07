@@ -23,14 +23,18 @@ surface, blob mirroring and transcription — 74 tests between `utils/circles.te
 `utils/threshold.test.js`, plus 17 integration checks in `scripts/check-circles.js` — and a
 frontend scaffold carrying the route skeleton, the auth stack, the API client and the wire types.
 
-The **circle page is built for real** in the tide-line language (§9.2), with the queue, the waiting
-marker and the facilitator row. `components/TideLine.tsx` is the app's one mark and
-`components/Shell.tsx` its chrome — `Scaffold.tsx` is now only for surfaces still unbuilt, and
-should be deleted when the last one lands.
+The **circle page and the share surface are built for real** in the tide-line language (§9.2).
+`components/TideLine.tsx` is the app's one mark and `components/Shell.tsx` its chrome —
+`Scaffold.tsx` is now only for surfaces still unbuilt, and should be deleted when the last one lands.
 
-**Designed and not built:** the compose surface (§6.2, D22), the ranking queue (§6.2) and the two
-reveals (§6.3). Next per §11's build order is **the share surface, typed first** — text-only, so
-the flow is verifiable before the browser-dependent audio half (M3b) lands on top of it.
+**Designed and not built:** the ranking queue (§6.2) and the two reveals (§6.3). Next per §11's
+build order is **M3b — audio**, whose bar is a real recording on a physical iPhone; the ranking
+queue follows it and now has real stories to sort.
+
+**A dev fixture is the fastest way to see any of this.** A Threshold instance exists on dev
+(`slug: threshold`); a circle needs members, stories and a queue before a surface shows anything.
+Build one through `utils/circles.js` + `utils/threshold.js` rather than by hand — a circle assembled
+with direct writes skips the funnel and lands in states the machine never produces.
 
 Build what those sections say rather than designing from the placeholders. `globals.css` already
 carries the real palette; `components/Scaffold.tsx` is chrome to be replaced, and its `NotBuilt`
