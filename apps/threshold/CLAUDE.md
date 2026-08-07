@@ -23,10 +23,14 @@ surface, blob mirroring and transcription — 74 tests between `utils/circles.te
 `utils/threshold.test.js`, plus 17 integration checks in `scripts/check-circles.js` — and a
 frontend scaffold carrying the route skeleton, the auth stack, the API client and the wire types.
 
-**Designed and not built:** the three surfaces — the ranking queue (§6.2), the reveal (§6.3), and
-the tide-line language and its measured palette (§9.2). Next per §11's build order is **the circle
-page on the M1b snapshot**: the topic queue with support, the waiting marker (D32), and the
-facilitator tools where `mode` warrants them (D30).
+The **circle page is built for real** in the tide-line language (§9.2), with the queue, the waiting
+marker and the facilitator row. `components/TideLine.tsx` is the app's one mark and
+`components/Shell.tsx` its chrome — `Scaffold.tsx` is now only for surfaces still unbuilt, and
+should be deleted when the last one lands.
+
+**Designed and not built:** the compose surface (§6.2, D22), the ranking queue (§6.2) and the two
+reveals (§6.3). Next per §11's build order is **the share surface, typed first** — text-only, so
+the flow is verifiable before the browser-dependent audio half (M3b) lands on top of it.
 
 Build what those sections say rather than designing from the placeholders. `globals.css` already
 carries the real palette; `components/Scaffold.tsx` is chrome to be replaced, and its `NotBuilt`

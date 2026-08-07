@@ -854,8 +854,11 @@ step before it settled.
 1. ~~**M1b — the queue** (backend).~~ **Done.** The snapshot everything below reads now carries
    `queue[]` in run order, `liveSeedId`, `supporterCount`/`iSupport` per seed, and
    `waitingShareIds`. The scaffold's types mirror it and the placeholder circle page renders it.
-2. **The circle page** on the new snapshot: the queue with support, the waiting marker (D32),
-   facilitator tools where `mode` warrants them (D30).
+2. ~~**The circle page** on the new snapshot.~~ **Done.** Three bands — running now, waiting to
+   run, where the lines fell — plus the facilitator row, which appears only for a creator of a
+   `circle`-mode circle (D30). `components/TideLine.tsx` is the app's one mark and
+   `components/Shell.tsx` its real chrome; `Scaffold.tsx` is now only for surfaces still unbuilt.
+   Verified in a browser against a real circle: support, promote and skip all round-trip.
 3. **The share surface, typed first** — pick a pole to enter it (D22). Text-only, exactly as M1 was
    built, so the flow is verifiable before the browser-dependent part lands.
 4. **M3b — audio**: the recorder with the hard cap, `/api/audio/upload`, playback. The riskiest

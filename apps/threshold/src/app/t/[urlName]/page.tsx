@@ -133,7 +133,7 @@ export default function CirclePage({ params }: { params: Promise<{ urlName: stri
           <Muted>This circle opens when its host is ready.</Muted>
           {circle.isCreator && (
             <div className="mt-4">
-              <Action pending={busy} onClick={() => act(() => thresholdApi.start(circle.id, userId))}>
+              <Action disabled={busy} onClick={() => act(() => thresholdApi.start(circle.id, userId))}>
                 Open the circle
               </Action>
             </div>
