@@ -96,6 +96,13 @@ the round may have turned over.
   schema field. **The threshold appears once three rankings are in**, gated on rankings
   submitted rather than on membership: a twelve-person circle that drew three behaves like a
   three-person one, the cycle still reveals below that, and no circle has a minimum size.
+- **A green test suite does NOT mean a `models/Circle.js` change is safe.** `circles.test.js` and
+  `threshold.test.js` run against an injectable in-memory store with no Mongoose in the loop, so
+  schema validation never executes — an enum you narrowed or a field you removed stays invisible to
+  all 288 tests while every real write fails. This is not hypothetical: changing `phase` and
+  `status` for the queue (M1b) left the suite fully green with a funnel that writes two now-invalid
+  values. Exercise a model change against a real database — `scripts/check-circles.js` is the
+  standing tool for exactly that, and it is dev-only by design.
 - **"What is waiting on me" is derived, never stored** (D32). The circle snapshot already carries
   `shares` and `myRanking.placements`; the difference is the marker. That is also why a member who
   joins in week six needs no special handling — they have no ranking, so everything reads as
