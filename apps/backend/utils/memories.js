@@ -360,7 +360,21 @@ async function resolveTagLabels({ store = mongoStore, instanceId, set, labels, a
   const ids = [];
   let minted = 0;
   for (const { label, key } of cleaned) {
-    const cacheKey = `${set} ${key}`;
+    // Composite key: the slot plus the normalized label, joined by a separator
+    // that cannot occur in the first half. `set` is the fixed enum role |
+    // experience, so the split point is unambiguous whatever a contributor
+    // typed into the second. U+001F is UNIT SEPARATOR, the ASCII control code
+    // defined for exactly this job.
+    //
+    // WRITTEN AS AN ESCAPE, NEVER AS A RAW CONTROL BYTE. This was a literal
+    // NUL for a while. NUL is a fine delimiter and a real convention — it is
+    // what `find -print0` and `git ls-files -z` use, chosen because it cannot
+    // occur in the data. The problem was never the byte, it was putting the
+    // byte in the SOURCE: one NUL makes the whole file read as binary to grep,
+    // and grep then prints nothing rather than erroring. Every search of this
+    // file came back silently empty, which is how an investigation concluded
+    // that the broadcasts further down did not exist. They always did.
+    const cacheKey = `${set}\u001f${key}`;
     if (cache.has(cacheKey)) {
       ids.push(cache.get(cacheKey));
       continue;
