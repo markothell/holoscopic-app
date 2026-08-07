@@ -8,21 +8,28 @@ sit in the middle — that middle is the threshold.
 Local dev port **4006**, ships to `threshold.holoscopic.io` (add to backend `CLIENT_URL` at
 cutover). Next.js 16 + React 19 + Tailwind v4 (`@theme inline` in `globals.css`, no config file).
 
-**`PLAN.md` is the source of truth**, §-numbered, with settled decisions D1–D26 in §12 and open
+**`PLAN.md` is the source of truth**, §-numbered, with settled decisions D1–D31 in §12 and open
 questions in §13. Read the relevant § before changing behavior it describes. Two lists come off it:
 `M3B-CHECKLIST.md` (what has to be provisioned before the audio half can start) and
 `BACKEND-SETUP.md` (the server-side runbook).
 
 ## Status
 
-The **backend is built and green** — the Circle layer, the Threshold funnel, the REST surface,
-blob mirroring and transcription, 48 tests between `utils/circles.test.js` and
-`utils/threshold.test.js`. **The frontend is a scaffold**: the route skeleton from §9.1, the auth
-stack, the API client and the wire types. Everything you can see is placeholder.
+**Design is ahead of code here, on purpose.** Check `PLAN.md` §11 before assuming a section
+describes something that exists.
 
-**The three surfaces are designed and not built.** The ranking queue (§6.2), the reveal (§6.3) and
-the visual language (§9.2) are specified down to the gesture, the grouping and the colour values —
-build what those sections say rather than designing from the placeholders. `globals.css` already
+**Built:** the Circle layer, the Threshold funnel, the REST surface, blob mirroring and
+transcription — 49 tests between `utils/circles.test.js` and `utils/threshold.test.js` — plus a
+frontend scaffold carrying the route skeleton, the auth stack, the API client and the wire types.
+
+**Designed and not built:** the three surfaces — the ranking queue (§6.2), the reveal (§6.3), the
+tide-line language and its measured palette (§9.2) — and **the topic queue (§3.3, M1b), which
+reworks the round machine that is running today.** What ships now still has a blocking seeding
+round, `cycleIndex` walking `seeds[]` in posted order, and a circle that completes when its seeds
+run out. D27–D30 replace all three with a support-ordered queue, an idle state, and a circle that
+ends only when its facilitator closes it.
+
+Build what those sections say rather than designing from the placeholders. `globals.css` already
 carries the real palette; `components/Scaffold.tsx` is chrome to be replaced, and its `NotBuilt`
 marker names the section that specifies each surface.
 

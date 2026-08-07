@@ -1,13 +1,16 @@
 # Threshold — Master Plan (draft v0.1)
 
-**Status:** the backend is built and green (M0–M3a); the frontend is a scaffold. The three
-surfaces are designed (§6.2, §6.3, §9.2) and not yet built.
+**Status:** design is ahead of code, deliberately — read §11 before assuming a section describes
+something that exists. **Built:** the backend through M3a, and a frontend scaffold. **Designed and
+not built:** the three surfaces (§6.2, §6.3, §9.2) and the topic queue (§3.3), which reworks the
+round machine M0 shipped — what runs today still has a blocking seeding round and a circle that
+completes when its seeds run out.
 **Local dev port:** 4006. **Ships to:** `threshold.holoscopic.io` (add to backend `CLIENT_URL` at cutover).
 **Backend surface:** `apps/backend/routes/threshold.js` + `utils/threshold.js`, on the generic
 **Circle** layer (§3) that Threshold is the first consumer of.
 
 This file is the source of truth for the design. Sections are numbered so code comments and
-commits can cite them. Settled decisions are D1–D26 in §12; open questions in §13.
+commits can cite them. Settled decisions are D1–D31 in §12; open questions in §13.
 
 ---
 
@@ -26,15 +29,19 @@ the set lays out as a spectrum: the stories everybody read the same way sit at t
 the ones the group **split on** sit in the middle. That middle is the **threshold** — the group's
 actual dividing line, made of the specific stories that fell across it.
 
-Two ways to run it:
+Two ways to run it, and they are two different products wearing one mechanic:
 
-- **Single** — one person posts a topic + polarity, takes signups, the group runs one cycle. This
-  is how *On a Spectrum* works today.
-- **Sharing Circle** — every member of a cohort seeds their own topic, and the circle runs one
-  cycle per topic in turn. The final screen plots all of them together.
+- **Single** — one person posts a topic + polarity, takes signups, the group runs one cycle. A
+  stranger-shaped activity: people sign up for the topic, not for each other. If it goes unattended
+  nothing is lost, so it needs no steering.
+- **Sharing Circle** — a standing group takes turns leading. Anybody posts a topic whenever they
+  think of one, the group's support orders the queue, and one topic runs at a time (§3.3). This is
+  the one with something at stake in it going stale, so it is the one with a facilitator and tools
+  to steer (**D30**).
 
 **These are the same code path.** A single Threshold is a Circle with exactly one seed, authored by
-the creator (**D1**). There is no second implementation.
+the creator (**D1**), a queue with nothing to order and nothing to steer. There is no second
+implementation — the difference is which surfaces have anything to show.
 
 ### What makes it work (constraints, not features)
 
@@ -100,14 +107,13 @@ Circle {
   mode: 'single' | 'circle',       // 'single' caps seeds at 1 (D1)
   status: 'draft' | 'open' | 'running' | 'complete',
 
-  // Circle-level phase. 'seeding' is skipped in single mode — the creator's
-  // seed is written at creation.
-  phase: 'draft' | 'seeding' | 'cycle' | 'complete',
-  phaseDeadline: Date,             // seeding deadline; cycle deadlines live on the seed
+  // There is no 'seeding' phase — topics queue continuously (D27), and a
+  // circle ends only when its facilitator closes it (D29). 'idle' is an open
+  // circle with nothing in the queue, which is a pause and not an ending.
+  phase: 'draft' | 'cycle' | 'idle' | 'closed',
 
   config: {
-    // Any phase's hours may be null = no clock for that phase (D16).
-    seedHours:  Number,
+    // Either phase's hours may be null = no clock for that phase (D16).
     shareHours: Number,
     rankHours:  Number,
     // Advance as soon as every member is done, without waiting out the clock.
@@ -121,12 +127,17 @@ Circle {
   requireInvitation: Boolean,
 
   seeds: [{
-    id, authorId, order,
+    id, authorId, order,           // order = posted, the tiebreak under support
     payload: Mixed,                // OPAQUE to the circle — validated by the module
-    phase: 'pending' | 'share' | 'rank' | 'revealed',
+    phase: 'pending' | 'share' | 'rank' | 'revealed' | 'skipped',
+    // The queue (D27). One support per member, toggled freely; the count
+    // orders the queue. Ids rather than a number, so a support can be taken
+    // back and so nobody supports twice.
+    supporterIds: [String],
+    promotedAt: Date,              // facilitator override; beats support order
     openedAt, phaseDeadline, revealedAt,
   }],
-  cycleIndex: Number,              // index into seeds[]; which cycle is live
+  liveSeedId: String,              // which cycle is live; null when idle
 
   startedAt, completedAt,
 }
@@ -136,13 +147,41 @@ Circle {
 
 ### 3.3 The round machine
 
-**Three ways a phase ends, and all three are always live** (**D16**):
+**The topic list is a queue that is always open, not a round everybody has to finish** (**D27**).
+Any member posts a topic whenever they think of one; every member can **support** any pending topic,
+one support each, toggled on and off freely; the queue is ordered by support count, with posting
+order as the tiebreak. When a cycle ends, the next one is the top of the queue.
+
+This replaces a blocking `seeding` phase, and it is a better answer than the phase was:
+
+- **Nothing waits for everybody.** A circle starts on its first topic rather than on its twelfth
+  person, and somebody who thinks of a topic in week six can still post it.
+- **The group filters itself.** Support is what screens duplicates and incoherent polarities, which
+  is the review a seeding round never had.
+- **The tail is allowed to never happen.** A topic nobody supports simply sits there. That is the
+  real fix for a circle that runs out of energy: nobody is waiting on topic twelve, because topic
+  twelve was never promised.
+
+What the queue does **not** do is make a circle faster. Twelve topics at six days each is
+seventy-two days queued or not — cycles stay strictly **one at a time** (**D28**), because everyone
+listening to the same stories in the same week is what makes this a shared conversation rather than
+three overlapping ones. What changes is that the topics people care about run first, and the circle
+ends when interest does rather than when the list is exhausted.
+
+**A circle runs until its facilitator closes it** (**D29**). There is no completion condition — a
+standing group that goes quiet for a month is paused, not finished. The circle-final screen (§6.3)
+is therefore readable **at any time**, as a record of the conversation so far, rather than being a
+terminal state you unlock.
+
+#### Ending a phase
+
+**Three ways, and all three are always live** (**D16**):
 
 | Trigger | Condition |
 |---|---|
 | **Complete** | every member is done, and `config.advanceOnComplete` |
 | **Deadline** | `seed.phaseDeadline` has passed — omitted per phase, for no clock at all |
-| **Manual** | the author says so, at any moment, from any state |
+| **Manual** | the facilitator or the seed's author says so, at any moment, from any state |
 
 Whichever fires first. "Every member is done" is not knowable by the circle — it calls
 `isMemberDone` on the registered module, once per member, and advances when all return true.
@@ -158,21 +197,37 @@ for the phases of their own cycle** — in a Sharing Circle that person is the a
 being run, which is what makes the control theirs to hold. Both are recorded on the transition
 (`advancedBy`) so a cycle that ended early is explainable afterward.
 
+#### Facilitator tools
+
+A standing circle has a leader, and the leader needs to be able to steer it (**D30**). The creator
+may, at any time:
+
+| | |
+|---|---|
+| **Advance** | end the live phase now (above — also available to the seed's author for their own cycle) |
+| **Skip** | drop the live topic and move to the next in the queue. A skipped topic reveals what it has, so nobody's story is deleted for having been on the wrong topic |
+| **Promote** | move a pending topic to the top of the queue, overriding support order — the facilitator's judgment beats the count when it has to |
+| **Close** | end the circle. The only way a circle finishes |
+
+A one-off single-topic circle (**D1**) needs none of these and does not show them: one seed, no
+queue, nothing to reorder. The tools appear where there is something to steer.
+
 ```
-draft ──start──▶ seeding ──all seeded | deadline──▶ cycle[0].share
-                                                        │
-                    ┌───────────────────────────────────┘
-                    ▼
-              share ──all shared | deadline──▶ rank ──all ranked | deadline──▶ revealed
-                    │                                                              │
-                    └────────────────── next seed, if any ◀────────────────────────┘
-                                                │
-                                          none left ──▶ complete
+draft ──start──▶ running ──────────────────────────────────────────┐
+                    │                                              │
+                    ▼   top of queue by support                    │
+              share ──all shared | deadline | manual──▶ rank ──▶ revealed
+                    │                                              │
+                    └──────── next topic, when one exists ◀────────┘
+                                       │
+                        queue empty ──▶ idle, still open
+                                       │
+                            facilitator closes ──▶ closed
 ```
 
-**A seeding round that nobody completes still advances.** A member who misses the seeding deadline
-simply has no topic in the circle; a cycle whose share round nobody entered is revealed empty and
-skipped. The machine never blocks on a person (**D4**).
+**The machine never blocks on a person** (**D4**). A cycle whose share round nobody entered is
+revealed empty and moves on; an empty queue is an idle circle rather than a finished one, and it
+starts again the moment somebody posts a topic.
 
 ### 3.4 The activity module interface
 
@@ -243,11 +298,28 @@ not free:
 - **Dedupe.** A transition must email a given member once. The lock in §3.5 prevents a double tick;
   a `notifiedAt` stamp on the seed phase prevents a retry after a partial failure re-sending to
   everyone.
-- **Unsubscribe.** A per-member `emailOptOut` on the circle, and a link that sets it without a
-  login. Open question — §13, Q3.
-- **Volume.** A 12-person circle with 12 seeds is 12 × 3 × 12 ≈ 430 messages. That is fine for
-  Resend and not fine for a member's inbox. `notificationFor` returning `null` for someone with
-  nothing to do is the main lever (don't mail the people who already finished).
+- **Unsubscribe is a logged-in page, not a signed link** (**D31**). Mail goes only to
+  `circle.members`, and a member has a `userId` — `invitedEmails` is a join-time gate, never a mail
+  list — so **every recipient of Threshold mail has an account**. A `/notifications` page therefore
+  covers it: per-circle mute writes `members[].emailOptOut`, platform announcements sit separately
+  on `User.notifications`, which already exists. No token to sign, and no unauthenticated mutation
+  endpoint to defend.
+
+  The rules people reach for here are about marketing. CAN-SPAM's opt-out requirement covers mail
+  whose primary purpose is commercial advertising; a round transition in an activity somebody
+  joined is a transactional/relationship message. GDPR and ePrivacy consent rules likewise target
+  direct marketing, though an objection must still be honoured — which the page does. The Gmail and
+  Yahoo one-click rules bind bulk promotional senders above 5,000 messages a day. None of it
+  reaches this.
+
+  **Deliverability is the real reason to make stopping easy.** A spam complaint lands on the
+  sending domain, and that domain also carries password resets and operator alerts. So mail carries
+  a `List-Unsubscribe` header pointing at the notifications page: it gives Gmail a native
+  unsubscribe affordance that routes people to a setting instead of to the spam button.
+- **Volume.** A 12-person circle working through 12 topics is 12 × 2 × 12 ≈ 290 messages. That is
+  fine for Resend and not fine for a member's inbox. `notificationFor` returning `null` for someone
+  with nothing to do is the main lever (don't mail the people who already finished), and the queue
+  helps too — a circle that runs four topics and stops sends a third of that.
 
 ---
 
@@ -615,15 +687,19 @@ with a meaningful status.
 | `POST` | `/circles` | create; `mode` decides whether a seed is required inline |
 | `GET` | `/circles/:urlName` | the snapshot — circle, live seed, my state. Sweeps on read |
 | `POST` | `/circles/:id/join` | membership + invitation check |
-| `POST` | `/circles/:id/start` | draft → seeding (or straight to cycle 0 in single mode) |
+| `POST` | `/circles/:id/start` | draft → running; opens the first cycle if the queue has anything in it |
 | `POST` | `/circles/:id/advance` | manual phase advance; creator, or seed author for their own cycle (§3.3) |
-| `POST` | `/circles/:id/seeds` | one per member; rejected outside the seeding phase |
+| `POST` | `/circles/:id/skip` | drop the live topic, reveal what it has, move to the next (creator) |
+| `POST` | `/circles/:id/close` | end the circle. The only way one finishes (creator) |
+| `POST` | `/circles/:id/seeds` | post a topic. Any member, any time — the queue never closes (D27) |
+| `PUT` | `/seeds/:id/support` | toggle my support. One per member, freely taken back |
+| `POST` | `/seeds/:id/promote` | move a pending topic to the top, over the support order (creator) |
 | `POST` | `/seeds/:id/shares` | upsert by `(seedId, userId, slot)` |
 | `DELETE` | `/seeds/:id/shares/:slot` | while the share phase is open |
 | `GET` | `/seeds/:id/shares` | **redacted during rank, attributed after reveal** (§8.1) |
 | `POST` | `/seeds/:id/ranking` | the whole placement array, atomic, must be complete |
 | `GET` | `/seeds/:id/result` | the computed bands; 404 before reveal |
-| `GET` | `/circles/:id/result` | cross-seed rollup; 404 before complete |
+| `GET` | `/circles/:id/result` | cross-seed rollup. Readable **at any time** — a record of the conversation so far, never a terminal state (D29) |
 
 Generic circle operations (join, start, advance, member list) live in `utils/circles.js` and are
 exposed through this router rather than a parallel `/api/circles` one — until consumer #2 exists,
@@ -736,8 +812,9 @@ validates against the allowlist, so a drifted copy fails silently as a dropped e
 
 | | Milestone | Contents | Done when |
 |---|---|---|---|
-| **M0** | Circle layer — **DONE** | `models/Circle.js`, `utils/circles.js`, `utils/circleActivities.js`, the ticker in `jobs/index.js`, index specs in `scripts/ensure-indexes.js`. | **28 tests pass** (`utils/circles.test.js`, no DB, injectable store). A 3-member circle runs seed → 3 cycles → complete on the completion path; the deadline path advances one phase per expiry; manual advance, D4's never-block rule, notification dedupe and opt-out, the registry's guards. Full backend suite still green (259/259). |
-| **M1** | Threshold text-only — **DONE** | `models/ThresholdShare.js` (audio field present, unwritten), `models/ThresholdRanking.js`, `utils/threshold.js` (funnel + the circle activity module), `routes/threshold.js`, `Instance.app` + `APPS` + the platform admin picker, index specs. | **20 tests pass** (`utils/threshold.test.js`). A 3-person circle runs seed → share → rank → reveal across three cycles to complete; the gradient is checked against a hand-computed four-ranker expectation (1.0 / 0.75 / 0.5 / 0.0); D9 and D17 visibility are asserted on the payload, not the render. Server boots with the route mounted and both tickers running. **`scripts/check-circles.js`** adds 10 checks against a real dev database — Mixed-path persistence, the unique indexes, the tick on a genuinely expired deadline. |
+| **M0** | Circle layer — **DONE, pre-queue** | `models/Circle.js`, `utils/circles.js`, `utils/circleActivities.js`, the ticker in `jobs/index.js`, index specs in `scripts/ensure-indexes.js`. | **28 tests pass** (`utils/circles.test.js`, no DB, injectable store). A 3-member circle runs seed → 3 cycles → complete on the completion path; the deadline path advances one phase per expiry; manual advance, D4's never-block rule, notification dedupe and opt-out, the registry's guards. Full backend suite still green (259/259). |
+| **M1** | Threshold text-only — **DONE, pre-queue** | `models/ThresholdShare.js` (audio field present, unwritten), `models/ThresholdRanking.js`, `utils/threshold.js` (funnel + the circle activity module), `routes/threshold.js`, `Instance.app` + `APPS` + the platform admin picker, index specs. | **20 tests pass** (`utils/threshold.test.js`). A 3-person circle runs seed → share → rank → reveal across three cycles to complete; the gradient is checked against a hand-computed four-ranker expectation (1.0 / 0.75 / 0.5 / 0.0); D9 and D17 visibility are asserted on the payload, not the render. Server boots with the route mounted and both tickers running. **`scripts/check-circles.js`** adds 10 checks against a real dev database — Mixed-path persistence, the unique indexes, the tick on a genuinely expired deadline. |
+| **M1b** | The queue — **NOT BUILT** | Reworks the machine M0 and M1 shipped. `seeds[].supporterIds` + `promotedAt` + `phase: 'skipped'`, `liveSeedId` replacing `cycleIndex`, `phase: 'draft'\|'cycle'\|'idle'\|'closed'` replacing the seeding round, the support/skip/promote/close routes, and `/circles/:id/result` answering at any time. D27–D30. | A circle with no seeding round runs its top-supported topic, goes idle on an empty queue and starts again when somebody posts, and closes only when told. Support is one per member and reversible. A skipped topic keeps its stories. |
 | **M2** | `packages/audio` — **DONE** | Extracted from Chorus; Chorus adopted it in the same commit (`c8fc10b`). 8 package tests, Chorus typechecks and builds. | Verified on preview against the dev store: **Android** 2026-08-05 (WebM/Opus, 48 real peaks, transcribed) and **iPhone** 2026-08-06. Both branches of the format split now exercised end to end — record, upload, play back. No behaviour change in Chorus. |
 | | ↳ *why the iPhone run mattered* | Safari takes the MP4/AAC branch, writes **no duration metadata**, and spells the `codecs` parameter **with a space** — the last of which killed the first live iPhone recording at the upload step while Android sailed through. A WebM recording exercises none of the three, so until 2026-08-06 the extraction was unproven exactly where recording had actually broken before. This was also the first time Chorus's iOS path was ever verified at all. | — |
 | | ↳ **preview environment** — **DONE** | `preview` branch + free Render backend on the dev cluster + Vercel branch-scoped env vars. Documented in `apps/chorus/PREVIEW.md`. | Both pipelines deploy on push to `preview`; a browser-shaped probe (with `Origin`) confirms the write path, and the blob probe confirms the dev store. |
@@ -745,7 +822,7 @@ validates against the allowlist, so a drifted copy fails silently as a dropped e
 | **M3b** | Threshold audio — the app half | The recorder UI with the hard cap, the blob upload route, transcription + its callback route. **Needs the frontend to exist**, so it follows M5. | A real browser recording round-trips: upload → mirror → transcript → plays back inside the ranking surface. Verified on a physical iPhone. |
 | | ↳ **the scaffold** — **DONE** | `apps/threshold` on port 4006: every §9.1 route, the NextAuth stack, `services/api.ts`, `lib/types.ts` mirroring both serializers, the fifth `Beacon` copy + `'threshold'` in `utils/traffic.js#APPS`. `/t/<urlName>` fetches the snapshot and routes to the live phase. | Builds clean (12 routes), `tsc --noEmit` passes, all routes serve 200 locally, `/api/auth/game-token` 401s unauthenticated. **`globals.css` is a placeholder, not §9.2** — the four undesigned surfaces render a marker naming the section that decides them, so nothing gets built on top of a guess. |
 | **M4** | Async + email | Transition mail, `Notification` rows, dedupe, opt-out, `/me`. | A circle advances and mails with every browser closed — the failure the ticker exists to prevent (§3.5). Verified by watching an inbox, not by reading `/health`. |
-| **M5** | Design | §6.2 ranking space, §6.3 both displays, §9.2 visual language. | — |
+| **M5** | Design — **DONE** | §6.2 the ranking queue, §6.3 both displays, §9.2 the tide-line language and its measured palette. D21–D26. | Specified to the gesture, the grouping and the colour values. Nothing here is built. |
 | **M6** | Launch | Accessibility + performance pass, `CLIENT_URL`, Vercel project, Beacon, `ensure-indexes.js` against production. | — |
 | | ↳ **indexes before the first write** | Three of the new indexes are `unique` and therefore correctness, not speed. `ensure-indexes.js` **skips a collection that does not exist yet**, and it says so — so running it once against production before Threshold takes any traffic is the whole job, and running it after means building a unique index over rows that may already violate it. Order matters here in a way it does not for the performance indexes. | `ensure-indexes.js` under `NODE_ENV=production` reports the three as created, with no SKIP lines for `circles`, `thresholdshares` or `thresholdrankings`. |
 
@@ -791,8 +868,9 @@ M0 and M1 are the whole architectural bet and neither needs a designer. Start th
 - **D21** — The ranking space is a **queue with two buttons**, one story at a time, followed by a
   **review screen** that restores the whole set and owns submit. Unfinished reads as the remaining
   stories still queued, never as a count or a dead button. §6.2
-- **D22** — **Your own story is pre-placed on the pole you chose** when you told it, and you can
-  move it. It stays in the aggregate. §6.2
+- **D22** — **You place your own story by telling it.** Choosing a pole is how you enter the
+  compose surface, so the placement is already made when ranking opens; it arrives pre-placed and
+  you can move it. It stays in the aggregate. §6.2, §9.1
 - **D23** — The reveal is **three groups** — two poles and the threshold — with **no position
   inside a group**. The threshold band's population is the finding: sparse means a sharp line,
   crowded means a fuzzy one. A story is a **dot with a short preview** that expands on tap;
@@ -807,6 +885,21 @@ M0 and M1 are the whole architectural bet and neither needs a designer. Start th
 - **D26** — **"Tide line", and two fixed colours** — teal `#2F7D7B` / clay `#B15C3C`, threshold
   `#7C7A76` — chosen for measured weight parity (ΔL\* 0.8) and CVD separation (ΔE 32.0), reused for
   every topic and never chosen per seed. §9.2
+- **D27** — **Topics are a continuously open queue, ordered by support** — one support per member
+  per topic, toggled freely — not a blocking seeding round. The group filtering itself is the
+  review the seeding round never had. §3.3
+- **D28** — **One cycle live at a time.** A queue reorders and shortens a circle; it does not run
+  topics in parallel. Everyone listening to the same stories in the same week is what makes it one
+  conversation. §3.3
+- **D29** — **A circle runs until its facilitator closes it.** No completion condition; an empty
+  queue is idle, not finished. The circle-final screen is readable at any time. §3.3
+- **D30** — **Facilitator tools: advance, skip, promote, close.** A skipped topic reveals what it
+  has rather than deleting anybody's story. A one-off single-topic circle shows none of them. §3.3
+- **D31** — **Email opt-out is a logged-in notifications page, not a signed no-login link.** Every
+  recipient of circle mail is a member and therefore has an account (`invitedEmails` is a join-time
+  gate, never a mail list), so there is nothing to forge and no unauthenticated mutation to expose.
+  Per-circle mute lives on `members[].emailOptOut`; platform announcements are separate, on
+  `User.notifications`. Mail carries a `List-Unsubscribe` header pointing at that page. §3.6
 
 ---
 
@@ -815,11 +908,12 @@ M0 and M1 are the whole architectural bet and neither needs a designer. Start th
 - **Q1 — Does a member rank their own story?** Currently yes, for a uniform denominator, and D22
   now pre-places it on the pole its author chose. If small circles feel distorted by it, the
   alternative is excluding it and normalizing per-ranker. §5.2
-- **Q2 — Email opt-out mechanics.** A no-login unsubscribe link needs a signed token; the existing
-  contributor-token HMAC is the obvious basis. Also: is opt-out per circle or per account? §3.6
-- **Q3 — What happens to a circle that stalls?** A 12-seed circle at 3 days per phase is 108 days.
-  Is there a way for the creator to skip a seed, shorten a phase mid-flight, or end early? Probably
-  yes, and it is not designed.
-- **Q4 — Does the seeding round need its own review?** Twelve topics arrive at once with no
-  filtering. A duplicate or an incoherent polarity ("Authority: Good / Complicated") burns a whole
-  cycle, and nothing currently catches it.
+- **Q2 — Does a member who joins mid-circle see the topics already revealed?** The queue never
+  closes (D27) and a circle never finishes (D29), so joining in week six is now normal rather than
+  an edge case. Reading past reveals is the obvious answer; whether they can *support* a topic
+  their absence had no part in, and whether they appear in an old cycle's member list, is not
+  decided. §3.3
+- **Q3 — What does support look like when the circle is one person's idea?** In a Sharing Circle
+  every member seeds and supports. In a single-topic sign-up (D1) there is one seed and no queue,
+  so support has nothing to do — which is right, but it means the two modes show visibly different
+  surfaces, and how a circle grows from the first into the second is undesigned. §3.3
