@@ -6,6 +6,7 @@ import { thresholdApi, ApiError } from '@/services/api';
 import type { Seed, SeedResult, Share, ShareResult } from '@/lib/types';
 import { Page, Band, Action, Quiet, Muted } from '@/components/Shell';
 import { Polarity } from '@/components/TideLine';
+import { StoryPlayer, StoryText } from '@/components/Playback';
 
 // One cycle's reveal (PLAN.md §6.3, D23/D24).
 //
@@ -320,12 +321,21 @@ function Story({ share, row, tint, wash, expanded, onOpen, poleA, poleB }: {
           style={{ background: tint }}
         />
         <span className={`text-sm leading-relaxed ${expanded ? 'text-ink' : 'text-ink-soft'}`}>
-          {expanded ? share.text : preview}
+          {expanded ? (share.text || preview) : preview}
         </span>
       </button>
 
       {expanded && (
         <div className="ml-8 mt-1 rounded-lg p-3 text-xs" style={{ background: wash }}>
+          {/* Playback lives INSIDE the expanded state, never on every dot — a
+              wall of play buttons would make a control panel out of a screen
+              whose subject is a shape (D23). */}
+          {share.audio && (
+            <div className="mb-3">
+              <StoryPlayer share={share} />
+              {!share.text && <StoryText share={share} className="mt-2 text-sm leading-relaxed text-ink" />}
+            </div>
+          )}
           {/* Attributed, because the cycle has revealed (D9). */}
           <p className="text-ink-soft">
             {share.username ? <strong className="font-medium text-ink">{share.username}</strong> : 'Someone'}

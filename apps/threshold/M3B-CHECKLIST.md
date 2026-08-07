@@ -13,8 +13,10 @@ Nothing below can be done from the repo; each one creates or configures an accou
       shape as `holoscopic-app-chorus`. Name it deliberately — the onrender/Vercel hostname is
       minted from the name at creation and never follows a rename (see the warning at the top of
       `render.yaml` for how that bites).
-- [ ] **A Blob store, or a decision not to have one.** See *Open question 1* below — this is the
-      one item with a real choice in it, and it changes what the rest of the list says.
+- [ ] **A Blob store for Threshold.** See *Open question 1* below. **Local development already
+      works** — `apps/threshold/.env.local` points at the shared dev store, where the `threshold/`
+      pathname prefix keeps objects clear of Chorus's `memorial/` ones. That is a testing
+      convenience, not the production answer.
 - [ ] **Connect that store to the Threshold Vercel project in BOTH environments.** Connecting is
       what injects `BLOB_READ_WRITE_TOKEN`; a store connected to nothing leaves production with no
       token while local development keeps working from `.env.local`, so it fails in exactly one
@@ -33,14 +35,20 @@ Nothing below can be done from the repo; each one creates or configures an accou
       `tsc --noEmit` passes. **The visual language in `globals.css` is a holding pattern, not a
       decision** — §9.2 is still open, and so are Q10/Q11.
 - [x] `Beacon.tsx` — the fifth copy, and `'threshold'` added to `utils/traffic.js#APPS`.
-- [ ] `/api/audio/upload` — the Blob client-token route. One route, copied in shape from Chorus's,
-      with `allowedContentTypes` taking the **base** mime type only (no `codecs` parameter — the
-      spacing differs per browser and Blob matches by exact string).
-- [ ] The recorder UI driving `@hs/audio`'s `useRecorder`, with the seed's `secondsPerNote` as the
-      hard cap. The hook already auto-stops; what is new is the visible countdown and Threshold's
-      own words for the three error codes.
-- [ ] Playback inside the ranking surface, driving `usePlayer`. **Blocked on §6.2** — there is no
-      ranking surface to put a player inside of until the gesture is decided (Q1).
+- [x] `/api/audio/upload` — the Blob client-token route, shaped after Chorus's, `threshold/` prefix
+      enforced in `onBeforeGenerateToken`. Probed locally: a `memorial/` path is refused, a
+      `threshold/` path mints a client token, and no token in the environment returns a specific 503
+      rather than an opaque 500 mid-upload.
+- [x] The recorder UI (`components/Recorder.tsx`) driving `useRecorder`, with the seed's own
+      `secondsPerNote` as the cap — read back off the seed, never a constant. Visible countdown from
+      ten seconds out, and Threshold's words for the three error codes, each naming typing as the
+      way through. Verified in a browser as far as a machine without a microphone can go.
+- [x] Playback (`components/Playback.tsx`) driving `usePlayer`, with `PlayerProvider` in the root
+      layout so two stories can never talk over each other. It sits above the two targets in the
+      ranking queue — listening and placing are the same gesture — and inside the expanded story on
+      the reveal, never on every dot.
+- [ ] **A real recording on a physical iPhone**, and on Android. This is the only item left, and it
+      is the one that has to be done by a person holding a phone.
 
 ## Transcription — **DONE**, and it needed no provisioning
 
@@ -77,18 +85,18 @@ it, and Chorus's store holds recordings belonging to people who are dead. My rec
 **separate**, on the grounds that the two products have nothing to do with each other and the only
 cost is a few minutes of setup.
 
-**2. How long is a transcript allowed to take before the ranking surface stops waiting for it?**
+**2. ~~How long is a transcript allowed to take?~~ SETTLED: it gates nothing, ever.**
 
-Chorus can be relaxed — a memory shows its transcript whenever it arrives. Threshold cannot: the
-rank phase may open minutes after the last share, and a story with no transcript yet is one the
-group has to listen to rather than skim. Options are to show whatever exists, to block the phase
-opening on transcripts (bad — it lets a vendor outage stall a circle), or to treat the transcript
-as a bonus that never gates anything. I lean to the third, but it makes transcripts unreliable at
-exactly the moment they are most useful, so it is worth a decision rather than a default.
+A transcript is a bonus. A story with none shows its player alone — no spinner, no waiting state,
+nothing that implies something is missing. The alternative, blocking the rank phase until Deepgram
+answers, hands a third party the power to freeze a group's week, which is the same failure D5's
+ticker exists to prevent. `components/Playback.tsx#StoryText` is where this lives: typed text
+first, then a `ready` transcript, then nothing.
 
-**3. Is audio even required for a share, or is typing a first-class path?**
+**3. ~~Is typing a first-class path?~~ SETTLED: yes, and it is offered in the same breath.**
 
-The brief describes voice notes. But the ranking task involves comparing up to 24 stories, and
-reading is far faster than listening — the current funnel already accepts either, and a group that
-mostly types would have a much better ranking experience. Worth knowing whether that is a
-degradation to tolerate or a mode to support properly.
+Ranking means comparing up to two dozen stories, and reading is far faster than listening — a group
+that mostly types gets a better sorting round, not a degraded one. So every surface that offers the
+recorder offers typing beside it without apology, every recorder error names typing as the way
+through, and a browser that cannot record says so and points at the textarea. The funnel has always
+accepted either; the UI now says so.

@@ -838,7 +838,7 @@ validates against the allowlist, so a drifted copy fails silently as a dropped e
 | | ↳ *why the iPhone run mattered* | Safari takes the MP4/AAC branch, writes **no duration metadata**, and spells the `codecs` parameter **with a space** — the last of which killed the first live iPhone recording at the upload step while Android sailed through. A WebM recording exercises none of the three, so until 2026-08-06 the extraction was unproven exactly where recording had actually broken before. This was also the first time Chorus's iOS path was ever verified at all. | — |
 | | ↳ **preview environment** — **DONE** | `preview` branch + free Render backend on the dev cluster + Vercel branch-scoped env vars. Documented in `apps/chorus/PREVIEW.md`. | Both pipelines deploy on push to `preview`; a browser-shaped probe (with `Origin`) confirms the write path, and the blob probe confirms the dev store. |
 | **M3a** | Threshold audio — **durability DONE** | `ThresholdShare.audio.pathname`, `blobMirror.mirrorShare`, the fire-and-forget hook in `utils/threshold.js` (injected in `loadAPIRoutes`), and a Threshold pass in `scripts/backup-blobs.js`. | 284 backend tests pass, including that a recorded share is mirrored, that a **failing** mirror cannot reject the story, and that a typed share never calls it. The nightly sweep counts shares (`0 threshold shares` on dev today). |
-| **M3b** | Threshold audio — the app half | The recorder UI with the hard cap, the blob upload route, transcription + its callback route. **Needs the frontend to exist**, so it follows M5. | A real browser recording round-trips: upload → mirror → transcript → plays back inside the ranking surface. Verified on a physical iPhone. |
+| **M3b** | Threshold audio — the app half — **BUILT, AWAITING A DEVICE** | `/api/audio/upload` (the Blob client-token route), `components/Recorder.tsx` driving `useRecorder` at the seed's own cap, `components/Playback.tsx` driving `usePlayer`, `PlayerProvider` in the root layout. Both compose paths offer recording and typing side by side; the transcript gates nothing. | Builds clean at 13 routes; the upload route refuses a foreign prefix, mints a token for its own, and 503s specifically with no token. **What is left is the part a machine cannot do:** a real recording on a physical iPhone and on Android, round-tripping upload → mirror → transcript → playback inside the ranking queue. |
 | | ↳ **the scaffold** — **DONE** | `apps/threshold` on port 4006: every §9.1 route, the NextAuth stack, `services/api.ts`, `lib/types.ts` mirroring both serializers, the fifth `Beacon` copy + `'threshold'` in `utils/traffic.js#APPS`. `/t/<urlName>` fetches the snapshot and routes to the live phase. | Builds clean (12 routes), `tsc --noEmit` passes, all routes serve 200 locally, `/api/auth/game-token` 401s unauthenticated. **`globals.css` is a placeholder, not §9.2** — the four undesigned surfaces render a marker naming the section that decides them, so nothing gets built on top of a guess. |
 | **M4** | Async + email | Transition mail, `Notification` rows, dedupe, opt-out, `/me`. | A circle advances and mails with every browser closed — the failure the ticker exists to prevent (§3.5). Verified by watching an inbox, not by reading `/health`. |
 | **M5** | Design — **DONE** | §6.2 the ranking queue, §6.3 both displays, §9.2 the tide-line language and its measured palette. D21–D26. | Specified to the gesture, the grouping and the colour values. Nothing here is built. |
@@ -863,10 +863,11 @@ step before it settled.
    the **seed form** (D34): the topic goes up on its own, then the two poles are offered. Text-only,
    so the flow is verifiable before the browser-dependent part lands on it. The anonymity line is
    said before anything is written, and M3b adds the recognisable-voice caveat in the same place.
-4. **M3b — audio**: the recorder with the hard cap, `/api/audio/upload`, playback. The riskiest
-   part per-browser, and it changes nothing about the flow around it. Two places already reserve
-   its seams: the compose surface's anonymity line is where the recognisable-voice caveat goes, and
-   the ranking queue's story card is where the player goes.
+4. ~~**M3b — audio**: the recorder with the hard cap, `/api/audio/upload`, playback.~~ **Built**,
+   and it changed nothing about the flow around it — both seams reserved for it were the right
+   shape. **One step is outstanding and needs a person holding a phone:** a real recording on iOS
+   and Android. Safari takes the MP4/AAC branch, writes no duration metadata, and spells the
+   `codecs` parameter with a space; a WebM recording on a laptop exercises none of the three.
 5. ~~**The ranking queue** (§6.2): the queue, then the review screen that owns submit.~~ **Done**,
    ahead of 4 — M3b's bar is a recording on a physical device, and this needed only stories, which
    3 produced. Unfinished reads as the remaining stories, never a count and never a dead button:

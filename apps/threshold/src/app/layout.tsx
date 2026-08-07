@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Source_Serif_4, Inter } from 'next/font/google';
+import PlayerProvider from '@/components/PlayerProviderClient';
 import { SessionProvider } from '@/components/SessionProvider';
 import Beacon from '@/components/Beacon';
 import './globals.css';
@@ -32,7 +33,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${serif.variable} ${sans.variable}`}>
-        <SessionProvider>{children}</SessionProvider>
+        {/* ONE audio element for the whole app: two stories can never talk
+            over each other, which in a ranking task makes comparison
+            impossible. It also means playback survives navigation. */}
+        <SessionProvider><PlayerProvider>{children}</PlayerProvider></SessionProvider>
         <Beacon app="threshold" />
       </body>
     </html>

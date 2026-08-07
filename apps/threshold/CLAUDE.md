@@ -20,9 +20,11 @@ surface** — the circle page, the seed form, the share surface, the ranking que
 reveal and the circle-final record — in the tide-line language (§9.2). 312 backend tests, plus 17
 integration checks in `scripts/check-circles.js` against a real database.
 
-**Not built:** **M3b, audio**, whose bar is a real recording on a physical iPhone — the flow it
-slots into is built and verified, so it changes nothing around it, and two places already reserve
-its seams (the compose surface's anonymity line, the reveal's expanded story). And **M4, mail**.
+**M3b, audio, is built and awaiting a device**: the recorder, the Blob upload route, playback in
+the ranking queue and inside the reveal's expanded story. What is left is a real recording on a
+physical iPhone and on Android — Safari takes the MP4/AAC branch, writes no duration metadata and
+spells the `codecs` parameter with a space, and a laptop's WebM take exercises none of the three.
+**Not built: M4, mail.**
 
 `components/TideLine.tsx` is the app's one mark and `components/Shell.tsx` its chrome.
 `components/Scaffold.tsx` is now unused by any route and should be deleted with the M3b work.
@@ -168,6 +170,16 @@ the round may have turned over.
   slug, id first.
 - **404 everywhere, never 403.** An absent circle and one you are not a member of look identical
   from outside, so no page can say which it was.
+- **Recording and typing are both first-class, and every surface says so in the same breath.**
+  Ranking means comparing two dozen stories and reading beats listening, so a group that mostly
+  types gets a *better* sorting round. Every recorder error names typing as the way through, and a
+  browser that cannot record says so and points at the textarea.
+- **A transcript gates nothing, ever.** A story without one shows its player alone — no spinner, no
+  waiting state. Blocking the rank phase until Deepgram answers would hand a vendor the power to
+  freeze a group's week, which is the failure D5's ticker exists to prevent.
+- **`transcript.status` is `ready`, never `done`.** The wire type said `done` until M3b — a value
+  `models/ThresholdShare.js`'s enum cannot hold — so every "is the transcript ready" check silently
+  answered no. Mirror the enum, and check it when either side moves.
 - **Audio: `@hs/audio` owns the three browser rules, so use it rather than reimplementing around
   it.** Upload the BASE content type with no `codecs` parameter — Blob matches by exact string and
   the spacing differs per browser. Feature-detect the mime type: Chrome/Android/Firefox give

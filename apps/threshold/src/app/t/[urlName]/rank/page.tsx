@@ -6,6 +6,7 @@ import { thresholdApi, ApiError } from '@/services/api';
 import type { Circle, Placement, Pole, Share } from '@/lib/types';
 import { Page, Band, Card, Action, Quiet, Muted } from '@/components/Shell';
 import { Polarity } from '@/components/TideLine';
+import { StoryPlayer, StoryText } from '@/components/Playback';
 
 // The ranking space (PLAN.md §6.2, D21): a QUEUE, then a REVIEW screen.
 //
@@ -164,7 +165,10 @@ export default function RankPage({ params }: { params: Promise<{ urlName: string
           {/* No name, and none arrived: the server withholds attribution for
               everybody but you while the group is sorting (D9). */}
           <Band>Someone in the circle</Band>
-          <p className="whitespace-pre-wrap text-[17px] leading-relaxed">{current.text}</p>
+          {/* Listening and placing are the same gesture, so the player sits
+              directly above the two targets — you hear it, you choose. */}
+          {current.audio && <div className="mb-4"><StoryPlayer share={current} /></div>}
+          <StoryText share={current} className="text-[17px] leading-relaxed" />
         </Card>
 
         <p className="mt-6 mb-3 text-center text-sm text-ink-soft">Which side is this?</p>
@@ -245,8 +249,8 @@ export default function RankPage({ params }: { params: Promise<{ urlName: string
             <Band>Still to hear</Band>
             <ul className="mb-4 space-y-2">
               {remaining.map(s => (
-                <li key={s.id} className="line-clamp-2 text-sm leading-relaxed text-ink-soft">
-                  {s.text}
+                <li key={s.id} className="text-sm leading-relaxed text-ink-soft">
+                  {s.text || (s.audio ? 'A recording, still to hear.' : '')}
                 </li>
               ))}
             </ul>
@@ -285,7 +289,8 @@ function PlacedStory({ share, pole, otherLabel, locked, onMove }: {
   const wash = pole === 'A' ? 'var(--pole-a-soft)' : 'var(--pole-b-soft)';
   return (
     <li className="rounded-lg p-3" style={{ background: wash }}>
-      <p className="whitespace-pre-wrap text-sm leading-relaxed">{share.text}</p>
+      {share.audio && <div className="mb-2"><StoryPlayer share={share} /></div>}
+      <StoryText share={share} className="text-sm leading-relaxed" />
       <div className="mt-2 flex items-center gap-3 text-xs text-ink-faint">
         {share.isMine && <span>yours</span>}
         {!locked && (

@@ -3,13 +3,17 @@
 import { use, useCallback, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { thresholdApi, ApiError } from '@/services/api';
-import type { Circle, Pole, Share } from '@/lib/types';
+import type { Circle, Pole, Share, ShareAudio } from '@/lib/types';
 import { Page, Band, Card, Action, Quiet, Muted } from '@/components/Shell';
 import { Polarity } from '@/components/TideLine';
+import Recorder from '@/components/Recorder';
 
-// Telling your story. Text only for now — the recorder is M3b, and building the
-// flow first means the browser-dependent half lands on something already known
-// to work.
+// Telling your story: record it or type it, both first-class (Q3). The brief
+// describes voice notes, but ranking means comparing up to two dozen stories
+// and reading is far faster than listening — so a group that mostly types gets
+// a better sorting round, and the funnel has always accepted either. Every
+// place that offers the recorder offers typing beside it, in the same breath
+// and without apology.
 //
 // CHOOSING A POLE IS HOW YOU ENTER THIS SURFACE (D22). The placement is
 // therefore already made when ranking opens: your own story arrives pre-placed
@@ -29,6 +33,8 @@ export default function SharePage({ params }: { params: Promise<{ urlName: strin
   const [error, setError] = useState<string | null>(null);
   const [composing, setComposing] = useState<Pole | null>(null);
   const [text, setText] = useState('');
+  const [audio, setAudio] = useState<ShareAudio | null>(null);
+  const [recordingUi, setRecordingUi] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -71,6 +77,8 @@ export default function SharePage({ params }: { params: Promise<{ urlName: strin
   const open = (pole: Pole) => {
     setComposing(pole);
     setText(on(pole)?.text ?? '');
+    setAudio(null);
+    setRecordingUi(false);
     setError(null);
   };
 
@@ -78,9 +86,14 @@ export default function SharePage({ params }: { params: Promise<{ urlName: strin
     if (!composing || !userId) return;
     setBusy(true);
     try {
-      await thresholdApi.submitShare(seed.id, { pole: composing, text: text.trim() }, userId);
+      await thresholdApi.submitShare(
+        seed.id,
+        { pole: composing, text: text.trim(), audio: audio ?? undefined },
+        userId,
+      );
       setComposing(null);
       setText('');
+      setAudio(null);
       await load();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'That did not save');
@@ -117,6 +130,36 @@ export default function SharePage({ params }: { params: Promise<{ urlName: strin
       {composing ? (
         <Card>
           <Band>A time it was {label(composing)}</Band>
+
+          {recordingUi ? (
+            <Recorder
+              seedId={seed.id}
+              maxSeconds={seed.payload.secondsPerNote}
+              onDone={a => { setAudio(a); setRecordingUi(false); }}
+              onCancel={() => setRecordingUi(false)}
+            />
+          ) : audio ? (
+            <div className="rounded-xl border border-[var(--rule)] p-4 text-center">
+              <p className="text-sm text-ink-soft">Your recording is ready to send.</p>
+              <audio controls src={audio.url} className="mt-3 w-full" />
+              <button
+                type="button"
+                onClick={() => { setAudio(null); setRecordingUi(true); }}
+                className="mt-3 text-sm text-ink-soft underline decoration-[var(--rule-strong)] underline-offset-4 hover:text-ink"
+              >
+                Record a different one
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setRecordingUi(true)}
+              className="mb-3 w-full rounded-xl border border-[var(--rule-strong)] px-4 py-3 text-[15px] text-ink-soft transition-colors hover:border-ink hover:text-ink"
+            >
+              Record it instead
+            </button>
+          )}
+
           <textarea
             autoFocus
             value={text}
@@ -134,9 +177,14 @@ export default function SharePage({ params }: { params: Promise<{ urlName: strin
           <p className="mt-3 text-xs leading-relaxed text-ink-faint">
             While the group sorts these, they appear with no name on them. Once the topic reveals,
             everyone can see who told which.
+            {/* The honest thing, said before the take is sent rather than after.
+                The payload strips names; a voice in a group this size does not
+                strip, and implying otherwise would be a promise the medium
+                cannot keep. */}
+            {(recordingUi || audio) && ' A recording carries your voice, though — in a group this size, people who know you will know you.'}
           </p>
           <div className="mt-4 flex items-center gap-4">
-            <Action disabled={busy || !text.trim()} onClick={save}>
+            <Action disabled={busy || (!text.trim() && !audio)} onClick={save}>
               {on(composing) ? 'Save the change' : 'Tell it'}
             </Action>
             <Quiet onClick={() => { setComposing(null); setText(''); }}>Leave it</Quiet>

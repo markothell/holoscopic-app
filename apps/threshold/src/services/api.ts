@@ -84,6 +84,44 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
   return json as T;
 }
 
+/**
+ * Upload a recording straight from the browser to Vercel Blob, and return the
+ * URL to hand to the backend.
+ *
+ * The bytes reach Blob directly — neither this Next server nor the Render
+ * backend ever sees them, which is what makes a long recording on a bad
+ * connection feasible and why the backend only ever validates a URL.
+ *
+ * `onProgress` is not decoration: a sixty-second note on a weak connection
+ * takes long enough that a still button reads as a broken one, and somebody who
+ * thinks it is broken leaves without telling their story.
+ */
+export async function uploadRecording(
+  blob: Blob,
+  { seedId, mimeType, onProgress }: {
+    seedId: string; mimeType: string; onProgress?: (percent: number) => void;
+  },
+): Promise<{ url: string; pathname: string }> {
+  const { upload } = await import('@vercel/blob/client');
+  const { fileExtensionFor, baseMimeType } = await import('@hs/audio');
+
+  // Namespaced by seed from day one, so a per-circle sweep or restore needs no
+  // reshuffle of objects that already exist.
+  const pathname = `threshold/${seedId}/${Date.now()}.${fileExtensionFor(mimeType)}`;
+
+  const result = await upload(pathname, blob, {
+    access: 'public',
+    handleUploadUrl: '/api/audio/upload',
+    // Parameters stripped: Blob's allowlist is an exact string match and the
+    // codecs parameter is spelled differently per browser (see baseMimeType).
+    contentType: baseMimeType(mimeType),
+    multipart: true,
+    onUploadProgress: onProgress ? (p) => onProgress(Math.round(p.percentage)) : undefined,
+  });
+
+  return { url: result.url, pathname: result.pathname };
+}
+
 // ── Circles ─────────────────────────────────────────────────────────────────
 
 export const thresholdApi = {

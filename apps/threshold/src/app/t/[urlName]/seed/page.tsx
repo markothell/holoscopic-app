@@ -4,9 +4,10 @@ import { use, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { thresholdApi, ApiError } from '@/services/api';
-import type { Circle, Pole } from '@/lib/types';
+import type { Circle, Pole, ShareAudio } from '@/lib/types';
 import { Page, Band, Card, Action, Quiet, Muted } from '@/components/Shell';
 import { Polarity } from '@/components/TideLine';
+import Recorder from '@/components/Recorder';
 
 // Posting a topic. Any member, any time — the queue never closes (D27), and a
 // topic posted into an idle circle starts running immediately.
@@ -48,9 +49,13 @@ export default function SeedPage({ params }: { params: Promise<{ urlName: string
   const [poleB, setPoleB] = useState('');
 
   // Set once the topic is up. From here the surface is about the story.
-  const [posted, setPosted] = useState<{ seedId: string; topic: string; poleA: string; poleB: string } | null>(null);
+  const [posted, setPosted] = useState<
+    { seedId: string; topic: string; poleA: string; poleB: string; secondsPerNote: number } | null
+  >(null);
   const [pole, setPole] = useState<Pole | null>(null);
   const [text, setText] = useState('');
+  const [audio, setAudio] = useState<ShareAudio | null>(null);
+  const [recordingUi, setRecordingUi] = useState(false);
   const [told, setTold] = useState(false);
 
   const load = useCallback(async () => {
@@ -89,7 +94,15 @@ export default function SeedPage({ params }: { params: Promise<{ urlName: string
       const id = after.mySeedIds[after.mySeedIds.length - 1];
       const seed = after.seeds.find(s => s.id === id);
       if (seed) {
-        setPosted({ seedId: seed.id, topic: seed.payload.topic, poleA: seed.payload.poleA, poleB: seed.payload.poleB });
+        setPosted({
+          seedId: seed.id,
+          topic: seed.payload.topic,
+          poleA: seed.payload.poleA,
+          poleB: seed.payload.poleB,
+          // The cap is the SEED'S own, never a constant here — normalizeSeed
+          // clamps it and this reads back what it settled on.
+          secondsPerNote: seed.payload.secondsPerNote,
+        });
         // A topic posted into an idle circle starts running immediately, and
         // then the ordinary share surface is the right place to be.
         if (seed.phase !== 'pending') router.push(`${base}/share`);
@@ -107,7 +120,11 @@ export default function SeedPage({ params }: { params: Promise<{ urlName: string
     if (!posted || !pole || !userId) return;
     setBusy(true);
     try {
-      await thresholdApi.submitShare(posted.seedId, { pole, text: text.trim() }, userId);
+      await thresholdApi.submitShare(
+        posted.seedId,
+        { pole, text: text.trim(), audio: audio ?? undefined },
+        userId,
+      );
       setTold(true);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'That did not save');
@@ -176,8 +193,33 @@ export default function SeedPage({ params }: { params: Promise<{ urlName: string
                 </div>
               </div>
 
-              {pole && (
+              {pole && recordingUi && (
                 <div className="mt-5">
+                  <Recorder
+                    seedId={posted.seedId}
+                    maxSeconds={posted.secondsPerNote}
+                    onDone={a => { setAudio(a); setRecordingUi(false); }}
+                    onCancel={() => setRecordingUi(false)}
+                  />
+                </div>
+              )}
+
+              {pole && !recordingUi && (
+                <div className="mt-5">
+                  {audio ? (
+                    <div className="mb-3 rounded-xl border border-[var(--rule)] p-4 text-center">
+                      <p className="text-sm text-ink-soft">Your recording is ready to send.</p>
+                      <audio controls src={audio.url} className="mt-3 w-full" />
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setRecordingUi(true)}
+                      className="mb-3 w-full rounded-xl border border-[var(--rule-strong)] px-4 py-3 text-[15px] text-ink-soft transition-colors hover:border-ink hover:text-ink"
+                    >
+                      Record it instead
+                    </button>
+                  )}
                   <textarea
                     autoFocus
                     value={text}
@@ -194,12 +236,13 @@ export default function SeedPage({ params }: { params: Promise<{ urlName: string
                   <p className="mt-3 text-xs leading-relaxed text-ink-faint">
                     While the group sorts these, they appear with no name on them. Once the topic
                     reveals, everyone can see who told which.
+                    {(recordingUi || audio) && ' A recording carries your voice, though — in a group this size, people who know you will know you.'}
                   </p>
                 </div>
               )}
 
               <div className="mt-5 flex items-center gap-4">
-                {pole && <Action disabled={busy || !text.trim()} onClick={tell}>Tell it</Action>}
+                {pole && <Action disabled={busy || (!text.trim() && !audio)} onClick={tell}>Tell it</Action>}
                 <Quiet href={base}>{pole ? 'Leave it for now' : 'Leave it until it runs'}</Quiet>
               </div>
             </>

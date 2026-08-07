@@ -137,7 +137,10 @@ export interface Share {
   title: string;
   text: string;
   audio: ShareAudio | null;
-  transcript: { status: 'skipped' | 'pending' | 'done' | 'failed'; text: string };
+  /** Mirrors ThresholdShare.transcript's enum exactly. It said `done` here
+   *  until M3b, a value the backend cannot write — so every "is the transcript
+   *  ready" check silently answered no. `ready` is the one the model has. */
+  transcript: { status: 'skipped' | 'pending' | 'ready' | 'failed'; text: string };
   isMine: boolean;
   createdAt: string;
   /** Absent while ranking, for everyone but you. The server strips these — the
