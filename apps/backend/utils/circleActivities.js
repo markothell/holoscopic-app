@@ -25,6 +25,11 @@ const OPTIONAL = {
   notificationFor: async () => null,
 };
 
+// 'pending' / 'revealed' / 'skipped' are seed states the machine writes itself;
+// 'idle' and 'closed' are the circle's, and both are dispatched to
+// notificationFor() as a phase with no seed.
+const RESERVED_PHASES = ['pending', 'revealed', 'skipped', 'idle', 'closed'];
+
 const REGISTRY = new Map();
 
 /**
@@ -49,10 +54,12 @@ function register(key, mod) {
   if (!Array.isArray(mod.phases) || mod.phases.length === 0) {
     throw new Error(`circleActivities: ${key} must declare a non-empty phases[]`);
   }
-  // 'pending' and 'revealed' are the machine's own terminal states. A module
-  // listing either would create a phase the machine can never leave.
+  // The machine's own seed states, plus the circle-level states it dispatches
+  // notifications under. A module listing any of them would either create a
+  // phase the machine can never leave, or collide with a message about the
+  // circle itself.
   for (const p of mod.phases) {
-    if (p === 'pending' || p === 'revealed') {
+    if (RESERVED_PHASES.includes(p)) {
       throw new Error(`circleActivities: ${key} may not use reserved phase '${p}'`);
     }
   }
@@ -85,4 +92,4 @@ function reset() {
   REGISTRY.clear();
 }
 
-module.exports = { register, get, has, reset, REQUIRED };
+module.exports = { register, get, has, reset, REQUIRED, RESERVED_PHASES };

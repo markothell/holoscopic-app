@@ -18,10 +18,16 @@
 //   3. sweepCircles() through the real store on a genuinely expired deadline,
 //      including that the activity module ignores the store handed to its hooks
 //      and uses its own (the tick knows nothing about shares or rankings).
+//   4. SCHEMA VALIDATION. Circle.phase, Circle.status, seeds[].phase and
+//      transitions[].via are enums, and the in-memory store has no Mongoose in
+//      it — so a value the funnel writes and the schema forbids is invisible to
+//      all 307 unit tests and fails every real write. Each state below is
+//      re-read from the database rather than asserted on the object in hand.
 //
-// It has already earned its place once: it caught that every in-app
+// It has already earned its place twice: it caught that every in-app
 // notification was failing enum validation and being swallowed by
-// utils/notify.js, which no unit test with a stubbed notify could see.
+// utils/notify.js, and it is the only check that ever exercises 'idle',
+// 'closed', 'skipped' and via:'queue' against a real collection.
 
 require('dotenv').config({ path: `${__dirname}/../.env.local` });
 
@@ -93,21 +99,45 @@ async function main() {
   }
   await circles.startCircle({ store, circleId: circle.id, userId: USERS[0] });
 
+  // 'idle' is a schema value nothing else exercises: an open circle with an
+  // empty queue, which is where every circle starts (D27, D29).
+  let fresh = await Circle.findOne({ id: circle.id });
+  assert.equal(fresh.phase, 'idle', "phase 'idle' was rejected by the schema");
+  assert.equal(fresh.status, 'running');
+  assert.equal(fresh.liveSeedId, null);
+  ok('a started circle persists as idle with an empty queue');
+
   for (let i = 0; i < USERS.length; i++) {
     await circles.addSeed({
       store, circleId: circle.id, userId: USERS[i],
       payload: { topic: `Topic ${i + 1}`, poleA: 'Liberating', poleB: 'Constricting' },
     });
   }
-  ok('seeding advanced to the first cycle once everyone seeded');
+  ok('the first topic posted started the first cycle');
 
   // Re-read from the database throughout. The in-memory document proves nothing.
-  let fresh = await Circle.findOne({ id: circle.id });
+  fresh = await Circle.findOne({ id: circle.id });
   assert.equal(fresh.phase, 'cycle');
   assert.equal(fresh.seeds.length, 3);
   assert.equal(fresh.seeds[0].phase, 'share');
+  assert.equal(fresh.liveSeedId, fresh.seeds[0].id, 'liveSeedId persisted');
   assert.equal(fresh.seeds[0].payload.topic, 'Topic 1', 'Mixed payload survived the round trip');
-  ok('circle + Mixed seed payload persisted');
+  assert.deepEqual([...fresh.seeds[1].supporterIds], [USERS[1]], 'posting is supporting, and it persisted');
+  assert.ok(fresh.transitions.some(t => t.via === 'queue'), "transitions.via 'queue' was rejected by the schema");
+  ok('circle + Mixed seed payload + the queue fields persisted');
+
+  // Support and promote, through the database.
+  await circles.supportSeed({ store, circleId: circle.id, seedId: fresh.seeds[2].id, userId: USERS[0] });
+  await circles.supportSeed({ store, circleId: circle.id, seedId: fresh.seeds[2].id, userId: USERS[1] });
+  fresh = await Circle.findOne({ id: circle.id });
+  assert.equal(fresh.seeds[2].supporterIds.length, 3);
+  assert.deepEqual(circles.queue(fresh).map(s => s.payload.topic), ['Topic 3', 'Topic 2']);
+
+  await circles.promoteSeed({ store, circleId: circle.id, seedId: fresh.seeds[1].id, userId: USERS[0] });
+  fresh = await Circle.findOne({ id: circle.id });
+  assert.ok(fresh.seeds[1].promotedAt instanceof Date, 'promotedAt persisted as a Date');
+  assert.deepEqual(circles.queue(fresh).map(s => s.payload.topic), ['Topic 2', 'Topic 3']);
+  ok('support and promote reorder the queue, through the database');
 
   const seed0 = fresh.seeds[0];
   for (const u of USERS) {
@@ -150,9 +180,9 @@ async function main() {
   ok('the reveal computed correctly AND survived the Mixed-path round trip');
 
   assert.equal(fresh.seeds[0].phase, 'revealed');
-  assert.equal(fresh.cycleIndex, 1);
-  assert.equal(fresh.seeds[1].phase, 'share');
-  ok('reveal rolled straight into the next cycle');
+  assert.equal(fresh.liveSeedId, fresh.seeds[1].id);
+  assert.equal(fresh.seeds[1].phase, 'share', 'the promoted topic ran next');
+  ok('reveal rolled straight into the top of the queue');
 
   console.log('\nthe tick:');
   await Circle.updateOne(
@@ -174,6 +204,54 @@ async function main() {
   const notes = await require('../models/Notification').countDocuments({ userId: { $in: USERS } });
   assert.ok(notes > 0, 'no notifications were written — check Notification.type against the enum');
   ok(`in-app notifications actually landed (${notes} rows)`);
+
+  console.log('\nthe facilitator tools:');
+
+  // The tick left topic 2 mid-sort. Dropping it moves the circle to the last
+  // topic in the queue.
+  await circles.skipSeed({ store, circleId: circle.id, userId: USERS[0] });
+  fresh = await Circle.findOne({ id: circle.id });
+  assert.equal(fresh.seeds[1].phase, 'skipped', "seeds[].phase 'skipped' was rejected by the schema");
+  assert.ok(fresh.seeds[1].result, 'a skipped topic still computed a result');
+  assert.equal(fresh.liveSeedId, fresh.seeds[2].id, 'and moved to the next topic');
+  ok('skip revealed what the topic had and moved on');
+
+  // A skipped topic keeps its stories. Give the last one a story first, so
+  // "kept" means something.
+  const last = fresh.seeds[2];
+  await threshold.submitShare({
+    store, circleId: circle.id, seedId: last.id, userId: USERS[0], username: 'One',
+    pole: 'A', text: 'told before the group moved on',
+  });
+  await circles.skipSeed({ store, circleId: circle.id, userId: USERS[0] });
+
+  fresh = await Circle.findOne({ id: circle.id });
+  assert.equal(fresh.seeds[2].phase, 'skipped');
+  assert.equal(await ThresholdShare.countDocuments({ seedId: last.id }), 1, 'nobody\'s story was deleted');
+  const kept = await threshold.listShares({ store, circle: fresh, seedId: last.id, viewerId: USERS[0] });
+  assert.equal(kept[0].username, 'One', 'and it reads attributed, like any reveal');
+  ok('a skipped topic keeps every story it had');
+
+  // The queue is empty now: idle rather than an ending — a circle has no
+  // completion condition (D29).
+  assert.equal(fresh.phase, 'idle');
+  assert.equal(fresh.status, 'running');
+  assert.equal(fresh.completedAt, null, 'running out of topics is a pause, not an ending');
+  ok('an emptied queue parks the circle at idle');
+
+  // The record reads at any time, and it is the same shape closed or not.
+  const midResult = threshold.circleResult(fresh);
+  assert.equal(midResult.topics.length, 3);
+  assert.equal(midResult.topics.filter(t => t.skipped).length, 2);
+  ok(`the circle record reads while running (${midResult.topics.length} topics, 2 skipped)`);
+
+  await circles.closeCircle({ store, circleId: circle.id, userId: USERS[0] });
+  fresh = await Circle.findOne({ id: circle.id });
+  assert.equal(fresh.phase, 'closed', "phase 'closed' was rejected by the schema");
+  assert.equal(fresh.status, 'complete');
+  assert.ok(fresh.completedAt);
+  assert.equal(threshold.circleResult(fresh).topics.length, 3, 'and the record still reads');
+  ok('close is the only ending, and it persisted');
 
   console.log('\nunique indexes:');
   await assert.rejects(

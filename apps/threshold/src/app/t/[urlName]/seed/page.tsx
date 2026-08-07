@@ -1,6 +1,7 @@
 import { Page, Title, Note, NotBuilt } from '@/components/Scaffold';
 
-// Post your topic + polarity. The seeding phase.
+// Post your topic + polarity. Any member, any time — the queue never closes
+// (D27), and a topic posted into an idle circle starts running immediately.
 //
 // The validation is already fixed server-side (utils/threshold.js#normalizeSeed):
 // a topic up to 120 chars, two pole labels up to 40 each, and they may not be
@@ -18,9 +19,8 @@ export default function SeedPage() {
         A subject, and the two ends people will sort stories between.
       </Note>
       <NotBuilt surface="The seed form" section="PLAN.md §9.1">
-        Still open alongside it: whether the seeding round needs any review at all (§13 Q5).
-        Twelve topics arrive at once with nothing filtering them, and one incoherent polarity
-        burns a whole cycle.
+        It posts into the queue rather than into a round: support is what decides which topic
+        runs next, and that is the review the seeding round never had (D27).
       </NotBuilt>
     </Page>
   );

@@ -33,10 +33,10 @@ function memStore() {
     async createCircleDoc(fields) {
       const doc = {
         transitions: [], seeds: [], members: [], invitedEmails: [], requireInvitation: true,
-        cycleIndex: -1, phaseDeadline: null, startedAt: null, completedAt: null,
+        liveSeedId: null, phaseDeadline: null, startedAt: null, completedAt: null,
         ...fields,
         config: {
-          seedHours: 72, shareHours: 72, rankHours: 72,
+          shareHours: 72, rankHours: 72,
           advanceOnComplete: true, seedDefaults: {},
           ...(fields.config || {}),
         },
@@ -120,14 +120,13 @@ async function runningCircle(store, { members = 3, seeds = 1, config = {} } = {}
     await circles.joinCircle({ store, circleId: circle.id, userId: `u${i}`, username: `U${i}` });
   }
   await circles.startCircle({ store, circleId: circle.id, userId: 'u1' });
+  // The first topic posted into an idle circle starts running immediately; the
+  // rest queue behind it. There is no seeding round to wait out (D27).
   for (let i = 1; i <= seeds; i++) {
     await circles.addSeed({
       store, circleId: circle.id, userId: `u${i}`,
       payload: { ...SEED, topic: `${SEED.topic} ${i}` },
     });
-  }
-  if (circle.phase === 'seeding') {
-    await circles.advanceCircle({ store, circleId: circle.id, userId: 'u1' });
   }
   return circle;
 }
@@ -697,7 +696,9 @@ test('a real 3-person circle: seed, share, rank, reveal, three cycles, complete'
   await circles.addSeed({ store, circleId: circle.id, userId: 'u2', payload: { ...SEED, topic: 'Money', poleA: 'Freeing', poleB: 'Binding' } });
   await circles.addSeed({ store, circleId: circle.id, userId: 'u3', payload: { ...SEED, topic: 'Family', poleA: 'Holding', poleB: 'Holding back' } });
 
-  assert.equal(circle.phase, 'cycle', 'the last seed triggered the first cycle');
+  assert.equal(circle.phase, 'cycle', 'the FIRST topic started the first cycle');
+  assert.equal(circle.liveSeedId, circle.seeds[0].id);
+  assert.equal(circles.queue(circle).length, 2, 'the other two wait their turn (D28)');
 
   for (let i = 0; i < 3; i++) {
     const seed = circle.seeds[i];
@@ -722,14 +723,20 @@ test('a real 3-person circle: seed, share, rank, reveal, three cycles, complete'
     assert.equal(seed.result.rankers, 3);
   }
 
-  assert.equal(circle.phase, 'complete');
+  // Running out of topics is a pause, not an ending (D29).
+  assert.equal(circle.phase, 'idle');
 
   const final = threshold.circleResult(circle);
   assert.equal(final.topics.length, 3);
   assert.deepEqual(final.topics.map(t => t.topic), ['Authority', 'Money', 'Family']);
   // Everyone ranked identically, so every topic is fully coherent.
   assert.equal(final.topics.every(t => t.meanCoherence === 1), true);
+  assert.equal(final.topics.some(t => t.skipped), false);
   assert.ok(final.mostContested);
+
+  await circles.closeCircle({ store, circleId: circle.id, userId: 'u1' });
+  assert.equal(circle.phase, 'closed');
+  assert.equal(threshold.circleResult(circle).topics.length, 3, 'and the record still reads');
 });
 
 test('circleResult reports the topic that split the group hardest', async () => {
@@ -762,6 +769,89 @@ test('circleResult reports the topic that split the group hardest', async () => 
   assert.equal(final.topics[0].meanCoherence, 1);
   assert.equal(final.topics[1].meanCoherence, 0);
   assert.equal(final.mostContested, circle.seeds[1].id);
+});
+
+test('a skipped topic keeps every story, and reveals them attributed (D30)', async () => {
+  const store = memStore();
+  useStore(store);
+  const circle = await runningCircle(store, { members: 2, seeds: 2 });
+  const dropped = circle.seeds[0];
+
+  await threshold.submitShare({
+    store, circleId: circle.id, seedId: dropped.id, userId: 'u2', username: 'Two',
+    pole: 'A', text: 'told before the group moved on',
+  });
+
+  await circles.skipSeed({ store, circleId: circle.id, userId: 'u1' });
+  assert.equal(dropped.phase, 'skipped');
+
+  // The story is still there and now carries its author, exactly as a revealed
+  // one does — the group stopping is not a reason to hide who spoke.
+  const shares = await threshold.listShares({ store, circle, seedId: dropped.id, viewerId: 'u1' });
+  assert.equal(shares.length, 1);
+  assert.equal(shares[0].text, 'told before the group moved on');
+  assert.equal(shares[0].username, 'Two');
+
+  // Nobody ranked it, so it reveals empty rather than wrong.
+  assert.equal(dropped.result.rankers, 0);
+  assert.equal(circles.activeSeed(circle).id, circle.seeds[1].id, 'and the next topic is running');
+});
+
+test('circleResult reads mid-circle and says which topics were skipped (D29)', async () => {
+  const store = memStore();
+  useStore(store);
+  const circle = await runningCircle(store, { members: 3, seeds: 3 });
+
+  // A record of the conversation so far — nothing has finished yet.
+  assert.deepEqual(threshold.circleResult(circle).topics, []);
+  assert.equal(threshold.circleResult(circle).phase, 'cycle');
+
+  await circles.skipSeed({ store, circleId: circle.id, userId: 'u1' });
+
+  const mid = threshold.circleResult(circle);
+  assert.equal(mid.topics.length, 1, 'readable long before the circle ends');
+  assert.equal(mid.topics[0].skipped, true);
+  assert.equal(mid.mode, 'circle');
+});
+
+test('the queue: support decides what runs next, and a late joiner takes full part (D27, D32)', async () => {
+  const store = memStore();
+  useStore(store);
+  const circle = await runningCircle(store, { members: 2, seeds: 1 });
+
+  // u3 arrives in week six, posts a topic, and u2 backs it over u1's older one.
+  await circles.joinCircle({ store, circleId: circle.id, userId: 'u3', username: 'Three' });
+  await circles.addSeed({
+    store, circleId: circle.id, userId: 'u1', payload: { ...SEED, topic: 'Older' },
+  });
+  await circles.addSeed({
+    store, circleId: circle.id, userId: 'u3', payload: { ...SEED, topic: 'Newcomer' },
+  });
+  const newcomer = circle.seeds.find(s => s.payload.topic === 'Newcomer');
+  await circles.supportSeed({ store, circleId: circle.id, seedId: newcomer.id, userId: 'u2' });
+
+  assert.deepEqual(circles.queue(circle).map(s => s.payload.topic), ['Newcomer', 'Older']);
+
+  // The live cycle waits for them like anybody else.
+  const live = circles.activeSeed(circle);
+  for (const u of ['u1', 'u2']) {
+    await threshold.submitShare({
+      store, circleId: circle.id, seedId: live.id, userId: u, username: u, pole: 'A', text: `${u}`,
+    });
+  }
+  assert.equal(live.phase, 'share', 'the newcomer is a member, so the round waits for them');
+
+  await threshold.submitShare({
+    store, circleId: circle.id, seedId: live.id, userId: 'u3', username: 'Three', pole: 'B', text: 'mine',
+  });
+  assert.equal(live.phase, 'rank');
+
+  // And with no ranking of their own, every story reads as still waiting on
+  // them — the marker is that difference, derived and never stored (D32).
+  const shares = await threshold.listShares({ store, circle, seedId: live.id, viewerId: 'u3' });
+  const mine = await store.findRanking(live.id, 'u3');
+  assert.equal(mine, null);
+  assert.equal(shares.length, 3);
 });
 
 // ---------------------------------------------------------------------------

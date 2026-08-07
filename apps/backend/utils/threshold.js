@@ -309,7 +309,9 @@ async function listShares({ store = mongoStore, circle, seedId, viewerId = null 
     return all.filter(s => s.userId === viewerId).map(s => toClientShare(s, { viewerId, attributed: true }));
   }
 
-  const attributed = seed.phase === 'revealed';
+  // A skipped topic is revealed too — the group stopped sorting it, which is
+  // not a reason to keep its authors hidden from the stories that got told.
+  const attributed = circles.DONE_PHASES.includes(seed.phase);
   return all.map(s => toClientShare(s, { viewerId, attributed }));
 }
 
@@ -524,10 +526,15 @@ async function computeResult({ store = mongoStore, seed }) {
 /**
  * The circle-final rollup, computed on read rather than stored: every seed's
  * result already holds what it needs, and N is the member count.
+ *
+ * Readable at ANY time (D29). A circle has no completion condition, so this is
+ * the record of the conversation so far rather than a terminal state somebody
+ * unlocks — a circle three topics in has a three-topic record.
  */
 function circleResult(circle) {
   const topics = circle.seeds
-    .filter(s => s.phase === 'revealed' && s.result)
+    .filter(s => circles.DONE_PHASES.includes(s.phase) && s.result)
+    .sort((a, b) => new Date(a.revealedAt || 0) - new Date(b.revealedAt || 0))
     .map(s => ({
       seedId: s.id,
       topic: (s.payload || {}).topic || '',
@@ -537,10 +544,19 @@ function circleResult(circle) {
       unanimous: s.result.unanimous,
       shareCount: s.result.shares.length,
       meanCoherence: s.result.meanCoherence,
+      // The group moved on before finishing this one. Worth saying on the
+      // graph, since a low ranker count here means something different.
+      skipped: s.phase === 'skipped',
+      revealedAt: s.revealedAt || null,
     }));
 
   const scored = topics.filter(t => t.meanCoherence !== null);
   return {
+    // D33 — a one-off has one node, and a graph of one node is not a graph, so
+    // the client routes /result to that cycle's reveal instead. The mode is
+    // what tells it which screen to draw.
+    mode: circle.mode,
+    phase: circle.phase,
     topics,
     // Which topic split this group hardest — the headline of the final screen.
     mostContested: scored.length
@@ -587,10 +603,13 @@ function createModule({ store = mongoStore } = {}) {
     async notificationFor({ circle, seed, phase, userId }) {
       const topic = seed ? (seed.payload || {}).topic : '';
 
-      if (phase === 'seeding') {
+      // The queue is empty and the circle is waiting for somebody to think of
+      // something. This is the ask a seeding round used to make once, made
+      // whenever it is actually true (D27, D29).
+      if (phase === 'idle') {
         return {
-          subject: `${circle.title}: post your topic`,
-          text: `The circle has opened. Post a topic and the two ends of its polarity, and we'll start once everyone has.`,
+          subject: `${circle.title}: the circle is open for a topic`,
+          text: `Nothing is running right now. Post a topic and the two ends of its polarity, or support one somebody else has already put up — the one with the most support goes next.`,
         };
       }
       if (phase === 'share') {
@@ -616,10 +635,18 @@ function createModule({ store = mongoStore } = {}) {
           text: `The sorting is in. See which stories everyone read the same way, and which ones split the group.`,
         };
       }
-      if (phase === 'complete') {
+      if (phase === 'skipped') {
+        // A skipped topic keeps every story and reveals what it has, so this is
+        // an invitation to read it rather than an apology for dropping it.
         return {
-          subject: `${circle.title} is complete`,
-          text: `Every topic has been shared and sorted. See all of them together.`,
+          subject: `${circle.title}: ${topic} has moved on`,
+          text: `The circle moved on from ${topic}. The stories people told are there, with wherever the sorting had got to.`,
+        };
+      }
+      if (phase === 'closed') {
+        return {
+          subject: `${circle.title} has closed`,
+          text: `The circle is finished. Every topic it ran is there together — a record of the conversation.`,
         };
       }
       return null;

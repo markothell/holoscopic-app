@@ -18,16 +18,15 @@ questions in §13. Read the relevant § before changing behavior it describes. T
 **Design is ahead of code here, on purpose.** Check `PLAN.md` §11 before assuming a section
 describes something that exists.
 
-**Built:** the Circle layer, the Threshold funnel, the REST surface, blob mirroring and
-transcription — 49 tests between `utils/circles.test.js` and `utils/threshold.test.js` — plus a
+**Built:** the Circle layer including the topic queue (M1b), the Threshold funnel, the REST
+surface, blob mirroring and transcription — 74 tests between `utils/circles.test.js` and
+`utils/threshold.test.js`, plus 17 integration checks in `scripts/check-circles.js` — and a
 frontend scaffold carrying the route skeleton, the auth stack, the API client and the wire types.
 
-**Designed and not built:** the three surfaces — the ranking queue (§6.2), the reveal (§6.3), the
-tide-line language and its measured palette (§9.2) — and **the topic queue (§3.3, M1b), which
-reworks the round machine that is running today.** What ships now still has a blocking seeding
-round, `cycleIndex` walking `seeds[]` in posted order, and a circle that completes when its seeds
-run out. D27–D30 replace all three with a support-ordered queue, an idle state, and a circle that
-ends only when its facilitator closes it.
+**Designed and not built:** the three surfaces — the ranking queue (§6.2), the reveal (§6.3), and
+the tide-line language and its measured palette (§9.2). Next per §11's build order is **the circle
+page on the M1b snapshot**: the topic queue with support, the waiting marker (D32), and the
+facilitator tools where `mode` warrants them (D30).
 
 Build what those sections say rather than designing from the placeholders. `globals.css` already
 carries the real palette; `components/Scaffold.tsx` is chrome to be replaced, and its `NotBuilt`
@@ -66,6 +65,22 @@ the round may have turned over.
 
 ## Gotchas
 
+- **There is no seeding round, no completion condition, and no `cycleIndex`** (D27–D29). A circle
+  opens `idle`, runs the top of the queue, and returns to `idle` after every cycle — including for
+  the millisecond before it starts the next one, which is why `goIdle` mails only when the queue is
+  genuinely empty. **`idle` is running**, so `sweepCircles` still examines it and a member posting a
+  topic is what restarts it. The only ending is a facilitator calling `closeCircle`.
+- **Posting a topic is supporting it**, so `supporterIds` is never empty on a seed somebody posted
+  and an author always reads back `iSupport: true`. The roster never crosses the wire — `toClientSeed`
+  ships `supporterCount` and `iSupport`, because who backed a topic is nobody's business and only
+  the count decides anything.
+- **The queue's order is computed, never stored.** `circles.queue()` sorts promotions first (by
+  `promotedAt`, so two promotions run in the order they were made), then support count, then posting
+  `order`. `toClient` ships `queue[]` already sorted; render that rather than re-deriving it, or the
+  page and the machine drift the first time either rule changes.
+- **A skipped topic is revealed**, not deleted (D30): terminal phase, computed result, every story
+  kept and attributed. `circles.DONE_PHASES` is the check — `phase === 'revealed'` alone silently
+  hides skipped topics from the reveal route, `listShares`' attribution, and the circle record.
 - **Redaction is server-side, and there are three states, not two** (D9/D17). During `share` you
   receive only your own stories; during `rank` you receive everyone's with `userId` and `username`
   absent; after `revealed` they are attributed. The client never receives an identity it is meant to
@@ -99,10 +114,12 @@ the round may have turned over.
 - **A green test suite does NOT mean a `models/Circle.js` change is safe.** `circles.test.js` and
   `threshold.test.js` run against an injectable in-memory store with no Mongoose in the loop, so
   schema validation never executes — an enum you narrowed or a field you removed stays invisible to
-  all 288 tests while every real write fails. This is not hypothetical: changing `phase` and
-  `status` for the queue (M1b) left the suite fully green with a funnel that writes two now-invalid
-  values. Exercise a model change against a real database — `scripts/check-circles.js` is the
-  standing tool for exactly that, and it is dev-only by design.
+  all 307 tests while every real write fails. This is not hypothetical: an early cut of the queue
+  (M1b) left the suite fully green with a funnel writing two `phase`/`status` values the schema
+  rejected. Exercise a model change against a real database — `scripts/check-circles.js` is the
+  standing tool for exactly that, it is dev-only by design, and M1b's four new enum values
+  (`idle`, `closed`, `skipped`, `via: 'queue'`) each have a check there naming the schema in the
+  failure message.
 - **"What is waiting on me" is derived, never stored** (D32). The circle snapshot already carries
   `shares` and `myRanking.placements`; the difference is the marker. That is also why a member who
   joins in week six needs no special handling — they have no ranking, so everything reads as

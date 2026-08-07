@@ -8,10 +8,14 @@
 // The machine is generic. Everything activity-specific comes from the module
 // registered in utils/circleActivities.js under Circle.activity.
 //
-// Design: apps/threshold/PLAN.md §3. Two things there are load-bearing here:
+// Design: apps/threshold/PLAN.md §3. Three things there are load-bearing here:
 //
 //   §3.3  A phase ends on COMPLETE, DEADLINE, or MANUAL — all three always
 //         live, and any phase's clock may be omitted entirely.
+//   §3.3  The topic list is a QUEUE that is always open (D27), one cycle live
+//         at a time (D28), and a circle ends only when its facilitator closes
+//         it (D29). An empty queue is idle: the machine parks there and starts
+//         again the moment somebody posts.
 //   §3.5  Advancement runs on a locked periodic tick, NOT sweep-on-read. The
 //         premise is that nobody has the page open; the transition is what
 //         generates the email that brings people back. sweepCircles() is that
@@ -32,6 +36,11 @@ const HOUR_MS = 60 * 60 * 1000;
 // ceiling only catches a module bug.
 const MAX_STEPS = 200;
 
+// Terminal seed phases. 'skipped' is one of them: a dropped topic keeps its
+// stories and its computed result, and differs from 'revealed' only in saying
+// the group never finished sorting it (D30).
+const DONE_PHASES = ['revealed', 'skipped'];
+
 function generateId() {
   return crypto.randomUUID().substring(0, 8);
 }
@@ -51,17 +60,59 @@ function hoursForPhase(circle, phase) {
 }
 
 function currentDeadline(circle) {
-  if (circle.phase === 'seeding') return circle.phaseDeadline || null;
-  if (circle.phase === 'cycle') {
-    const seed = circle.seeds[circle.cycleIndex];
-    return seed ? (seed.phaseDeadline || null) : null;
-  }
-  return null;
+  const seed = activeSeed(circle);
+  return seed ? (seed.phaseDeadline || null) : null;
 }
 
 function activeSeed(circle) {
-  if (circle.phase !== 'cycle') return null;
-  return circle.seeds[circle.cycleIndex] || null;
+  if (circle.phase !== 'cycle' || !circle.liveSeedId) return null;
+  return circle.seeds.find(s => s.id === circle.liveSeedId) || null;
+}
+
+/**
+ * The queue, in the order it will run (D27).
+ *
+ * A promoted topic beats the support order, promotions run in the order they
+ * were made, and posting order is the tiebreak under support — so a topic
+ * nobody supports never overtakes one somebody did, and two equally supported
+ * topics run oldest first.
+ */
+function queue(circle) {
+  return circle.seeds
+    .filter(s => s.phase === 'pending')
+    .sort((a, b) => {
+      const pa = a.promotedAt ? a.promotedAt.getTime() : null;
+      const pb = b.promotedAt ? b.promotedAt.getTime() : null;
+      if (pa !== null || pb !== null) {
+        if (pa === null) return 1;
+        if (pb === null) return -1;
+        if (pa !== pb) return pa - pb;
+      }
+      const sa = (a.supporterIds || []).length;
+      const sb = (b.supporterIds || []).length;
+      if (sa !== sb) return sb - sa;
+      return a.order - b.order;
+    });
+}
+
+function nextInQueue(circle) {
+  return queue(circle)[0] || null;
+}
+
+function seedById(circle, seedId) {
+  const seed = circle.seeds.find(s => s.id === seedId);
+  if (!seed) throw new Error('Topic not found in this circle');
+  return seed;
+}
+
+function assertMember(circle, userId) {
+  if (!circle.members.some(m => m.userId === userId)) {
+    throw new Error('Not a member of this circle');
+  }
+}
+
+function assertOpen(circle) {
+  if (circle.phase === 'closed') throw new Error('This circle has finished');
 }
 
 // ---------------------------------------------------------------------------
@@ -104,9 +155,10 @@ const mongoStore = {
 /**
  * Create a circle in 'draft'.
  *
- * In 'single' mode the creator's seed is required here and the seeding phase is
- * skipped entirely — a standalone run of the activity is a one-seed circle
- * (PLAN §1, D1). In 'circle' mode a seed passed here is ignored.
+ * In 'single' mode the creator's seed is required here — a standalone run of
+ * the activity is a one-seed circle, not a second code path (PLAN §1, D1). In
+ * 'circle' mode a seed passed here starts the queue off, and is optional: an
+ * empty circle opens idle and runs whatever its members post first.
  */
 async function createCircle({
   store = mongoStore,
@@ -141,14 +193,16 @@ async function createCircle({
   if (existing) throw new Error('A circle with that name already exists');
 
   const seeds = [];
-  if (mode === 'single') {
-    if (!seedPayload) throw new Error('single mode requires a seed');
+  if (mode === 'single' && !seedPayload) throw new Error('single mode requires a seed');
+  if (seedPayload) {
     seeds.push({
       id: generateId(),
       authorId: createdBy,
       order: 0,
       payload: await mod.normalizeSeed(seedPayload, { userId: createdBy }),
       phase: 'pending',
+      supporterIds: [createdBy],
+      promotedAt: null,
       notifiedPhases: [],
     });
   }
@@ -172,15 +226,21 @@ async function createCircle({
     invitedEmails: invitedEmails.map(e => String(e).toLowerCase().trim()).filter(Boolean),
     requireInvitation,
     seeds,
-    cycleIndex: -1,
+    liveSeedId: null,
   });
 }
 
-/** Idempotent. Re-joining updates the stored name/email rather than duplicating. */
+/**
+ * Idempotent. Re-joining updates the stored name/email rather than duplicating.
+ *
+ * Joining in week six is the ordinary way in, not an edge case (D32): a circle
+ * that never closes and a queue that never shuts mean there is no "too late",
+ * and nothing is withheld for having missed the beginning.
+ */
 async function joinCircle({ store = mongoStore, circleId, userId, username, email = '' }) {
   const circle = await store.findCircleById(circleId);
   if (!circle) throw new Error('Circle not found');
-  if (circle.status === 'complete') throw new Error('This circle has finished');
+  assertOpen(circle);
 
   const normalized = (email || '').toLowerCase().trim();
   const existing = circle.members.find(m => m.userId === userId);
@@ -206,44 +266,111 @@ async function joinCircle({ store = mongoStore, circleId, userId, username, emai
 }
 
 /**
- * Post or replace your seed. One per member, only while seeding is open.
+ * Post a topic. Any member, any time — the queue never closes (D27).
  *
- * Replacing your own is allowed right up to the phase ending — a topic you
- * thought better of is worth more than an immutability rule nothing depends on.
+ * A member may post more than one: the queue is filtered by support rather than
+ * by a one-each rule, which is the review a seeding round never had. Passing
+ * `seedId` edits one of your own topics instead, allowed right up to the moment
+ * its cycle opens — a topic you thought better of is worth more than an
+ * immutability rule nothing depends on.
  */
-async function addSeed({ store = mongoStore, circleId, userId, payload }) {
+async function addSeed({ store = mongoStore, circleId, userId, payload, seedId = null }) {
   const circle = await store.findCircleById(circleId);
   if (!circle) throw new Error('Circle not found');
-  if (circle.phase !== 'seeding') throw new Error('Seeding is not open');
-  if (!circle.members.some(m => m.userId === userId)) throw new Error('Not a member of this circle');
+  assertOpen(circle);
+  assertMember(circle, userId);
 
   const mod = activities.get(circle.activity);
   const normalized = await mod.normalizeSeed(payload, { circle, userId });
 
-  const mine = circle.seeds.find(s => s.authorId === userId);
-  if (mine) {
+  if (seedId) {
+    const mine = seedById(circle, seedId);
+    if (mine.authorId !== userId) throw new Error('Only the author can change this topic');
+    if (mine.phase !== 'pending') throw new Error('This topic has already been run');
     mine.payload = normalized;
   } else {
+    // D1: a one-off runs its single topic and has no queue to add to.
+    if (circle.mode === 'single' && circle.seeds.length > 0) {
+      throw new Error('This is a single-topic circle');
+    }
     circle.seeds.push({
       id: generateId(),
       authorId: userId,
       order: circle.seeds.length,
       payload: normalized,
       phase: 'pending',
+      // Posting a topic is supporting it. Otherwise the first thing every
+      // author does is support their own, and the count means the same thing
+      // with an extra step in front of it.
+      supporterIds: [userId],
+      promotedAt: null,
       notifiedPhases: [],
     });
   }
 
   await store.saveCircle(circle);
-  // Posting the last outstanding seed is itself a completion trigger.
+  // An idle circle starts on the topic that just arrived — that is what makes
+  // idle a pause rather than an ending (D29).
   return evaluate({ store, circle });
+}
+
+/**
+ * Toggle my support for a queued topic. One per member, freely taken back.
+ *
+ * Only while it is still pending: supporting a topic that is already running or
+ * already revealed asks the queue to reorder something that has left it.
+ */
+async function supportSeed({ store = mongoStore, circleId, seedId, userId }) {
+  const circle = await store.findCircleById(circleId);
+  if (!circle) throw new Error('Circle not found');
+  assertOpen(circle);
+  assertMember(circle, userId);
+
+  const seed = seedById(circle, seedId);
+  if (seed.phase !== 'pending') throw new Error('This topic is no longer waiting');
+
+  const supporters = seed.supporterIds || [];
+  const at = supporters.indexOf(userId);
+  if (at >= 0) supporters.splice(at, 1); else supporters.push(userId);
+  seed.supporterIds = supporters;
+
+  await store.saveCircle(circle);
+  return { circle, supported: at < 0 };
+}
+
+/**
+ * Move a queued topic to the front, over the support order (D30).
+ *
+ * Creator only, and it does not interrupt the live cycle — one cycle runs at a
+ * time (D28), so this decides what runs NEXT. Promotions keep their own order
+ * among themselves, so promoting two in a row runs them in that order.
+ */
+async function promoteSeed({ store = mongoStore, circleId, seedId, userId, now = new Date() }) {
+  const circle = await store.findCircleById(circleId);
+  if (!circle) throw new Error('Circle not found');
+  assertOpen(circle);
+  if (circle.createdBy !== userId) throw new Error('Only the circle creator can promote a topic');
+
+  const seed = seedById(circle, seedId);
+  if (seed.phase !== 'pending') throw new Error('This topic is no longer waiting');
+  seed.promotedAt = now;
+
+  await store.saveCircle(circle);
+  // An idle circle promotes and starts in one move.
+  return evaluate({ store, circle, now });
 }
 
 // ---------------------------------------------------------------------------
 // The machine
 // ---------------------------------------------------------------------------
 
-/** Creator only. draft → seeding, or straight into cycle 0 in single mode. */
+/**
+ * Creator only. draft → running, on the top of the queue if anything is in it.
+ *
+ * A circle started with an empty queue opens IDLE rather than waiting for a
+ * seeding round: the first topic anybody posts is the first cycle. Nothing
+ * waits for everybody.
+ */
 async function startCircle({ store = mongoStore, circleId, userId }) {
   const circle = await store.findCircleById(circleId);
   if (!circle) throw new Error('Circle not found');
@@ -255,20 +382,72 @@ async function startCircle({ store = mongoStore, circleId, userId }) {
   circle.startedAt = now;
 
   const pending = [];
-  if (circle.mode === 'single') {
-    await beginCycle({ store, circle, index: 0, now, pending, via: 'manual', byUserId: userId });
+  const first = nextInQueue(circle);
+  if (first) {
+    await beginCycle({ store, circle, seed: first, now, pending, via: 'manual', byUserId: userId });
   } else {
-    circle.phase = 'seeding';
-    circle.phaseDeadline = deadlineFrom(now, circle.config.seedHours);
-    circle.transitions.push({ at: now, from: 'draft', to: 'seeding', via: 'manual', byUserId: userId });
-    pending.push({ seed: null, phase: 'seeding' });
+    goIdle({ circle, now, pending, via: 'manual', byUserId: userId, from: 'draft' });
   }
 
   await store.saveCircle(circle);
   await dispatch({ store, circle, pending });
-  // A single-mode circle whose share phase has no clock and no other members
-  // can already be finished; let the machine settle before returning.
+  // A cycle whose share phase has no clock and no other members can already be
+  // finished; let the machine settle before returning.
   return evaluate({ store, circle, now });
+}
+
+/**
+ * Drop the live topic and move on (D30). Creator only.
+ *
+ * A skipped topic REVEALS what it has rather than being deleted — somebody
+ * already told a story on it, and the circle moving past their topic is not a
+ * reason to throw their story away.
+ */
+async function skipSeed({ store = mongoStore, circleId, userId, now = new Date() }) {
+  const circle = await store.findCircleById(circleId);
+  if (!circle) throw new Error('Circle not found');
+  if (circle.createdBy !== userId) throw new Error('Only the circle creator can skip a topic');
+
+  const seed = activeSeed(circle);
+  if (!seed) throw new Error('There is no topic running');
+
+  const mod = activities.get(circle.activity);
+  const pending = [];
+  await revealSeed({ store, mod, circle, seed, now, pending, via: 'manual', byUserId: userId, as: 'skipped' });
+  await afterCycle({ store, mod, circle, now, pending, via: 'manual', byUserId: userId });
+
+  await store.saveCircle(circle);
+  await dispatch({ store, circle, pending });
+  // Settles onto the next topic in the queue, if the circle is still open.
+  return evaluate({ store, circle, now });
+}
+
+/**
+ * End the circle. Creator only, and the only way a circle finishes (D29).
+ *
+ * A live cycle is revealed on the way out rather than left mid-sort: its
+ * stories exist and its rankings exist, so the alternative is a topic whose
+ * result nobody can ever read.
+ */
+async function closeCircle({ store = mongoStore, circleId, userId, now = new Date() }) {
+  const circle = await store.findCircleById(circleId);
+  if (!circle) throw new Error('Circle not found');
+  if (circle.createdBy !== userId) throw new Error('Only the circle creator can close this circle');
+  if (circle.phase === 'draft') throw new Error('This circle has not started');
+  assertOpen(circle);
+
+  const mod = activities.get(circle.activity);
+  const pending = [];
+
+  const seed = activeSeed(circle);
+  if (seed) {
+    await revealSeed({ store, mod, circle, seed, now, pending, via: 'manual', byUserId: userId, as: 'revealed' });
+  }
+  await closeNow({ store, mod, circle, now, pending, via: 'manual', byUserId: userId });
+
+  await store.saveCircle(circle);
+  await dispatch({ store, circle, pending });
+  return { circle, changed: true };
 }
 
 /**
@@ -282,7 +461,8 @@ async function advanceCircle({ store = mongoStore, circleId, userId }) {
   const circle = await store.findCircleById(circleId);
   if (!circle) throw new Error('Circle not found');
   if (circle.phase === 'draft') throw new Error('This circle has not started');
-  if (circle.phase === 'complete') throw new Error('This circle has finished');
+  assertOpen(circle);
+  if (circle.phase === 'idle') throw new Error('There is no topic running');
 
   const seed = activeSeed(circle);
   const isCreator = circle.createdBy === userId;
@@ -314,7 +494,7 @@ async function evaluate({ store = mongoStore, circle, now = new Date(), force = 
 
     await step({ store, mod, circle, now, pending, ...reason });
     changed = true;
-    if (circle.phase === 'complete') break;
+    if (circle.phase === 'closed') break;
   }
 
   if (!changed) return { circle, changed: false };
@@ -329,7 +509,14 @@ async function evaluate({ store = mongoStore, circle, now = new Date(), force = 
 
 /** Why the current phase should end right now, or null. */
 async function endReasonFor({ store, mod, circle, now }) {
-  if (circle.phase === 'draft' || circle.phase === 'complete') return null;
+  if (circle.phase === 'draft' || circle.phase === 'closed') return null;
+
+  // An idle circle is waiting for a topic, not for a person or a clock. It
+  // moves the moment the queue has one, which is what makes posting a topic
+  // into starting a cycle.
+  if (circle.phase === 'idle') {
+    return nextInQueue(circle) ? { via: 'queue', byUserId: null } : null;
+  }
 
   const deadline = currentDeadline(circle);
   if (deadline && now.getTime() >= deadline.getTime()) return { via: 'deadline', byUserId: null };
@@ -345,10 +532,6 @@ async function everyoneDone({ store, mod, circle }) {
   // race through every phase the moment it started.
   if (circle.members.length === 0) return false;
 
-  if (circle.phase === 'seeding') {
-    return circle.members.every(m => circle.seeds.some(s => s.authorId === m.userId));
-  }
-
   const seed = activeSeed(circle);
   if (!seed) return false;
 
@@ -361,18 +544,20 @@ async function everyoneDone({ store, mod, circle }) {
 
 /** Apply exactly one transition. */
 async function step({ store, mod, circle, now, pending, via, byUserId }) {
-  if (circle.phase === 'seeding') {
-    circle.transitions.push({ at: now, from: 'seeding', to: 'cycle', via, byUserId, seedId: null });
-    // D4: the machine never blocks on a person. A member who missed the
-    // seeding deadline simply has no topic; nobody seeding at all ends it.
-    if (circle.seeds.length === 0) return completeCircle({ store, mod, circle, now, pending, via, byUserId });
-    return beginCycle({ circle, index: 0, now, pending, via, byUserId, mod, store });
+  // Idle: the only move is starting the top of the queue. endReasonFor has
+  // already established there is one.
+  if (circle.phase === 'idle') {
+    const next = nextInQueue(circle);
+    if (!next) return;
+    return beginCycle({ circle, seed: next, now, pending, via, byUserId, mod, store });
   }
 
   if (circle.phase !== 'cycle') return;
 
   const seed = activeSeed(circle);
-  if (!seed) return completeCircle({ store, mod, circle, now, pending, via, byUserId });
+  // liveSeedId pointing at nothing is a corrupted circle, not an ending — park
+  // it and let the queue restart it rather than closing something nobody closed.
+  if (!seed) return goIdle({ circle, now, pending, via, byUserId, from: 'cycle' });
 
   const idx = mod.phases.indexOf(seed.phase);
 
@@ -388,31 +573,68 @@ async function step({ store, mod, circle, now, pending, via, byUserId }) {
     return;
   }
 
-  // Last phase done — reveal, then move to the next seed.
+  // Last phase done — reveal, then take the next topic off the queue.
   if (idx >= 0) await mod.onPhaseClose({ store, circle, seed, phase: seed.phase });
-  circle.transitions.push({ at: now, from: seed.phase, to: 'revealed', via, byUserId, seedId: seed.id });
-  seed.phase = 'revealed';
+  await revealSeed({ store, mod, circle, seed, now, pending, via, byUserId, as: 'revealed' });
+  return afterCycle({ store, mod, circle, now, pending, via, byUserId });
+}
+
+/**
+ * End one cycle. `as` is 'revealed' normally and 'skipped' when a facilitator
+ * dropped it — both terminal, both keeping every story and computing a result,
+ * and the distinction is only whether the group finished sorting it.
+ */
+async function revealSeed({ store, mod, circle, seed, now, pending, via, byUserId, as = 'revealed' }) {
+  circle.transitions.push({ at: now, from: seed.phase, to: as, via, byUserId, seedId: seed.id });
+  seed.phase = as;
   seed.revealedAt = now;
   seed.phaseDeadline = null;
   await mod.onCycleReveal({ store, circle, seed });
-  pending.push({ seed, phase: 'revealed' });
-
-  const nextIndex = circle.cycleIndex + 1;
-  if (nextIndex < circle.seeds.length) {
-    return beginCycle({ circle, index: nextIndex, now, pending, via, byUserId, mod, store });
-  }
-  return completeCircle({ store, mod, circle, now, pending, via, byUserId });
+  pending.push({ seed, phase: as });
+  circle.liveSeedId = null;
 }
 
-async function beginCycle({ circle, index, now, pending, via, byUserId, mod, store }) {
+/**
+ * Where a circle goes when a cycle ends: idle, or closed if it was a one-off.
+ *
+ * D33 — revealing the only topic closes a single-mode circle, because closing
+ * is a facilitator's act and a one-off has a creator who ran it once and will
+ * not come back. Leaving it idle would show "waiting" on an activity that is
+ * over. It is the only place the two modes behave differently.
+ */
+async function afterCycle({ store, mod, circle, now, pending, via, byUserId }) {
+  if (circle.mode === 'single') {
+    return closeNow({ store, mod, circle, now, pending, via, byUserId });
+  }
+  return goIdle({ circle, now, pending, via, byUserId, from: 'cycle' });
+}
+
+/**
+ * Park. An open circle with nothing queued is a pause, not an ending (D29) —
+ * it starts again the moment somebody posts a topic, and the notification is
+ * the ask for one.
+ */
+function goIdle({ circle, now, pending, via, byUserId, from }) {
+  circle.phase = 'idle';
+  circle.status = 'running';
+  circle.liveSeedId = null;
+  circle.phaseDeadline = null;
+  circle.transitions.push({ at: now, from, to: 'idle', via, byUserId, seedId: null });
+  // Only ASK for a topic when there is genuinely none. Every cycle ends by
+  // passing through idle on its way to the next one, and mailing "the circle
+  // needs a topic" a millisecond before "here is the next topic" is how a
+  // correct machine sends nonsense.
+  if (!nextInQueue(circle)) pending.push({ seed: null, phase: 'idle' });
+}
+
+async function beginCycle({ circle, seed, now, pending, via, byUserId, mod, store }) {
   const module_ = mod || activities.get(circle.activity);
-  const seed = circle.seeds[index];
   const first = module_.phases[0];
 
   circle.phase = 'cycle';
   circle.status = 'running';
   circle.phaseDeadline = null; // cycle clocks live on the seed
-  circle.cycleIndex = index;
+  circle.liveSeedId = seed.id;
 
   seed.phase = first;
   seed.openedAt = now;
@@ -423,14 +645,17 @@ async function beginCycle({ circle, index, now, pending, via, byUserId, mod, sto
   pending.push({ seed, phase: first });
 }
 
-async function completeCircle({ store, mod, circle, now, pending, via, byUserId }) {
-  circle.phase = 'complete';
+/** The end of a circle. Only closeCircle() and D33's one-off reach this. */
+async function closeNow({ store, mod, circle, now, pending, via, byUserId }) {
+  const from = circle.phase;
+  circle.phase = 'closed';
   circle.status = 'complete';
   circle.completedAt = now;
   circle.phaseDeadline = null;
-  circle.transitions.push({ at: now, from: 'cycle', to: 'complete', via, byUserId, seedId: null });
+  circle.liveSeedId = null;
+  circle.transitions.push({ at: now, from, to: 'closed', via, byUserId, seedId: null });
   await mod.onCircleComplete({ store, circle });
-  pending.push({ seed: null, phase: 'complete' });
+  pending.push({ seed: null, phase: 'closed' });
 }
 
 // ---------------------------------------------------------------------------
@@ -522,6 +747,7 @@ async function sweepCircles({ store = mongoStore, now = new Date() } = {}) {
 /** Member emails never cross the wire. */
 function toClient(circle, { userId = null } = {}) {
   const seed = activeSeed(circle);
+  const forViewer = s => toClientSeed(s, { userId });
   return {
     id: circle.id,
     activity: circle.activity,
@@ -530,14 +756,19 @@ function toClient(circle, { userId = null } = {}) {
     mode: circle.mode,
     status: circle.status,
     phase: circle.phase,
-    phaseDeadline: circle.phase === 'seeding' ? circle.phaseDeadline : (seed ? seed.phaseDeadline : null),
-    cycleIndex: circle.cycleIndex,
+    phaseDeadline: seed ? seed.phaseDeadline : null,
+    liveSeedId: circle.liveSeedId || null,
     seedCount: circle.seeds.length,
     memberCount: circle.members.length,
     members: circle.members.map(m => ({ userId: m.userId, username: m.username })),
-    currentSeed: seed ? toClientSeed(seed) : null,
-    seeds: circle.seeds.map(toClientSeed),
-    mySeed: userId ? (circle.seeds.find(s => s.authorId === userId) || null) : null,
+    currentSeed: seed ? forViewer(seed) : null,
+    seeds: circle.seeds.map(forViewer),
+    // The queue in the order it will run, so the client renders the order the
+    // machine will actually take rather than re-deriving the sort and drifting.
+    queue: queue(circle).map(forViewer),
+    // Every topic this member posted — a member may post more than one, since
+    // the queue is filtered by support rather than by a one-each rule.
+    mySeedIds: userId ? circle.seeds.filter(s => s.authorId === userId).map(s => s.id) : [],
     isCreator: userId ? circle.createdBy === userId : false,
     isMember: userId ? circle.members.some(m => m.userId === userId) : false,
     startedAt: circle.startedAt,
@@ -545,13 +776,19 @@ function toClient(circle, { userId = null } = {}) {
   };
 }
 
-function toClientSeed(seed) {
+function toClientSeed(seed, { userId = null } = {}) {
+  const supporters = seed.supporterIds || [];
   return {
     id: seed.id,
     authorId: seed.authorId,
     order: seed.order,
     payload: seed.payload,
     phase: seed.phase,
+    // A count and a flag, never the roster: who supported a topic is nobody's
+    // business, and the count is the only part the queue's order depends on.
+    supporterCount: supporters.length,
+    iSupport: userId ? supporters.includes(userId) : false,
+    promotedAt: seed.promotedAt || null,
     openedAt: seed.openedAt,
     phaseDeadline: seed.phaseDeadline,
     revealedAt: seed.revealedAt,
@@ -563,6 +800,10 @@ module.exports = {
   createCircle,
   joinCircle,
   addSeed,
+  supportSeed,
+  promoteSeed,
+  skipSeed,
+  closeCircle,
   startCircle,
   advanceCircle,
   evaluate,
@@ -570,7 +811,11 @@ module.exports = {
   toClient,
   toClientSeed,
   activeSeed,
+  queue,
+  nextInQueue,
   currentDeadline,
+  assertMember,
   mongoStore,
   MAX_STEPS,
+  DONE_PHASES,
 };

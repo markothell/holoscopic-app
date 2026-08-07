@@ -48,9 +48,21 @@ export interface SeedResult {
 export interface Seed {
   id: string;
   authorId: string;
+  /** Posted order. The tiebreak under support, not the order it will run in —
+   *  read `Circle.queue` for that. */
   order: number;
   payload: SeedPayload;
-  phase: 'pending' | 'share' | 'rank' | 'revealed';
+  /** `skipped` is terminal like `revealed`: the facilitator moved the group on
+   *  and the topic kept every story it had (D30). */
+  phase: 'pending' | 'share' | 'rank' | 'revealed' | 'skipped';
+  /** One support per member, toggled freely — the count is what orders the
+   *  queue (D27). The roster never crosses the wire; who backed a topic is
+   *  nobody's business, and only the count decides anything. */
+  supporterCount: number;
+  iSupport: boolean;
+  /** Set when a facilitator moved this topic to the front, over the support
+   *  order (D30). */
+  promotedAt: string | null;
   openedAt: string | null;
   phaseDeadline: string | null;
   revealedAt: string | null;
@@ -69,18 +81,28 @@ export interface Circle {
   urlName: string;
   mode: 'single' | 'circle';
   status: 'draft' | 'open' | 'running' | 'complete';
-  phase: 'draft' | 'seeding' | 'cycle' | 'complete';
-  /** The deadline of whatever phase is live — the circle's while seeding, the
-   *  active seed's during a cycle. Null means that phase has no clock, which is
-   *  a supported configuration (D16), not a missing value. */
+  /** `idle` is an OPEN circle with nothing queued — a pause, and the state a
+   *  circle returns to after every cycle. `closed` is the only ending, and only
+   *  a facilitator writes it (D29). */
+  phase: 'draft' | 'cycle' | 'idle' | 'closed';
+  /** The live seed's deadline. Null means that phase has no clock, which is a
+   *  supported configuration (D16), not a missing value. */
   phaseDeadline: string | null;
-  cycleIndex: number;
+  /** Which cycle is live; null while idle. */
+  liveSeedId: string | null;
   seedCount: number;
   memberCount: number;
   members: Member[];
   currentSeed: Seed | null;
   seeds: Seed[];
-  mySeed: Seed | null;
+  /** The pending topics, IN THE ORDER THEY WILL RUN — support first, promotions
+   *  ahead of that, posting order as the tiebreak. Render this rather than
+   *  re-deriving the sort, which drifts from the machine the moment either
+   *  changes. */
+  queue: Seed[];
+  /** Every topic I posted. A member may post more than one: the queue is
+   *  filtered by support, not by a one-each rule. */
+  mySeedIds: string[];
   isCreator: boolean;
   isMember: boolean;
   startedAt: string | null;
@@ -89,6 +111,11 @@ export interface Circle {
   /** Present only on GET /circles/:urlName, and only while a seed is live. */
   shares?: Share[];
   myRanking?: MyRanking | null;
+  /** The stories still waiting on me — DERIVED server-side from `shares` minus
+   *  `myRanking.placements`, never stored (D32). It is why a member who joined
+   *  in week six needs no special handling: they have no ranking, so everything
+   *  reads as waiting. */
+  waitingShareIds?: string[];
 }
 
 export interface ShareAudio {
@@ -141,9 +168,22 @@ export interface CircleResultTopic {
   unanimous: number;
   shareCount: number;
   meanCoherence: number | null;
+  /** The group moved on before finishing this one, so a low ranker count here
+   *  means something different (D30). */
+  skipped: boolean;
+  revealedAt: string | null;
 }
 
+/**
+ * The circle-final record. Readable at ANY time (D29) — a running circle three
+ * topics in has a three-topic record, so this is never a terminal state the
+ * page waits to unlock.
+ */
 export interface CircleResult {
+  /** D33 — a one-off has one node, and a graph of one node is not a graph, so
+   *  `single` routes this page to that cycle's reveal instead. */
+  mode: 'single' | 'circle';
+  phase: 'draft' | 'cycle' | 'idle' | 'closed';
   topics: CircleResultTopic[];
   /** The topic this group split hardest on — the headline of the final screen. */
   mostContested: string | null;

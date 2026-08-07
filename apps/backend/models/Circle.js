@@ -2,17 +2,21 @@ const mongoose = require('mongoose');
 
 // Circle — a cohort plus a round machine, generic over the activity it runs.
 //
-// A circle holds members, an ordered list of SEEDS (one per member), and a
-// phase machine that walks the seeds one at a time. What a seed CONTAINS and
-// what "this member is done" MEANS are supplied by an activity module
-// registered in utils/circleActivities.js — the circle never reads inside
-// `seeds[].payload`.
+// A circle holds members, a QUEUE of seeds ordered by support, and a phase
+// machine that runs one of them at a time. What a seed CONTAINS and what "this
+// member is done" MEANS are supplied by an activity module registered in
+// utils/circleActivities.js — the circle never reads inside `seeds[].payload`.
 //
 // The whole point is asynchronous participation: a phase ends when everyone
 // finishes, when its deadline passes, or when the author says so, and each
 // transition notifies the people who now have something to do. See
 // apps/threshold/PLAN.md §3 for the design and why this is not an extension of
 // Sequence (global, activity-DAG-shaped, no completion trigger).
+//
+// There is no seeding round and no completion condition (D27, D29). Seeds
+// arrive whenever a member thinks of one, the queue orders them by support, and
+// a circle with nothing queued is IDLE — a pause, not an ending. Only a
+// facilitator closing it ends a circle.
 //
 // Consumer #1 is Threshold. Nothing in this file knows that.
 
@@ -36,8 +40,17 @@ const seedSchema = new mongoose.Schema({
 
   // 'pending' until this seed's cycle opens. The middle values come from the
   // module's `phases` array, so they are activity-defined and deliberately not
-  // an enum here — Threshold's are 'share' and 'rank'. 'revealed' is terminal.
+  // an enum here — Threshold's are 'share' and 'rank'. 'revealed' is terminal,
+  // and so is 'skipped': a facilitator dropping the live topic reveals what it
+  // has rather than deleting anybody's story (D30).
   phase:    { type: String, default: 'pending' },
+
+  // The queue (D27). One support per member, toggled freely; the count orders
+  // the queue. Ids rather than a number, so a support can be taken back and so
+  // nobody supports twice.
+  supporterIds: { type: [String], default: () => [] },
+  // Facilitator override — a promoted topic runs before the support order (D30).
+  promotedAt:   { type: Date, default: null },
 
   openedAt:      { type: Date, default: null },
   phaseDeadline: { type: Date, default: null },
@@ -60,7 +73,10 @@ const transitionSchema = new mongoose.Schema({
   seedId:   { type: String, default: null },
   from:     { type: String, required: true },
   to:       { type: String, required: true },
-  via:      { type: String, enum: ['complete', 'deadline', 'manual'], required: true },
+  // 'queue' is the machine starting the next topic by itself, which is not any
+  // of the other three: nobody finished anything, no clock expired, and nobody
+  // pressed anything — a topic simply reached the front of an idle circle.
+  via:      { type: String, enum: ['complete', 'deadline', 'manual', 'queue'], required: true },
   byUserId: { type: String, default: null },
 }, { _id: false, id: false });
 
@@ -87,20 +103,24 @@ const circleSchema = new mongoose.Schema({
 
   createdBy: { type: String, required: true },
 
-  // 'single' caps seeds at 1, authored by the creator at creation time, and
-  // skips the seeding phase entirely. A standalone run of the activity IS a
-  // one-seed circle — there is no second code path (PLAN §1, D1).
+  // 'single' caps the queue at 1 seed, authored by the creator at creation
+  // time. A standalone run of the activity IS a one-seed circle — there is no
+  // second code path (PLAN §1, D1) — and it closes itself on that seed's
+  // reveal, since a one-off has nobody coming back to close it (D33).
   mode:   { type: String, enum: ['single', 'circle'], default: 'circle' },
   status: { type: String, enum: ['draft', 'open', 'running', 'complete'], default: 'draft' },
 
-  phase:         { type: String, enum: ['draft', 'seeding', 'cycle', 'complete'], default: 'draft' },
-  // Seeding's clock. Cycle deadlines live on the seed, since each cycle has its own.
+  // 'idle' is an OPEN circle with nothing queued — a pause, not an ending, and
+  // the state a circle returns to after every cycle. 'closed' is the only
+  // ending, and only a facilitator writes it (D29).
+  phase:         { type: String, enum: ['draft', 'cycle', 'idle', 'closed'], default: 'draft' },
+  // Unused now that every clock lives on the live seed. Kept as the field a
+  // future circle-level phase would use.
   phaseDeadline: { type: Date, default: null },
 
   config: {
-    // null on any of these = that phase has no clock and ends only on
+    // null on either of these = that phase has no clock and ends only on
     // completion or by hand (D16).
-    seedHours:  { type: Number, default: 72, min: 1, max: 8760 },
     shareHours: { type: Number, default: 72, min: 1, max: 8760 },
     rankHours:  { type: Number, default: 72, min: 1, max: 8760 },
 
@@ -115,8 +135,10 @@ const circleSchema = new mongoose.Schema({
   requireInvitation: { type: Boolean, default: true },
 
   seeds:      { type: [seedSchema], default: () => [] },
-  // Index into seeds[] — which cycle is live. -1 before the first opens.
-  cycleIndex: { type: Number, default: -1 },
+  // Which cycle is live, by seed id — null while idle. An id rather than an
+  // index into seeds[], because the queue's order is computed from support and
+  // is therefore not the array's order.
+  liveSeedId: { type: String, default: null },
 
   transitions: { type: [transitionSchema], default: () => [] },
 

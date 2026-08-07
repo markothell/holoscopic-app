@@ -107,7 +107,6 @@ export const thresholdApi = {
        *  seed, authored by the creator (D1). There is no second code path. */
       seed?: { topic: string; poleA: string; poleB: string; secondsPerNote?: number };
       config?: {
-        seedHours?: number | null;
         shareHours?: number | null;
         rankHours?: number | null;
         advanceOnComplete?: boolean;
@@ -139,16 +138,52 @@ export const thresholdApi = {
     return apiFetch<{ circle: Circle }>(`/threshold/circles/${circleId}/advance`, { method: 'POST', userId });
   },
 
+  /**
+   * Drop the live topic and move to the next in the queue. Creator only.
+   * A skipped topic reveals what it has, so nobody's story is deleted for
+   * having been on the wrong topic (D30).
+   */
+  skip(circleId: string, userId: string) {
+    return apiFetch<{ circle: Circle }>(`/threshold/circles/${circleId}/skip`, { method: 'POST', userId });
+  },
+
+  /** End the circle. The only way one finishes (D29). Creator only. */
+  close(circleId: string, userId: string) {
+    return apiFetch<{ circle: Circle }>(`/threshold/circles/${circleId}/close`, { method: 'POST', userId });
+  },
+
+  /**
+   * Post a topic. Any member, any time — the queue never closes (D27), and an
+   * idle circle starts on whatever just arrived. Pass `seedId` to edit one of
+   * your own that has not run yet.
+   */
   addSeed(
     circleId: string,
     seed: { topic: string; poleA: string; poleB: string; secondsPerNote?: number },
     userId: string,
+    seedId?: string,
   ) {
     return apiFetch<{ circle: Circle }>(`/threshold/circles/${circleId}/seeds`, {
-      method: 'POST', body: { seed }, userId,
+      method: 'POST', body: { seed, seedId }, userId,
     });
   },
 
+  /** Toggle my support. One per member, freely taken back — the count is what
+   *  orders the queue (D27). Returns the state it landed in. */
+  toggleSupport(seedId: string, userId: string) {
+    return apiFetch<{ supported: boolean; circle: Circle }>(
+      `/threshold/seeds/${seedId}/support`, { method: 'PUT', userId },
+    );
+  },
+
+  /** Move a queued topic to the front, over the support order (D30). Creator
+   *  only, and it decides what runs NEXT — it never interrupts the live cycle. */
+  promote(seedId: string, userId: string) {
+    return apiFetch<{ circle: Circle }>(`/threshold/seeds/${seedId}/promote`, { method: 'POST', userId });
+  },
+
+  /** The record of the conversation so far. Readable at ANY time (D29) — a
+   *  circle has no completion condition, so this never 404s on a running one. */
   circleResult(circleId: string, userId?: string | null) {
     return apiFetch<{ result: CircleResult }>(`/threshold/circles/${circleId}/result`, { userId });
   },

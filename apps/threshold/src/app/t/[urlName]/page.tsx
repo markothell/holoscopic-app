@@ -71,6 +71,9 @@ export default function CirclePage({ params }: { params: Promise<{ urlName: stri
 
   const seed = circle.currentSeed;
   const base = `/t/${circle.urlName}`;
+  // Derived server-side and never stored (D32) — the stories I have not placed.
+  const waiting = circle.waitingShareIds?.length ?? 0;
+  const revealed = circle.seeds.filter(s => s.phase === 'revealed' || s.phase === 'skipped');
 
   return (
     <Page>
@@ -86,54 +89,74 @@ export default function CirclePage({ params }: { params: Promise<{ urlName: stri
         <Note>Not started yet.{circle.isCreator ? ' You can open it when the group is ready.' : ''}</Note>
       )}
 
-      {circle.phase === 'seeding' && (
+      {/* Idle is an OPEN circle with nothing queued — a pause, not an ending
+          (D29). The only thing anybody can do about it is put a topic up. */}
+      {circle.phase === 'idle' && (
         <div>
-          <Note>
-            Everyone posts a topic and the two ends of its polarity — {deadlineText(circle.phaseDeadline)}.
-          </Note>
-          {circle.mySeed
-            ? <Note>Yours is in: “{circle.mySeed.payload.topic}”.</Note>
-            : <Link href={`${base}/seed`} className="underline underline-offset-4">Post your topic</Link>}
+          <Note>Nothing is running. The topic with the most support goes next.</Note>
+          <Link href={`${base}/seed`} className="underline underline-offset-4">Post a topic</Link>
         </div>
       )}
 
       {circle.phase === 'cycle' && seed && (
         <div>
           <Note>
-            Topic {circle.cycleIndex + 1} of {circle.seedCount}: <strong>{seed.payload.topic}</strong>
+            <strong>{seed.payload.topic}</strong>
             {' — '}{seed.payload.poleA} or {seed.payload.poleB}. {deadlineText(seed.phaseDeadline)}.
           </Note>
           {seed.phase === 'share' && (
             <Link href={`${base}/share`} className="underline underline-offset-4">Tell your story</Link>
           )}
           {seed.phase === 'rank' && (
-            <Link href={`${base}/rank`} className="underline underline-offset-4">Sort the stories</Link>
-          )}
-          {seed.phase === 'revealed' && (
-            <Link href={`${base}/cycle/${seed.id}`} className="underline underline-offset-4">See where the line fell</Link>
+            <Link href={`${base}/rank`} className="underline underline-offset-4">
+              Sort the stories
+              {waiting > 0 ? ` — ${waiting} still waiting on you` : ''}
+            </Link>
           )}
         </div>
       )}
 
-      {circle.phase === 'complete' && (
-        <Link href={`${base}/result`} className="underline underline-offset-4">
-          See all {circle.seedCount} topics together
-        </Link>
+      {circle.phase === 'closed' && (
+        <Note>This circle has closed.</Note>
       )}
 
-      {/* Revealed cycles stay readable for the rest of the circle's life. */}
-      {circle.seeds.some(s => s.phase === 'revealed') && (
+      {/* The queue (§6 has no design for this yet — D27 settles the mechanic).
+          Rendered in the order the machine will actually take it. */}
+      {circle.queue.length > 0 && (
+        <div className="mt-8 border-t border-[var(--rule)] pt-4">
+          <p className="text-xs uppercase tracking-wider text-ink-faint mb-2">Waiting</p>
+          <ul className="space-y-1 text-sm">
+            {circle.queue.map(s => (
+              <li key={s.id}>
+                {s.payload.topic} · {s.supporterCount}
+                {s.iSupport ? ' (yours in)' : ''}
+                {s.promotedAt ? ' · promoted' : ''}
+              </li>
+            ))}
+          </ul>
+          <Link href={`${base}/seed`} className="underline underline-offset-4 text-sm">Post another</Link>
+        </div>
+      )}
+
+      {/* Revealed cycles stay readable for the rest of the circle's life — and a
+          member who arrives in week six reads every one of them (D32). A skipped
+          topic is here too: it kept every story it had. */}
+      {revealed.length > 0 && (
         <div className="mt-8 border-t border-[var(--rule)] pt-4">
           <p className="text-xs uppercase tracking-wider text-ink-faint mb-2">Revealed</p>
           <ul className="space-y-1 text-sm">
-            {circle.seeds.filter(s => s.phase === 'revealed').map(s => (
+            {revealed.map(s => (
               <li key={s.id}>
                 <Link href={`${base}/cycle/${s.id}`} className="underline underline-offset-4">
                   {s.payload.topic}
                 </Link>
+                {s.phase === 'skipped' ? ' · moved on' : ''}
               </li>
             ))}
           </ul>
+          <Link href={`${base}/result`} className="underline underline-offset-4 text-sm">
+            See them together
+          </Link>
         </div>
       )}
     </Page>

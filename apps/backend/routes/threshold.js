@@ -112,6 +112,16 @@ router.get('/circles/:urlName', async (req, res) => {
       payload.myRanking = ranking
         ? { placements: ranking.placements, submittedAt: ranking.submittedAt }
         : null;
+
+      // "What is waiting on me" — DERIVED, never stored (D32). The two lines
+      // above already carry everything it needs, and the difference between
+      // them is the answer. It is also why a member who joined in week six
+      // needs no special handling: they have no ranking, so everything reads as
+      // waiting. Do NOT add a per-share "heard it" flag to get this.
+      const placed = new Set((ranking?.placements || []).map(p => p.shareId));
+      payload.waitingShareIds = seed.phase === 'rank'
+        ? payload.shares.filter(s => !placed.has(s.id)).map(s => s.id)
+        : [];
     }
     res.json({ circle: payload });
   } catch (err) {
@@ -160,25 +170,62 @@ router.post('/circles/:id/advance', async (req, res) => {
   }
 });
 
+// Drop the live topic and move to the next. Creator only, enforced in the
+// funnel. A skipped topic reveals what it has (D30).
+router.post('/circles/:id/skip', async (req, res) => {
+  if (!assertOwnApp(req, res)) return;
+  try {
+    const circle = await loadCircle(req, res);
+    if (!circle) return;
+    await circles.skipSeed({ store, circleId: circle.id, userId: userIdOf(req) });
+    res.json({ circle: circles.toClient(circle, { userId: userIdOf(req) }) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// The only way a circle finishes (D29).
+router.post('/circles/:id/close', async (req, res) => {
+  if (!assertOwnApp(req, res)) return;
+  try {
+    const circle = await loadCircle(req, res);
+    if (!circle) return;
+    await circles.closeCircle({ store, circleId: circle.id, userId: userIdOf(req) });
+    res.json({ circle: circles.toClient(circle, { userId: userIdOf(req) }) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Post a topic. Any member, any time — the queue never closes (D27), and an
+// idle circle starts on whatever just arrived. `seedId` edits one of your own
+// that has not run yet.
 router.post('/circles/:id/seeds', async (req, res) => {
   if (!assertOwnApp(req, res)) return;
   try {
     const circle = await loadCircle(req, res);
     if (!circle) return;
-    await circles.addSeed({ store, circleId: circle.id, userId: userIdOf(req), payload: req.body.seed || req.body });
+    await circles.addSeed({
+      store,
+      circleId: circle.id,
+      userId: userIdOf(req),
+      payload: req.body.seed || req.body,
+      seedId: req.body.seedId || null,
+    });
     res.status(201).json({ circle: circles.toClient(circle, { userId: userIdOf(req) }) });
   } catch (err) {
     fail(res, err);
   }
 });
 
+// Readable at ANY time (D29) — a record of the conversation so far, never a
+// terminal state you unlock.
 router.get('/circles/:id/result', async (req, res) => {
   if (!assertOwnApp(req, res)) return;
   try {
     const circle = await loadCircle(req, res);
     if (!circle) return;
     threshold.assertMember(circle, userIdOf(req));
-    if (circle.phase !== 'complete') return res.status(404).json({ error: 'This circle is still running' });
     res.json({ result: threshold.circleResult(circle) });
   } catch (err) {
     fail(res, err);
@@ -197,6 +244,38 @@ async function loadSeed(req, res) {
   }
   return { circle, seed: circle.seeds.find(s => s.id === req.params.seedId) };
 }
+
+// Toggle my support for a queued topic. One per member, freely taken back —
+// the count is what orders the queue (D27).
+router.put('/seeds/:seedId/support', async (req, res) => {
+  if (!assertOwnApp(req, res)) return;
+  try {
+    const found = await loadSeed(req, res);
+    if (!found) return;
+    const { supported } = await circles.supportSeed({
+      store, circleId: found.circle.id, seedId: found.seed.id, userId: userIdOf(req),
+    });
+    res.json({ supported, circle: circles.toClient(found.circle, { userId: userIdOf(req) }) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Move a queued topic to the front, over the support order (D30). Creator only,
+// enforced in the funnel.
+router.post('/seeds/:seedId/promote', async (req, res) => {
+  if (!assertOwnApp(req, res)) return;
+  try {
+    const found = await loadSeed(req, res);
+    if (!found) return;
+    await circles.promoteSeed({
+      store, circleId: found.circle.id, seedId: found.seed.id, userId: userIdOf(req),
+    });
+    res.json({ circle: circles.toClient(found.circle, { userId: userIdOf(req) }) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
 
 router.get('/seeds/:seedId/shares', async (req, res) => {
   if (!assertOwnApp(req, res)) return;
@@ -288,7 +367,8 @@ router.get('/seeds/:seedId/result', async (req, res) => {
     const found = await loadSeed(req, res);
     if (!found) return;
     threshold.assertMember(found.circle, userIdOf(req));
-    if (found.seed.phase !== 'revealed' || !found.seed.result) {
+    // A skipped topic is revealed too — it kept every story it had.
+    if (!circles.DONE_PHASES.includes(found.seed.phase) || !found.seed.result) {
       return res.status(404).json({ error: 'This topic has not been revealed yet' });
     }
     const shares = await threshold.listShares({
