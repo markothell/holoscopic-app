@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { memorialApiFor } from '@/services/api';
+import { loadMemorial } from '@/lib/memorial';
 import { MemorialProvider } from '@/components/MemorialProvider';
 import Beacon from '@/components/Beacon';
 
@@ -11,20 +11,9 @@ import Beacon from '@/components/Beacon';
 // rather than in each page is what lets client components several levels down
 // — the compose sheet, the report control — act on the right memorial without
 // the slug being threaded through as a prop at every step.
-
-async function loadMemorial(slug: string) {
-  try {
-    const { memorial } = await memorialApiFor(slug).config();
-    // resolveInstance falls back to the platform's default instance when a
-    // header names nothing it recognises, so a typo'd slug returns a perfectly
-    // valid config for the WRONG memorial. Only a config that names a subject
-    // is a memorial; anything else is that fallback, and it must 404.
-    if (!memorial?.subjectName) return null;
-    return memorial;
-  } catch {
-    return null;
-  }
-}
+//
+// loadMemorial lives in lib/memorial.ts and is request-cached, so the two
+// calls below — metadata and body — plus the page's own are one fetch.
 
 // Props come from Next's generated route types (`LayoutProps`/`PageProps`),
 // not hand-written shapes. They are keyed on the literal route, so renaming or

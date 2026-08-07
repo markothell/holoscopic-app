@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { memorialApiFor } from '@/services/api';
+import { loadConfig } from '@/lib/memorial';
 import PromptSentence from '@/components/PromptSentence';
 import ComposeButton from '@/components/compose/ComposeButton';
 import AudioPill from '@/components/audio/AudioPill';
@@ -26,6 +27,7 @@ function Sibling({ base, memory, subjectName }: {
     <li>
       <Link
         href={`${base}/m/${memory.id}`}
+        prefetch={false}
         className="block rounded-[3px] bg-card px-5 py-4 shadow-[var(--shadow-card)]
                    transition-shadow duration-300 hover:shadow-[var(--shadow-lift)]"
       >
@@ -61,7 +63,8 @@ export default async function MemoryPage({
   let config;
   try {
     [config, detail] = await Promise.all([
-      api.config(),
+      // Shares the layout's fetch — see lib/memorial.ts.
+      loadConfig(slug),
       api.memory(id),
     ]);
   } catch (err) {
@@ -77,11 +80,14 @@ export default async function MemoryPage({
 
   return (
     <main className="mx-auto max-w-md px-5 pb-24">
-      {/* Lets a transcript appear the moment Deepgram returns it. */}
-      <LiveWall instanceId={config.memorial.instanceId} announce={false} />
+      {/* Lets this memory's transcript appear the moment Deepgram returns
+          it. Scoped to this id — see the component; the wall deliberately
+          mounts nothing live at all. */}
+      <LiveWall instanceId={config.memorial.instanceId} memoryId={memory.id} />
       <nav className="pt-8 pb-6">
         <Link
           href={base}
+          prefetch={false}
           className="text-[0.9375rem] text-ink-faint transition-colors hover:text-ink"
         >
           ← All memories of {name}
@@ -98,6 +104,7 @@ export default async function MemoryPage({
               {' · added to '}
               <Link
                 href={`${base}/m/${memory.replyTo.id}`}
+                prefetch={false}
                 className="underline decoration-rule underline-offset-2 hover:text-ink"
               >
                 {memory.replyTo.anonymous

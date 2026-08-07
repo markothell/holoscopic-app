@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { memorialApiFor } from '@/services/api';
+import { loadConfig } from '@/lib/memorial';
 import MemoryCard from '@/components/MemoryCard';
 import ComposeButton from '@/components/compose/ComposeButton';
 import FilterRail from '@/components/tags/FilterRail';
 import TagPortrait from '@/components/tags/TagPortrait';
 import SortBar from '@/components/tags/SortBar';
-import LiveWall from '@/components/LiveWall';
 import MemorialFooter from '@/components/MemorialFooter';
 import { activeTagIds, activeSort } from '@/lib/filters';
 import type { ConfigResponse, WallResponse } from '@/lib/types';
@@ -36,7 +36,9 @@ export default async function MemorialWall({
 
   try {
     [config, wall] = await Promise.all([
-      api.config(),
+      // The layout already resolved this memorial; loadConfig is request-cached,
+      // so this shares that fetch rather than making a second one.
+      loadConfig(slug),
       api.wall({ limit: 20, tags, sort }),
     ]);
   } catch {
@@ -74,9 +76,6 @@ export default async function MemorialWall({
 
   return (
     <main className="mx-auto max-w-md px-5 pb-24">
-      {/* Announces memories that arrive while you're here; never moves what
-          you're reading. */}
-      <LiveWall instanceId={memorial.instanceId} />
       {/* ── Who this is for ─────────────────────────────────────────────── */}
       <header className="pt-12 pb-10">
         {memorial.subjectPhotoUrl ? (
@@ -154,7 +153,7 @@ export default async function MemorialWall({
               <>
                 Try one word on its own,
                 <br />
-                or <Link href={base} className="text-dial underline underline-offset-4">show all memories</Link>.
+                or <Link href={base} prefetch={false} className="text-dial underline underline-offset-4">show all memories</Link>.
               </>
             ) : (
               <>

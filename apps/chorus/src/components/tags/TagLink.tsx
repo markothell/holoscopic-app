@@ -14,6 +14,16 @@ import type { Tag } from '@/lib/types';
 // `relative z-10` on both: inside a memory card these sit over the stretched
 // link overlay that makes the whole card tappable. Without it the overlay
 // swallows the tap and opens the memory instead of filtering.
+//
+// prefetch={false} on both, and on every other link under /c/<slug>.
+//
+// A wall carries dozens of these — three or four per memory, eighteen more in
+// the filter rail — and each one addresses a DIFFERENT filtered wall. Left to
+// prefetch, every one that scrolled into view fetched its own server render,
+// so a single visitor opening a single page cost the backend dozens of
+// requests. It is also the wrong trade for the phone this app is designed
+// for: on one bar of signal, prefetching thirty-eight pages to make one of
+// them feel instant spends the bandwidth the visible page is still using.
 
 export default function TagLink({
   tag, href, active = false, variant = 'chip', size = 'sm',
@@ -28,6 +38,7 @@ export default function TagLink({
     return (
       <Link
         href={href}
+        prefetch={false}
         aria-label={active ? `Remove the filter ${tag.label}` : `Show memories tagged ${tag.label}`}
         className={`blank relative z-10 rounded-[2px] transition-colors
                     ${active ? 'text-dial' : 'hover:text-dial'}`}
@@ -40,6 +51,7 @@ export default function TagLink({
   return (
     <Link
       href={href}
+      prefetch={false}
       aria-label={active ? `Remove the filter ${tag.label}` : `Show memories tagged ${tag.label}`}
       className={`relative z-10 inline-flex items-center rounded-full transition-colors
                   ${size === 'sm' ? 'px-2.5 py-1 text-[0.8125rem]' : 'px-3.5 py-1.5 text-[0.9375rem]'}

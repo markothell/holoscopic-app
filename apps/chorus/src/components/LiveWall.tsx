@@ -1,27 +1,44 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { io, type Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 
-// The wall, alive.
+// One memory, watching for its own transcript.
 //
-// A memorial is often open on a kitchen table while a family adds to it from
-// three different phones, and watching it grow is the emotional core of the
-// thing. But content must NEVER move under someone who is reading — on a page
-// of stories about a person who died, having a paragraph jump mid-sentence is
-// worse than a slightly stale wall.
+// THE WALL NO LONGER MOUNTS THIS, and that is the point of the current shape.
 //
-// So: new memories are announced, never inserted. A quiet count appears, and
-// tapping it refreshes and returns you to the top. The one exception is when
-// you're already at the very top with nothing to lose — then it just refreshes,
-// and the new memory settles in on its own.
+// It used to. Every visitor to /c/<slug> opened a socket so that a memory
+// added from another phone could be announced — "a memorial is often open on a
+// kitchen table while a family adds to it from three different phones" — and
+// the announcement was carefully built never to move content under a reader.
+// The design was right and the arithmetic was not:
 //
-// This component renders only the notice. The wall itself stays a Server
-// Component; refreshing re-runs it on the server, so there is no second
-// rendering path to keep in sync.
-
-const AT_TOP_PX = 24;
+//   • `memory_updated` and `transcript_ready` called router.refresh() on EVERY
+//     connected client, unconditionally. router.refresh() is a full server
+//     re-render, so one transcript completing with three hundred people on the
+//     wall was three hundred simultaneous renders — all inside the same couple
+//     of hundred milliseconds, because they were all reacting to one broadcast.
+//     memorialReadLimiter allows 600/min AGGREGATE across every memorial (a
+//     server-rendered wall arrives from a handful of Vercel egress IPs, so a
+//     per-visitor allowance would mean nothing), and half that budget went in a
+//     fraction of a second. The next reader got "This memorial is very busy"
+//     while doing nothing but reading.
+//   • Almost nobody was ever there to see the payoff. Most people arrive from
+//     a text message, read for ninety seconds, and leave. Nothing changes while
+//     they are there, so the connection bought a moment they never reached.
+//
+// So the wall is plain server-rendered HTML again, and this component keeps
+// only the case where live genuinely earns its keep: you recorded a memory,
+// you are looking at it, and Deepgram is about to hand back the words. One
+// reader, one memory, one thing that will visibly change within seconds.
+//
+// IF THE WALL EVER GOES LIVE AGAIN, the shape that scales is: announce, never
+// refresh (a counter costs no request at all), and never react to an event
+// about something that is not on this page. Both rules are applied below.
+//
+// Not renamed to something like LiveTranscript only because the tree is
+// shared and a rename is a worse diff than a comment right now.
 
 export default function LiveWall({
   // The RESOLVED instance id from GET /config — never the /c/<slug> slug.
@@ -31,59 +48,49 @@ export default function LiveWall({
   // is completely silent: the socket connects, the join is accepted, and no
   // event ever arrives.
   instanceId,
-  // A single memory's page joins the same room but has nothing to announce —
-  // it only wants its own transcript to appear when Deepgram finishes.
-  announce = true,
-}: { instanceId: string; announce?: boolean }) {
+  // The memory this page is showing. Events name an id; anything that is not
+  // this one is somebody else's memory changing somewhere else on the
+  // memorial, and re-rendering this page for it is pure cost.
+  memoryId,
+}: { instanceId: string; memoryId: string }) {
   const router = useRouter();
-  const [pending, setPending] = useState(0);
-  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SERVER_URL
       || (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api').replace(/\/api\/?$/, '');
 
     const socket = io(url, { transports: ['websocket', 'polling'] });
-    socketRef.current = socket;
-
     const join = () => socket.emit('memorial:join', { instanceId });
     socket.on('connect', join);
 
-    socket.on('memory_created', () => {
-      if (!announce) return;
-      // Reading at the very top means nothing is under the reader's eye yet,
-      // so the memory can simply appear.
-      if (window.scrollY <= AT_TOP_PX) router.refresh();
-      else setPending(n => n + 1);
+    // Spread the herd. A single memory can be shared widely enough that many
+    // people have it open at once, and a broadcast reaches all of them in the
+    // same instant. Up to a second and a half of jitter is imperceptible on a
+    // transcript that took twenty seconds to arrive, and it turns a spike into
+    // a trickle. Cleared on unmount so a refresh cannot fire after navigation.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refreshSoon = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => router.refresh(), Math.random() * 1500);
+    };
+
+    // Deepgram came back. The one thing this component exists for.
+    socket.on('transcript_ready', ({ id }: { id?: string }) => {
+      if (id === memoryId) refreshSoon();
     });
 
-    // A curator hiding something, or a transcript arriving, changes the page
-    // without adding to it — no announcement, just quietly correct itself.
-    socket.on('memory_updated', () => router.refresh());
-    socket.on('transcript_ready', () => router.refresh());
+    // A curator hid or restored this memory. Refreshing is what turns a hidden
+    // memory's page into the 404 it is supposed to be.
+    socket.on('memory_updated', ({ id }: { id?: string }) => {
+      if (id === memoryId) refreshSoon();
+    });
 
     return () => {
+      clearTimeout(timer);
       socket.emit('memorial:leave', { instanceId });
       socket.disconnect();
-      socketRef.current = null;
     };
-  }, [router, announce, instanceId]);
+  }, [router, instanceId, memoryId]);
 
-  if (pending === 0) return null;
-
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        setPending(0);
-        router.refresh();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }}
-      className="fixed left-1/2 top-4 z-30 -translate-x-1/2 rounded-full bg-dial px-4 py-2
-                 text-[0.875rem] font-medium text-card-raised shadow-[var(--shadow-lift)]
-                 animate-[settle_320ms_cubic-bezier(0.16,0.84,0.44,1)]"
-    >
-      {pending === 1 ? '1 new memory' : `${pending} new memories`}
-    </button>
-  );
+  return null;
 }

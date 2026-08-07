@@ -47,6 +47,7 @@ export default function FilterRail({
             ))}
             <Link
               href={clearFiltersHref(base, params)}
+              prefetch={false}
               className="px-2 py-1 text-[0.875rem] text-ink-faint underline
                          decoration-rule underline-offset-4 hover:text-ink"
             >

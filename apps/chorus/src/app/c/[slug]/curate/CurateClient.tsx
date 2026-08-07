@@ -129,7 +129,7 @@ export default function CurateClient() {
                           ${memory.status === 'live' ? 'bg-card' : 'bg-nil-deep'}`}
             >
               <div className="flex items-baseline justify-between gap-3">
-                <Link href={`${base}/m/${memory.id}`} className="voice text-[1.125rem] text-ink underline-offset-4 hover:underline">
+                <Link href={`${base}/m/${memory.id}`} prefetch={false} className="voice text-[1.125rem] text-ink underline-offset-4 hover:underline">
                   {memory.title}
                 </Link>
                 {memory.flagCount > 0 && (

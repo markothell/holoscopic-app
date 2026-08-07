@@ -48,7 +48,18 @@ export function storeContributorToken(token: string) {
 async function apiFetch<T>(
   instance: string,
   path: string,
-  options: { method?: string; body?: unknown; withContributor?: boolean } = {},
+  options: {
+    method?: string;
+    body?: unknown;
+    withContributor?: boolean;
+    /**
+     * Seconds this response may be reused across requests. Omitted means
+     * no-store, which is the right default for everything a contributor's own
+     * action changes. Only pass it for data whose staleness nobody can
+     * perceive — see `config` below, the one caller.
+     */
+    revalidate?: number;
+  } = {},
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -64,8 +75,11 @@ async function apiFetch<T>(
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     // A memorial gains memories at unpredictable times and a stale wall is the
-    // one thing that makes a contributor think their memory did not save.
-    cache: 'no-store',
+    // one thing that makes a contributor think their memory did not save. So
+    // no-store unless a caller has thought about it and said otherwise.
+    ...(options.revalidate === undefined
+      ? { cache: 'no-store' as const }
+      : { next: { revalidate: options.revalidate } }),
   });
 
   const json = await res.json().catch(() => ({}));
@@ -86,7 +100,32 @@ export function memorialApiFor(instance: string) {
   return {
     instance,
 
-    config: () => apiFetch<ConfigResponse>(instance, '/memorial/config'),
+    // Cached for a minute, and the ONLY call here that is.
+    //
+    // Every route under /c/<slug> renders the layout, and the layout needs
+    // this — so with no-store it was one backend call per render, and a render
+    // happens for every crawl, every link prefetch, and every router.refresh()
+    // as well as every human. It was the busiest endpoint on the server by an
+    // order of magnitude, answering with data that changes when a curator
+    // edits the memorial: never, on the timescale of a request.
+    //
+    // What goes stale for up to 60s is the TAG VOCABULARY, since it rides
+    // along in this response. A word used for the first time can take a minute
+    // to appear in the filter rail. The contributor's own memory does not
+    // wait — the wall is still no-store — so nobody sees their own submission
+    // go missing, which is the staleness that actually costs something.
+    //
+    // The slug is in the URL as well as in the x-instance-id header because
+    // the fetch cache is keyed on the request, and this app cannot afford to
+    // be wrong about whether headers participate in that key: two memorials
+    // sharing one cache entry means one family reading another family's
+    // memories. The backend ignores the parameter; it is here to make the key
+    // unmistakable. (`i` already means "instance" on the Deepgram callback.)
+    config: () => apiFetch<ConfigResponse>(
+      instance,
+      `/memorial/config?i=${encodeURIComponent(instance)}`,
+      { revalidate: 60 },
+    ),
 
     wall: (params: {
       tags?: string[]; cursor?: string | null; limit?: number; sort?: string;

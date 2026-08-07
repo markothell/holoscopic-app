@@ -22,6 +22,7 @@ export default function SortBar({ base, params }: { base: string; params: Search
           <Link
             key={key}
             href={sortHref(base, params, key)}
+            prefetch={false}
             aria-current={active ? 'true' : undefined}
             className={`rounded-full px-2.5 py-1 text-[0.8125rem] transition-colors
                         ${active ? 'bg-card text-ink' : 'text-ink-faint hover:text-ink'}`}

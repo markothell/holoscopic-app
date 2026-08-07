@@ -57,9 +57,24 @@ export function sortHref(base: string, params: SearchParams, sort: SortKey): str
 
 // The default ordering is left OUT of the URL, so the plain link a person is
 // texted stays clean and every view has exactly one address.
+//
+// TAG IDS ARE SORTED for the same reason, and it is load-bearing rather than
+// tidy. Filtering is AND across the set, so ?tags=A,B and ?tags=B,A are the
+// same wall — but as URLs they are two addresses, two cache entries, and two
+// server renders. Left in click order, a six-word filter had 720 spellings.
+//
+// That is not a hypothetical. A crawler walking the tag links (every chip on
+// every card, every chip in the rail) enumerated them at roughly a request a
+// second for days: 1,215 renders in one sample, every single one returning an
+// empty wall, the same filter SET arriving up to 54 times by 54 different
+// routes. Sorting collapses each set to one address and makes the space the
+// crawler can reach finite.
+//
+// Reading stays order-insensitive — the backend ANDs a multikey index — so
+// every link already in circulation keeps working, whatever order it spells.
 function buildHref(base: string, tags: string[], sort: SortKey): string {
   const query = new URLSearchParams();
-  if (tags.length) query.set('tags', tags.join(','));
+  if (tags.length) query.set('tags', [...tags].sort().join(','));
   if (sort !== 'newest') query.set('sort', sort);
   const qs = query.toString();
   return qs ? `${base}?${qs}` : base;

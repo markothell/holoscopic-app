@@ -56,6 +56,7 @@ export default function TagPortrait({
             <Link
               key={tag.id}
               href={toggleTagHref(base, params, tag.id)}
+              prefetch={false}
               className={`voice ${STEPS[step]} leading-none text-ink transition-colors
                           hover:text-dial`}
               // The count is the whole point of the size, so say it where the

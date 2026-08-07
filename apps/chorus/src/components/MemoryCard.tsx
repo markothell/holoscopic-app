@@ -58,13 +58,13 @@ export default function MemoryCard({
             is exactly one link per memory and never an empty heading. */}
         {memory.replyTo ? (
           <p className="eyebrow">
-            <Link href={`${base}/m/${memory.id}`} className="after:absolute after:inset-0 after:content-['']">
+            <Link href={`${base}/m/${memory.id}`} prefetch={false} className="after:absolute after:inset-0 after:content-['']">
               Added to “{memory.replyTo.title}”
             </Link>
           </p>
         ) : (
           <h2 className="voice text-[1.4375rem] leading-tight text-ink">
-            <Link href={`${base}/m/${memory.id}`} className="after:absolute after:inset-0 after:content-['']">
+            <Link href={`${base}/m/${memory.id}`} prefetch={false} className="after:absolute after:inset-0 after:content-['']">
               {memory.title}
             </Link>
           </h2>
