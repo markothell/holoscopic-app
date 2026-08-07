@@ -86,7 +86,9 @@ the round may have turned over.
 - **The reveal's cutoff is a reader's control, and nothing about it is stored** (D24, on top of
   D15). Three in four by default, with *more than half* and *all of them*. Any banding is computed
   at render from `agreement`, so moving that line is a re-render — never a migration, and never a
-  schema field.
+  schema field. **The threshold appears once three rankings are in**, gated on rankings
+  submitted rather than on membership: a twelve-person circle that drew three behaves like a
+  three-person one, the cycle still reveals below that, and no circle has a minimum size.
 - **One parent instance holds every circle, and membership is the access boundary** (D20). The
   tenant is the `Circle` at `/t/<urlName>`, never its own `Instance` — a circle has no economy and
   no per-tenant config, since its clocks, members and invitations all live on the `Circle`

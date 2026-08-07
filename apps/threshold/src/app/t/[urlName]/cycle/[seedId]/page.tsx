@@ -11,8 +11,13 @@ import { Page, Title, Note, NotBuilt } from '@/components/Scaffold';
 //
 // Where the line sits is a READER'S CONTROL, defaulting to three in four, with
 // "more than half" and "all of them". This is what D15 bought: nothing is
-// stored, so moving that line is a re-render and never a migration. Below four
-// rankers the threshold framing is suppressed entirely.
+// stored, so moving that line is a re-render and never a migration.
+//
+// THE THRESHOLD APPEARS ONCE THREE PEOPLE HAVE SUBMITTED. Below that this page
+// still renders — the stories are here and attributed — and simply says nothing
+// about a group's line. The gate is on rankings submitted, never on membership,
+// so a twelve-person circle that drew three rankings behaves the same as a
+// three-person one and D4 stays intact.
 export default function CyclePage() {
   return (
     <Page>

@@ -436,9 +436,8 @@ A cutoff still has to exist somewhere for the circle-final graph to say anything
 topics, and `meanCoherence` per topic may be enough on its own. That's Q1 — now a display question,
 not a schema one.
 
-Edge cases the funnel must handle: `R = 0` (nobody ranked → reveal empty, `meanCoherence: null`);
-`R = 1` (every share reads as unanimous by construction — show the placement, suppress the
-coherence framing entirely, since one person cannot disagree with themselves).
+`R = 0` still computes: the reveal is empty and `meanCoherence` is `null`. Everything below three
+rankers is handled by one rule at the display rather than as arithmetic special cases — see §6.3.
 
 ### 6.2 The ranking space — a queue, then a review
 
@@ -497,10 +496,19 @@ Moving that control is the argument the screen is making: the threshold is not a
 stories, it is a function of how much agreement you decide to require. Sliding it from *all of them*
 to *more than half* narrows the band toward nothing, in front of you.
 
-**Below four rankers there is no threshold framing at all** — show the stories and who put them
-where, and say nothing about a group's line. At one ranker every story is unanimous by construction;
-at two or three, `agreement` takes so few values that a band is an artifact of arithmetic rather
-than a finding. Four is the floor (§13, Q2).
+**The threshold appears once three people have submitted.** Below that the cycle still reveals —
+the stories are there, attributed, and you can see who put what where — but the screen says nothing
+about a group's line.
+
+Three is the floor because it is the smallest number that has a shape: at one ranker every story is
+unanimous by construction, and at two a disagreement is just two people differing with no group to
+be a group. At three, a 2–1 split is a real thing to look at.
+
+**The gate is on rankings submitted, never on membership**, which is what makes it the whole answer.
+A twelve-person circle where only three people ranked gets the same treatment as a three-person one,
+and D4 stays intact — the machine still advances on deadline or manual advance regardless of who
+showed up. Nothing about circle creation changes: there is no minimum size, and no warning to
+write.
 
 #### Circle-final: the shape of the conversation
 
@@ -790,8 +798,9 @@ M0 and M1 are the whole architectural bet and neither needs a designer. Start th
   crowded means a fuzzy one. A story is a **dot with a short preview** that expands on tap;
   playback lives inside the expanded state. §6.3
 - **D24** — **Where the line sits is a reader's control**, defaulting to three in four, with *more
-  than half* and *all of them*. Nothing is stored, so this is the payoff of D15. Below **four
-  rankers** the threshold framing is suppressed entirely. §6.3
+  than half* and *all of them*. Nothing is stored, so this is the payoff of D15. **The threshold
+  appears once three rankings are in** — the gate is on rankings submitted, never on membership, so
+  the cycle still reveals below that and simply shows the stories. §6.3
 - **D25** — The circle-final screen is **topic nodes on a graph**, each carrying the topic, the
   participant count, the pole names, and one three-part proportion bar. It is **a record of a
   conversation, not a verdict** — no winner, no league table, no most-contested headline. §6.3
@@ -803,19 +812,14 @@ M0 and M1 are the whole architectural bet and neither needs a designer. Start th
 
 ## 13. Open questions
 
-- **Q1 — Four rankers is the floor, so what does a circle do about it?** §6.3 suppresses the
-  threshold framing below four complete rankings, which is the display half. The other half is not
-  decided: does circle creation warn or refuse below four members, and what does a cycle show when
-  a big circle happens to draw only three rankings? The machine never blocks on a person (D4), so
-  this state is reachable in any circle, not only small ones. §6.3
-- **Q2 — Does a member rank their own story?** Currently yes, for a uniform denominator, and D22
+- **Q1 — Does a member rank their own story?** Currently yes, for a uniform denominator, and D22
   now pre-places it on the pole its author chose. If small circles feel distorted by it, the
   alternative is excluding it and normalizing per-ranker. §5.2
-- **Q3 — Email opt-out mechanics.** A no-login unsubscribe link needs a signed token; the existing
+- **Q2 — Email opt-out mechanics.** A no-login unsubscribe link needs a signed token; the existing
   contributor-token HMAC is the obvious basis. Also: is opt-out per circle or per account? §3.6
-- **Q4 — What happens to a circle that stalls?** A 12-seed circle at 3 days per phase is 108 days.
+- **Q3 — What happens to a circle that stalls?** A 12-seed circle at 3 days per phase is 108 days.
   Is there a way for the creator to skip a seed, shorten a phase mid-flight, or end early? Probably
   yes, and it is not designed.
-- **Q5 — Does the seeding round need its own review?** Twelve topics arrive at once with no
+- **Q4 — Does the seeding round need its own review?** Twelve topics arrive at once with no
   filtering. A duplicate or an incoherent polarity ("Authority: Good / Complicated") burns a whole
   cycle, and nothing currently catches it.
