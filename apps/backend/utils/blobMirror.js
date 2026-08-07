@@ -113,6 +113,27 @@ function makeClient(env = process.env) {
 }
 
 /**
+ * The source object's size, from a HEAD — no body, no egress.
+ *
+ * Returns null for anything less than a clean answer: a failed request, a
+ * missing or unparseable Content-Length, a CDN that answers HEAD differently
+ * from GET. Null means "ask the expensive way", never "assume it matches" —
+ * the whole point of this file is that an unverified backup is not a backup.
+ */
+async function sourceLength(url, fetchImpl) {
+  try {
+    const res = await fetchImpl(url, { method: 'HEAD', signal: AbortSignal.timeout(30_000) });
+    if (!res?.ok) return null;
+    const raw = res.headers?.get?.('content-length');
+    if (raw == null) return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Copy one public blob URL into the backup bucket, unless an object of the
  * same size is already there.
  *
@@ -137,9 +158,44 @@ async function mirrorObject({
   const client = s3 || makeClient(env);
   const { PutObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 
-  // Fetch first: the source size is what decides whether an existing copy is
-  // complete. Blob objects are immutable (a re-record uploads a new object),
-  // so a size match means the same bytes.
+  // ── Is it already here? Answer that WITHOUT moving the bytes ──────────────
+  //
+  // This used to download the whole recording first and only then ask whether
+  // a copy of that size was already in the bucket — which meant the nightly
+  // sweep re-downloaded every voice in every memorial, every night, forever,
+  // and reported "0 copied, N already present" while doing it. The cost is
+  // Blob egress and Render bandwidth, it grows with each recording, and it
+  // never converges: a memorial that fills up costs more every night than the
+  // night before. It surfaced as gigabytes of bandwidth against a day with a
+  // handful of visitors.
+  //
+  // Two HEADs answer the same question for a few hundred bytes. Destination
+  // first, because it is the cheaper call and a miss (the first-copy path)
+  // means we have to download anyway.
+  //
+  // The size comparison is unchanged, and so is what it relies on: Blob
+  // objects are immutable — a re-record uploads a new object — so a size match
+  // means the same bytes.
+  let existingBytes = null;
+  try {
+    const head = await client.send(new HeadObjectCommand({ Bucket: c.bucket, Key: key }));
+    if (typeof head?.ContentLength === 'number') existingBytes = head.ContentLength;
+  } catch {
+    // A miss is the normal path on first copy. Any other error surfaces on the
+    // Put below rather than being diagnosed twice.
+  }
+
+  if (existingBytes !== null) {
+    const sourceBytes = await sourceLength(url, fetchImpl);
+    if (sourceBytes !== null && sourceBytes === existingBytes) {
+      return { status: 'already', key, bytes: existingBytes };
+    }
+    // Sizes differ, or the source would not say. Fall through and download,
+    // which is exactly what this function did before — including how it
+    // reports a source that has gone missing. reconcileGone's notion of a
+    // permanently dead object depends on that, so it must not change here.
+  }
+
   let body;
   let contentType;
   try {
@@ -149,14 +205,6 @@ async function mirrorObject({
     body = Buffer.from(await res.arrayBuffer());
   } catch (err) {
     return { status: 'source-unreachable', error: err.message };
-  }
-
-  try {
-    const head = await client.send(new HeadObjectCommand({ Bucket: c.bucket, Key: key }));
-    if (head?.ContentLength === body.length) return { status: 'already', key, bytes: body.length };
-  } catch {
-    // A miss is the normal path on first copy. Any other error surfaces on the
-    // Put below rather than being diagnosed twice.
   }
 
   try {

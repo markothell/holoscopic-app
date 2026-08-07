@@ -37,11 +37,32 @@ const CONFIGURED = {
 const AUDIO_URL = 'https://eiuui62jhmfnk5es.public.blob.vercel-storage.com/memorial/chorus/1785502117538-abc.webm';
 const PATHNAME = 'memorial/chorus/1785502117538-abc.webm';
 
-const okFetch = (bytes = 1234) => async () => ({
-  ok: true,
-  headers: { get: () => 'audio/webm' },
-  arrayBuffer: async () => new ArrayBuffer(bytes),
-});
+// A stand-in Blob CDN that answers HEAD and GET the way the real one does, and
+// records which it was asked for — `calls` is how a test proves the sweep did
+// not move the bytes. `headBytes` lets a test make HEAD disagree with GET (or
+// go silent), which is the case that must fall back to downloading.
+const okFetch = (bytes = 1234, { headBytes = bytes } = {}) => {
+  const fn = async (_url, opts = {}) => {
+    fn.calls.push(opts.method || 'GET');
+    if ((opts.method || 'GET') === 'HEAD') {
+      return {
+        ok: true,
+        headers: {
+          get: (h) => (String(h).toLowerCase() === 'content-length'
+            ? (headBytes === null ? null : String(headBytes))
+            : 'audio/webm'),
+        },
+      };
+    }
+    return {
+      ok: true,
+      headers: { get: () => 'audio/webm' },
+      arrayBuffer: async () => new ArrayBuffer(bytes),
+    };
+  };
+  fn.calls = [];
+  return fn;
+};
 
 // A stand-in S3 that records what it was asked to do. `headResult` decides
 // whether an object is already present.
@@ -124,14 +145,39 @@ test('mirrorObject: copies a recording that is not there yet', async () => {
   });
 });
 
-test('mirrorObject: a copy of the same size is left alone', async () => {
+test('mirrorObject: a copy of the same size is left alone, and never downloaded', async () => {
   await withEnv({ ...CONFIGURED }, async () => {
     const s3 = fakeS3({ headResult: { ContentLength: 2048 } });
+    const fetchImpl = okFetch(2048);
     const res = await mirror.mirrorObject({
-      url: AUDIO_URL, pathname: PATHNAME, s3, fetchImpl: okFetch(2048),
+      url: AUDIO_URL, pathname: PATHNAME, s3, fetchImpl,
     });
     assert.equal(res.status, 'already');
+    assert.equal(res.bytes, 2048);
     assert.equal(s3.calls.filter(c => c.name === 'PutObjectCommand').length, 0);
+
+    // The point of the whole exercise. The nightly sweep runs this path once
+    // per recording per night forever, so a GET here is not a small waste —
+    // it is the memorial's entire audio library re-downloaded every night,
+    // and it grows with every voice added. HEAD only.
+    assert.deepEqual(fetchImpl.calls, ['HEAD']);
+  });
+});
+
+test('mirrorObject: a source that will not report its size is downloaded, not assumed', async () => {
+  // A CDN that answers HEAD without a Content-Length must NOT be read as
+  // "matches, skip it". An unverified backup is not a backup, so the
+  // uncertain case pays the download and compares for real.
+  await withEnv({ ...CONFIGURED }, async () => {
+    const s3 = fakeS3({ headResult: { ContentLength: 2048 } });
+    const fetchImpl = okFetch(2048, { headBytes: null });
+    const res = await mirror.mirrorObject({
+      url: AUDIO_URL, pathname: PATHNAME, s3, fetchImpl,
+    });
+    // Downloaded, found to match, and re-put rather than trusted — the old
+    // behaviour, which is the correct fallback when HEAD tells us nothing.
+    assert.deepEqual(fetchImpl.calls, ['HEAD', 'GET']);
+    assert.equal(res.status, 'copied');
   });
 });
 
