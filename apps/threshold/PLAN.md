@@ -864,9 +864,15 @@ step before it settled.
    the anonymity line is said before anything is written, and M3b adds the recognisable-voice
    caveat in the same place.
 4. **M3b — audio**: the recorder with the hard cap, `/api/audio/upload`, playback. The riskiest
-   part per-browser, and it changes nothing about the flow around it.
-5. **The ranking queue** (§6.2): the queue, then the review screen that owns submit. Needs stories
-   to exist, which is why it follows 3.
+   part per-browser, and it changes nothing about the flow around it. Two places already reserve
+   its seams: the compose surface's anonymity line is where the recognisable-voice caveat goes, and
+   the ranking queue's story card is where the player goes.
+5. ~~**The ranking queue** (§6.2): the queue, then the review screen that owns submit.~~ **Done**,
+   ahead of 4 — M3b's bar is a recording on a physical device, and this needed only stories, which
+   3 produced. Unfinished reads as the remaining stories, never a count and never a dead button:
+   the review screen shows what is left and offers *Hear the rest*, and submit appears once nothing
+   is. Stories are ordered per reader (deterministic in viewer + seed), so posting first buys no
+   position — the same anchoring D17 closes the share phase to avoid.
 6. **The reveal** (§6.3), then the circle-final graph. The picture of what 5 produced.
 7. **M4 — mail and `/notifications`** (D31). The ticker already advances rounds; this is what makes
    an advance reach a person.

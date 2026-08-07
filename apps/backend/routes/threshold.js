@@ -118,9 +118,14 @@ router.get('/circles/:urlName', async (req, res) => {
       // them is the answer. It is also why a member who joined in week six
       // needs no special handling: they have no ranking, so everything reads as
       // waiting. Do NOT add a per-share "heard it" flag to get this.
+      //
+      // Your OWN stories are never waiting on you: choosing a pole is how you
+      // entered the compose surface, so telling one placed it (D22). Counting
+      // them here would ask somebody to sort a story they already sorted, and
+      // would overstate the marker by however many they told.
       const placed = new Set((ranking?.placements || []).map(p => p.shareId));
       payload.waitingShareIds = seed.phase === 'rank'
-        ? payload.shares.filter(s => !placed.has(s.id)).map(s => s.id)
+        ? payload.shares.filter(s => !s.isMine && !placed.has(s.id)).map(s => s.id)
         : [];
     }
     res.json({ circle: payload });

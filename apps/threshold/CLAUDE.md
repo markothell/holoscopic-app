@@ -23,18 +23,20 @@ surface, blob mirroring and transcription — 74 tests between `utils/circles.te
 `utils/threshold.test.js`, plus 17 integration checks in `scripts/check-circles.js` — and a
 frontend scaffold carrying the route skeleton, the auth stack, the API client and the wire types.
 
-The **circle page and the share surface are built for real** in the tide-line language (§9.2).
-`components/TideLine.tsx` is the app's one mark and `components/Shell.tsx` its chrome —
-`Scaffold.tsx` is now only for surfaces still unbuilt, and should be deleted when the last one lands.
+The **circle page, the share surface and the ranking queue are built for real** in the tide-line
+language (§9.2). `components/TideLine.tsx` is the app's one mark and `components/Shell.tsx` its
+chrome — `Scaffold.tsx` is now only for surfaces still unbuilt, and should be deleted when the last
+one lands.
 
-**Designed and not built:** the ranking queue (§6.2) and the two reveals (§6.3). Next per §11's
-build order is **M3b — audio**, whose bar is a real recording on a physical iPhone; the ranking
-queue follows it and now has real stories to sort.
+**Designed and not built:** the two reveals (§6.3) — the per-cycle threshold display and the
+circle-final graph. Also **M3b, audio**, whose bar is a real recording on a physical iPhone; the
+flow it slots into is built and verified, so it changes nothing around it.
 
-**A dev fixture is the fastest way to see any of this.** A Threshold instance exists on dev
-(`slug: threshold`); a circle needs members, stories and a queue before a surface shows anything.
-Build one through `utils/circles.js` + `utils/threshold.js` rather than by hand — a circle assembled
-with direct writes skips the funnel and lands in states the machine never produces.
+**`node scripts/seed-threshold-dev.js` from `apps/backend` is the fastest way to see any of it.**
+It builds a circle holding every state at once — a live cycle mid-sort, a queue with uneven support
+and a promotion, a revealed topic and a skipped one — through the funnels rather than by direct
+writes, which is the point: a circle assembled by hand lands in states the machine never produces
+and costs a day of debugging the page instead of the data. Dev only, and it prints its sign-ins.
 
 Build what those sections say rather than designing from the placeholders. `globals.css` already
 carries the real palette; `components/Scaffold.tsx` is chrome to be replaced, and its `NotBuilt`
@@ -96,6 +98,12 @@ the round may have turned over.
 - **Say the honest thing anyway.** In a twelve-person circle a voice recording identifies its
   speaker no matter what the payload strips. The compose surface has to tell people that *before*
   they record.
+- **Your own story is placed by telling it, and that lives in two places** (D22). The ranking client
+  seeds its local placements from `shares` where `isMine`, and the snapshot's `waitingShareIds`
+  excludes them. Both are needed and neither is stored: without the first, submit refuses a
+  complete-looking sort because your own story was never placed; without the second, the circle
+  page says three stories are waiting when two are. There is no server-side pre-placement to find —
+  a draft ranking is written the first time you place something, never on the phase opening.
 - **A ranking is one document, and submit is all-or-nothing** (D11). Drafts save as you sort and
   count toward nothing; `submittedAt` is what makes it real. A partial ranking would make the
   agreement fraction depend on who bothered.
