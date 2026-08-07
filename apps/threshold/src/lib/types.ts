@@ -168,6 +168,11 @@ export interface CircleResultTopic {
   unanimous: number;
   shareCount: number;
   meanCoherence: number | null;
+  /** Every story's position on the one axis, so the final screen sizes its
+   *  three-part bar at whatever cutoff the reader is holding. Positions rather
+   *  than three counts, because no band classification is stored OR served
+   *  (D15) — the cutoff stays a view parameter at both scales. */
+  agreements: (number | null)[];
   /** The group moved on before finishing this one, so a low ranker count here
    *  means something different (D30). */
   skipped: boolean;
@@ -184,7 +189,10 @@ export interface CircleResult {
    *  `single` routes this page to that cycle's reveal instead. */
   mode: 'single' | 'circle';
   phase: 'draft' | 'cycle' | 'idle' | 'closed';
+  /** Oldest first: a record of a conversation reads in the order it happened. */
   topics: CircleResultTopic[];
-  /** The topic this group split hardest on — the headline of the final screen. */
-  mostContested: string | null;
+  /** There is deliberately no most-contested id and no ranking of any kind
+   *  (D25). This screen is a record of a conversation, so it names no winner
+   *  and draws no conclusion. An earlier cut computed one; adding it back is
+   *  adding a verdict to a sharing circle. */
 }

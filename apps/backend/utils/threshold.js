@@ -546,7 +546,13 @@ async function computeResult({ store = mongoStore, seed }) {
   ]);
 
   const rankers = rankings.length;
-  if (rankers === 0 || shares.length === 0) {
+  // Only an ABSENCE OF STORIES gives an empty result. A topic with stories that
+  // nobody sorted still enumerates them, each with `agreement: null` — they were
+  // told, so they are part of the record, and the reveal and the circle-final
+  // bar both read their counts off this list. Short-circuiting on `rankers === 0`
+  // instead made a skipped topic report "0 stories" on a screen built to prove
+  // that skipping keeps them (D30).
+  if (shares.length === 0) {
     return {
       computedAt: new Date(),
       rankers,
@@ -616,24 +622,31 @@ function circleResult(circle) {
       unanimous: s.result.unanimous,
       shareCount: s.result.shares.length,
       meanCoherence: s.result.meanCoherence,
+      // Every story's position on the one axis, so the final screen can size
+      // its three-part bar at whatever cutoff the reader is holding. Sending
+      // the positions rather than three counts is D15 all the way out to the
+      // last screen: no band classification is stored OR served, so the cutoff
+      // stays a view parameter here exactly as it is on the per-cycle reveal.
+      agreements: s.result.shares.map(r => r.agreement),
       // The group moved on before finishing this one. Worth saying on the
       // graph, since a low ranker count here means something different.
       skipped: s.phase === 'skipped',
       revealedAt: s.revealedAt || null,
     }));
 
-  const scored = topics.filter(t => t.meanCoherence !== null);
   return {
     // D33 — a one-off has one node, and a graph of one node is not a graph, so
     // the client routes /result to that cycle's reveal instead. The mode is
     // what tells it which screen to draw.
     mode: circle.mode,
     phase: circle.phase,
+    // Oldest first: a record of a conversation reads in the order it happened.
     topics,
-    // Which topic split this group hardest — the headline of the final screen.
-    mostContested: scored.length
-      ? scored.reduce((lo, t) => (t.meanCoherence < lo.meanCoherence ? t : lo)).seedId
-      : null,
+    // There is deliberately NO most-contested id here, and no ranking of any
+    // kind (D25). This screen is a record of a conversation, so it names no
+    // winner and draws no conclusion — an earlier cut computed one and PLAN
+    // §6.3 said to take it out when this screen was built. Adding it back is
+    // adding a verdict to a sharing circle.
   };
 }
 

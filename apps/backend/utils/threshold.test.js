@@ -625,7 +625,7 @@ test('the reveal is a gradient, hand-computed', async () => {
   assert.equal('width' in result, false);
 });
 
-test('a reveal with nobody ranking is empty rather than wrong', async () => {
+test('a reveal nobody ranked keeps its stories, unplaced rather than absent', async () => {
   const store = memStore();
   useStore(store);
   const circle = await runningCircle(store, { members: 2 });
@@ -641,7 +641,30 @@ test('a reveal with nobody ranking is empty rather than wrong', async () => {
   assert.equal(seed.phase, 'revealed');
   assert.equal(seed.result.rankers, 0);
   assert.equal(seed.result.meanCoherence, null);
+
+  // The story was told, so it is part of the record — it simply has no
+  // position, which is what `agreement: null` says. Returning [] here made the
+  // reveal show nothing and the circle-final bar report "0 stories" for a topic
+  // that had one, which is exactly the claim skipping is supposed to disprove.
+  assert.equal(seed.result.shares.length, 1);
+  assert.equal(seed.result.shares[0].agreement, null);
+  assert.equal(seed.result.shares[0].coherence, null);
+  assert.deepEqual(seed.result.shares[0].splits, { a: 0, b: 0 });
+  assert.equal(seed.result.unanimous, 0);
+});
+
+test('a reveal with no stories at all is empty', async () => {
+  const store = memStore();
+  useStore(store);
+  const circle = await runningCircle(store, { members: 2 });
+  const seed = circle.seeds[0];
+
+  await circles.advanceCircle({ store, circleId: circle.id, userId: 'u1' });
+  await circles.advanceCircle({ store, circleId: circle.id, userId: 'u1' });
+
+  assert.equal(seed.phase, 'revealed');
   assert.deepEqual(seed.result.shares, []);
+  assert.equal(seed.result.meanCoherence, null);
 });
 
 test('a story nobody placed reads as unplaced, not as unanimous pole B', async () => {
@@ -732,14 +755,15 @@ test('a real 3-person circle: seed, share, rank, reveal, three cycles, complete'
   // Everyone ranked identically, so every topic is fully coherent.
   assert.equal(final.topics.every(t => t.meanCoherence === 1), true);
   assert.equal(final.topics.some(t => t.skipped), false);
-  assert.ok(final.mostContested);
+  // No ranking of any kind — this is a record of a conversation (D25).
+  assert.equal('mostContested' in final, false);
 
   await circles.closeCircle({ store, circleId: circle.id, userId: 'u1' });
   assert.equal(circle.phase, 'closed');
   assert.equal(threshold.circleResult(circle).topics.length, 3, 'and the record still reads');
 });
 
-test('circleResult reports the topic that split the group hardest', async () => {
+test('circleResult carries every story position, and names no winner (D25)', async () => {
   const store = memStore();
   useStore(store);
   const circle = await runningCircle(store, { members: 2, seeds: 2 });
@@ -768,7 +792,18 @@ test('circleResult reports the topic that split the group hardest', async () => 
   const final = threshold.circleResult(circle);
   assert.equal(final.topics[0].meanCoherence, 1);
   assert.equal(final.topics[1].meanCoherence, 0);
-  assert.equal(final.mostContested, circle.seeds[1].id);
+
+  // Every story's position travels, so the final screen can size its bar at
+  // whatever cutoff the reader is holding — no band classification is stored
+  // or served (D15).
+  assert.deepEqual(final.topics[0].agreements, [1, 1]);
+  assert.deepEqual(final.topics[1].agreements, [0.5, 0.5]);
+
+  // And there is deliberately no headline: a sharing circle names no winner
+  // and ranks no topic (D25).
+  assert.equal('mostContested' in final, false);
+  const asJson = JSON.stringify(final);
+  assert.equal(/contested|winner|rank(ing)?Of/i.test(asJson), false);
 });
 
 test('an author may tell their story on their own topic while it is queued', async () => {

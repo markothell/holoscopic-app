@@ -3,7 +3,7 @@
 **Status:** read §11 before assuming a section describes something that exists. **Built:** the
 backend through M3a including the topic queue (§3.3), and the participant's path end to end —
 the circle page, the seed form, the share surface and the ranking queue, in the tide-line language.
-**Designed and not built:** the two reveals (§6.3) and M3b, audio.
+**Designed and not built:** M3b (audio) and M4 (mail) — every participant surface is built.
 **Local dev port:** 4006. **Ships to:** `threshold.holoscopic.io` (add to backend `CLIENT_URL` at cutover).
 **Backend surface:** `apps/backend/routes/threshold.js` + `utils/threshold.js`, on the generic
 **Circle** layer (§3) that Threshold is the first consumer of.
@@ -523,8 +523,9 @@ render time. Playing with where the line sits costs a re-render, never a migrati
 ones that were 100%" is a filter on data that's already there.
 
 A cutoff still has to exist somewhere for the circle-final graph to say anything crisp across
-topics, and `meanCoherence` per topic may be enough on its own. That's Q1 — now a display question,
-not a schema one.
+topics. **Settled by building it:** that screen carries the same three-way control, so a reader
+moves one line and both scales answer to it. `circleResult` serves each topic's story positions
+rather than three counts, which is this rule holding all the way out to the last screen.
 
 `R = 0` still computes: the reveal is empty and `meanCoherence` is `null`. Everything below three
 rankers is handled by one rule at the display rather than as arithmetic special cases — see §6.3.
@@ -872,7 +873,12 @@ step before it settled.
    the review screen shows what is left and offers *Hear the rest*, and submit appears once nothing
    is. Stories are ordered per reader (deterministic in viewer + seed), so posting first buys no
    position — the same anchoring D17 closes the share phase to avoid.
-6. **The reveal** (§6.3), then the circle-final graph. The picture of what 5 produced.
+6. ~~**The reveal** (§6.3), then the circle-final graph.~~ **Done.** Three groups with the threshold
+   as the subject, the cutoff as a reader's control, and stories as dots that expand to the whole
+   story, its teller and the split. The circle-final draws every topic as a node with one three-part
+   bar, at the same control — which answers **Q1**: the cutoff a bar needs across topics is the
+   reveal's own, which is what makes the two screens one idea at two scales. `mostContested` is gone
+   from the payload, as §6.3 said it should be when this was built.
 7. **M4 — mail and `/notifications`** (D31). The ticker already advances rounds; this is what makes
    an advance reach a person.
 8. **M6 — launch pass.**
@@ -977,7 +983,11 @@ gradient are unchanged by everything above.
 
 ## 13. Open questions
 
-- **Q1 — Does the waiting marker want a "revealed while you were away" state too?** D32's marker is
+- ~~**Q1 — what cutoff does the circle-final graph use?**~~ **Answered by building it:** the same
+  three-way control as the per-cycle reveal, defaulting to three in four. `circleResult` serves each
+  topic's story positions rather than three counts, so no band classification is stored *or* served
+  and the cutoff stays a view parameter at both scales.
+- **Q2 — Does the waiting marker want a "revealed while you were away" state too?** D32's marker is
   derived from unplaced shares, which costs nothing and covers the live cycle. A topic that revealed
   between two visits is a different kind of new, and showing it would need a `members[].lastSeenAt`
   — the first stored field this feature would require, so it is worth wanting before adding. §3.3

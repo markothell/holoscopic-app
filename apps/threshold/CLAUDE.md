@@ -8,39 +8,30 @@ sit in the middle — that middle is the threshold.
 Local dev port **4006**, ships to `threshold.holoscopic.io` (add to backend `CLIENT_URL` at
 cutover). Next.js 16 + React 19 + Tailwind v4 (`@theme inline` in `globals.css`, no config file).
 
-**`PLAN.md` is the source of truth**, §-numbered, with settled decisions D1–D33 in §12 and open
+**`PLAN.md` is the source of truth**, §-numbered, with settled decisions D1–D35 in §12 and open
 questions in §13. Read the relevant § before changing behavior it describes. Two lists come off it:
 `M3B-CHECKLIST.md` (what has to be provisioned before the audio half can start) and
 `BACKEND-SETUP.md` (the server-side runbook).
 
 ## Status
 
-**Design is ahead of code here, on purpose.** Check `PLAN.md` §11 before assuming a section
-describes something that exists.
+**Built:** the backend through M3a including the topic queue (M1b), and **every participant
+surface** — the circle page, the seed form, the share surface, the ranking queue, the per-cycle
+reveal and the circle-final record — in the tide-line language (§9.2). 312 backend tests, plus 17
+integration checks in `scripts/check-circles.js` against a real database.
 
-**Built:** the Circle layer including the topic queue (M1b), the Threshold funnel, the REST
-surface, blob mirroring and transcription — 74 tests between `utils/circles.test.js` and
-`utils/threshold.test.js`, plus 17 integration checks in `scripts/check-circles.js` — and a
-frontend scaffold carrying the route skeleton, the auth stack, the API client and the wire types.
+**Not built:** **M3b, audio**, whose bar is a real recording on a physical iPhone — the flow it
+slots into is built and verified, so it changes nothing around it, and two places already reserve
+its seams (the compose surface's anonymity line, the reveal's expanded story). And **M4, mail**.
 
-The **circle page, the share surface and the ranking queue are built for real** in the tide-line
-language (§9.2). `components/TideLine.tsx` is the app's one mark and `components/Shell.tsx` its
-chrome — `Scaffold.tsx` is now only for surfaces still unbuilt, and should be deleted when the last
-one lands.
-
-**Designed and not built:** the two reveals (§6.3) — the per-cycle threshold display and the
-circle-final graph. Also **M3b, audio**, whose bar is a real recording on a physical iPhone; the
-flow it slots into is built and verified, so it changes nothing around it.
+`components/TideLine.tsx` is the app's one mark and `components/Shell.tsx` its chrome.
+`components/Scaffold.tsx` is now unused by any route and should be deleted with the M3b work.
 
 **`node scripts/seed-threshold-dev.js` from `apps/backend` is the fastest way to see any of it.**
 It builds a circle holding every state at once — a live cycle mid-sort, a queue with uneven support
 and a promotion, a revealed topic and a skipped one — through the funnels rather than by direct
 writes, which is the point: a circle assembled by hand lands in states the machine never produces
 and costs a day of debugging the page instead of the data. Dev only, and it prints its sign-ins.
-
-Build what those sections say rather than designing from the placeholders. `globals.css` already
-carries the real palette; `components/Scaffold.tsx` is chrome to be replaced, and its `NotBuilt`
-marker names the section that specifies each surface.
 
 ## What makes this app different from the others here
 
@@ -61,8 +52,12 @@ the round may have turned over.
 | Where | What |
 |---|---|
 | `src/app/t/[urlName]/page.tsx` | **The page you return to.** Reads the snapshot, routes to whatever phase is live. Re-fetches on focus |
-| `src/app/t/[urlName]/{seed,share,rank,result}` | The phase surfaces. Placeholders — §6.2, §9.1 |
-| `src/app/t/[urlName]/cycle/[seedId]` | One cycle's reveal. Placeholder — §6.3 |
+| `src/app/t/[urlName]/seed` | Post a topic, then the optional story on it — §6.2, D34 |
+| `src/app/t/[urlName]/share` | Tell your story; picking a pole is how you enter it — D22 |
+| `src/app/t/[urlName]/rank` | The queue, then the review screen that owns submit — §6.2, D21 |
+| `src/app/t/[urlName]/cycle/[seedId]` | One cycle's reveal: three groups, reader's cutoff — §6.3 |
+| `src/app/t/[urlName]/result` | The circle seen whole. A record, never a verdict — §6.3, D25 |
+| `src/components/{Shell,TideLine}.tsx` | The real chrome, and the app's one mark — §9.2 |
 | `src/app/me` | Circles I'm in, and what is waiting on me |
 | `src/services/api.ts` | All HTTP. Mints a game token from the NextAuth session and attaches it beside `x-user-id` |
 | `src/lib/types.ts` | Wire types, mirroring `utils/circles.js#toClient` and `utils/threshold.js#toClientShare` exactly |
@@ -121,6 +116,11 @@ the round may have turned over.
 - **A ranking is one document, and submit is all-or-nothing** (D11). Drafts save as you sort and
   count toward nothing; `submittedAt` is what makes it real. A partial ranking would make the
   agreement fraction depend on who bothered.
+- **No screen ranks the topics, and the payload cannot** (D25). The circle-final record names no
+  winner and draws no conclusion — `circleResult` used to compute a `mostContested` id and it has
+  been removed rather than left unused, because the next person to see a field goes looking for the
+  screen that shows it. It serves each topic's story *positions* instead, so both reveal scales band
+  at whatever cutoff the reader is holding.
 - **`agreement` is stored; bands are not** (D15). Any grouping of the reveal is a render-time view,
   so redesigning it is a re-render, never a migration. Do not add a stored classification.
 - **`phaseDeadline: null` means no clock, not a missing value.** Any phase's hours may be omitted
