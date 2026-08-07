@@ -8,7 +8,7 @@ sit in the middle — that middle is the threshold.
 Local dev port **4006**, ships to `threshold.holoscopic.io` (add to backend `CLIENT_URL` at
 cutover). Next.js 16 + React 19 + Tailwind v4 (`@theme inline` in `globals.css`, no config file).
 
-**`PLAN.md` is the source of truth**, §-numbered, with settled decisions D1–D31 in §12 and open
+**`PLAN.md` is the source of truth**, §-numbered, with settled decisions D1–D33 in §12 and open
 questions in §13. Read the relevant § before changing behavior it describes. Two lists come off it:
 `M3B-CHECKLIST.md` (what has to be provisioned before the audio half can start) and
 `BACKEND-SETUP.md` (the server-side runbook).
@@ -96,6 +96,10 @@ the round may have turned over.
   schema field. **The threshold appears once three rankings are in**, gated on rankings
   submitted rather than on membership: a twelve-person circle that drew three behaves like a
   three-person one, the cycle still reveals below that, and no circle has a minimum size.
+- **"What is waiting on me" is derived, never stored** (D32). The circle snapshot already carries
+  `shares` and `myRanking.placements`; the difference is the marker. That is also why a member who
+  joins in week six needs no special handling — they have no ranking, so everything reads as
+  waiting. Do not add a per-share "heard it" flag to get this.
 - **One parent instance holds every circle, and membership is the access boundary** (D20). The
   tenant is the `Circle` at `/t/<urlName>`, never its own `Instance` — a circle has no economy and
   no per-tenant config, since its clocks, members and invitations all live on the `Circle`

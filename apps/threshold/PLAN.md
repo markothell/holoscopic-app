@@ -10,7 +10,7 @@ completes when its seeds run out.
 **Circle** layer (§3) that Threshold is the first consumer of.
 
 This file is the source of truth for the design. Sections are numbered so code comments and
-commits can cite them. Settled decisions are D1–D31 in §12; open questions in §13.
+commits can cite them. Settled decisions are D1–D33 in §12; open questions in §13.
 
 ---
 
@@ -212,6 +212,12 @@ may, at any time:
 A one-off single-topic circle (**D1**) needs none of these and does not show them: one seed, no
 queue, nothing to reorder. The tools appear where there is something to steer.
 
+**And it ends by itself** (**D33**). Revealing the only topic closes a single-mode circle, because
+closing is a facilitator's act and a one-off has a creator who ran it once and will not come back —
+leaving it `idle` would show "waiting" on an activity that is over. Its `/result` routes to the
+cycle reveal rather than drawing a circle-final graph, since a graph of one node is not a graph.
+This is the only place the two modes behave differently, and it is the ending, not the mechanic.
+
 ```
 draft ──start──▶ running ──────────────────────────────────────────┐
                     │                                              │
@@ -228,6 +234,18 @@ draft ──start──▶ running ───────────────
 **The machine never blocks on a person** (**D4**). A cycle whose share round nobody entered is
 revealed empty and moves on; an empty queue is an idle circle rather than a finished one, and it
 starts again the moment somebody posts a topic.
+
+**Joining late is ordinary, not an edge case** (**D32**). A circle that never closes and a queue
+that never shuts mean somebody arriving in week six is the normal way in, so they get everything:
+read every revealed topic, support anything pending, post their own, share and rank the live cycle
+like anybody else. Nothing is withheld for having missed the beginning — a sharing circle whose
+record is closed to its newest member has the relationship backwards.
+
+What that needs instead is a way to see **what is waiting on you**, quietly, on the circle page:
+the stories you have not yet listened to and placed. It is derived, never stored — the snapshot
+already carries `shares` and `myRanking.placements`, and the difference between them is the answer.
+That makes it correct for a late joiner without trying: they have no ranking yet, so everything
+reads as waiting.
 
 ### 3.4 The activity module interface
 
@@ -814,7 +832,7 @@ validates against the allowlist, so a drifted copy fails silently as a dropped e
 |---|---|---|---|
 | **M0** | Circle layer — **DONE, pre-queue** | `models/Circle.js`, `utils/circles.js`, `utils/circleActivities.js`, the ticker in `jobs/index.js`, index specs in `scripts/ensure-indexes.js`. | **28 tests pass** (`utils/circles.test.js`, no DB, injectable store). A 3-member circle runs seed → 3 cycles → complete on the completion path; the deadline path advances one phase per expiry; manual advance, D4's never-block rule, notification dedupe and opt-out, the registry's guards. Full backend suite still green (259/259). |
 | **M1** | Threshold text-only — **DONE, pre-queue** | `models/ThresholdShare.js` (audio field present, unwritten), `models/ThresholdRanking.js`, `utils/threshold.js` (funnel + the circle activity module), `routes/threshold.js`, `Instance.app` + `APPS` + the platform admin picker, index specs. | **20 tests pass** (`utils/threshold.test.js`). A 3-person circle runs seed → share → rank → reveal across three cycles to complete; the gradient is checked against a hand-computed four-ranker expectation (1.0 / 0.75 / 0.5 / 0.0); D9 and D17 visibility are asserted on the payload, not the render. Server boots with the route mounted and both tickers running. **`scripts/check-circles.js`** adds 10 checks against a real dev database — Mixed-path persistence, the unique indexes, the tick on a genuinely expired deadline. |
-| **M1b** | The queue — **NOT BUILT** | Reworks the machine M0 and M1 shipped. `seeds[].supporterIds` + `promotedAt` + `phase: 'skipped'`, `liveSeedId` replacing `cycleIndex`, `phase: 'draft'\|'cycle'\|'idle'\|'closed'` replacing the seeding round, the support/skip/promote/close routes, and `/circles/:id/result` answering at any time. D27–D30. | A circle with no seeding round runs its top-supported topic, goes idle on an empty queue and starts again when somebody posts, and closes only when told. Support is one per member and reversible. A skipped topic keeps its stories. |
+| **M1b** | The queue — **NOT BUILT** | Reworks the machine M0 and M1 shipped. `seeds[].supporterIds` + `promotedAt` + `phase: 'skipped'`, `liveSeedId` replacing `cycleIndex`, `phase: 'draft'\|'cycle'\|'idle'\|'closed'` replacing the seeding round, the support/skip/promote/close routes, and `/circles/:id/result` answering at any time, single mode closing on reveal, and the derived waiting marker. D27–D30, D32, D33. | A circle with no seeding round runs its top-supported topic, goes idle on an empty queue and starts again when somebody posts, and closes only when told. Support is one per member and reversible. A skipped topic keeps its stories. A member who joins mid-circle reads every past reveal and sees the live cycle's unplaced stories marked as waiting. A single-topic circle closes itself. |
 | **M2** | `packages/audio` — **DONE** | Extracted from Chorus; Chorus adopted it in the same commit (`c8fc10b`). 8 package tests, Chorus typechecks and builds. | Verified on preview against the dev store: **Android** 2026-08-05 (WebM/Opus, 48 real peaks, transcribed) and **iPhone** 2026-08-06. Both branches of the format split now exercised end to end — record, upload, play back. No behaviour change in Chorus. |
 | | ↳ *why the iPhone run mattered* | Safari takes the MP4/AAC branch, writes **no duration metadata**, and spells the `codecs` parameter **with a space** — the last of which killed the first live iPhone recording at the upload step while Android sailed through. A WebM recording exercises none of the three, so until 2026-08-06 the extraction was unproven exactly where recording had actually broken before. This was also the first time Chorus's iOS path was ever verified at all. | — |
 | | ↳ **preview environment** — **DONE** | `preview` branch + free Render backend on the dev cluster + Vercel branch-scoped env vars. Documented in `apps/chorus/PREVIEW.md`. | Both pipelines deploy on push to `preview`; a browser-shaped probe (with `Origin`) confirms the write path, and the blob probe confirms the dev store. |
@@ -900,6 +918,13 @@ M0 and M1 are the whole architectural bet and neither needs a designer. Start th
   gate, never a mail list), so there is nothing to forge and no unauthenticated mutation to expose.
   Per-circle mute lives on `members[].emailOptOut`; platform announcements are separate, on
   `User.notifications`. Mail carries a `List-Unsubscribe` header pointing at that page. §3.6
+- **D32** — **A late joiner gets everything** — every revealed topic, support on anything pending,
+  and full part in the live cycle. What they need is a quiet marker on the circle page for the
+  stories still waiting on them, **derived** from `shares` minus `myRanking.placements` and never
+  stored. §3.3
+- **D33** — **A single-topic circle closes when its one topic reveals**, and its `/result` routes to
+  that reveal rather than drawing a one-node graph. The only behavioural difference between the two
+  modes, and it is the ending rather than the mechanic. §3.3
 
 ---
 
@@ -908,12 +933,7 @@ M0 and M1 are the whole architectural bet and neither needs a designer. Start th
 - **Q1 — Does a member rank their own story?** Currently yes, for a uniform denominator, and D22
   now pre-places it on the pole its author chose. If small circles feel distorted by it, the
   alternative is excluding it and normalizing per-ranker. §5.2
-- **Q2 — Does a member who joins mid-circle see the topics already revealed?** The queue never
-  closes (D27) and a circle never finishes (D29), so joining in week six is now normal rather than
-  an edge case. Reading past reveals is the obvious answer; whether they can *support* a topic
-  their absence had no part in, and whether they appear in an old cycle's member list, is not
-  decided. §3.3
-- **Q3 — What does support look like when the circle is one person's idea?** In a Sharing Circle
-  every member seeds and supports. In a single-topic sign-up (D1) there is one seed and no queue,
-  so support has nothing to do — which is right, but it means the two modes show visibly different
-  surfaces, and how a circle grows from the first into the second is undesigned. §3.3
+- **Q2 — Does the waiting marker want a "revealed while you were away" state too?** D32's marker is
+  derived from unplaced shares, which costs nothing and covers the live cycle. A topic that revealed
+  between two visits is a different kind of new, and showing it would need a `members[].lastSeenAt`
+  — the first stored field this feature would require, so it is worth wanting before adding. §3.3
