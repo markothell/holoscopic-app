@@ -1,26 +1,30 @@
-import { Page, Title, Note, Undesigned } from '@/components/Scaffold';
+import { Page, Title, Note, NotBuilt } from '@/components/Scaffold';
 
-// One cycle's reveal. The payoff for a single topic.
+// One cycle's reveal (PLAN.md §6.3, D23/D24).
 //
-// The data is already continuous and already stored (D15): every share carries
-// an `agreement` from 0 to 1, and NO band classification is saved. Any grouping
-// this screen draws is a render-time choice, so it can be redesigned without a
-// migration — which is exactly why it was safe to leave undesigned.
+// THREE GROUPS — two poles and the threshold — with no position inside a group.
+// The threshold band's POPULATION is the finding: sparse means the group knows
+// where its line falls, crowded means the line is where the argument is.
+//
+// A story is a dot with a short preview, expanding on tap; playback lives
+// inside the expanded state, never on every dot.
+//
+// Where the line sits is a READER'S CONTROL, defaulting to three in four, with
+// "more than half" and "all of them". This is what D15 bought: nothing is
+// stored, so moving that line is a re-render and never a migration. Below four
+// rankers the threshold framing is suppressed entirely.
 export default function CyclePage() {
   return (
     <Page>
       <Title>Where the line fell</Title>
       <Note>
-        Every story laid out by how much of the group agreed about it. The ones you all read the
-        same way sit at the ends; the ones you split on sit in the middle.
+        Two ends and the threshold between them. What sits in the middle is what the
+        group did not agree about.
       </Note>
-      <Undesigned surface="The per-cycle reveal" section="PLAN.md §6.3">
-        Q4: a continuous axis, or three zones. Q5: whether a story opens as a positioned mark that
-        expands, or as a list ordered by agreement — the first shows the distribution, the second
-        shows the stories, and on a phone one of them has to lead. Q7: at one ranker every story is
-        unanimous by construction, so the coherence framing has to be suppressed rather than
-        reported.
-      </Undesigned>
+      <NotBuilt surface="The per-cycle reveal" section="PLAN.md §6.3">
+        Dots in three groups, expanding on tap. The cutoff is a control — three in four by
+        default — so a reader can watch the threshold widen and narrow.
+      </NotBuilt>
     </Page>
   );
 }

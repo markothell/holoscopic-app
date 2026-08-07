@@ -15,22 +15,22 @@ export function Note({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * A surface that has been deliberately left undesigned. Names the section of
- * PLAN.md that will decide it, so nobody builds on top of a placeholder
- * thinking it is a decision.
+ * A surface that is specified but not built. Names the section of PLAN.md that
+ * specifies it, so the next person builds what was decided rather than
+ * redesigning it from the placeholder.
  */
-export function Undesigned({ surface, section, children }: {
+export function NotBuilt({ surface, section, children }: {
   surface: string;
   section: string;
   children?: React.ReactNode;
 }) {
   return (
     <div className="rounded-lg border border-dashed border-[var(--rule-strong)] p-5">
-      <p className="text-xs uppercase tracking-wider text-ink-faint mb-2">Not designed yet</p>
+      <p className="text-xs uppercase tracking-wider text-ink-faint mb-2">Designed, not built</p>
       <p className="font-[family-name:var(--font-source-serif)] text-lg mb-2">{surface}</p>
       <p className="text-sm leading-relaxed text-ink-soft">
-        Decided by <code className="text-ink">{section}</code>, and by the questions in{' '}
-        <code className="text-ink">apps/threshold/DESIGN-QUESTIONS.md</code>.
+        Specified in <code className="text-ink">{section}</code>. Build that, rather than
+        designing from this placeholder.
       </p>
       {children ? <div className="mt-3 text-sm text-ink-soft">{children}</div> : null}
     </div>

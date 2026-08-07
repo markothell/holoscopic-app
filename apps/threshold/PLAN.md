@@ -1,13 +1,13 @@
 # Threshold — Master Plan (draft v0.1)
 
-**Status:** the backend is built and green (M0–M3a); the frontend is a scaffold. §6.2, §6.3 and
-§9.2 are the three surfaces still to design — see `DESIGN-QUESTIONS.md`.
+**Status:** the backend is built and green (M0–M3a); the frontend is a scaffold. The three
+surfaces are designed (§6.2, §6.3, §9.2) and not yet built.
 **Local dev port:** 4006. **Ships to:** `threshold.holoscopic.io` (add to backend `CLIENT_URL` at cutover).
 **Backend surface:** `apps/backend/routes/threshold.js` + `utils/threshold.js`, on the generic
 **Circle** layer (§3) that Threshold is the first consumer of.
 
 This file is the source of truth for the design. Sections are numbered so code comments and
-commits can cite them. Settled decisions are D1–D20 in §12; open questions in §13.
+commits can cite them. Settled decisions are D1–D26 in §12; open questions in §13.
 
 ---
 
@@ -440,36 +440,85 @@ Edge cases the funnel must handle: `R = 0` (nobody ranked → reveal empty, `mea
 `R = 1` (every share reads as unanimous by construction — show the placement, suppress the
 coherence framing entirely, since one person cannot disagree with themselves).
 
-### 6.2 The ranking space — **deferred to a design conversation**
+### 6.2 The ranking space — a queue, then a review
 
-The mechanic is settled (D11: two buckets, no neutral, no ordering, draft-then-submit);
-**the interaction is not designed and is not designed here.**
+**One story at a time, full width, playing, with two big targets.** You hear it, you choose a side,
+it advances. Placing a story is the same gesture as listening to it, which is what makes "sort while
+listening" literal rather than aspirational.
 
-What is fixed going in, as constraints on that conversation:
+Drag-and-drop between two columns was the obvious answer and is the wrong one: dragging two dozen
+cards on a phone while audio plays is fiddly, drag is poor for accessibility, and arranging things
+in a column implies an ordering that explicitly carries no meaning (D11).
 
-- Two buckets, no neutral option, no "skip." An unplaced share blocks submit (§5.2).
-- **Sort while listening.** Placing a story is something you do mid-playback, not a form you fill
-  in afterward from memory.
-- **Rearranging is free until submit**, and submit is a deliberate, separate act. Nothing counts
-  until then, so the surface must make "not yet finished" legible — its own state, not a disabled button.
-- Every share must be listenable *from inside* that surface — the whole task is comparison.
-- It has to work on a phone with one thumb, for up to ~24 shares (12 people × 2 poles).
-- The pole labels are the seed's own words, not "A" and "B".
+**The queue is followed by a review screen**, and that is where the whole set comes back. The queue
+does the sorting; the review screen is where rearranging happens and where submit lives. That maps
+exactly onto the shape the data already has — placements drafting as you go, one deliberate submit.
 
-### 6.3 The threshold display — **deferred to a design conversation**
+**An unfinished ranking reads as the stories still queued up**, not as a count and not as a disabled
+button. What is left to do is shown as the thing itself: the remaining stories, waiting. Submit
+belongs to the review screen, and it is complete-or-nothing (§5.2).
 
-Two screens, both new mechanics, both worth designing properly rather than specified inline:
+**Your own story is pre-placed on the pole you chose when you told it**, and you can move it. You
+already declared a side at submit, so making you answer again is asking a question you have
+answered; pre-placing also means your own story never appears in the queue of things still waiting,
+which would otherwise read as work outstanding. It stays in the aggregate either way (§5.2).
 
-- **Per-cycle**: the shares laid out along `agreement`, poles at the ends and the split in the
-  middle, each story a card you can play. The unanimous ends and the contested middle both have to
-  read at a glance — the middle is the subject of the screen, not a leftover bucket, and the 12/12
-  stories at the ends are what make it mean something.
-- **Circle-final**: all N topics together, so you can see which topics the group is coherent on and
-  which one splits it. This is the payoff screen for Sharing Circle mode and the reason the whole
-  layer exists. See Q1 — whether a topic reduces to one number or keeps its gradient is the open
-  part.
+The pole labels are the seed's own words throughout. Nothing in this surface says "A" or "B".
 
-Nothing else in this plan depends on how these look. Build §3–§5 first.
+### 6.3 The threshold display
+
+#### Per-cycle: three groups, and the middle is the point
+
+Two poles and **the threshold** between them. Everything in a pole group is over the line; the
+threshold is what the group did not agree about. Three groups rather than a continuous axis, because
+the question the activity asks — *where is our line?* — should be answerable at a glance rather than
+by squinting at a gradient.
+
+**Within a group there is no position.** A dot is a dot. The threshold band's *population* is the
+finding: sparse or empty means a **sharp** threshold, and the group knows where its line falls;
+crowded and varied means a **fuzzy** one, and the line is where the argument is. Giving dots a
+position inside the band would add a second thing to read in the one zone that is already the
+subject of the screen.
+
+**A story is a dot with a short preview** — enough to tell which story it is — and expands on tap.
+The expanded state is where the text, the transcript and the play control live. Playback is what
+"a story" means when it was spoken; it belongs inside the thing you opened, never on every dot.
+
+**Where the line sits is a control, not a constant** — and this is what D15 was built for. Nothing
+is stored, so the reader can move it:
+
+| Setting | A story is at a pole when |
+|---|---|
+| **more than half** | a simple majority put it there. The threshold holds exact ties only, so at an odd number of rankers it is empty by construction |
+| **three in four** — the default | ≥75% put it there |
+| **all of them** | every ranker put it there. One dissenter moves a story into the threshold |
+
+Moving that control is the argument the screen is making: the threshold is not a fact about the
+stories, it is a function of how much agreement you decide to require. Sliding it from *all of them*
+to *more than half* narrows the band toward nothing, in front of you.
+
+**Below four rankers there is no threshold framing at all** — show the stories and who put them
+where, and say nothing about a group's line. At one ranker every story is unanimous by construction;
+at two or three, `agreement` takes so few values that a band is an artifact of arithmetic rather
+than a finding. Four is the floor (§13, Q2).
+
+#### Circle-final: the shape of the conversation
+
+All N topics as **nodes on a graph** — a circle of sharing, seen whole. Each node carries:
+
+- the topic name,
+- how many people took part,
+- the two pole names, above
+- **one minimal bar** split three ways: pole A / threshold in grey / pole B, sized by how many
+  stories fell in each.
+
+The same three groups as the per-cycle screen, so the two read as one idea at two scales.
+
+**This screen is a record of a conversation, not a verdict.** It is a sharing circle: the ending is
+what the group talked about and how it went, never a ranking of topics or a statistical claim. So it
+names no winner and draws no conclusion — no "most contested topic" headline, no league table.
+(`circleResult()` computes a `mostContested` id; the screen deliberately does not use it, and it
+should come out when this is built.)
 
 ---
 
@@ -624,13 +673,36 @@ needs `CLIENT_URL` extended, and root `CLAUDE.md` says deploy targets escalate) 
 Every email links to `/t/<urlName>` and lets the page route to the current task — a link to a phase
 that has since advanced is the most likely thing to go stale.
 
-### 9.2 Visual language
+### 9.2 Visual language — "tide line"
 
-Its own hand-styled system, like Chorus, Synthesis and On a Spectrum. Not designed yet; part of the
-same conversation as §6.2 and §6.3.
+Its own hand-styled system, like Chorus, Synthesis and On a Spectrum.
+
+**The tide line**: the mark left where two things meet and neither wins. It is honest about the
+subject in a way the alternatives are not — a surveyor's instrument would be clinical about
+people's stories, and any metaphor with a victor contradicts the mechanic. A tide line also moves,
+which is exactly what the cutoff control in §6.3 lets a reader see.
+
+**Two colours, fixed for the whole app, decided once** (**D26**). Every seed names its own poles,
+but the *colours* are the app's identity and never the author's choice — asking somebody to pick
+them invites a warm/cool or green/red pairing that hands one end of their polarity the verdict.
+
+| Token | | |
+|---|---|---|
+| `--pole-a` | `#2F7D7B` | teal |
+| `--pole-b` | `#B15C3C` | clay |
+| `--threshold` | `#7C7A76` | neutral grey, a touch lighter so the band sits back |
+
+Chosen by measurement, not by eye: **ΔL\* between the poles is 0.8**, so neither reads as heavier —
+that is "neither may look like the winner" as a number rather than an intention — while they stay
+**32.0 ΔE2000 apart under simulated deuteranopia**. The near-miss pairs are instructive and worth
+not repeating: *sea/rust* has better weight parity (ΔL\* 0.4) but collapses under deuteranopia at
+ΔE 18.7; *indigo/ochre* and *blue/amber* separate beautifully and fail the parity test outright
+(ΔL\* 13.4 and 10.0), which is the failure that matters here. **Re-run the check before changing
+either colour.**
 
 Carry over one rule from the copy policy: **user-facing copy states what a thing is, never
-"not a…" or "instead of…"**.
+"not a…" or "instead of…"**. The threshold is "where the group's line falls", never "the stories
+with no agreement".
 
 ### 9.3 Beacon
 
@@ -708,25 +780,42 @@ M0 and M1 are the whole architectural bet and neither needs a designer. Start th
 - **D20** — **One parent instance holds every circle.** The tenant is the `Circle` at
   `/t/<urlName>`; a circle is never its own `Instance`. Membership, not the instance, is the access
   boundary. §4, §8.1
+- **D21** — The ranking space is a **queue with two buttons**, one story at a time, followed by a
+  **review screen** that restores the whole set and owns submit. Unfinished reads as the remaining
+  stories still queued, never as a count or a dead button. §6.2
+- **D22** — **Your own story is pre-placed on the pole you chose** when you told it, and you can
+  move it. It stays in the aggregate. §6.2
+- **D23** — The reveal is **three groups** — two poles and the threshold — with **no position
+  inside a group**. The threshold band's population is the finding: sparse means a sharp line,
+  crowded means a fuzzy one. A story is a **dot with a short preview** that expands on tap;
+  playback lives inside the expanded state. §6.3
+- **D24** — **Where the line sits is a reader's control**, defaulting to three in four, with *more
+  than half* and *all of them*. Nothing is stored, so this is the payoff of D15. Below **four
+  rankers** the threshold framing is suppressed entirely. §6.3
+- **D25** — The circle-final screen is **topic nodes on a graph**, each carrying the topic, the
+  participant count, the pole names, and one three-part proportion bar. It is **a record of a
+  conversation, not a verdict** — no winner, no league table, no most-contested headline. §6.3
+- **D26** — **"Tide line", and two fixed colours** — teal `#2F7D7B` / clay `#B15C3C`, threshold
+  `#7C7A76` — chosen for measured weight parity (ΔL\* 0.8) and CVD separation (ΔE 32.0), reused for
+  every topic and never chosen per seed. §9.2
 
 ---
 
 ## 13. Open questions
 
-- **Q1 — How does the gradient read, and does the final graph still need a cutoff?** D15 makes this
-  a display question rather than a schema one: `agreement` is stored continuously, so the per-cycle
-  reveal can be a pure spectrum. But the circle-final graph compares N topics, and "which topics
-  split this group" may need a crisper statement than N gradients side by side — either a cutoff
-  applied at render, or `meanCoherence` per topic standing alone. Decide against a real circle. §6.1
-- **Q2 — Does a member rank their own story?** Currently yes, for a uniform denominator. If small
-  circles feel distorted by it, the alternative is excluding it and normalizing per-ranker. §5.2
+- **Q1 — Four rankers is the floor, so what does a circle do about it?** §6.3 suppresses the
+  threshold framing below four complete rankings, which is the display half. The other half is not
+  decided: does circle creation warn or refuse below four members, and what does a cycle show when
+  a big circle happens to draw only three rankings? The machine never blocks on a person (D4), so
+  this state is reachable in any circle, not only small ones. §6.3
+- **Q2 — Does a member rank their own story?** Currently yes, for a uniform denominator, and D22
+  now pre-places it on the pole its author chose. If small circles feel distorted by it, the
+  alternative is excluding it and normalizing per-ranker. §5.2
 - **Q3 — Email opt-out mechanics.** A no-login unsubscribe link needs a signed token; the existing
   contributor-token HMAC is the obvious basis. Also: is opt-out per circle or per account? §3.6
-- **Q4 — Deploy target.** New Vercel project + `threshold.holoscopic.io` + `CLIENT_URL`. Root
-  `CLAUDE.md` escalates new deploy targets, so this is a yes/no before M6. §9
-- **Q5 — What happens to a circle that stalls?** A 12-seed circle at 3 days per phase is 108 days.
+- **Q4 — What happens to a circle that stalls?** A 12-seed circle at 3 days per phase is 108 days.
   Is there a way for the creator to skip a seed, shorten a phase mid-flight, or end early? Probably
   yes, and it is not designed.
-- **Q6 — Does the seeding round need its own review?** Twelve topics arrive at once with no
+- **Q5 — Does the seeding round need its own review?** Twelve topics arrive at once with no
   filtering. A duplicate or an incoherent polarity ("Authority: Good / Complicated") burns a whole
   cycle, and nothing currently catches it.

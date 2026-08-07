@@ -1,27 +1,27 @@
-import { Page, Title, Note, Undesigned } from '@/components/Scaffold';
+import { Page, Title, Note, NotBuilt } from '@/components/Scaffold';
 
-// The ranking space. The single most-used surface in the app, and the one
-// DESIGN-QUESTIONS.md says to decide first — the reveal is a picture of
-// whatever this produces, so if this changes shape, that does too.
+// The ranking space (PLAN.md §6.2, D21/D22). The single most-used surface in
+// the app: a QUEUE, not a board. One story at a time, full width, playing, with
+// two big targets — hear it, choose a side, it advances. Drag between columns
+// was the obvious answer and is the wrong one on a phone, and it implies an
+// ordering that carries no meaning (D11).
 //
-// The MECHANIC is settled (D11) and constrains whatever gets built here:
-// two buckets carrying the seed's own pole words, no neutral and no skip, no
-// ordering within a bucket, placements drafting as you listen, and one explicit
-// final submit that is complete or nothing.
+// The queue is followed by a REVIEW SCREEN, which restores the whole set and
+// owns submit. Unfinished reads as the stories still queued up — never a count,
+// never a dead button. Your own story arrives pre-placed on the pole you chose
+// when you told it, and you can move it (D22).
 export default function RankPage() {
   return (
     <Page>
       <Title>Sort the stories</Title>
       <Note>
-        Every story goes on one side or the other. You sort while you listen, rearrange as much as
-        you like, and submit once.
+        Every story goes on one side or the other. You hear them one at a time and
+        choose as you listen, then review the whole set before you submit.
       </Note>
-      <Undesigned surface="The ranking space" section="PLAN.md §6.2">
-        Q1 is the primary gesture — a queue with two buttons, two columns you tap into, or drag.
-        The live lean is the queue plus a review screen: the queue makes “sort while listening”
-        literal, and the review screen restores the whole-set view, which maps onto the
-        draft-then-submit shape the data already has.
-      </Undesigned>
+      <NotBuilt surface="The ranking space" section="PLAN.md §6.2">
+        A queue with two buttons, then a review screen that owns submit. The pole labels are the
+        seed’s own words throughout — nothing here says “A” or “B”.
+      </NotBuilt>
     </Page>
   );
 }

@@ -1,4 +1,4 @@
-import { Page, Title, Note, Undesigned } from '@/components/Scaffold';
+import { Page, Title, Note, NotBuilt } from '@/components/Scaffold';
 
 // Record or type a story, and pick the pole it is about. The share phase.
 //
@@ -17,11 +17,11 @@ export default function SharePage() {
         A time it was one of these two things. You see only your own stories until everyone has
         told theirs (D17) — reading the others first would anchor the group on whoever posted first.
       </Note>
-      <Undesigned surface="The compose surface" section="PLAN.md §9.1, M3b">
+      <NotBuilt surface="The compose surface" section="PLAN.md §9.1, M3b">
         It should say plainly that a voice recording identifies its speaker in a small circle,
         whatever the payload strips — before anyone records, rather than implying an anonymity the
         medium cannot provide (§8.1).
-      </Undesigned>
+      </NotBuilt>
     </Page>
   );
 }

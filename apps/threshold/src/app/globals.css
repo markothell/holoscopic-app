@@ -1,26 +1,33 @@
 @import "tailwindcss";
 
-/* Threshold — PROVISIONAL.
+/* Threshold — "tide line" (PLAN.md §9.2).
    ────────────────────────────────────────────────────────────────────────────
-   This is scaffolding, not the visual language. PLAN.md §9.2 leaves that
-   undesigned on purpose, and DESIGN-QUESTIONS.md Q10 has three live directions
-   for it (survey/instrument, tide line, two lights). Nothing below is a vote
-   for any of them.
+   The mark left where two things meet and neither wins. Honest about the
+   subject in a way a surveyor's instrument would not be — this is people's
+   stories, not measurements — and it moves, which is exactly what the cutoff
+   control on the reveal lets a reader see.
 
-   What it IS: a neutral ground and one type pairing, so the route skeleton is
-   legible while the real system is being decided. Expect all of it to be
-   replaced. Do not build a component that depends on a particular value here
-   without checking whether §9.2 has been answered yet.
+   THE TWO POLES ARE THE APP'S IDENTITY, NOT THE AUTHOR'S CHOICE (D26). Every
+   seed names its own ends — "Liberating / Constricting" — but the colours are
+   fixed here and reused for every topic in every circle. Letting an author pick
+   them invites a warm/cool or green/red pairing, and either one hands one end
+   of their polarity the verdict before anybody has ranked anything.
 
-   The one thing that is NOT arbitrary is the pole pair. Every seed names its
-   own two ends ("Liberating / Constricting"), and Q11 fixes the constraint they
-   have to satisfy: symmetrical, equal weight, opposite hue, and NEITHER may
-   read as the good one. That rules out warm/cool and green/red, which both
-   carry a verdict. The placeholders below are two equally-saturated hues at
-   roughly equal luminance for exactly that reason — the specific hues are
-   still open, the symmetry is not. */
+   The pair was measured, not eyeballed:
+
+     ΔL*  0.8   between teal and clay — neither reads as heavier, which is
+                "neither may look like the winner" as a number
+     ΔE   42.4  normal vision
+     ΔE   32.0  simulated deuteranopia — they stay tellable apart
+
+   The near misses are the instructive part. sea/rust had BETTER weight parity
+   (ΔL* 0.4) and collapsed under deuteranopia at ΔE 18.7. indigo/ochre and
+   blue/amber separate beautifully and fail parity outright (ΔL* 13.4 and 10.0),
+   which is the failure that matters here — one end simply looks stronger.
+   RE-RUN THE CHECK before changing either colour. */
 
 :root {
+  /* Ground and paper */
   --ground:       #F6F5F2;
   --ground-deep:  #EAE8E3;
   --card:         #FFFFFF;
@@ -29,14 +36,17 @@
   --ink-soft:     #55575C;
   --ink-faint:    #8A8C91;
 
-  /* The two ends. Placeholders — see the note above. Symmetry is the rule. */
-  --pole-a:       #3E6E8E;
-  --pole-b:       #8E5A3E;
-  --pole-a-soft:  #DDE6EC;
-  --pole-b-soft:  #EDE0D8;
+  /* The two ends. Equal weight, opposite hue — see the note above. */
+  --pole-a:       #2F7D7B;
+  --pole-b:       #B15C3C;
+  --pole-a-soft:  #DCE8E7;
+  --pole-b-soft:  #F0DFD7;
 
-  /* Where the group splits. The subject of the reveal, not a leftover. */
-  --contested:    #6B5B8E;
+  /* The threshold itself: neutral, and a touch lighter than the poles so the
+     band sits back rather than reading as a third position. Its POPULATION is
+     the finding — sparse is a sharp line, crowded is a fuzzy one (D23). */
+  --threshold:      #7C7A76;
+  --threshold-soft: #E6E4E0;
 
   --rule:         rgba(30, 31, 34, 0.12);
   --rule-strong:  rgba(30, 31, 34, 0.26);
@@ -45,18 +55,19 @@
 }
 
 @theme inline {
-  --color-ground:      var(--ground);
-  --color-ground-deep: var(--ground-deep);
-  --color-card:        var(--card);
-  --color-ink:         var(--ink);
-  --color-ink-soft:    var(--ink-soft);
-  --color-ink-faint:   var(--ink-faint);
-  --color-pole-a:      var(--pole-a);
-  --color-pole-b:      var(--pole-b);
-  --color-pole-a-soft: var(--pole-a-soft);
-  --color-pole-b-soft: var(--pole-b-soft);
-  --color-contested:   var(--contested);
-  --color-rule:        var(--rule);
+  --color-ground:         var(--ground);
+  --color-ground-deep:    var(--ground-deep);
+  --color-card:           var(--card);
+  --color-ink:            var(--ink);
+  --color-ink-soft:       var(--ink-soft);
+  --color-ink-faint:      var(--ink-faint);
+  --color-pole-a:         var(--pole-a);
+  --color-pole-b:         var(--pole-b);
+  --color-pole-a-soft:    var(--pole-a-soft);
+  --color-pole-b-soft:    var(--pole-b-soft);
+  --color-threshold:      var(--threshold);
+  --color-threshold-soft: var(--threshold-soft);
+  --color-rule:           var(--rule);
 
   --font-voice: var(--font-source-serif), Georgia, serif;
   --font-hand:  var(--font-inter), system-ui, sans-serif;

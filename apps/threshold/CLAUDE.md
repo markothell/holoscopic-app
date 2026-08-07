@@ -8,11 +8,10 @@ sit in the middle — that middle is the threshold.
 Local dev port **4006**, ships to `threshold.holoscopic.io` (add to backend `CLIENT_URL` at
 cutover). Next.js 16 + React 19 + Tailwind v4 (`@theme inline` in `globals.css`, no config file).
 
-**`PLAN.md` is the source of truth**, §-numbered, with settled decisions D1–D19 in §12 and open
+**`PLAN.md` is the source of truth**, §-numbered, with settled decisions D1–D26 in §12 and open
 questions in §13. Read the relevant § before changing behavior it describes. Two lists come off it:
 `M3B-CHECKLIST.md` (what has to be provisioned before the audio half can start) and
-`DESIGN-QUESTIONS.md` (the three surfaces deliberately left undesigned). `BACKEND-SETUP.md` is the
-server-side runbook.
+`BACKEND-SETUP.md` (the server-side runbook).
 
 ## Status
 
@@ -21,10 +20,11 @@ blob mirroring and transcription, 48 tests between `utils/circles.test.js` and
 `utils/threshold.test.js`. **The frontend is a scaffold**: the route skeleton from §9.1, the auth
 stack, the API client and the wire types. Everything you can see is placeholder.
 
-**The visual language does not exist yet** (§9.2, Q10/Q11), and neither does the ranking space
-(§6.2) or either reveal (§6.3). `globals.css` and `components/Scaffold.tsx` are a holding pattern —
-delete them rather than restyle them. The `Undesigned` component names the section that will decide
-each surface, so nobody builds on a placeholder thinking it is a decision.
+**The three surfaces are designed and not built.** The ranking queue (§6.2), the reveal (§6.3) and
+the visual language (§9.2) are specified down to the gesture, the grouping and the colour values —
+build what those sections say rather than designing from the placeholders. `globals.css` already
+carries the real palette; `components/Scaffold.tsx` is chrome to be replaced, and its `NotBuilt`
+marker names the section that specifies each surface.
 
 ## What makes this app different from the others here
 
@@ -78,6 +78,15 @@ the round may have turned over.
 - **`gameNumber` must stay null.** `Instance.getDefault()` picks the lowest-numbered active
   instance, so a Threshold instance holding a number can become the platform default and start
   answering interView traffic.
+- **The two pole colours are the app's, never the author's** (D26). A seed names its own ends, but
+  teal and clay are fixed for every topic in every circle, and they were chosen by measurement —
+  ΔL* 0.8 so neither reads as heavier, ΔE 32.0 apart under deuteranopia. The failure mode this
+  prevents is a warm/cool or green/red pairing handing one end of somebody's polarity the verdict.
+  Re-run the check in `globals.css`'s header before changing either value.
+- **The reveal's cutoff is a reader's control, and nothing about it is stored** (D24, on top of
+  D15). Three in four by default, with *more than half* and *all of them*. Any banding is computed
+  at render from `agreement`, so moving that line is a re-render — never a migration, and never a
+  schema field.
 - **One parent instance holds every circle, and membership is the access boundary** (D20). The
   tenant is the `Circle` at `/t/<urlName>`, never its own `Instance` — a circle has no economy and
   no per-tenant config, since its clocks, members and invitations all live on the `Circle`
