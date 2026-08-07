@@ -468,10 +468,11 @@ point; a ranking is a judgment about the whole set, so it can't be formed one st
 **A ranking must be complete to submit** — every share placed. A partial ranking would make the
 agreement fraction in §6.1 depend on who bothered, which silently biases the result.
 
-**Do you rank your own story?** Yes — it is in the list and you place it like any other, because
-excluding it makes each ranker's denominator different. Its own author's placement is included in
-the aggregate; with N ≥ 4 the effect is noise, and the alternative (a hole in every ranking) is
-worse. Revisit if small circles feel it (§13, Q2).
+**You rank your own story by telling it.** Choosing a pole is how you enter the compose surface, so
+the placement is made at submit and counts in the aggregate like any other — no hole in anybody's
+denominator. It is **not** in your queue when ranking opens, because you answered that question
+already and asking again is asking twice; it sits in the review screen where you can move it if
+hearing everyone else's changed your mind (D22).
 
 ### 5.3 The computed threshold
 
@@ -844,7 +845,30 @@ validates against the allowlist, so a drifted copy fails silently as a dropped e
 | **M6** | Launch | Accessibility + performance pass, `CLIENT_URL`, Vercel project, Beacon, `ensure-indexes.js` against production. | — |
 | | ↳ **indexes before the first write** | Three of the new indexes are `unique` and therefore correctness, not speed. `ensure-indexes.js` **skips a collection that does not exist yet**, and it says so — so running it once against production before Threshold takes any traffic is the whole job, and running it after means building a unique index over rows that may already violate it. Order matters here in a way it does not for the performance indexes. | `ensure-indexes.js` under `NODE_ENV=production` reports the three as created, with no SKIP lines for `circles`, `thresholdshares` or `thresholdrankings`. |
 
-M0 and M1 are the whole architectural bet and neither needs a designer. Start there.
+### Build order, from here
+
+M1b first, then the participant's own path in the order they walk it — each step is testable end to
+end with a real circle before the next one starts, and each reads a snapshot the step before it
+settled.
+
+1. **M1b — the queue** (backend). Everything below reads this shape; building UI against
+   `cycleIndex` and a seeding phase means building it twice.
+2. **The circle page** on the new snapshot: the queue with support, the waiting marker (D32),
+   facilitator tools where `mode` warrants them (D30).
+3. **The share surface, typed first** — pick a pole to enter it (D22). Text-only, exactly as M1 was
+   built, so the flow is verifiable before the browser-dependent part lands.
+4. **M3b — audio**: the recorder with the hard cap, `/api/audio/upload`, playback. The riskiest
+   part per-browser, and it changes nothing about the flow around it.
+5. **The ranking queue** (§6.2): the queue, then the review screen that owns submit. Needs stories
+   to exist, which is why it follows 3.
+6. **The reveal** (§6.3), then the circle-final graph. The picture of what 5 produced.
+7. **M4 — mail and `/notifications`** (D31). The ticker already advances rounds; this is what makes
+   an advance reach a person.
+8. **M6 — launch pass.**
+
+M0 and M1 were the architectural bet and it paid off: the funnel, the redaction rules and the
+gradient are unchanged by everything above.
+
 
 ---
 
@@ -930,10 +954,7 @@ M0 and M1 are the whole architectural bet and neither needs a designer. Start th
 
 ## 13. Open questions
 
-- **Q1 — Does a member rank their own story?** Currently yes, for a uniform denominator, and D22
-  now pre-places it on the pole its author chose. If small circles feel distorted by it, the
-  alternative is excluding it and normalizing per-ranker. §5.2
-- **Q2 — Does the waiting marker want a "revealed while you were away" state too?** D32's marker is
+- **Q1 — Does the waiting marker want a "revealed while you were away" state too?** D32's marker is
   derived from unplaced shares, which costs nothing and covers the live cycle. A topic that revealed
   between two visits is a different kind of new, and showing it would need a `members[].lastSeenAt`
   — the first stored field this feature would require, so it is worth wanting before adding. §3.3
