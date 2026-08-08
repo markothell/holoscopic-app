@@ -8,11 +8,10 @@ This file is only what is *different* for Threshold.
 The backend half is already built and shared: `holoscopic-preview-backend.onrender.com`, pointed at
 the **dev** cluster and the **dev** blob store. Nothing below creates a second one.
 
-## The gate: a Vercel project for Threshold
+## The Vercel project
 
-There is none yet, and everything else waits on it. Root Directory `apps/threshold`, framework
-Next.js. Name it deliberately — the hostname is minted from the name at creation and never follows
-a rename.
+**It exists**, with `NEXTAUTH_URL` and `NEXTAUTH_SECRET` on it (2026-08-08). Root Directory is
+`apps/threshold`. What is left is the table below, the `CLIENT_URL` line, and a push.
 
 A Threshold **instance already exists on the dev cluster** (`slug: threshold`), because the preview
 backend and local development share that database. `node scripts/seed-threshold-dev.js` from
@@ -20,16 +19,43 @@ backend and local development share that database. `node scripts/seed-threshold-
 
 ## Env vars on that project
 
-Same two mechanisms as Chorus — a separate record per scope for the secret, branch-scoped Preview
-records for the rest.
+**Do not copy Chorus's branch-scoping.** That mechanism is *remediation*: Chorus already had
+`NEXT_PUBLIC_API_URL` and `BLOB_READ_WRITE_TOKEN` as single records covering Production **and**
+Preview, so the first preview recording would have written to the live store — and the obvious fix
+was unavailable, because `vercel env rm <NAME> preview` deletes the whole record including
+Production. Adding a branch-scoped Preview record was the way to override a shared record without
+removing anything.
 
-| Variable | Preview value | Notes |
+Threshold's project is new, so there is nothing shared to work around. **Give every variable one
+record per environment from the start**, which is what Chorus would have if it could start over:
+
+| Variable | Production | Preview |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | `https://holoscopic-preview-backend.onrender.com/api` | branch-scoped to `preview` |
-| `NEXT_PUBLIC_INSTANCE_ID` | `threshold` | the slug resolves; an id works too |
-| `NEXTAUTH_URL` | the Vercel branch URL | **Threshold-only.** Chorus has no accounts, so it needs neither this nor the next one |
-| `NEXTAUTH_SECRET` | must equal the preview backend's `GAME_TOKEN_SECRET` / `NEXTAUTH_SECRET` | a mismatch 401s every write while reads look fine |
-| `BLOB_READ_WRITE_TOKEN` | the **dev** store (`LERHz8d7Q5CbK9pB`) | separate record per scope, never a shared one |
+| `NEXT_PUBLIC_API_URL` | the production backend `/api` | `https://holoscopic-preview-backend.onrender.com/api` |
+| `NEXT_PUBLIC_INSTANCE_ID` | `threshold` | `threshold` |
+| `NEXTAUTH_URL` | `https://threshold.holoscopic.io` | the Vercel branch URL |
+| `NEXTAUTH_SECRET` | matches the **production** backend | matches the **preview** backend |
+| `BLOB_READ_WRITE_TOKEN` | Threshold's own production store | the **dev** store (`LERHz8d7Q5CbK9pB`) |
+
+Adding one scope at a time is what keeps them separate records:
+
+```bash
+vercel env add NEXT_PUBLIC_API_URL preview       # then paste the preview value
+vercel env add NEXT_PUBLIC_API_URL production    # then paste the production value
+vercel env ls                                    # confirm two rows, one per environment
+```
+
+`NEXTAUTH_URL` and `NEXTAUTH_SECRET` exist on the project already; **check they are scoped rather
+than shared** before trusting them — `vercel env ls` shows which environments each record covers. A
+single `NEXTAUTH_SECRET` spanning both is the failure that 401s every write on preview while every
+read looks fine, because the preview backend holds a different secret.
+
+Two rules that still apply, both from Chorus's file:
+
+- **Take a `vercel env pull --environment=production` backup before touching any shared record.** A
+  variable marked *sensitive* pulls as `[SENSITIVE]` and cannot be backed up at all.
+- **Never `vercel env rm` a record you want to keep half of.** The environment argument does not
+  narrow the removal.
 
 Prove which store a deploy actually mints against with the client-token probe in Chorus's file,
 with `threshold/` in the pathname instead of `memorial/`. `eIUuI62jhmFnk5eS` in the reply means
@@ -67,9 +93,19 @@ here. It does: **a preview circle advancing a round would otherwise email real p
 ticker runs on preview like anywhere else, so a circle left with an expired deadline will advance
 overnight and try to notify every member.
 
-So mail stays off by default. To test M4 deliberately, add `RESEND_API_KEY` to the preview backend
-temporarily and **use a circle whose members are the `@threshold.dev` fixture addresses**, which
-belong to nobody. Take it out again afterwards.
+So mail stays off by default, and there is a second guard underneath it: **the members
+`seed-threshold-dev.js` creates carry no email address at all**, so `dispatch` skips the mail
+branch before Resend is reached. `@threshold.dev` is their *sign-in* address on the User account,
+never their circle membership.
+
+Testing M4 for real therefore takes three deliberate steps, and none of them happens by accident:
+
+1. add `RESEND_API_KEY` to the preview backend,
+2. put a **real address you own** on a membership — join the circle yourself, or set
+   `members.$.email` directly on one fixture row,
+3. set `THRESHOLD_URL` on that backend, or every link in the mail points at `localhost:4006`.
+
+Take the key out again afterwards.
 
 ## Deploying
 
