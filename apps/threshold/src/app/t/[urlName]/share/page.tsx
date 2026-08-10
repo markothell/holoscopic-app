@@ -103,12 +103,18 @@ export default function SharePage({ params }: { params: Promise<{ urlName: strin
 
   // Held, not sent — so this cannot end the round, and the other side stays
   // open however long it takes to think of it.
-  const keep = () => {
+  //
+  // `withAudio` is what the recorder hands back. Finishing a recording IS
+  // telling that story: asking for a second click that only confirms the take
+  // you just listened to is a step with nothing in it. Anything already typed
+  // rides along, so a story that is a recording AND a note stays both.
+  const keep = (withAudio?: ShareAudio) => {
     if (!composing) return;
-    setStaged(prev => ({ ...prev, [composing]: { text: text.trim(), audio } }));
+    setStaged(prev => ({ ...prev, [composing]: { text: text.trim(), audio: withAudio ?? audio } }));
     setComposing(null);
     setText('');
     setAudio(null);
+    setRecordingUi(false);
   };
 
   // The one meaningful submit. Everything held goes in a single write, and the
@@ -179,7 +185,8 @@ export default function SharePage({ params }: { params: Promise<{ urlName: strin
             <Recorder
               seedId={seed.id}
               maxSeconds={seed.payload.secondsPerNote}
-              onDone={a => { setAudio(a); setRecordingUi(false); }}
+              doneLabel="That’s it"
+              onDone={a => keep(a)}
               onCancel={() => setRecordingUi(false)}
             />
           ) : audio ? (
@@ -230,7 +237,8 @@ export default function SharePage({ params }: { params: Promise<{ urlName: strin
           <div className="mt-4 flex items-center gap-4">
             {/* Keeps it and goes back to the two sides, where the other end is
                 still open and one button sends whatever you have. */}
-            <Action disabled={busy || (!text.trim() && !audio)} onClick={keep}>
+            {/* Wrapped, so the click event is never mistaken for a recording. */}
+            <Action disabled={busy || (!text.trim() && !audio)} onClick={() => keep()}>
               That&rsquo;s it
             </Action>
             <Quiet onClick={() => { setComposing(null); setText(''); setAudio(null); }}>Leave it</Quiet>
@@ -318,22 +326,27 @@ function PoleCard({ pole, label, held, sent, busy, onOpen, onRemove }: {
       ? (held.text || (held.audio ? 'A recording, ready to share.' : ''))
       : (sent!.text || 'A recording.');
     return (
-      <div className="rounded-xl p-4" style={{ background: wash }}>
-        <p className="text-[13px] font-medium" style={{ color: tint }}>{label}</p>
+      <div className="relative rounded-xl p-4" style={{ background: wash }}>
+        {/* Deleting is an X in the corner rather than a second link under the
+            story: "Change it" and "Take it back" read as two ways of editing
+            until one of them throws the story away. */}
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={busy}
+          aria-label={`Delete your ${label} story`}
+          title="Delete"
+          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none text-ink-faint transition-colors hover:bg-ground/60 hover:text-ink disabled:opacity-50"
+        >
+          ×
+        </button>
+        <p className="pr-8 text-[13px] font-medium" style={{ color: tint }}>{label}</p>
         <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-ink">{preview}</p>
         <p className="mt-2 text-xs" style={{ color: tint }}>
           {held ? 'Told — sends when you share' : 'With the circle'}
         </p>
-        <div className="mt-3 flex items-center gap-4">
+        <div className="mt-3">
           <Quiet onClick={onOpen}>Change it</Quiet>
-          <button
-            type="button"
-            onClick={onRemove}
-            disabled={busy}
-            className="text-sm text-ink-faint underline decoration-[var(--rule-strong)] underline-offset-4 hover:text-ink disabled:opacity-50"
-          >
-            Take it back
-          </button>
         </div>
       </div>
     );

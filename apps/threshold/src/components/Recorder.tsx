@@ -33,11 +33,21 @@ const ERRORS: Record<RecorderErrorCode, string> = {
     'That recording came out empty, which some phones do without warning. Have another go, or type it instead.',
 };
 
-export default function Recorder({ seedId, maxSeconds, onDone, onCancel }: {
+export default function Recorder({ seedId, maxSeconds, onDone, onCancel, doneLabel = 'Use this take' }: {
   seedId: string;
   maxSeconds: number;
   onDone: (audio: ShareAudio) => void;
   onCancel: () => void;
+  /**
+   * What the review step's primary button says — and therefore what it means.
+   *
+   * Where `onDone` finishes the story (the share surface stages it and hands
+   * you back to the two poles), this is that story's own submit and says so.
+   * Where the surface has another step after it, the default keeps this one
+   * about the take rather than the story. The difference is a click, and after
+   * a recording a click that only says "yes, that recording" is one too many.
+   */
+  doneLabel?: string;
 }) {
   const [recording, setRecording] = useState<Recording | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -141,7 +151,7 @@ export default function Recorder({ seedId, maxSeconds, onDone, onCancel }: {
           )}
           <div className="mt-4 flex items-center justify-center gap-4">
             <button type="button" onClick={send} disabled={uploading} className={primary}>
-              {uploading ? `Sending ${percent}%` : 'Use this take'}
+              {uploading ? `Sending ${percent}%` : doneLabel}
             </button>
             <button type="button" onClick={rec.discard} disabled={uploading} className={quiet}>
               Record again
