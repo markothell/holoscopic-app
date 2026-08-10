@@ -69,6 +69,7 @@ export default function CyclePage({ params }: { params: Promise<{ urlName: strin
   const [error, setError] = useState<string | null>(null);
   const [cutoff, setCutoff] = useState<Cutoff>('three-quarters');
   const [open, setOpen] = useState<string | null>(null);
+  const [about, setAbout] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -124,9 +125,17 @@ export default function CyclePage({ params }: { params: Promise<{ urlName: strin
       {enough ? (
         <>
           {/* The control IS the argument: the threshold is a function of how
-              much agreement you decide to require. */}
+              much agreement you decide to require.
+              Its heading used to read "A story is at an end when", which
+              completes the sentence each button starts and says nothing about
+              what the row DOES. A control has to name its job before it can be
+              clever — so the heading is the job, and the line under it is the
+              sentence. */}
           <div className="mb-8">
-            <Band>A story is at an end when</Band>
+            <Band>Change the threshold</Band>
+            <p className="mb-3 text-sm leading-relaxed text-ink-soft">
+              A story sits at one end when this many people read it that way.
+            </p>
             <div className="flex flex-wrap gap-2">
               {CUTOFFS.map(o => (
                 <button
@@ -162,21 +171,41 @@ export default function CyclePage({ params }: { params: Promise<{ urlName: strin
               line under it says what the population means and stops there — no
               verdict, no headline. */}
           <section className="my-8 rounded-xl border border-[var(--rule)] bg-threshold-soft/40 p-5">
-            <Band>The threshold</Band>
-            <p className="mb-4 text-[15px] leading-relaxed text-ink-soft">
-              {middle === 0
-                // An empty band means two different things, and only one of
-                // them is unanimity. At a loose cutoff it means the line was
-                // drawn loosely — saying "everyone read every story the same
-                // way" there claims an agreement the sorting does not show.
-                ? cutoff === 'all'
-                  ? 'Nothing sits across the line: every person read every story the same way.'
-                  : 'Nothing sits across the line at this setting. Ask for more agreement to see where it comes apart.'
-                : middle === 1
-                  ? 'One story sits across the line. The group agreed about the rest.'
-                  : `${middle} stories sit across the line. That is where the group's reading came apart.`}
-            </p>
-            {middle > 0 && (
+            {/* The stories ARE the finding, so they get the space directly under
+                the heading. The sentence describing what the population means
+                is true and secondary — read once and never again — so it moves
+                behind a ?, where somebody meeting this screen for the first
+                time can still find it. */}
+            <div className="mb-4 flex items-center gap-2">
+              <Band>The threshold</Band>
+              <button
+                type="button"
+                onClick={() => setAbout(!about)}
+                aria-expanded={about}
+                aria-label="What the threshold means"
+                className="mb-3 flex h-5 w-5 items-center justify-center rounded-full border border-[var(--rule-strong)] text-[11px] text-ink-faint transition-colors hover:border-ink hover:text-ink"
+              >
+                ?
+              </button>
+            </div>
+
+            {about && (
+              <p className="mb-4 text-[15px] leading-relaxed text-ink-soft">
+                {middle === 0
+                  // An empty band means two different things, and only one of
+                  // them is unanimity. At a loose cutoff it means the line was
+                  // drawn loosely — saying "everyone read every story the same
+                  // way" there claims an agreement the sorting does not show.
+                  ? cutoff === 'all'
+                    ? 'Nothing sits across the line: every person read every story the same way.'
+                    : 'Nothing sits across the line at this setting. Ask for more agreement to see where it comes apart.'
+                  : middle === 1
+                    ? 'One story sits across the line. The group agreed about the rest.'
+                    : `${middle} stories sit across the line. That is where the group's reading came apart.`}
+              </p>
+            )}
+
+            {middle > 0 ? (
               <Dots
                 rows={groups.threshold}
                 tint="var(--threshold)"
@@ -186,6 +215,15 @@ export default function CyclePage({ params }: { params: Promise<{ urlName: strin
                 poleA={poleA}
                 poleB={poleB}
               />
+            ) : (
+              // With the sentence behind the ?, an empty band would otherwise be
+              // an empty box — so the one case with nothing to show still says
+              // so where the stories would have been.
+              <p className="text-[15px] leading-relaxed text-ink-soft">
+                {cutoff === 'all'
+                  ? 'Every person read every story the same way.'
+                  : 'Nothing sits across the line at this setting. Ask for more agreement to see where it comes apart.'}
+              </p>
             )}
           </section>
 
