@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { memorialApiFor } from '@/services/api';
-import { loadConfig } from '@/lib/memorial';
+import { loadConfig, classifyFailure } from '@/lib/memorial';
+import MemorialUnavailable from '@/components/MemorialUnavailable';
+import MemorialNotFound from '@/components/MemorialNotFound';
 import MemoryCard from '@/components/MemoryCard';
 import ComposeButton from '@/components/compose/ComposeButton';
 import FilterRail from '@/components/tags/FilterRail';
@@ -41,33 +43,20 @@ export default async function MemorialWall({
       loadConfig(slug),
       api.wall({ limit: 20, tags, sort }),
     ]);
-  } catch {
+  } catch (err) {
     // An error page here is a dead end for someone who was invited to
-    // contribute, so it says what to do next rather than what went wrong.
+    // contribute, so it says what to do next rather than what went wrong —
+    // and now says WHICH thing went wrong, because "everyone is here at once"
+    // and "something broke at our end" are different news and only one of them
+    // is worrying. See components/MemorialUnavailable.
     //
-    // The retry is a plain <a> to this same URL, not a button: this is a Server
-    // Component and the thing that just failed was a server fetch, so a full
-    // request is exactly what has to happen again. It also means the recovery
-    // works with no JavaScript at all — which is the state a phone on one bar
-    // is closest to. Without it the copy said "try again" while offering no way
-    // to, and a reload was the visitor's problem to think of.
-    return (
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 text-center">
-        <p className="voice text-[1.25rem] text-ink-soft">
-          These memories can&apos;t be reached right now.
-        </p>
-        <p className="mt-2 text-[0.9375rem] text-ink-faint">
-          Nothing has been lost.
-        </p>
-        <a
-          href={base}
-          className="mt-7 w-full rounded-[3px] bg-dial px-5 py-3.5 text-[1rem] font-medium
-                     text-card-raised"
-        >
-          Try again
-        </a>
-      </main>
-    );
+    // The layout has already resolved the memorial by this point, so reaching
+    // here means the WALL failed on its own: most often the 429 that the
+    // aggregate read limiter hands out when a memorial is being read faster
+    // than the ceiling allows. That is precisely the busy case.
+    const reason = classifyFailure(err);
+    if (reason === 'missing') return <MemorialNotFound />;
+    return <MemorialUnavailable reason={reason} href={base} />;
   }
 
   const { memorial } = config;

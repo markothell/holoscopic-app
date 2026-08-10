@@ -1,14 +1,14 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { memorialApiFor } from '@/services/api';
-import { loadConfig } from '@/lib/memorial';
+import { loadConfig, classifyFailure } from '@/lib/memorial';
+import MemorialUnavailable from '@/components/MemorialUnavailable';
+import MemorialNotFound from '@/components/MemorialNotFound';
 import PromptSentence from '@/components/PromptSentence';
 import ComposeButton from '@/components/compose/ComposeButton';
 import AudioPill from '@/components/audio/AudioPill';
 import TagLink from '@/components/tags/TagLink';
 import LiveWall from '@/components/LiveWall';
 import ReportMemory from '@/components/ReportMemory';
-import { ApiError } from '@/services/api';
 import type { Memory } from '@/lib/types';
 import MemorialFooter from '@/components/MemorialFooter';
 
@@ -68,8 +68,13 @@ export default async function MemoryPage({
       api.memory(id),
     ]);
   } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound();
-    throw err;
+    // A memory that is gone — deleted, or hidden by a curator — is a real 404.
+    // Everything else is the memorial being busy or briefly unreachable, and
+    // must not claim this memory never existed: somebody may have been sent a
+    // link to this exact story.
+    const reason = classifyFailure(err);
+    if (reason === 'missing') return <MemorialNotFound />;
+    return <MemorialUnavailable reason={reason} href={`/c/${slug}`} />;
   }
 
   const { memory, thread } = detail;

@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { memorialApiFor } from '@/services/api';
+import { memorialApiFor, ApiError } from '@/services/api';
 import type { ConfigResponse } from '@/lib/types';
 
 // One memorial's config, fetched at most once per request.
@@ -38,19 +38,54 @@ export const loadConfig = cache(
 );
 
 /**
- * The memorial itself, or null if this slug does not name one.
+ * Why a read did not produce a memorial. Three different things, and for a
+ * long time all of them rendered as the first one.
+ *
+ *   missing      This slug names no memorial. The only honest 404.
+ *   busy         The server is rate-limiting us (429). The memorial exists and
+ *                is fine; too many people are reading it this minute.
+ *   unreachable  Anything else — a 500, an Atlas failover, a deploy restart, a
+ *                phone changing towers mid-fetch.
+ *
+ * The distinction is the whole point. `loadMemorial` used to catch every error
+ * and return null, and the layout turned null into notFound(), so a rate limit
+ * told someone who had been texted a link about a person who died that the
+ * person's memorial did not exist. A busy minute and a deleted memorial are
+ * not the same news and must never look the same.
+ */
+export type FailureReason = 'missing' | 'busy' | 'unreachable';
+
+export function classifyFailure(err: unknown): FailureReason {
+  if (err instanceof ApiError) {
+    // 404 is the backend saying this instance is no memorial of ours — the
+    // guard in routes/memorial.js answers 404 for a slug that names nothing
+    // AND for one somebody may not see, deliberately indistinguishable.
+    if (err.status === 404) return 'missing';
+    if (err.status === 429) return 'busy';
+  }
+  // A thrown TypeError from fetch (DNS, socket, timeout) lands here too, which
+  // is right: from a reader's side it is the same event as a 500.
+  return 'unreachable';
+}
+
+export type MemorialLoad =
+  | { state: 'ok'; memorial: ConfigResponse['memorial'] }
+  | { state: FailureReason };
+
+/**
+ * The memorial for this slug, or which kind of nothing happened instead.
  *
  * resolveInstance falls back to the platform's default instance when a header
  * names nothing it recognises, so a typo'd slug returns a perfectly valid
  * config for the WRONG memorial. Only a config that names a subject is a
- * memorial; anything else is that fallback, and it must 404.
+ * memorial; anything else is that fallback, and it is 'missing'.
  */
-export async function loadMemorial(slug: string) {
+export async function loadMemorial(slug: string): Promise<MemorialLoad> {
   try {
     const { memorial } = await loadConfig(slug);
-    if (!memorial?.subjectName) return null;
-    return memorial;
-  } catch {
-    return null;
+    if (!memorial?.subjectName) return { state: 'missing' };
+    return { state: 'ok', memorial };
+  } catch (err) {
+    return { state: classifyFailure(err) };
   }
 }
