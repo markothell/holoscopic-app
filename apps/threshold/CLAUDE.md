@@ -31,7 +31,14 @@ fixture's members carry no address, so nothing can send.
 **Not built: M6, the launch pass.**
 
 `components/TideLine.tsx` is the app's one mark and `components/Shell.tsx` its chrome.
-`components/Scaffold.tsx` is now unused by any route and should be deleted with the M3b work.
+`components/Scaffold.tsx` is **still live on four routes** — `/` , `/login`, `error.tsx` and
+`not-found.tsx` — so it cannot be deleted yet, whatever an earlier note here said.
+
+**The front door is a placeholder, and it is the biggest thing still missing.** `src/app/page.tsx`
+renders `NotBuilt`, so **no surface in the app creates a circle**: `api.ts#createCircle` posts to a
+route nothing calls. A circle has to be made through the API, which also means a cohort arriving
+from the platform has nowhere to land (root `PLATFORM.md` §M5). There is no `/signup` either — an
+account is made on another holoscopic app and signed in here.
 
 **`node scripts/seed-threshold-dev.js` from `apps/backend` is the fastest way to see any of it.**
 It builds a circle holding every state at once — a live cycle mid-sort, a queue with uneven support
