@@ -28,9 +28,23 @@ export default function FilterRail({
   const all = [...role, ...experience];
   const activeTags = active.map(id => all.find(t => t.id === id)).filter((t): t is Tag => Boolean(t));
 
+  // A filtered wall that found nothing is a DEAD END, deliberately.
+  //
+  // Every chip here ADDS a word to the filter, so an empty result used to
+  // offer eighteen ways to go deeper into emptiness — and eighteen more from
+  // each of those. That is not a metaphor for the crawl that hit this app; it
+  // is the crawl. A sample of 1,215 filtered wall renders in one day returned
+  // an empty wall 1,215 times, six words deep, because nothing here ever said
+  // "there is nothing further down this path".
+  //
+  // It is also the better page. Narrowing from nothing to nothing is not a
+  // move anybody wants offered; the only useful thing left is to widen, and
+  // "Show all" below is that.
+  const deadEnd = active.length > 0 && total === 0;
+
   // Only words somebody has actually used — an unused seed tag would filter to
   // an empty wall, which reads as a broken page.
-  const offered = all
+  const offered = deadEnd ? [] : all
     .filter(t => t.useCount > 0 && !active.includes(t.id))
     .sort((a, b) => b.useCount - a.useCount)
     .slice(0, 18);

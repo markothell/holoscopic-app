@@ -179,7 +179,15 @@ export default async function MemorialWall({
         )}
       </section>
 
-      <TagPortrait base={base} tags={config.tags.role} subjectName={name} params={params} />
+      {/* Not on a filtered wall that found nothing. The portrait is up to
+          twenty-eight more tag links — the largest set of "go deeper" links on
+          the page, larger than the rail's — and offering them under "no
+          memories carry those words" is both the wrong thing to say and the
+          main way a crawler descended into an empty filter space. A portrait
+          of everyone belongs on the wall of everyone. */}
+      {!(tags.length && total === 0) && (
+        <TagPortrait base={base} tags={config.tags.role} subjectName={name} params={params} />
+      )}
 
       <MemorialFooter />
     </main>

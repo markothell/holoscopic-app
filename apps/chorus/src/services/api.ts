@@ -127,16 +127,39 @@ export function memorialApiFor(instance: string) {
       { revalidate: 60 },
     ),
 
+    // A FILTERED wall is cached for a minute; the plain wall never is.
+    //
+    // The two are read by different people. Someone who just left a memory
+    // opens /c/<slug> with no filters to check that it saved, and a stale
+    // answer there is the one thing that makes them think it didn't — so that
+    // request stays no-store, exactly as it always was. A filtered wall is
+    // somebody browsing, or a crawler descending, and neither can tell that
+    // the answer is up to sixty seconds old.
+    //
+    // The split is not a guess. Of the wall requests in a day of crawl
+    // traffic, 563 out of 563 carried a tag filter — the two populations do
+    // not overlap at all, so caching one leaves the other untouched.
+    //
+    // `i` is the cache-key discriminator, for the same reason config carries
+    // it: this URL names tags and a sort but not the memorial, which travels
+    // in a header, and two memorials sharing one cache entry is one family
+    // reading another family's memories. Sent on every call rather than only
+    // the cached ones, so there is no version of this URL that lacks it.
     wall: (params: {
       tags?: string[]; cursor?: string | null; limit?: number; sort?: string;
     } = {}) => {
       const q = new URLSearchParams();
+      q.set('i', instance);
       if (params.tags?.length) q.set('tags', params.tags.join(','));
       if (params.cursor) q.set('cursor', params.cursor);
       if (params.limit) q.set('limit', String(params.limit));
       if (params.sort) q.set('sort', params.sort);
-      const qs = q.toString();
-      return apiFetch<WallResponse>(instance, `/memorial/memories${qs ? `?${qs}` : ''}`);
+      const filtered = Boolean(params.tags?.length);
+      return apiFetch<WallResponse>(
+        instance,
+        `/memorial/memories?${q.toString()}`,
+        filtered ? { revalidate: 60 } : {},
+      );
     },
 
     memory: (id: string) => apiFetch<MemoryDetail>(instance, `/memorial/memories/${id}`),
