@@ -326,6 +326,9 @@ cards each repeating the boilerplate is noise, not rhythm.
 - `NEXT_PUBLIC_API_URL` (default `http://localhost:4001/api`)
 - `NEXT_PUBLIC_ABOUT_URL` — where `/` points for "what Chorus is" (default
   `https://holoscopic.io/chorus`)
+- `NEXT_PUBLIC_HOLOSCOPIC_URL` — where the memorial footer's credit line points (default
+  `https://holoscopic.io`). The footer links the *platform*; `ABOUT_URL` is the Chorus product page
+  and stays on `/`, `not-found` and `MemorialNotFound`.
 
 `NEXT_PUBLIC_INSTANCE_ID` is gone. Which memorial a page is for comes from its `/c/<slug>` route.
 

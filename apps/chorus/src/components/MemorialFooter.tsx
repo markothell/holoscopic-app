@@ -1,4 +1,7 @@
-const ABOUT_URL = process.env.NEXT_PUBLIC_ABOUT_URL || 'https://holoscopic.io/chorus';
+// The credit line points at the platform, not at the product page: someone who
+// reaches the foot of a memorial and wonders what carried it is asking who runs
+// this, and holoscopic.io answers that with everything else it makes.
+const HOLOSCOPIC_URL = process.env.NEXT_PUBLIC_HOLOSCOPIC_URL || 'https://holoscopic.io';
 // A way to reach a person. The curator setting a memorial up and the
 // contributor whose recording failed have the same question and, until now,
 // the same answer: nothing on the page. The form at the other end is read by
@@ -22,10 +25,11 @@ export default function MemorialFooter() {
   return (
     <footer className="mt-16 border-t border-rule pt-6 pb-10 text-center">
       <p className="text-[0.8125rem] text-ink-faint">
-        <a href={ABOUT_URL} className="underline decoration-rule underline-offset-4">
-          Chorus
+        Chorus, an activity from{' '}
+        <a href={HOLOSCOPIC_URL} className="underline decoration-rule underline-offset-4">
+          Holoscopic
         </a>
-        , an activity from Holoscopic.{' '}
+        .{' '}
         <a href={CONTACT_URL} className="underline decoration-rule underline-offset-4">
           Contact
         </a>
