@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { thresholdApi, ApiError } from '@/services/api';
 import type { Circle, Pole, Share, ShareAudio } from '@/lib/types';
@@ -23,9 +24,24 @@ import Recorder from '@/components/Recorder';
 //
 // One story per pole, so at most two per seed (D10). Re-submitting a pole
 // replaces that story rather than adding a second.
+//
+// THE COMPOSE CARD STAGES; THIS SCREEN SENDS. Telling a side used to write it
+// immediately, which made a turn two writes when somebody wanted both ends —
+// and the server evaluates completion after a write, where a member holding one
+// story already reads as finished. So the first send could close the round and
+// the second was refused, on a topic that had moved on a moment earlier. In a
+// one-member circle that happened every time; in any circle it happens to
+// whoever the phase was last waiting for. Staging both sides and sending once
+// removes the window rather than narrowing it, and needs nothing from the round
+// machine — you have stories only once you have pressed Share, so "has at least
+// one story" stays the honest test of whether somebody is done.
+
+/** A story told but not yet sent. */
+type Staged = { text: string; audio: ShareAudio | null };
 
 export default function SharePage({ params }: { params: Promise<{ urlName: string }> }) {
   const { urlName } = use(params);
+  const router = useRouter();
   const { data: session, status } = useSession();
   const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
 
@@ -36,6 +52,8 @@ export default function SharePage({ params }: { params: Promise<{ urlName: strin
   const [audio, setAudio] = useState<ShareAudio | null>(null);
   const [recordingUi, setRecordingUi] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Told but not yet sent. The compose card writes here and nowhere else.
+  const [staged, setStaged] = useState<Partial<Record<Pole, Staged>>>({});
 
   const load = useCallback(async () => {
     try {
@@ -71,39 +89,65 @@ export default function SharePage({ params }: { params: Promise<{ urlName: strin
   }
 
   const mine: Share[] = (circle.shares ?? []).filter(s => s.isMine);
-  const on = (pole: Pole) => mine.find(s => s.pole === pole) ?? null;
+  const sent = (pole: Pole) => mine.find(s => s.pole === pole) ?? null;
   const label = (pole: Pole) => (pole === 'A' ? seed.payload.poleA : seed.payload.poleB);
+  const pending = (['A', 'B'] as Pole[]).filter(p => staged[p]);
 
   const open = (pole: Pole) => {
     setComposing(pole);
-    setText(on(pole)?.text ?? '');
-    setAudio(null);
+    setText(staged[pole]?.text ?? sent(pole)?.text ?? '');
+    setAudio(staged[pole]?.audio ?? null);
     setRecordingUi(false);
     setError(null);
   };
 
-  const save = async () => {
-    if (!composing || !userId) return;
+  // Held, not sent — so this cannot end the round, and the other side stays
+  // open however long it takes to think of it.
+  const keep = () => {
+    if (!composing) return;
+    setStaged(prev => ({ ...prev, [composing]: { text: text.trim(), audio } }));
+    setComposing(null);
+    setText('');
+    setAudio(null);
+  };
+
+  // The one meaningful submit. Everything held goes in a single write, and the
+  // round is asked whether it should move only after all of it has landed.
+  const send = async () => {
+    if (!userId || pending.length === 0) return;
     setBusy(true);
     try {
-      await thresholdApi.submitShare(
+      await thresholdApi.submitShares(
         seed.id,
-        { pole: composing, text: text.trim(), audio: audio ?? undefined },
+        pending.map(pole => ({
+          pole,
+          text: staged[pole]!.text,
+          audio: staged[pole]!.audio ?? undefined,
+        })),
         userId,
       );
-      setComposing(null);
-      setText('');
-      setAudio(null);
-      await load();
+      setStaged({});
+      // Back to the circle: telling your story is finished, and the page you
+      // return to is the one that says what the round is doing now.
+      router.push(base);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'That did not save');
-    } finally {
+      setError(e instanceof ApiError ? e.message : 'That did not send');
       setBusy(false);
     }
   };
 
   const remove = async (pole: Pole) => {
     if (!userId) return;
+    // Nothing held for this side has ever reached the server, so taking it back
+    // is forgetting it.
+    if (staged[pole]) {
+      setStaged(prev => {
+        const next = { ...prev };
+        delete next[pole];
+        return next;
+      });
+      if (!sent(pole)) return;
+    }
     setBusy(true);
     try {
       await thresholdApi.deleteShare(seed.id, pole, userId);
@@ -184,10 +228,12 @@ export default function SharePage({ params }: { params: Promise<{ urlName: strin
             {(recordingUi || audio) && ' A recording carries your voice, though — in a group this size, people who know you will know you.'}
           </p>
           <div className="mt-4 flex items-center gap-4">
-            <Action disabled={busy || (!text.trim() && !audio)} onClick={save}>
-              {on(composing) ? 'Save the change' : 'Tell it'}
+            {/* Keeps it and goes back to the two sides, where the other end is
+                still open and one button sends whatever you have. */}
+            <Action disabled={busy || (!text.trim() && !audio)} onClick={keep}>
+              That&rsquo;s it
             </Action>
-            <Quiet onClick={() => { setComposing(null); setText(''); }}>Leave it</Quiet>
+            <Quiet onClick={() => { setComposing(null); setText(''); setAudio(null); }}>Leave it</Quiet>
           </div>
         </Card>
       ) : (
@@ -199,28 +245,42 @@ export default function SharePage({ params }: { params: Promise<{ urlName: strin
             the group comes to sort them, and you can move it then.
           </Muted>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {(['A', 'B'] as Pole[]).map(pole => {
-              const told = on(pole);
-              return (
-                <PoleCard
-                  key={pole}
-                  pole={pole}
-                  label={label(pole)}
-                  told={told}
-                  busy={busy}
-                  onOpen={() => open(pole)}
-                  onRemove={() => remove(pole)}
-                />
-              );
-            })}
+            {(['A', 'B'] as Pole[]).map(pole => (
+              <PoleCard
+                key={pole}
+                pole={pole}
+                label={label(pole)}
+                held={staged[pole] ?? null}
+                sent={sent(pole)}
+                busy={busy}
+                onOpen={() => open(pole)}
+                onRemove={() => remove(pole)}
+              />
+            ))}
           </div>
 
-          {mine.length > 0 && (
+          {/* The one submit, and it lives here rather than in the compose card:
+              this is the screen that shows both sides, so it is the only place
+              somebody can see what they are about to send. */}
+          {pending.length > 0 && (
+            <div className="mt-8">
+              <Action disabled={busy} onClick={send}>
+                {busy ? 'Sending…' : 'Share'}
+              </Action>
+              <p className="mt-3 text-sm text-ink-faint">
+                {pending.length === 2
+                  ? 'Both stories go to the circle together.'
+                  : 'One side is enough. The other end is there if it went both ways.'}
+              </p>
+            </div>
+          )}
+
+          {pending.length === 0 && mine.length > 0 && (
             <div className="mt-8">
               <Action href={base}>Back to the circle</Action>
               {mine.length === 1 && (
                 <p className="mt-3 text-sm text-ink-faint">
-                  You can tell one from the other end too, if it went both ways.
+                  You can tell one from the other end too, while this round is open.
                 </p>
               )}
             </div>
@@ -236,22 +296,34 @@ export default function SharePage({ params }: { params: Promise<{ urlName: strin
  * colours (D26) and the seed's own words — nothing a participant reads ever
  * says "A" or "B".
  */
-function PoleCard({ pole, label, told, busy, onOpen, onRemove }: {
+function PoleCard({ pole, label, held, sent, busy, onOpen, onRemove }: {
   pole: Pole;
   label: string;
-  told: Share | null;
+  /** Told on this visit, waiting for Share. */
+  held: Staged | null;
+  /** Already with the circle, from an earlier visit. */
+  sent: Share | null;
   busy: boolean;
   onOpen: () => void;
   onRemove: () => void;
 }) {
   const tint = pole === 'A' ? 'var(--pole-a)' : 'var(--pole-b)';
   const wash = pole === 'A' ? 'var(--pole-a-soft)' : 'var(--pole-b-soft)';
+  const told = held ?? sent;
 
   if (told) {
+    // A recording has no text to show, so the card says what it holds rather
+    // than rendering an empty line and reading as a story that failed to save.
+    const preview = held
+      ? (held.text || (held.audio ? 'A recording, ready to share.' : ''))
+      : (sent!.text || 'A recording.');
     return (
       <div className="rounded-xl p-4" style={{ background: wash }}>
         <p className="text-[13px] font-medium" style={{ color: tint }}>{label}</p>
-        <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-ink">{told.text}</p>
+        <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-ink">{preview}</p>
+        <p className="mt-2 text-xs" style={{ color: tint }}>
+          {held ? 'Told — sends when you share' : 'With the circle'}
+        </p>
         <div className="mt-3 flex items-center gap-4">
           <Quiet onClick={onOpen}>Change it</Quiet>
           <button

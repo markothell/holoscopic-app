@@ -245,14 +245,66 @@ async function submitShare({
   store = mongoStore, circleId, seedId, userId, username,
   pole, title = '', text = '', audio = null,
 }) {
+  const [share] = await submitShares({
+    store, circleId, seedId, userId, username,
+    stories: [{ pole, title, text, audio }],
+  });
+  return share;
+}
+
+/**
+ * Tell BOTH sides in one write — the whole of a person's turn, committed once.
+ *
+ * This exists because completion is evaluated after a write, and a person who
+ * has told one story looks finished (`isMemberDone` for `share` is "has at
+ * least one"). Two sequential single-pole writes therefore end the round on the
+ * FIRST one wherever that person was the last the phase was waiting for — and
+ * the second story is refused by `assertOpenForStories`, on a topic that moved
+ * on a hundred milliseconds ago. In a one-member circle it happens every time.
+ *
+ * So the compose surface stages, the pole screen commits, and everything a
+ * member has to say lands before the machine is asked whether they are done.
+ * The alternative — teaching the machine that a member with one story might not
+ * be finished — needs a stored "I am done" flag per member per seed, and a
+ * phase that then waits on the deadline for everyone who closes the tab after
+ * telling one story. Committing once is the same guarantee without the state.
+ */
+async function submitShares({
+  store = mongoStore, circleId, seedId, userId, username, stories = [],
+}) {
+  if (!Array.isArray(stories) || stories.length === 0) {
+    throw new Error('Say something — record a note or write it');
+  }
+
   const circle = await store.findCircleById(circleId);
   if (!circle) throw new Error('Circle not found');
   assertMember(circle, userId);
 
   const seed = seedById(circle, seedId);
   assertOpenForStories(seed, userId);
-  assertPole(pole);
+  for (const s of stories) assertPole(s.pole);
+  // One story per pole (D10), so a payload naming a pole twice is a client bug
+  // rather than a second story — refuse it instead of silently keeping the last.
+  if (new Set(stories.map(s => s.pole)).size !== stories.length) {
+    throw new Error('One story per side');
+  }
 
+  const written = [];
+  for (const story of stories) {
+    written.push(await writeShare({ store, circle, seed, seedId, userId, username, story }));
+  }
+
+  // Evaluated ONCE, after every story is in. The person who finishes last
+  // should see ranking open rather than wait up to a minute for the tick —
+  // same contract as circles#addSeed and submitRanking below — but "finished"
+  // has to mean the whole turn.
+  await circles.evaluate({ store, circle });
+  return written;
+}
+
+/** One pole's story, written without asking whether the phase should end. */
+async function writeShare({ store, circle, seedId, userId, username, story }) {
+  const { pole, title = '', text = '', audio = null } = story;
   const body = String(text || '').trim().slice(0, TEXT_MAX);
   const media = audio ? normalizeAudio(audio) : null;
   if (!body && !media) throw new Error('Say something — record a note or write it');
@@ -286,10 +338,6 @@ async function submitShare({
   fireBlobMirror(share);
   fireTranscribe(share, store);
 
-  // The last outstanding share is itself the completion trigger — the person
-  // who finishes last should see ranking open, not wait up to a minute for the
-  // tick. Same contract as circles#addSeed and submitRanking below.
-  await circles.evaluate({ store, circle });
   return share;
 }
 
@@ -792,6 +840,7 @@ module.exports = {
   normalizeSeed,
   assertMember,
   submitShare,
+  submitShares,
   deleteShare,
   listShares,
   toClientShare,

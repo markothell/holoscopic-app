@@ -185,6 +185,68 @@ test('a share upserts per pole — one each, never a second on the same side (D1
   assert.equal(store._shares.find(s => s.pole === 'A').text, 'actually, a different story');
 });
 
+test('both sides land before the phase is asked whether it should end', async () => {
+  const store = memStore();
+  useStore(store);
+  // ONE member, which is the case that made this visible: `isMemberDone` for
+  // `share` is "has at least one story", so a member telling one story is the
+  // whole circle finishing. Told as two writes, the first ends the round and
+  // the second is refused on a topic that moved on milliseconds ago.
+  const circle = await runningCircle(store, { members: 1 });
+  const seed = circle.seeds[0];
+
+  const written = await threshold.submitShares({
+    store, circleId: circle.id, seedId: seed.id, userId: 'u1', username: 'One',
+    stories: [
+      { pole: 'A', text: 'the time it steadied me' },
+      { pole: 'B', text: 'the time it flattened me' },
+    ],
+  });
+
+  assert.equal(written.length, 2, 'both stories written');
+  assert.equal(store._shares.length, 2);
+  const fresh = await store.findCircleById(circle.id);
+  assert.equal(fresh.seeds[0].phase, 'rank', 'and the round moved on exactly once, afterwards');
+});
+
+test('telling one side then the other separately is what the single write prevents', async () => {
+  const store = memStore();
+  useStore(store);
+  const circle = await runningCircle(store, { members: 1 });
+  const seed = circle.seeds[0];
+
+  await threshold.submitShare({
+    store, circleId: circle.id, seedId: seed.id, userId: 'u1', username: 'One',
+    pole: 'A', text: 'the time it steadied me',
+  });
+  // Not a race and not a tick — submitShare evaluates completion itself, so the
+  // refusal is deterministic. This is the behaviour the compose surface stages
+  // around rather than one it can retry through.
+  await assert.rejects(
+    () => threshold.submitShare({
+      store, circleId: circle.id, seedId: seed.id, userId: 'u1', username: 'One',
+      pole: 'B', text: 'the time it flattened me',
+    }),
+    /not open for stories/,
+  );
+});
+
+test('a turn naming one side twice is refused rather than quietly keeping the last', async () => {
+  const store = memStore();
+  useStore(store);
+  const circle = await runningCircle(store, { members: 2 });
+  const seed = circle.seeds[0];
+
+  await assert.rejects(
+    () => threshold.submitShares({
+      store, circleId: circle.id, seedId: seed.id, userId: 'u1', username: 'One',
+      stories: [{ pole: 'A', text: 'one' }, { pole: 'A', text: 'two' }],
+    }),
+    /One story per side/,
+  );
+  assert.equal(store._shares.length, 0, 'and nothing was written');
+});
+
 test('a share needs words or audio, a valid pole, membership, and an open phase', async () => {
   const store = memStore();
   useStore(store);

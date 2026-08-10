@@ -106,6 +106,12 @@ the round may have turned over.
 - **Say the honest thing anyway.** In a twelve-person circle a voice recording identifies its
   speaker no matter what the payload strips. The compose surface has to tell people that *before*
   they record.
+- **A turn is one write, and `submitShares` is it** (D36). The compose card stages; the two-pole
+  screen sends both sides together. `submitShare` still exists and is a one-story turn — but never
+  call it twice for one member, because it evaluates completion itself: the first call ends the
+  round wherever that member was the last it was waiting for, and the second is refused by
+  `assertOpenForStories` on a topic that moved on milliseconds earlier. In a one-member circle that
+  is every time, which is how it was found.
 - **Your own story is placed by telling it, once, at the phase boundary** (D22).
   `utils/threshold.js#preplaceOwnStories` runs from `onPhaseOpen` when a cycle enters `rank` and
   writes each teller a **draft** ranking holding their own story on the pole they chose. Everything

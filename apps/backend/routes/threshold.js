@@ -341,18 +341,31 @@ router.post('/seeds/:seedId/shares', async (req, res) => {
   try {
     const found = await loadSeed(req, res);
     if (!found) return;
-    const share = await threshold.submitShare({
+    // A turn, not a story: `{ stories: [...] }` carries one side or both, and
+    // the phase is asked whether it should end only once every story is in.
+    // The single-pole body still works — `{ pole, text, audio }` is one story,
+    // and it is what an older client sends.
+    const stories = Array.isArray(req.body.stories) && req.body.stories.length
+      ? req.body.stories
+      : [{ pole: req.body.pole, title: req.body.title, text: req.body.text, audio: req.body.audio }];
+
+    const written = await threshold.submitShares({
       store,
       circleId: found.circle.id,
       seedId: found.seed.id,
       userId: userIdOf(req),
       username: usernameOf(req),
-      pole: req.body.pole,
-      title: req.body.title || '',
-      text: req.body.text || '',
-      audio: req.body.audio || null,
+      stories: stories.map(s => ({
+        pole: s.pole,
+        title: s.title || '',
+        text: s.text || '',
+        audio: s.audio || null,
+      })),
     });
-    res.status(201).json({ share: threshold.toClientShare(share, { viewerId: userIdOf(req), attributed: true }) });
+
+    const shares = written.map(s => threshold.toClientShare(s, { viewerId: userIdOf(req), attributed: true }));
+    // `share` stays singular for the older client; `shares` is the whole turn.
+    res.status(201).json({ share: shares[0], shares });
   } catch (err) {
     fail(res, err);
   }

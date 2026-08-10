@@ -273,6 +273,26 @@ export const thresholdApi = {
     return apiFetch<{ share: Share }>(`/threshold/seeds/${seedId}/shares`, { method: 'POST', body, userId });
   },
 
+  /**
+   * A whole turn in one write — one side or both.
+   *
+   * Telling both sides as two calls does not work and cannot be made to:
+   * the server evaluates completion after a write, and a member holding one
+   * story already reads as finished, so the first call can end the round and
+   * the second is refused. The compose surface therefore stages, and the pole
+   * screen sends everything at once.
+   */
+  submitShares(
+    seedId: string,
+    stories: { pole: Pole; title?: string; text?: string; audio?: unknown }[],
+    userId: string,
+  ) {
+    return apiFetch<{ share: Share; shares: Share[] }>(
+      `/threshold/seeds/${seedId}/shares`,
+      { method: 'POST', body: { stories }, userId },
+    );
+  },
+
   deleteShare(seedId: string, pole: Pole, userId: string) {
     return apiFetch<{ ok: true }>(`/threshold/seeds/${seedId}/shares/${pole}`, { method: 'DELETE', userId });
   },

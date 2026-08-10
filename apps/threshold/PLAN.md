@@ -980,6 +980,15 @@ gradient are unchanged by everything above.
   *because* something happened to them, and a topic can sit in the queue for weeks. Asking the other
   eleven for a story on a topic that may never run is exactly the work the queue exists to let them
   skip. §6.2, §9.1
+- **D36** — **A turn is one write.** The compose card stages a story and returns you to the two
+  poles; that screen owns the single submit, and both sides go to the server together. Telling each
+  side as it is written cannot work: completion is evaluated after a write and a member holding one
+  story already reads as done (`isMemberDone` for `share`), so the first send ends the round
+  wherever that person was the last it waited for, and the second story is refused on a topic that
+  moved on milliseconds earlier. In a one-member circle it happened every time. The alternative — a
+  stored "I have finished" per member per seed — buys the same guarantee and costs a phase that
+  waits on the deadline for everyone who tells one story and closes the tab. Nothing in the round
+  machine changes: you have stories only once you have pressed Share. §6.2, §9.1
 - **D35** — **The placement D22 describes is written once, server-side, when the cycle enters
   `rank`** — a draft ranking per teller holding their own story on the pole they chose. Doing it in
   the client needs the waiting marker to special-case it too, and two clients that must agree is a
