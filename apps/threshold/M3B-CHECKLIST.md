@@ -5,26 +5,32 @@ half that needs a frontend and some accounts.
 
 ---
 
-## Yours — provisioning
+## Yours — provisioning — **the production half is done (2026-08-10)**
 
-Nothing below can be done from the repo; each one creates or configures an account resource.
+Each one creates or configures an account resource rather than a file, but the Vercel and Render
+APIs reach all of them, so none of it had to be done by hand in the end.
 
-- [ ] **A Vercel project for Threshold.** Root Directory `apps/threshold`, framework Next.js. Same
-      shape as `holoscopic-app-chorus`. Name it deliberately — the onrender/Vercel hostname is
-      minted from the name at creation and never follows a rename (see the warning at the top of
-      `render.yaml` for how that bites).
-- [ ] **A Blob store for Threshold.** See *Open question 1* below. **Local development already
-      works** — `apps/threshold/.env.local` points at the shared dev store, where the `threshold/`
-      pathname prefix keeps objects clear of Chorus's `memorial/` ones. That is a testing
-      convenience, not the production answer.
-- [ ] **Connect that store to the Threshold Vercel project in BOTH environments.** Connecting is
-      what injects `BLOB_READ_WRITE_TOKEN`; a store connected to nothing leaves production with no
-      token while local development keeps working from `.env.local`, so it fails in exactly one
-      place and reads like a code bug.
-- [ ] **`threshold.holoscopic.io`** pointed at that project (only when you want it public).
-- [ ] **Add the origin to `CLIENT_URL`** on the production backend, and the preview origin to the
-      preview backend. Skipping this looks completely healthy until the first browser write —
-      the trap that cost a phone test last time (`apps/chorus/PREVIEW.md`).
+- [x] **A Vercel project for Threshold.** `holoscopic-app-threshold`, Root Directory
+      `apps/threshold`. Name it deliberately — the onrender/Vercel hostname is minted from the name
+      at creation and never follows a rename (see the warning at the top of `render.yaml` for how
+      that bites).
+- [x] **A Blob store for Threshold.** *Open question 1* is answered **separate**:
+      `holoscopic-app-threshold-blob`, `store_Ar3hPFJek61dy6qb`, public, `iad1`. **Local
+      development still points at the shared dev store** via `apps/threshold/.env.local`, where the
+      `threshold/` prefix keeps objects clear of Chorus's `memorial/` ones — a testing convenience,
+      and now no longer the production answer.
+- [x] **Connect that store to the Threshold Vercel project.** Connected to **Production only**, so
+      `BLOB_READ_WRITE_TOKEN` is one record covering one environment (`PREVIEW.md`'s rule for this
+      project). Preview keeps the dev store, and gets its own record when preview is first
+      deployed. A store connected to nothing leaves production with no token while local
+      development keeps working from `.env.local`, so it fails in exactly one place and reads like
+      a code bug.
+- [x] **`threshold.holoscopic.io`** pointed at that project.
+- [x] **Add the origin to `CLIENT_URL`** on the production backend — already there; verified by a
+      browser-shaped `POST` answering `400 createdBy required` rather than
+      `403 Origin not allowed`. **The preview backend still needs the preview branch URL.**
+      Skipping it looks completely healthy until the first browser write — the trap that cost a
+      phone test last time (`apps/chorus/PREVIEW.md`).
 
 ## Mine — buildable the moment the above exists
 
@@ -76,14 +82,14 @@ callback lands on the backend, not the frontend. None of it waited on a Vercel p
 
 ## Open questions, in the order they block things
 
-**1. Does Threshold get its own Blob store, or share Chorus's?**
+**1. ~~Does Threshold get its own Blob store, or share Chorus's?~~ SETTLED: its own.**
 
-Sharing is cheaper to set up and means one store per environment to keep track of. Separate is
-safer: the pathname prefixes (`memorial/…` vs `threshold/…`) already keep objects from colliding,
-but a store is also the blast radius of a mistake — deleting or replacing one takes everything in
-it, and Chorus's store holds recordings belonging to people who are dead. My recommendation is
-**separate**, on the grounds that the two products have nothing to do with each other and the only
-cost is a few minutes of setup.
+`holoscopic-app-threshold-blob` (`store_Ar3hPFJek61dy6qb`), created 2026-08-10 and connected to
+Production. Sharing would have been cheaper to set up and meant one store per environment to keep
+track of; the pathname prefixes (`memorial/…` vs `threshold/…`) already keep objects from
+colliding. But a store is also the blast radius of a mistake — deleting or emptying one takes
+everything in it, and Chorus's holds recordings belonging to people who are dead. The two products
+have nothing to do with each other, and the cost of separating them was a few minutes.
 
 **2. ~~How long is a transcript allowed to take?~~ SETTLED: it gates nothing, ever.**
 

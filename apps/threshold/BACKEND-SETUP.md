@@ -4,14 +4,19 @@ Everything the server side needs before Threshold can take traffic. Each step sa
 and how to tell it worked, because most of these fail *silently* — the pattern in this repo is that
 a missing piece leaves the app looking healthy right up until one specific thing doesn't happen.
 
-**There are no new environment variables.** Everything Threshold reads is already set on the
-production service or has a safe default: `GAME_TOKEN_SECRET`, `DEEPGRAM_API_KEY`,
-`BLOB_HOST_SUFFIX` (defaults), `DEEPGRAM_TIMEOUT_MS` (defaults), `PUBLIC_API_URL` (derived from
-`RENDER_EXTERNAL_URL`). `render.yaml` needs no edit.
+**One new environment variable, and M4 is what added it: `THRESHOLD_URL`.** Every link in circle
+mail is built from it (`utils/threshold.js`), falling back to `http://localhost:4006` — so unset in
+production means every round-transition email points at a laptop. It is deliberately not
+`email.js#appUrl()`, which falls back to the first entry of `CLIENT_URL`, and one backend serves
+five apps. **Set on the production service 2026-08-10** to `https://threshold.holoscopic.io`.
+
+Everything else Threshold reads is already set there or has a safe default: `GAME_TOKEN_SECRET`,
+`DEEPGRAM_API_KEY`, `BLOB_HOST_SUFFIX` (defaults), `DEEPGRAM_TIMEOUT_MS` (defaults),
+`PUBLIC_API_URL` (derived from `RENDER_EXTERNAL_URL`). `render.yaml` needs no edit.
 
 ---
 
-## 1. Create the collections and their indexes — **do this first**
+## 1. Create the collections and their indexes — **do this first** — **DONE on production 2026-08-10**
 
 ```bash
 cd apps/backend
@@ -62,9 +67,24 @@ NODE_ENV=production node scripts/ensure-indexes.js
 # No SKIP lines, and created: 0.
 ```
 
-## 2. Create the Threshold instance
+## 2. Create the Threshold instance — **DONE on production; the slug is `circlemo`**
 
 Platform admin → **Instances → New instance → App: Threshold**. Give it a slug (e.g. `threshold`).
+
+**Production's instance is slugged `circlemo`, not `threshold`** (id `2412ytht`, app `threshold`,
+`config.mode: 'explore'`, `gameNumber: null`), and the deployed frontend sends that as
+`x-instance-id` — `NEXT_PUBLIC_INSTANCE_ID=circlemo` on the Vercel project. Dev's is slugged
+`threshold`, which is why `apps/threshold/.env.local` and the documented default disagree with
+production. A probe carrying the wrong one reads as **`{"error":"Not found"}`** — `assertOwnApp`,
+after `resolveInstance` fell through to `getDefault()` and answered with an interView edition.
+`{"error":"Circle not found"}` is the healthy answer, and the two are worth telling apart before
+going looking for a CORS or auth problem that isn't there.
+
+**A `domains[]` entry is a bare host, never an origin.** `Instance.findByDomain` strips the scheme
+off the incoming `Origin` and matches what is stored, so `https://threshold.holoscopic.io` there
+can never match anything and every request without an `x-instance-id` header lands on the default
+instance instead. Production held exactly that until 2026-08-10; it now holds
+`threshold.holoscopic.io`, which is the form `g1` has always used.
 
 The backend already accepts it: `Instance.app` has `'threshold'` in its enum, `POST /api/instances`
 has it in `APPS`, and creating with that app sets `config.mode: 'explore'` — which is what switches

@@ -35,7 +35,14 @@ record per environment from the start**, which is what Chorus would have if it c
 | `NEXT_PUBLIC_INSTANCE_ID` | `threshold` | `threshold` |
 | `NEXTAUTH_URL` | `https://threshold.holoscopic.io` | the Vercel branch URL |
 | `NEXTAUTH_SECRET` | matches the **production** backend | matches the **preview** backend |
-| `BLOB_READ_WRITE_TOKEN` | Threshold's own production store | the **dev** store (`LERHz8d7Q5CbK9pB`) |
+| `BLOB_READ_WRITE_TOKEN` | ✅ `holoscopic-app-threshold-blob` (`Ar3hPFJek61dy6qb`), one Production-only record | the **dev** store (`LERHz8d7Q5CbK9pB`) |
+
+**The four records created on 2026-08-08 each span Production *and* Preview**, which is the shape
+this file exists to avoid — and all four are marked *sensitive*, so their values cannot be read
+back before splitting them. A shared `NEXTAUTH_SECRET` is the one that bites: it 401s every write
+on preview while every read looks fine, because the preview backend holds a different secret. The
+value to restore Production with is the production backend's `GAME_TOKEN_SECRET`, readable from
+Render. `BLOB_READ_WRITE_TOKEN` was added afterwards and is correctly scoped to Production alone.
 
 Adding one scope at a time is what keeps them separate records:
 
@@ -78,13 +85,18 @@ curl -s -o /dev/null -w '%{http_code}\n' \
   'https://holoscopic-preview-backend.onrender.com/api/threshold/circles/tuesday' \
   -H 'Origin: https://<threshold-preview-url>' \
   -H 'x-instance-id: threshold'
-# 401 = origin allowed, auth missing — which is the expected answer here and means CORS is fine.
+# 404 = origin allowed, and the answer is about the circle — CORS is fine.
 # 403 with {"error":"Origin not allowed: …"} = CLIENT_URL is missing it.
 ```
 
-A 401 is the *success* signal: every `/api/threshold` route sits behind `enforceVerifiedUser`
-(D6), so an unauthenticated request that gets far enough to be refused for *auth* has already
-passed CORS.
+**403 is the only failure signal here; anything else means CORS passed.** `enforceVerifiedUser`
+guards mutating methods alone, so a GET never 401s however unauthenticated it is — an earlier
+version of this file called 401 the success signal, and no GET has ever produced one. Read the two
+404s apart while you are here: `{"error":"Circle not found"}` means the instance resolved and the
+circle did not exist, while `{"error":"Not found"}` is `assertOwnApp` refusing an instance that is
+not a Threshold one — usually a wrong `x-instance-id`, since production's instance is slugged
+`circlemo` and dev's is `threshold`. To probe the *write* path instead, `POST /circles` with `{}`
+answers `400 createdBy required` once CORS is satisfied.
 
 ## Mail: preview has none, and for Threshold that is a feature
 

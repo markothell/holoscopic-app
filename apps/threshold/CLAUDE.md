@@ -207,8 +207,13 @@ the round may have turned over.
 
 - `NEXT_PUBLIC_API_URL` (default `http://localhost:4001/api`)
 - `THRESHOLD_URL` **on the backend** — where links in circle mail point (default
-  `http://localhost:4006`). Unset in production means every email links at localhost
-- `NEXT_PUBLIC_INSTANCE_ID` (default `threshold`)
+  `http://localhost:4006`). Unset in production means every email links at localhost. Set on the
+  production service 2026-08-10; a Render env var only reaches the running process on a **deploy**,
+  not on a `PUT` and not on a restart (`BACKEND-SETUP.md` §3)
+- `NEXT_PUBLIC_INSTANCE_ID` (default `threshold`) — **but production's instance is slugged
+  `circlemo`**, and the deployed frontend is set to send that. Dev's is `threshold`. The wrong
+  value reads as `{"error":"Not found"}`, which is `assertOwnApp` after `resolveInstance` answered
+  with an interView edition; `{"error":"Circle not found"}` is the healthy answer
 - `NEXTAUTH_URL`, `NEXTAUTH_SECRET` — must match the backend's `GAME_TOKEN_SECRET`/`NEXTAUTH_SECRET`
 - `BLOB_READ_WRITE_TOKEN` — required for recording, once M3b exists
 
