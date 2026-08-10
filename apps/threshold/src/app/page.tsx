@@ -19,7 +19,7 @@ import { TideLine } from '@/components/TideLine';
 // textarea in the same breath; the front door should not promise otherwise.
 
 export default function Home() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
 
   return (
@@ -50,10 +50,14 @@ export default function Home() {
       {/* One action, chosen by who is reading. Signed in, the only thing this
           page can offer that no other page does is a new circle; signed out,
           the account is the whole of the way in (D6). */}
+      {/* While the session is still resolving, this shows the way IN rather
+          than a spinner. It is the difference between a stranger's first
+          screen offering something and offering "…", and it is what the
+          server renders too — every other page here can wait for a session
+          because you had to be signed in to be looking at it. A signed-in
+          visitor sees this swap once, on the one page they came to leave. */}
       <section className="mt-10">
-        {status === 'loading' ? (
-          <Muted>…</Muted>
-        ) : userId ? (
+        {userId ? (
           <>
             <Action href="/new">Start a circle</Action>
             <p className="mt-4">
