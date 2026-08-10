@@ -6,7 +6,7 @@ import { thresholdApi, ApiError } from '@/services/api';
 import type { Seed, SeedResult, Share, ShareResult } from '@/lib/types';
 import { Page, Band, Action, Quiet, Muted } from '@/components/Shell';
 import { Polarity } from '@/components/TideLine';
-import { StoryPlayer, StoryText } from '@/components/Playback';
+import { StoryPlayer, StoryText, storyPreview } from '@/components/Playback';
 
 // One cycle's reveal (PLAN.md §6.3, D23/D24).
 //
@@ -306,7 +306,9 @@ function Story({ share, row, tint, wash, expanded, onOpen, poleA, poleB }: {
   poleA: string;
   poleB: string;
 }) {
-  const preview = share.text.length > 90 ? `${share.text.slice(0, 89)}…` : share.text;
+  // Never `share.text` alone: a recorded story has none, and the dot came out
+  // blank on the one screen this whole app builds toward.
+  const preview = storyPreview(share);
   return (
     <li>
       <button
@@ -320,8 +322,11 @@ function Story({ share, row, tint, wash, expanded, onOpen, poleA, poleB }: {
           className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
           style={{ background: tint }}
         />
+        {/* Expanded, a typed story becomes its whole self here — while a
+            recorded one says nothing twice, because the block below is already
+            about to show its player and its transcript. */}
         <span className={`text-sm leading-relaxed ${expanded ? 'text-ink' : 'text-ink-soft'}`}>
-          {expanded ? (share.text || preview) : preview}
+          {expanded ? (share.text || (share.audio ? '' : preview)) : preview}
         </span>
       </button>
 

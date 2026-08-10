@@ -76,6 +76,27 @@ export function StoryPlayer({ share }: { share: Share }) {
  * never asked for simply says nothing: the player above it is the story, and
  * the machine's failure to type it out is not the teller's problem.
  */
+/**
+ * One line standing for a whole story, wherever a story is a dot rather than
+ * a page — the reveal's collapsed rows above all.
+ *
+ * The precedence is `StoryText`'s, plus something to say when neither exists.
+ * The reveal used `share.text` alone, and a recorded story has none: the first
+ * real circle drew three dots, two of them labelled with nothing at all, on the
+ * screen the entire mechanic builds toward. A transcript is a bonus that gates
+ * nothing (Q2) — so this leans on it when it has arrived and names the medium
+ * when it has not, rather than rendering a story as an empty line.
+ */
+export function storyPreview(share: Share, max = 90): string {
+  const body = share.text || (share.transcript?.status === 'ready' ? share.transcript.text : '') || '';
+  if (body) return body.length > max ? `${body.slice(0, max - 1)}…` : body;
+  if (share.audio) {
+    const secs = Math.round((share.audio.durationMs || 0) / 1000);
+    return secs > 0 ? `A recording · ${formatDuration(secs * 1000)}` : 'A recording';
+  }
+  return 'A story';
+}
+
 export function StoryText({ share, className = '' }: { share: Share; className?: string }) {
   if (share.text) {
     return <p className={`whitespace-pre-wrap ${className}`}>{share.text}</p>;
