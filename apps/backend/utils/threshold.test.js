@@ -982,10 +982,17 @@ test('a skipped topic keeps every story, and reveals them attributed (D30)', asy
 
   // The story is still there and now carries its author, exactly as a revealed
   // one does — the group stopping is not a reason to hide who spoke.
+  //
+  // The name is `U2`, the one this circle joined them under, rather than the
+  // `Two` this write passed: a story is attributed at the reveal, and the name
+  // on it has to be the one beside them in the member list. What made that
+  // worth enforcing is that no client sends a name at all, so the request's
+  // idea of who you are was the string 'Member' for every story ever written
+  // through the app.
   const shares = await threshold.listShares({ store, circle, seedId: dropped.id, viewerId: 'u1' });
   assert.equal(shares.length, 1);
   assert.equal(shares[0].text, 'told before the group moved on');
-  assert.equal(shares[0].username, 'Two');
+  assert.equal(shares[0].username, 'U2');
 
   // Nobody ranked it, so it reveals empty rather than wrong.
   assert.equal(dropped.result.rankers, 0);

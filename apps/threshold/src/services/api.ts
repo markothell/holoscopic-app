@@ -88,6 +88,32 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
 }
 
 /**
+ * Make a holoscopic account.
+ *
+ * Its own function rather than a `thresholdApi` method, because `/api/auth`
+ * predates this codebase's response envelope and answers `{ success, error }`
+ * where everything else answers `{ thing }` or `{ error }` — `apiFetch` reads
+ * the latter, so a refusal here would arrive as a success with no user on it.
+ *
+ * The account is the same one every other holoscopic app uses (D6). Signup
+ * sends a verification email and does not wait for it: Threshold's guard checks
+ * that a game token's subject matches the claimed user, never that an address
+ * has been confirmed, so a new account can join a circle straight away.
+ */
+export async function signup(body: { email: string; password: string; name?: string }) {
+  const res = await fetch(`${API_BASE}/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-instance-id': INSTANCE_ID },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json?.success) {
+    throw new ApiError(res.status, json?.error || 'That did not work');
+  }
+  return json as { success: true; user: { id: string; email: string; name?: string } };
+}
+
+/**
  * Upload a recording straight from the browser to Vercel Blob, and return the
  * URL to hand to the backend.
  *

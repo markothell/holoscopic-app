@@ -3,10 +3,16 @@
 import { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import { Page, Title, Note } from '@/components/Scaffold';
+import { Page, Action, Quiet, Muted } from '@/components/Shell';
+import { TideLine } from '@/components/TideLine';
 
-// A holoscopic account, the same one that plays every other game here.
-// Unstyled on purpose — §9.2.
+// A holoscopic account, the same one that plays every other app here (D6).
+//
+// In the tide-line language now rather than the placeholder chrome: this is the
+// first screen an invited person sees, and a sign-in that looks unfinished is a
+// sign-in people abandon. It also carries the way to make an account, which it
+// could not before, because until today there was nothing to link to.
+
 function LoginForm() {
   const params = useSearchParams();
   const callbackUrl = params.get('callbackUrl') || '/me';
@@ -30,32 +36,46 @@ function LoginForm() {
       <input
         type="email" value={email} onChange={e => setEmail(e.target.value)}
         placeholder="Email" autoComplete="email" required
-        className="w-full rounded border border-[var(--rule-strong)] bg-card px-3 py-2"
+        className={field}
       />
       <input
         type="password" value={password} onChange={e => setPassword(e.target.value)}
         placeholder="Password" autoComplete="current-password" required
-        className="w-full rounded border border-[var(--rule-strong)] bg-card px-3 py-2"
+        className={field}
       />
-      {error && <p className="text-sm text-ink-soft">{error}</p>}
-      <button
-        type="submit" disabled={busy}
-        className="rounded bg-ink px-4 py-2 text-[var(--ground)] disabled:opacity-50"
-      >
-        {busy ? 'Signing in…' : 'Sign in'}
-      </button>
+      {error && <p className="text-sm text-pole-b">{error}</p>}
+      <div className="pt-1">
+        <Action type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</Action>
+      </div>
     </form>
   );
 }
 
+const field =
+  'w-full rounded-lg border border-[var(--rule)] bg-ground/40 p-3 text-[15px] outline-none ' +
+  'focus:border-[var(--rule-strong)]';
+
 export default function LoginPage() {
   return (
     <Page>
-      <Title>Sign in</Title>
-      <Note>The same holoscopic account that plays every other game here.</Note>
-      <Suspense fallback={<Note>…</Note>}>
+      <header className="mb-8">
+        <Quiet href="/">Threshold</Quiet>
+        <h1 className="mt-2 font-[family-name:var(--font-source-serif)] text-3xl leading-tight">
+          Sign in
+        </h1>
+        <p className="mt-1 mb-4 text-sm text-ink-faint">
+          The same holoscopic account that plays every other app here.
+        </p>
+        <TideLine />
+      </header>
+
+      <Suspense fallback={<Muted>…</Muted>}>
         <LoginForm />
       </Suspense>
+
+      <p className="mt-6">
+        <Quiet href="/signup">Make an account</Quiet>
+      </p>
     </Page>
   );
 }

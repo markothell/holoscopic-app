@@ -34,11 +34,11 @@ fixture's members carry no address, so nothing can send.
 `components/Scaffold.tsx` is **still live on four routes** — `/` , `/login`, `error.tsx` and
 `not-found.tsx` — so it cannot be deleted yet, whatever an earlier note here said.
 
-**The front door is a placeholder, and it is the biggest thing still missing.** `src/app/page.tsx`
-renders `NotBuilt`, so **no surface in the app creates a circle**: `api.ts#createCircle` posts to a
-route nothing calls. A circle has to be made through the API, which also means a cohort arriving
-from the platform has nowhere to land (root `PLATFORM.md` §M5). There is no `/signup` either — an
-account is made on another holoscopic app and signed in here.
+**The front door is built**: `/` says what Threshold is and offers the way in, `/new` starts a
+circle, and `/signup` makes the account (`/login` moved off `Scaffold` to match). Before this,
+every circle on production was made by running the funnel from a laptop, so the app could be used
+by anybody invited to a circle and by nobody else. `Scaffold.tsx` is still live on `error.tsx` and
+`not-found.tsx`.
 
 **`node scripts/seed-threshold-dev.js` from `apps/backend` is the fastest way to see any of it.**
 It builds a circle holding every state at once — a live cycle mid-sort, a queue with uneven support
@@ -106,6 +106,14 @@ the round may have turned over.
 - **Say the honest thing anyway.** In a twelve-person circle a voice recording identifies its
   speaker no matter what the payload strips. The compose surface has to tell people that *before*
   they record.
+- **A display name comes from the `User` document, never from the request.**
+  `routes/threshold.js#displayNameFor` reads it; `utils/threshold.js#submitShares` then prefers the
+  name on the circle's own member row, so a story carries the name beside its teller in the member
+  list. What this replaced returned `req.body.username || req.verifiedUsername || 'Member'`, where
+  no client sends the first and **nothing anywhere sets the second** — the game token carries `sub`
+  and nothing else. So every member row and every story written through the app was stored as
+  `'Member'`, invisible until a topic reveals and attributes the whole circle to twelve people of
+  that name (D9). Threshold's `/signup` requires a name for the same reason.
 - **A turn is one write, and `submitShares` is it** (D36). The compose card stages; the two-pole
   screen sends both sides together. `submitShare` still exists and is a one-story turn — but never
   call it twice for one member, because it evaluates completion itself: the first call ends the

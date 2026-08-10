@@ -289,9 +289,16 @@ async function submitShares({
     throw new Error('One story per side');
   }
 
+  // The name the circle already knows you by, set when you joined it. Preferred
+  // over anything the caller passes: a story is attributed at the reveal (D9),
+  // and the name on it should be the one beside you in the member list rather
+  // than whatever the writing request happened to carry.
+  const member = circle.members.find(m => m.userId === userId);
+  const name = member?.username || username;
+
   const written = [];
   for (const story of stories) {
-    written.push(await writeShare({ store, circle, seed, seedId, userId, username, story }));
+    written.push(await writeShare({ store, circle, seed, seedId, userId, username: name, story }));
   }
 
   // Evaluated ONCE, after every story is in. The person who finishes last

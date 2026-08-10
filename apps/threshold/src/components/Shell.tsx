@@ -33,18 +33,20 @@ export function Card({ children, className = '' }: { children: React.ReactNode; 
  * exists to be opened from an email and answered, so the page's job is to make
  * the answer obvious.
  */
-export function Action({ href, onClick, children, disabled = false }: {
+export function Action({ href, onClick, children, disabled = false, type = 'button' }: {
   href?: string;
   onClick?: () => void;
   children: React.ReactNode;
   disabled?: boolean;
+  /** `submit` inside a form — the default never submits one, which is silent. */
+  type?: 'button' | 'submit';
 }) {
   const cls =
     'inline-flex items-center justify-center rounded-lg bg-ink px-5 py-3 text-[15px] ' +
     'font-medium text-ground transition-opacity hover:opacity-90 disabled:opacity-50';
   if (href) return <Link href={href} className={cls}>{children}</Link>;
   return (
-    <button type="button" onClick={onClick} disabled={disabled} className={cls}>
+    <button type={type} onClick={onClick} disabled={disabled} className={cls}>
       {children}
     </button>
   );

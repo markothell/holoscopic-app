@@ -8,6 +8,7 @@ const threshold = require('../utils/threshold');
 const thresholdTranscribe = require('../utils/thresholdTranscribe');
 const Circle = require('../models/Circle');
 const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 // Threshold — REST surface. Thin wrappers over utils/circles.js (the generic
 // round machine) and utils/threshold.js (the activity: shares, rankings, the
@@ -29,8 +30,25 @@ function userIdOf(req) {
   return req.verifiedUserId || req.headers['x-user-id'] || null;
 }
 
-function usernameOf(req) {
-  return req.body?.username || req.verifiedUsername || 'Member';
+/**
+ * The name this circle will know somebody by, resolved from their ACCOUNT.
+ *
+ * This used to read `req.body.username || req.verifiedUsername || 'Member'`,
+ * and both of the first two were always absent: no client sends a username, and
+ * nothing sets `verifiedUsername` — the game token carries `sub` and nothing
+ * else. So every member row and every story written through the app was stored
+ * as "Member", which is invisible until a topic reveals and the whole circle is
+ * attributed to twelve people of that name (D9).
+ *
+ * Read from `User` rather than trusting the body: a display name that arrives
+ * in a request is a display name anybody can set to somebody else's, and this
+ * one is stamped on stories that are anonymous right up until they are not.
+ */
+async function displayNameFor(req) {
+  const id = userIdOf(req);
+  if (!id) return 'Member';
+  const user = await User.findOne({ id }).select('name').lean();
+  return String(user?.name || '').trim().slice(0, 80) || 'Member';
 }
 
 // resolveInstance never fails — an unrecognised x-instance-id falls through to
@@ -93,7 +111,7 @@ router.post('/circles', async (req, res) => {
       title: req.body.title,
       urlName: req.body.urlName,
       createdBy: userIdOf(req),
-      creatorName: usernameOf(req),
+      creatorName: await displayNameFor(req),
       creatorEmail: req.body.email || '',
       mode: req.body.mode === 'single' ? 'single' : 'circle',
       config: req.body.config || {},
@@ -159,7 +177,7 @@ router.post('/circles/:id/join', async (req, res) => {
     if (!circle) return;
     const after = await circles.joinCircle({
       store, circleId: circle.id, userId: userIdOf(req),
-      username: usernameOf(req), email: req.body.email || '',
+      username: await displayNameFor(req), email: req.body.email || '',
     });
     res.json({ circle: circles.toClient(fresh(after, circle), { userId: userIdOf(req) }) });
   } catch (err) {
@@ -354,7 +372,7 @@ router.post('/seeds/:seedId/shares', async (req, res) => {
       circleId: found.circle.id,
       seedId: found.seed.id,
       userId: userIdOf(req),
-      username: usernameOf(req),
+      username: await displayNameFor(req),
       stories: stories.map(s => ({
         pole: s.pole,
         title: s.title || '',
