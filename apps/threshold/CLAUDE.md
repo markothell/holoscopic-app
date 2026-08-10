@@ -137,7 +137,10 @@ the round may have turned over.
 - **`agreement` is stored; bands are not** (D15). Any grouping of the reveal is a render-time view,
   so redesigning it is a re-render, never a migration. Do not add a stored classification.
 - **`phaseDeadline: null` means no clock, not a missing value.** Any phase's hours may be omitted
-  (D16), and a circle configured with none is a purely hand-driven one.
+  (D16), and a circle configured with none is a purely hand-driven one. **Omitting them at
+  `createCircle` does not get you one**: `models/Circle.js` declares `shareHours`/`rankHours` with
+  `default: 72`, so `config: {}` is a three-day clock on every phase. Hand-driven takes an explicit
+  null, and the funnel's `hoursForPhase` only ever sees what the schema already filled in.
 - **A seed id is unique across circles**, so `/seeds/:seedId/*` finds its circle by it. The client
   never carries both ids.
 - **Mail links to the circle, never to a phase surface**, and its base is `THRESHOLD_URL` — never
