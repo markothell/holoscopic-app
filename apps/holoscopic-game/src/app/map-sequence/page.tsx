@@ -88,6 +88,12 @@ export default function MapSequencePage() {
           so one conversation can unfold deliberately over days or weeks.
         </p>
 
+        <p className={styles.lede}>
+          The question I was chasing: how does everyone hear everyone else,
+          with the details one click away? Every game since is built on this
+          frame.
+        </p>
+
         <div className={styles.paths}>
           <Link href="/create" className={styles.pathCard}>
             <MapIllustration />

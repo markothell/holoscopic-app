@@ -1,0 +1,123 @@
+/* On a Spectrum landing — the same warm editorial voice as /synthesis,
+   /chorus and /map-sequence. The mid-spectrum blue from the homepage card's
+   gradient stands in for the site crimson; the full gradient stays on the
+   card art where it belongs. */
+
+.page {
+  min-height: 100dvh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  padding: 5rem 1.5rem 4rem;
+}
+
+.inner {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.title {
+  font-family: var(--font-barlow), sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  color: var(--text-primary);
+}
+
+.accent {
+  color: #2b49d8;
+}
+
+.sub {
+  margin-top: 0.5rem;
+  font-family: var(--font-dm-mono), monospace;
+  font-weight: 500;
+  font-size: clamp(0.62rem, 2.4vw, 1rem);
+  color: #2b49d8;
+}
+
+.lede {
+  margin-top: 1.5rem;
+  font-size: 1.02rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  max-width: 56ch;
+}
+
+/* ── Outbound: the game runs on the spectrum subdomain ─────────────────── */
+
+.paths {
+  margin-top: 2.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.pathCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 1.5rem 1.6rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  text-decoration: none !important;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.pathCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(15, 13, 11, 0.1);
+}
+
+.pathLabel {
+  font-family: var(--font-dm-mono), monospace;
+  font-size: var(--text-2xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #5560a8;
+}
+
+.pathTitle {
+  font-family: var(--font-barlow), sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 1.35rem;
+  color: var(--text-primary);
+}
+
+.pathDesc {
+  font-size: var(--text-base);
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.note {
+  margin-top: 2rem;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 56ch;
+}
+
+.noteLink {
+  color: #2b49d8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.back {
+  display: inline-block;
+  margin-top: 2.5rem;
+  font-family: var(--font-dm-mono), monospace;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.back:hover {
+  color: var(--text-primary);
+}

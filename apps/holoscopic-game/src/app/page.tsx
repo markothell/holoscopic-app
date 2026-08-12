@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import UserMenu from '@/components/UserMenu';
 import SiteFooter from '@/components/SiteFooter';
-import { SPECTRUM_URL } from '@/lib/games';
+import EmailCapture from '@/components/EmailCapture';
+import GatheringArt from '@/components/GatheringArt';
+import { THRESHOLD_URL } from '@/lib/games';
 import styles from './page.module.css';
 
 // Sections below the hero start at opacity 0 and are revealed on scroll. The
@@ -33,39 +35,46 @@ function RevealSection({
   );
 }
 
-function ExpandItem({
-  title,
-  children,
-}: {
-  title: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
+/* ── Game-card motifs — one quiet gradient mark per game ────────────────── */
 
+// Threshold: the balance beam — a three-section bar on a fulcrum, stories as
+// dots in each. The ends wear the app's own pole colours (teal / rust, chosen
+// there for equal weight so neither looks like the verdict); the middle
+// section is the threshold itself, in the app's neutral grey. The beam tilts
+// a few degrees — a scale mid-reading — while the fulcrum stays level.
+function ThresholdBeamArt() {
+  const dotY = 79;
   return (
-    <div className={styles.expandItem}>
-      <button
-        className={styles.expandTrigger}
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-      >
-        <span className={styles.expandTitle}>{title}</span>
-        <span
-          className={`${styles.expandIcon} ${open ? styles.expandIconOpen : ''}`}
-        >
-          +
-        </span>
-      </button>
-      <div
-        className={`${styles.expandContent} ${open ? styles.expandContentOpen : ''}`}
-      >
-        <div className={styles.expandInner}>{children}</div>
-      </div>
-    </div>
+    <svg
+      className={styles.gameCardArt}
+      viewBox="0 0 360 210"
+      aria-hidden
+      preserveAspectRatio="xMaxYMid meet"
+    >
+      {/* The figure keeps to the upper right so the card's type — which runs
+          long on this card — never crosses the beam. */}
+      <g transform="rotate(-4 222 96)" opacity="0.75">
+        {/* pole A — teal */}
+        <rect x="105" y="64" width="74" height="30" rx="8" fill="#DCE8E7" stroke="#2F7D7B" strokeOpacity="0.45" strokeWidth="1.5" />
+        {[120, 140, 160].map(x => (
+          <circle key={x} cx={x} cy={dotY} r="4" fill="#2F7D7B" opacity="0.7" />
+        ))}
+        {/* the threshold — neutral, the split stories */}
+        <rect x="184" y="64" width="76" height="30" rx="8" fill="#E6E4E0" stroke="#7C7A76" strokeOpacity="0.4" strokeWidth="1.5" />
+        {[198, 222, 246].map(x => (
+          <circle key={x} cx={x} cy={dotY} r="4" fill="#7C7A76" opacity="0.65" />
+        ))}
+        {/* pole B — rust */}
+        <rect x="265" y="64" width="74" height="30" rx="8" fill="#F0DFD7" stroke="#B15C3C" strokeOpacity="0.45" strokeWidth="1.5" />
+        {[280, 300, 320].map(x => (
+          <circle key={x} cx={x} cy={dotY} r="4" fill="#B15C3C" opacity="0.7" />
+        ))}
+      </g>
+      {/* the fulcrum stays level while the beam tilts */}
+      <path d="M222,98 L202,140 L242,140 Z" fill="none" stroke="#7C7A76" strokeOpacity="0.5" strokeWidth="1.5" />
+    </svg>
   );
 }
-
-/* ── Game-card motifs — one quiet gradient mark per game ────────────────── */
 
 // On a Spectrum: rounded bars rising and falling like a distribution,
 // crimson → cobalt → emerald across its three theme accents.
@@ -251,114 +260,66 @@ function ConvergeArt() {
   );
 }
 
-function MappingVisual() {
+// The three overlapping things Holoscopic is at once. Each lobe wears one of
+// the site's accents; the centre stays ink, because the overlap is the subject
+// and a fourth colour there would read as a fourth thing.
+function VennVisual() {
+  const R = 110;
+  const lobes: { cx: number; cy: number; color: string; label: string[]; lx: number; ly: number }[] = [
+    { cx: 210, cy: 114, color: '#C83B50', label: ['WORKSHOP'], lx: 210, ly: 62 },
+    { cx: 153, cy: 213, color: '#2B49D8', label: ['SOCIAL', 'MEDIA'], lx: 100, ly: 256 },
+    { cx: 267, cy: 213, color: '#0E8F66', label: ['OPEN', 'SOURCE'], lx: 320, ly: 256 },
+  ];
   return (
     <svg
-      width="300"
-      height="300"
-      viewBox="0 0 300 300"
+      viewBox="0 0 420 340"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={styles.visualSvg}
+      className={styles.vennSvg}
+      role="img"
+      aria-label="Three overlapping circles — workshop, social media, open source — with Holoscopic at the overlap"
     >
-      <rect width="300" height="300" rx="16" fill="#FCFAF6" stroke="#D9D4CC" />
-      <line x1="150" y1="20" x2="150" y2="280" stroke="#0F0D0B" strokeOpacity="0.12" strokeWidth="1" />
-      <line x1="20" y1="150" x2="280" y2="150" stroke="#0F0D0B" strokeOpacity="0.12" strokeWidth="1" />
-      <line x1="85" y1="20" x2="85" y2="280" stroke="#0F0D0B" strokeOpacity="0.06" strokeWidth="0.5" />
-      <line x1="215" y1="20" x2="215" y2="280" stroke="#0F0D0B" strokeOpacity="0.06" strokeWidth="0.5" />
-      <line x1="20" y1="85" x2="280" y2="85" stroke="#0F0D0B" strokeOpacity="0.06" strokeWidth="0.5" />
-      <line x1="20" y1="215" x2="280" y2="215" stroke="#0F0D0B" strokeOpacity="0.06" strokeWidth="0.5" />
-      <text x="150" y="15" textAnchor="middle" fill="#0F0D0B" fillOpacity="0.45" fontSize="8" fontFamily="monospace" letterSpacing="1.5">INDIVIDUAL</text>
-      <text x="150" y="296" textAnchor="middle" fill="#0F0D0B" fillOpacity="0.45" fontSize="8" fontFamily="monospace" letterSpacing="1.5">COLLECTIVE</text>
-      <text x="14" y="154" textAnchor="middle" fill="#0F0D0B" fillOpacity="0.45" fontSize="8" fontFamily="monospace" letterSpacing="1.5" transform="rotate(-90 14 150)">SHORT</text>
-      <text x="290" y="150" textAnchor="middle" fill="#0F0D0B" fillOpacity="0.45" fontSize="8" fontFamily="monospace" letterSpacing="1.5" transform="rotate(90 288 148)">LONG</text>
-      <circle cx="60" cy="55" r="4" fill="#0E8F66" fillOpacity="0.55" />
-      <circle cx="95" cy="72" r="3.5" fill="#0E8F66" fillOpacity="0.5" />
-      <circle cx="75" cy="102" r="4" fill="#0E8F66" fillOpacity="0.62" />
-      <circle cx="112" cy="85" r="3" fill="#0E8F66" fillOpacity="0.5" />
-      <circle cx="120" cy="50" r="3.5" fill="#0E8F66" fillOpacity="0.5" />
-      <circle cx="55" cy="122" r="3" fill="#0E8F66" fillOpacity="0.48" />
-      <circle cx="135" cy="110" r="3.5" fill="#0E8F66" fillOpacity="0.55" />
-      <circle cx="118" cy="128" r="14" fill="#0E8F66" fillOpacity="0.08" />
-      <circle cx="118" cy="128" r="10" fill="#0E8F66" fillOpacity="0.9" />
-      <circle cx="240" cy="46" r="4.5" fill="#2B49D8" fillOpacity="0.65" />
-      <circle cx="222" cy="80" r="4.5" fill="#2B49D8" fillOpacity="0.65" />
-      <circle cx="265" cy="92" r="5" fill="#2B49D8" fillOpacity="0.7" />
-      <circle cx="202" cy="55" r="3.5" fill="#2B49D8" fillOpacity="0.55" />
-      <circle cx="252" cy="122" r="3" fill="#2B49D8" fillOpacity="0.48" />
-      <circle cx="185" cy="100" r="4" fill="#2B49D8" fillOpacity="0.5" />
-      <circle cx="175" cy="60" r="3.5" fill="#2B49D8" fillOpacity="0.45" />
-      <circle cx="95" cy="202" r="5" fill="#C83B50" fillOpacity="0.65" />
-      <circle cx="76" cy="262" r="4" fill="#C83B50" fillOpacity="0.6" />
-      <circle cx="122" cy="242" r="3.5" fill="#C83B50" fillOpacity="0.55" />
-      <circle cx="112" cy="212" r="3" fill="#C83B50" fillOpacity="0.48" />
-      <circle cx="58" cy="232" r="4" fill="#C83B50" fillOpacity="0.55" />
-      <circle cx="136" cy="270" r="3" fill="#C83B50" fillOpacity="0.38" />
-      <circle cx="55" cy="195" r="18" fill="#C83B50" fillOpacity="0.07" />
-      <circle cx="55" cy="195" r="12" fill="#C83B50" fillOpacity="0.9" />
-      <circle cx="212" cy="226" r="5" fill="#C77D2E" fillOpacity="0.7" />
-      <circle cx="237" cy="202" r="4" fill="#C77D2E" fillOpacity="0.62" />
-      <circle cx="272" cy="218" r="3.5" fill="#C77D2E" fillOpacity="0.65" />
-      <circle cx="196" cy="252" r="4" fill="#C77D2E" fillOpacity="0.55" />
-      <circle cx="217" cy="275" r="3" fill="#C77D2E" fillOpacity="0.5" />
-      <circle cx="262" cy="242" r="4" fill="#C77D2E" fillOpacity="0.45" />
-      <circle cx="185" cy="212" r="3" fill="#C77D2E" fillOpacity="0.4" />
-      <circle cx="252" cy="258" r="5" fill="#C77D2E" fillOpacity="0.65" />
-      <circle cx="150" cy="150" r="2" fill="#0F0D0B" fillOpacity="0.25" />
-    </svg>
-  );
-}
-
-function SequenceVisual() {
-  return (
-    <svg
-      width="300"
-      height="260"
-      viewBox="0 0 300 260"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={styles.visualSvg}
-    >
-      <rect width="300" height="260" rx="16" fill="#FCFAF6" stroke="#D9D4CC" />
-      <defs>
-        <radialGradient id="gravityGlow" cx="78%" cy="38%" r="28%">
-          <stop offset="0%"   stopColor="#2B49D8" stopOpacity="0.1" />
-          <stop offset="100%" stopColor="#2B49D8" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      <rect width="300" height="260" rx="16" fill="url(#gravityGlow)" />
-      <line x1="65"  y1="42" x2="65"  y2="238" stroke="#0F0D0B" strokeOpacity="0.12" strokeWidth="1" strokeDasharray="3 4" />
-      <line x1="150" y1="42" x2="150" y2="238" stroke="#0F0D0B" strokeOpacity="0.12" strokeWidth="1" strokeDasharray="3 4" />
-      <line x1="235" y1="42" x2="235" y2="238" stroke="#0F0D0B" strokeOpacity="0.12" strokeWidth="1" strokeDasharray="3 4" />
-      <text x="65"  y="32" textAnchor="middle" fill="#0F0D0B" fillOpacity="0.45" fontSize="7" fontFamily="monospace" letterSpacing="1.5">THEN</text>
-      <text x="150" y="32" textAnchor="middle" fill="#0F0D0B" fillOpacity="0.45" fontSize="7" fontFamily="monospace" letterSpacing="1.5">NOW</text>
-      <text x="235" y="32" textAnchor="middle" fill="#0F0D0B" fillOpacity="0.45" fontSize="7" fontFamily="monospace" letterSpacing="1.5">FORMING</text>
-      <path d="M65,82 C107,82 107,68 150,68"    stroke="#0E8F66" strokeOpacity="0.45" strokeWidth="1.5" fill="none" />
-      <path d="M150,68 C193,68 200,88 235,90"    stroke="#0E8F66" strokeOpacity="0.45" strokeWidth="1.5" fill="none" />
-      <path d="M65,112 C107,112 107,95 150,95"   stroke="#2B49D8" strokeOpacity="0.45" strokeWidth="1.5" fill="none" />
-      <path d="M150,95 C193,95 200,88 235,90"    stroke="#2B49D8" strokeOpacity="0.8"  strokeWidth="2.5" fill="none" />
-      <path d="M150,138 C193,138 200,100 235,90"  stroke="#0F0D0B" strokeOpacity="0.4"  strokeWidth="1.5" fill="none" />
-      <path d="M65,162 C107,162 107,168 150,168"  stroke="#C83B50" strokeOpacity="0.35" strokeWidth="1.5" fill="none" />
-      <path d="M150,168 C193,168 200,155 235,150" stroke="#C83B50" strokeOpacity="0.35" strokeWidth="1.5" fill="none" />
-      <path d="M65,192 C107,192 107,198 150,198"  stroke="#C77D2E" strokeOpacity="0.3"  strokeWidth="1.5" fill="none" />
-      <path d="M150,198 C193,198 200,185 235,180" stroke="#C77D2E" strokeOpacity="0.3"  strokeWidth="1.5" fill="none" />
-      <circle cx="65" cy="82"  r="5" fill="#0E8F66" fillOpacity="0.85" />
-      <circle cx="65" cy="112" r="5" fill="#2B49D8" fillOpacity="0.85" />
-      <circle cx="65" cy="162" r="5" fill="#C83B50" fillOpacity="0.85" />
-      <circle cx="65" cy="192" r="5" fill="#C77D2E" fillOpacity="0.85" />
-      <circle cx="150" cy="68"  r="4.5" fill="#0E8F66" fillOpacity="0.75" />
-      <circle cx="150" cy="95"  r="4.5" fill="#2B49D8" fillOpacity="0.75" />
-      <circle cx="150" cy="138" r="5"   fill="#0F0D0B" fillOpacity="0.85" />
-      <circle cx="150" cy="168" r="4.5" fill="#C83B50" fillOpacity="0.75" />
-      <circle cx="150" cy="198" r="4.5" fill="#C77D2E" fillOpacity="0.75" />
-      <circle cx="235" cy="90" r="22" fill="#2B49D8" fillOpacity="0.04" />
-      <circle cx="235" cy="90" r="16" fill="#2B49D8" fillOpacity="0.06" />
-      <circle cx="235" cy="90" r="13" fill="#2B49D8" fillOpacity="0.15" />
-      <circle cx="235" cy="90" r="9"  fill="#2B49D8" fillOpacity="0.9"  />
-      <circle cx="228" cy="82"  r="3.5" fill="#0E8F66" fillOpacity="0.7"  />
-      <circle cx="235" cy="103" r="3.5" fill="#0F0D0B" fillOpacity="0.65" />
-      <circle cx="235" cy="150" r="4.5" fill="#C83B50" fillOpacity="0.6"  />
-      <circle cx="235" cy="180" r="4.5" fill="#C77D2E" fillOpacity="0.55" />
+      {lobes.map(l => (
+        <circle
+          key={l.label.join('')}
+          cx={l.cx}
+          cy={l.cy}
+          r={R}
+          fill={l.color}
+          fillOpacity="0.07"
+          stroke={l.color}
+          strokeOpacity="0.5"
+          strokeWidth="1.5"
+        />
+      ))}
+      {lobes.map(l =>
+        l.label.map((line, i) => (
+          <text
+            key={l.label.join('') + i}
+            x={l.lx}
+            y={l.ly + i * 17}
+            textAnchor="middle"
+            fill={l.color}
+            fontSize="12"
+            fontFamily="monospace"
+            letterSpacing="1.4"
+          >
+            {line}
+          </text>
+        )),
+      )}
+      <text
+        x="210"
+        y="187"
+        textAnchor="middle"
+        fill="#0F0D0B"
+        fillOpacity="0.72"
+        fontSize="12"
+        fontFamily="monospace"
+        letterSpacing="1"
+      >
+        HOLOSCOPIC
+      </text>
     </svg>
   );
 }
@@ -408,14 +369,14 @@ export default function HomePage() {
           </p>
           <div className={styles.heroCtaRow}>
             <a
-              href="#game"
+              href="#invitation"
               className={`${styles.heroCta} ${styles.heroCtaPrimary}`}
               onClick={(e) => {
                 e.preventDefault();
-                scrollTo('game');
+                scrollTo('invitation');
               }}
             >
-              Join a game
+              Take a seat
             </a>
             <a
               href="#idea"
@@ -456,93 +417,128 @@ export default function HomePage() {
 
         <div className={styles.divider} />
 
-        {/* ── Kinda Like ───────────────────────────────────────────────────── */}
-        <RevealSection id="kindaLike" className={styles.section}>
-          <p className={styles.sectionLabel}>It&apos;s a bit like&hellip;</p>
-          <ul className={styles.kindaLikeList}>
-            <li className={styles.kindaLikeItem}>
-              <span className={styles.kindaLikeTitle}>
-                Sharing circle meets Reddit thread —
-              </span>
-              <span className={styles.kindaLikeSub}>
-                but instead of upvotes, you place your response on a map of shared meaning.
-              </span>
-            </li>
-            <li className={styles.kindaLikeItem}>
-              <span className={styles.kindaLikeTitle}>
-                A culture design workshop —
-              </span>
-              <span className={styles.kindaLikeSub}>
-                where the conversation itself is the material being shaped.
-              </span>
-            </li>
-            <li className={styles.kindaLikeItem}>
-              <span className={styles.kindaLikeTitle}>
-                A social media lab —
-              </span>
-              <span className={styles.kindaLikeSub}>
-                where players can change the rules and watch what happens.
-              </span>
-            </li>
-          </ul>
-        </RevealSection>
-
-        <div className={styles.divider} />
-
-        {/* ── The Practice ─────────────────────────────────────────────────── */}
-        <RevealSection id="practice" className={styles.section}>
-          <p className={styles.sectionLabel}>The Practice</p>
+        {/* ── The Shape — three familiar things, and Holoscopic at the
+               overlap. The Venn is the argument; the three rows underneath
+               say what each lobe means here. ─────────────────────────────── */}
+        <RevealSection id="shape" className={styles.section}>
+          <p className={styles.sectionLabel}>The Shape</p>
           <h2 className={styles.sectionHeadline}>
-            <em>Conversations </em> that&hellip;
+            Three things
+            <br />
+            at <em>once.</em>
           </h2>
-
-          <div className={styles.expandGroup}>
-            <ExpandItem title="Show us wholes">
-              <div className={styles.visualPanel}>
-                <MappingVisual />
-              </div>
-              Most of what shapes us is invisible — the assumptions inside our
-              agreements, the values embedded in our systems. Mapping collective
-              perception makes the implicit explicit, so we can finally see the
-              full terrain we&apos;re navigating together.
-              <p style={{ marginTop: '1em' }}>
-                More:{' '}
-                <Link href="/essays/maps-transform-the-world" style={{ textDecoration: 'none' }}>
-                  How Maps Transform The World
-                </Link>
-              </p>
-            </ExpandItem>
-
-            <ExpandItem title="Make change visible">
-              <div className={styles.visualPanel}>
-                <SequenceVisual />
-              </div>
-              Change doesn&apos;t announce itself. But when you can watch a
-              group&apos;s ideas shift in real time — converging, diverging, finding
-              unexpected common ground — you start to see how transformation
-              actually moves through a culture.
-            </ExpandItem>
-
-            <ExpandItem title="Leave a trail">
-              Every insight that transforms a group is a path someone else could
-              walk. We document what works, make it repeatable, and share it
-              openly — so good social technology compounds the way scientific
-              discovery does. The next group starts where you left off.
-            </ExpandItem>
+          <p className={styles.sectionBody}>
+            Holoscopic sits where three familiar things overlap.
+          </p>
+          <div className={styles.vennPanel}>
+            <VennVisual />
           </div>
+          <dl className={styles.defList}>
+            <div className={styles.defRow}>
+              <dt className={styles.defTerm}>Personal development workshop</dt>
+              <dd className={styles.defDesc}>
+                A transformative social process, the way Nonviolent
+                Communication and Imago dialogue are: structured practice that
+                changes how a group talks to itself.
+              </dd>
+            </div>
+            <div className={styles.defRow}>
+              <dt className={styles.defTerm}>Social media</dt>
+              <dd className={styles.defDesc}>
+                The human bazaar, with mechanisms for elevating the ideas that
+                work.
+              </dd>
+            </div>
+            <div className={styles.defRow}>
+              <dt className={styles.defTerm}>Open source software</dt>
+              <dd className={styles.defDesc}>
+                A platform where people share, experiment, and iterate on tools
+                for social coherence.
+              </dd>
+            </div>
+          </dl>
         </RevealSection>
 
         <div className={styles.divider} />
 
-        {/* ── Join a Game — newest first, the origin last. Each card wears
-               its game's own palette and a quiet gradient motif. ─────────── */}
+        {/* ── The Model — the pitch. Circles promoted out of the card stack:
+               the circle is the social model the experiments feed, so it gets
+               the section, the drawing, and the "we are whole" claim. The
+               long read stays on /circles. ─────────────────────────────── */}
+        <RevealSection id="model" className={styles.section}>
+          <p className={styles.sectionLabel}>The Model</p>
+          <h2 className={styles.sectionHeadline}>
+            We are <em>whole.</em>
+          </h2>
+          <p className={styles.sectionBody}>
+            The circle is a social model with ancient roots: four to twelve
+            people, all equal, all facing a common center, gathered to learn
+            as one — record stories, map where everyone stands, find the
+            group&apos;s thresholds, arrive at shared words. What a circle
+            makes, it keeps.
+          </p>
+          <div className={styles.modelFigure}>
+            <GatheringArt className={styles.modelArt} />
+          </div>
+          <p className={styles.sectionBody}>
+            Circles gather too. Members mix across tables the way a World
+            Caf&eacute; runs, trade what their home circles learned, and carry
+            the exchange back. Circles that gather become a collective —
+            itself a circle, and the platform is the outermost one.{' '}
+            <Link href="/circles" className={styles.inlineLink}>
+              The circle, at length &rarr;
+            </Link>
+          </p>
+        </RevealSection>
+
+        <div className={styles.divider} />
+
+        {/* ── The Instruments — newest first, the origin demoted to a
+               lineage line under the stack. Lean cards:
+               title, subtitle, and the elements each one contributed — the
+               recurring chips are the mix-and-match argument. The lab notes
+               themselves live on each game's lander. (id stays `game` for
+               old #game deep links.) ─────────────────────────────────────── */}
         <RevealSection id="game" className={styles.invitation}>
-          <p className={styles.sectionLabel}>Join a Game</p>
+          <p className={styles.sectionLabel}>The Instruments</p>
+          <p className={`${styles.sectionBody} ${styles.labIntro}`}>
+            Each of these began as a question about how groups learn together,
+            and each one taught us something the next was built on. Together
+            they are the instruments a circle plays. All of them are open —
+            play them, break them, tell us what you find. The first circles
+            pick them up together:{' '}
+            <a
+              href="#invitation"
+              className={styles.inlineLink}
+              onClick={(e) => {
+                e.preventDefault();
+                scrollTo('invitation');
+              }}
+            >
+              save a seat below
+            </a>
+            .
+          </p>
           <div className={styles.gameCardStack}>
-            {/* The one card with a single-colour wordmark. The others split on
-                something the split means — syn-/-thesis, the two OaS axes.
-                "Cho|rus" has no such seam, so a two-tone treatment here would
-                be decoration pretending to be structure. */}
+            {/* Threshold's wordmark has no morpheme seam to split on, so it
+                stays one colour like Chorus's. The two poles live in the art,
+                where they belong — and the sub-line wears the app's neutral
+                threshold grey, the colour of the split itself. */}
+            <a href={THRESHOLD_URL} className={`${styles.gameCard} ${styles.gameCardTh}`}>
+              <ThresholdBeamArt />
+              <span className={styles.gameCardTitle}>Threshold</span>
+              <span className={`${styles.gameCardSub} ${styles.gameCardSubTh}`}>
+                a game for finding the group&apos;s dividing line
+              </span>
+              <span className={styles.gameCardMeta}>
+                voice stories &middot; polarity sorting &middot; rounds by mail &middot; circle membership
+              </span>
+            </a>
+            {/* The one card with a single-colour wordmark by precedent. The
+                others split on something the split means — syn-/-thesis, the
+                two OaS axes. "Cho|rus" has no such seam, so a two-tone
+                treatment here would be decoration pretending to be
+                structure. */}
             <Link href="/chorus" className={`${styles.gameCard} ${styles.gameCardCh}`}>
               <ChorusArt />
               <span className={styles.gameCardTitle}>Chorus</span>
@@ -550,7 +546,7 @@ export default function HomePage() {
                 connecting stories and voices
               </span>
               <span className={styles.gameCardMeta}>
-                anyone with the link &middot; always open
+                voice stories &middot; shared vocabulary &middot; one open link
               </span>
             </Link>
             <Link href="/synthesis" className={`${styles.gameCard} ${styles.gameCardSyn}`}>
@@ -562,13 +558,12 @@ export default function HomePage() {
                 a game for generating collective thought
               </span>
               <span className={styles.gameCardMeta}>
-                2&ndash;50 collaborators &middot; open-ended
+                private&rarr;shared maps &middot; borrowed thoughts &middot; LLM synthesis &middot; token voting
               </span>
             </Link>
-            {/* SPECTRUM_URL, not a literal: every sibling card resolves its
-                destination through lib/games.ts, and a hard-coded production
-                URL is the one card you cannot follow in local dev. */}
-            <a href={SPECTRUM_URL} className={`${styles.gameCard} ${styles.gameCardOas}`}>
+            {/* Routes to the on-site lander (which hands off to the spectrum
+                subdomain), the same pattern as Chorus and Synthesis. */}
+            <Link href="/spectrum" className={`${styles.gameCard} ${styles.gameCardOas}`}>
               <SpectrumBarsArt />
               <span className={styles.gameCardTitle}>
                 On&nbsp;a&nbsp;<span className={styles.oasAx}>Spec</span><span className={styles.oasAy}>trum</span>
@@ -577,9 +572,9 @@ export default function HomePage() {
                 a game for revealing nuance
               </span>
               <span className={styles.gameCardMeta}>
-                2&ndash;10 players &middot; 20 min&ndash;4 days
+                spectrum ranking &middot; timed rounds &middot; stakes &middot; rule revision
               </span>
-            </a>
+            </Link>
             <Link href="/interview" className={`${styles.gameCard} ${styles.gameCardIv}`}>
               <SequenceChainArt />
               <span className={styles.gameCardTitle}>
@@ -587,6 +582,9 @@ export default function HomePage() {
               </span>
               <span className={styles.gameCardSub}>
                 a game for designing conversations that learn
+              </span>
+              <span className={styles.gameCardMeta}>
+                2D map &middot; sequences &middot; tokens &middot; quorum
               </span>
             </Link>
             <Link href="/map-sequence" className={`${styles.gameCard} ${styles.gameCardMs}`}>
@@ -597,7 +595,46 @@ export default function HomePage() {
               <span className={`${styles.gameCardSub} ${styles.gameCardSubMs}`}>
                 the original holoscopic mapping tools
               </span>
+              <span className={styles.gameCardMeta}>
+                2D map &middot; comments &middot; votes &middot; sequenced rounds
+              </span>
             </Link>
+          </div>
+        </RevealSection>
+
+        <div className={styles.divider} />
+
+        {/* ── The Invitation — the one ask on the page. The gathering is
+               sized to the crowd: circles form as seats fill, each runs a
+               cycle, then the circles meet — the event is the recursion
+               demonstrated. (`platform` span keeps old #platform links.) ── */}
+        <RevealSection id="invitation" className={styles.section}>
+          <span id="platform" />
+          <p className={styles.sectionLabel}>The Invitation</p>
+          <h2 className={styles.sectionHeadline}>
+            Be in the first <em>circles.</em>
+          </h2>
+          <p className={styles.sectionBody}>
+            We&apos;re convening the first gathering now, sized to fit the
+            crowd: circles of four to twelve form as seats fill. Each circle
+            runs one cycle together over a few weeks, on its own time —
+            stories, sorting, maps, shared words. Then the circles gather,
+            World Caf&eacute; style, and we all find out what the collective
+            can see.
+          </p>
+
+          <div className={styles.joinBlock}>
+            <h3 className={styles.joinHeading}>Save a seat</h3>
+            <p className={styles.joinBody}>
+              Leave your address. When the seats around you fill, your circle
+              forms and the first round begins — email carries you through the
+              rest.
+            </p>
+            <EmailCapture
+              cta="Save me a seat"
+              sentNote="Seat saved. We'll write when your circle forms."
+              source="first-gathering"
+            />
           </div>
         </RevealSection>
 

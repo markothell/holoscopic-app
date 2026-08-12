@@ -157,10 +157,22 @@ export default function InterViewLandingPage() {
           collaborative.conversation.design.game
         </p>
 
-        {/* The invitation */}
+        {/* The lineage */}
         <p
           style={{
             margin: 'clamp(1.75rem, 4vw, 2.5rem) 0 0',
+            fontSize: 'clamp(1rem, 2.2vw, 1.2rem)', lineHeight: 1.7,
+            color: 'var(--text-secondary)', maxWidth: '56ch',
+          }}
+        >
+          Map + Sequence built the frame; interView asks whether a group can
+          learn which conversations work.
+        </p>
+
+        {/* The invitation */}
+        <p
+          style={{
+            margin: '1rem 0 0',
             fontSize: 'clamp(1rem, 2.2vw, 1.2rem)', lineHeight: 1.7,
             color: 'var(--text-secondary)', maxWidth: '56ch',
           }}

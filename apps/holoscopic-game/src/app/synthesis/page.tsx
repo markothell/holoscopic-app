@@ -115,6 +115,11 @@ export default function SynthesisPage() {
         <p className={styles.sub}>a game for generating collective thought</p>
 
         <p className={styles.lede}>
+          On a Spectrum ran on a clock. Synthesis is the opposite tempo — a
+          game where time to think is a move.
+        </p>
+
+        <p className={styles.lede}>
           An <strong>idea</strong>{' '}is a thought space you draft and invite people
           into — a question worth a group&apos;s attention. Its title sits at the
           centre of everyone&apos;s map, and the idea becomes whatever its

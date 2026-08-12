@@ -16,6 +16,12 @@ export const SPECTRUM_URL =
 export const SYNTHESIS_URL =
   process.env.NEXT_PUBLIC_SYNTHESIS_URL || 'https://synthesis.holoscopic.io';
 
+// Threshold (see apps/threshold, :4006 locally) — live on production since
+// 2026-08-10, instance slug `circlemo`.
+// Set NEXT_PUBLIC_THRESHOLD_URL=http://localhost:4006 to follow it locally.
+export const THRESHOLD_URL =
+  process.env.NEXT_PUBLIC_THRESHOLD_URL || 'https://threshold.holoscopic.io';
+
 // Chorus (see apps/chorus, :4005 locally).
 //
 // One deployment serves every memorial, each addressed by a path: a memorial

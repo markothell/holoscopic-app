@@ -197,117 +197,87 @@
   max-width: 560px;
 }
 
-/* ---- EXPANDABLE ITEMS ---- */
-
-.expandGroup {
-  margin-top: 3rem;
-  border-top: 1px solid var(--rule);
+/* A link inside a paragraph of body copy — the same weight as the prose,
+   marked by the accent rather than by an underline. */
+.inlineLink {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(200, 59, 80, 0.35);
+  transition: border-color 0.2s;
 }
 
-.expandItem {
-  border-bottom: 1px solid var(--rule);
+/* text-decoration repeated on hover because the global `a:hover` rule
+   (element + pseudo-class) outweighs the bare class — without it the
+   underline stacks on the border-bottom and the link wears two lines. */
+.inlineLink:hover {
+  border-color: var(--accent);
+  text-decoration: none;
 }
 
-.expandTrigger {
+/* ---- THE SHAPE — the Venn and its three definitions ---- */
+
+.vennPanel {
+  margin: 2.5rem 0 1rem;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.6rem 0;
-  cursor: pointer;
-  user-select: none;
-  background: none;
-  border: none;
+  justify-content: center;
+}
+
+.vennSvg {
   width: 100%;
-  text-align: left;
-  font-size: inherit;
-  color: inherit;
+  max-width: 480px;
+  height: auto;
+  display: block;
 }
 
-.expandTrigger:hover .expandTitle {
-  color: var(--accent);
-}
-
-.expandTitle {
-  font-family: var(--font-barlow), sans-serif;
-  font-size: 1.45rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
-  transition: color 0.2s;
-}
-
-.expandIcon {
-  font-family: var(--font-dm-mono), monospace;
-  font-size: 1rem;
-  color: var(--ink-light);
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s;
-  flex-shrink: 0;
-  margin-left: 1.5rem;
-  line-height: 1;
-  display: inline-block;
-}
-
-.expandIconOpen {
-  transform: rotate(45deg);
-  color: var(--accent);
-}
-
-.expandContent {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.expandContentOpen {
-  max-height: 700px;
-}
-
-.expandInner {
-  padding: 0.25rem 0 2.25rem 0;
-  font-size: 1.05rem;
-  color: var(--ink-light);
-  line-height: 1.9;
-  font-weight: 300;
-  font-style: italic;
+.defList {
+  margin: 1.5rem 0 0;
+  border-top: 1px solid var(--rule);
   max-width: 560px;
 }
 
-/* ---- KINDA LIKE ---- */
-
-.kindaLikeList {
-  list-style: none;
-  padding: 0;
-  margin: 2rem 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2.5rem;
+.defRow {
+  padding: 1.4rem 0;
+  border-bottom: 1px solid var(--rule);
 }
 
-.kindaLikeItem {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.kindaLikeTitle {
+.defTerm {
   font-family: var(--font-barlow), sans-serif;
-  font-size: clamp(1.4rem, 3.5vw, 2rem);
-  font-weight: 700;
+  font-size: 1.15rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: -0.01em;
-  line-height: 1.1;
-  color: var(--ink);
+  letter-spacing: 0.01em;
 }
 
-.kindaLikeSub {
-  font-family: var(--font-cormorant), Georgia, serif;
-  font-size: 1.15rem;
-  font-weight: 300;
-  font-style: italic;
+.defDesc {
+  margin: 0.4rem 0 0;
+  font-size: 1.05rem;
   color: var(--ink-light);
-  line-height: 1.7;
-  max-width: 480px;
+  line-height: 1.8;
+  font-weight: 300;
 }
+
+/* ---- THE MODEL — the circle-of-circles figure between the two claims ---- */
+
+.modelFigure {
+  margin: 2.5rem 0 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.modelArt {
+  width: 100%;
+  max-width: 620px;
+  height: auto;
+  display: block;
+}
+
+/* ---- THE INSTRUMENTS ---- */
+
+/* MO's lab-notes intro — sectionBody with room before the card stack. */
+.labIntro {
+  margin-bottom: 3.5rem;
+}
+
 
 /* ---- INVITATION ---- */
 
@@ -393,7 +363,6 @@
   color: var(--ink-light);
   margin-top: 0.15rem;
 }
-
 /* On a Spectrum — its own paper + duotone wordmark */
 .gameCardOas {
   background: #faf6ee;
@@ -436,6 +405,19 @@
    the art and the sub-line instead. */
 .gameCardSubCh {
   color: #8a6f4e;
+}
+
+/* Threshold — the app's own ground, with the neutral threshold grey carrying
+   the sub-line. The teal/rust poles stay in the beam art: putting either on
+   the type would make one end look like the verdict, which is the exact thing
+   the app's palette was built to avoid. */
+.gameCardTh {
+  background: #f6f5f2;
+  border: 1px solid #e4e2dc;
+}
+
+.gameCardSubTh {
+  color: #7c7a76;
 }
 
 /* Synthesis — dark plum, the theme the app itself wears, with brass + teal */
@@ -530,18 +512,31 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ---- THE PRACTICE ---- */
+/* ---- JOIN ---- */
 
-.visualPanel {
-  margin: 0 0 1.5rem;
+.joinBlock {
+  margin-top: 3rem;
+  max-width: 560px;
 }
 
-.visualSvg {
-  max-width: 100%;
-  height: auto;
-  border-radius: 16px;
-  display: block;
+.joinHeading {
+  font-family: var(--font-barlow), sans-serif;
+  font-size: 1.45rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  margin: 0 0 1rem;
 }
+
+.joinBody {
+  font-size: 1.05rem;
+  color: var(--ink-light);
+  line-height: 1.85;
+  font-weight: 300;
+}
+
+/* The capture form itself lives in components/EmailCapture.module.css — two
+   surfaces carry it now (this page and /circles). */
 
 /* ---- RESPONSIVE ---- */
 
@@ -549,5 +544,4 @@
   .container { padding: 0 1.5rem; }
   .hero { padding: 4rem 0 3rem; }
   .footerInner { flex-direction: column; }
-  .visualSvg { max-width: 100%; }
 }
