@@ -21,7 +21,7 @@ apps/platform/
         └── image.ts             # browser downscale, run before any photo upload
 ```
 
-**Platform administration lives here now, not in the game.** `/users`, `/waitlist` and the
+**Platform administration lives here now, not in the game.** `/users`, the signup lists and the
 platform counters were a `/admin` page inside `apps/holoscopic-game`, reached from an "Admin" entry
 in the game's own `UserMenu`. Managing the platform meant signing into the thing being managed, and
 every admin's game nav carried an item that had nothing to do with playing. The backend routes did
@@ -65,8 +65,13 @@ the header had already been copy-pasted twice.
 - `/users` — roles, active/inactive, one-shot password reset. **You cannot change your own role or
   status** — on a platform that can have one admin, self-demotion is the fastest way to lock
   everybody out. A reset password is shown once in a `prompt()` and stored nowhere.
-- `/waitlist` — signups grouped by sequence. Emails stay collapsed behind a per-sequence toggle,
-  because a page that prints every address on open is one that gets left on a screen in a room.
+- `/signups` — interest capture (`models/Signup`) grouped by `source` — `first-gathering` is the
+  seat list, `platform-updates` the announcements list; a new capture surface mints a new source
+  and appears here with no page change. Sources ordered by newest signup; reads the admin-gated
+  `GET /api/admin/signups`. Emails stay collapsed behind a per-source toggle, because a page that
+  prints every address on open is one that gets left on a screen in a room. **It replaced the
+  Waitlist tab (2026-08-12)** — the per-sequence `Waitlist` rows still exist in Mongo and the
+  backend's `GET /api/admin/waitlist` still answers, but no surface writes or reads them today.
 - `/login` — credential form
 - `/traffic` — site traffic: visits and people per app, visits per day, which homepage links get
   taken, busiest pages. Reads `GET /api/traffic/summary` (admin-gated), which is served from the

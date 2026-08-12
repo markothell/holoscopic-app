@@ -37,7 +37,7 @@ const SHORTCUTS = [
   { href: '/instances', label: 'Instances', note: 'create and configure editions' },
   { href: '/traffic', label: 'Traffic', note: 'who arrived, and from where' },
   { href: '/users', label: 'Users', note: 'roles, access, password resets' },
-  { href: '/waitlist', label: 'Waitlist', note: 'signups per sequence' },
+  { href: '/signups', label: 'Signups', note: 'interest capture by source' },
 ];
 
 export default function OverviewPage() {

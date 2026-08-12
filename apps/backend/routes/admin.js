@@ -180,6 +180,46 @@ router.get('/waitlist', async (req, res) => {
   }
 });
 
+// GET /api/admin/signups — interest capture (models/Signup) grouped by source.
+// The write side is POST /api/signup, which stamps a free-form `source` per
+// surface ('first-gathering', 'platform-updates', 'start-your-own', …), so the
+// grouping here is what lets one list serve every campaign. Sources are
+// ordered by their newest signup — the live campaign floats to the top.
+router.get('/signups', async (req, res) => {
+  try {
+    const Signup = require('../models/Signup');
+
+    const entries = await Signup.find({})
+      .select('email source createdAt')
+      .sort({ createdAt: -1 });
+
+    const sourceMap = {};
+    for (const entry of entries) {
+      if (!sourceMap[entry.source]) {
+        sourceMap[entry.source] = {
+          source: entry.source,
+          count: 0,
+          latestAt: entry.createdAt,
+          emails: [],
+        };
+      }
+      sourceMap[entry.source].count++;
+      sourceMap[entry.source].emails.push({ email: entry.email, joinedAt: entry.createdAt });
+    }
+
+    // entries arrive newest-first, so each source's latestAt is its first hit
+    // and this sort puts the most recently active source first.
+    const sources = Object.values(sourceMap).sort(
+      (a, b) => new Date(b.latestAt) - new Date(a.latestAt)
+    );
+
+    res.json({ sources, total: entries.length });
+  } catch (error) {
+    console.error('Error fetching signups:', error);
+    res.status(500).json({ error: 'Failed to fetch signups' });
+  }
+});
+
 // POST /api/admin/holons/award — manually award Holons to a user (dev/admin tool)
 router.post('/holons/award', async (req, res) => {
   const { email, amount } = req.body;

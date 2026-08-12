@@ -33,21 +33,22 @@ export interface AdminUser {
   createdAt: string;
 }
 
-export interface WaitlistEntry {
+export interface SignupEntry {
   email: string;
   joinedAt: string;
 }
 
-export interface WaitlistSequence {
-  sequenceId: string;
-  title: string;
-  urlName: string;
+// One interest-capture source ('first-gathering', 'platform-updates', …),
+// with its signups newest first.
+export interface SignupSource {
+  source: string;
   count: number;
-  emails: WaitlistEntry[];
+  latestAt: string;
+  emails: SignupEntry[];
 }
 
-export interface WaitlistData {
-  sequences: WaitlistSequence[];
+export interface SignupsData {
+  sources: SignupSource[];
   total: number;
 }
 
@@ -69,5 +70,5 @@ export const AdminApi = {
   resetPassword: (targetId: string): Promise<{ tempPassword: string; email: string }> =>
     apiFetch(`/admin/users/${targetId}/reset-password`, { method: 'POST', body: JSON.stringify({}) }),
 
-  waitlist: (): Promise<WaitlistData> => apiFetch('/admin/waitlist'),
+  signups: (): Promise<SignupsData> => apiFetch('/admin/signups'),
 };

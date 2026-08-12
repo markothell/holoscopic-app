@@ -4,12 +4,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminNav from '@/components/AdminNav';
-import { AdminApi, type WaitlistData } from '@/lib/adminApi';
+import { AdminApi, type SignupsData } from '@/lib/adminApi';
 
-// Waitlist signups, grouped by the sequence they signed up for. Moved out of
-// the game app's /admin page.
+// Interest-capture signups (models/Signup), grouped by the source string each
+// surface stamps — 'first-gathering' is the seat list for the first gathering,
+// 'platform-updates' the old announcements list, 'start-your-own' the /start
+// notify-me. New capture surfaces mint new sources and appear here without
+// any change to this page. Sources are ordered by their newest signup, so the
+// live campaign sits on top; the replaced Waitlist tab's per-sequence list
+// still exists in Mongo but had no active surface writing to it.
 //
-// Emails stay collapsed behind a per-sequence toggle rather than rendering by
+// Emails stay collapsed behind a per-source toggle rather than rendering by
 // default. These are addresses people gave for one thing, and a page that
 // prints all of them the moment it opens is a page that gets left on a screen
 // in a room with other people in it.
@@ -27,10 +32,10 @@ function formatDate(d: string | null) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default function WaitlistPage() {
+export default function SignupsPage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
-  const [data, setData] = useState<WaitlistData | null>(null);
+  const [data, setData] = useState<SignupsData | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +47,7 @@ export default function WaitlistPage() {
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    AdminApi.waitlist()
+    AdminApi.signups()
       .then(setData)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
@@ -58,9 +63,9 @@ export default function WaitlistPage() {
       <main style={{ maxWidth: 960, margin: '0 auto', padding: '2rem 1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', gap: '1rem', flexWrap: 'wrap' }}>
           <div>
-            <h1 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Waitlist</h1>
+            <h1 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Signups</h1>
             <p style={{ ...mono, color: 'var(--ink-light)', marginTop: '0.2rem' }}>
-              {data ? `${data.total} signup${data.total === 1 ? '' : 's'}` : '—'}
+              {data ? `${data.total} signup${data.total === 1 ? '' : 's'} across ${data.sources.length} source${data.sources.length === 1 ? '' : 's'}` : '—'}
             </p>
           </div>
           <button
@@ -75,24 +80,24 @@ export default function WaitlistPage() {
         {error && <p style={{ ...mono, color: 'var(--accent)' }}>{error}</p>}
 
         {data && !loading && (
-          data.sequences.length === 0 ? (
-            <p style={{ ...mono, color: 'var(--ink-light)' }}>No waitlist signups yet.</p>
+          data.sources.length === 0 ? (
+            <p style={{ ...mono, color: 'var(--ink-light)' }}>No signups yet.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {data.sequences.map(seq => {
-                const open = expanded === seq.sequenceId;
+              {data.sources.map(src => {
+                const open = expanded === src.source;
                 return (
-                  <div key={seq.sequenceId} style={card}>
+                  <div key={src.source} style={card}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{seq.title}</div>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem', fontFamily: 'var(--font-mono)' }}>{src.source}</div>
                         <div style={{ ...mono, color: 'var(--ink-light)', marginTop: '0.2rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                          <span>{seq.count} signup{seq.count === 1 ? '' : 's'}</span>
-                          {seq.urlName && <span>/{seq.urlName}</span>}
+                          <span>{src.count} signup{src.count === 1 ? '' : 's'}</span>
+                          <span>latest {formatDate(src.latestAt)}</span>
                         </div>
                       </div>
                       <button
-                        onClick={() => setExpanded(open ? null : seq.sequenceId)}
+                        onClick={() => setExpanded(open ? null : src.source)}
                         aria-expanded={open}
                         style={{ ...mono, flexShrink: 0, padding: '0.4rem 0.8rem', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--ink-mid)' }}
                       >
@@ -101,29 +106,25 @@ export default function WaitlistPage() {
                     </div>
 
                     {open && (
-                      seq.emails.length === 0 ? (
-                        <p style={{ ...mono, color: 'var(--ink-light)', marginTop: '0.75rem' }}>No signups yet</p>
-                      ) : (
-                        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.75rem' }}>
-                          <thead>
-                            <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                              {['Email', 'Joined'].map(h => (
-                                <th key={h} style={{ ...mono, padding: '0.4rem 0', textAlign: 'left', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 400 }}>
-                                  {h}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {seq.emails.map((e, i) => (
-                              <tr key={`${e.email}-${i}`} style={{ borderBottom: '1px solid var(--border)' }}>
-                                <td style={{ ...mono, padding: '0.4rem 0', fontSize: '0.7rem', wordBreak: 'break-all' }}>{e.email}</td>
-                                <td style={{ ...mono, padding: '0.4rem 0', color: 'var(--ink-light)', width: 130 }}>{formatDate(e.joinedAt)}</td>
-                              </tr>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.75rem' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                            {['Email', 'Signed up'].map(h => (
+                              <th key={h} style={{ ...mono, padding: '0.4rem 0', textAlign: 'left', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 400 }}>
+                                {h}
+                              </th>
                             ))}
-                          </tbody>
-                        </table>
-                      )
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {src.emails.map((e, i) => (
+                            <tr key={`${e.email}-${i}`} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ ...mono, padding: '0.4rem 0', fontSize: '0.7rem', wordBreak: 'break-all' }}>{e.email}</td>
+                              <td style={{ ...mono, padding: '0.4rem 0', color: 'var(--ink-light)', width: 130 }}>{formatDate(e.joinedAt)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     )}
                   </div>
                 );

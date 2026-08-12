@@ -14,7 +14,7 @@ const LINKS = [
   { href: '/instances', label: 'Instances' },
   { href: '/traffic', label: 'Traffic' },
   { href: '/users', label: 'Users' },
-  { href: '/waitlist', label: 'Waitlist' },
+  { href: '/signups', label: 'Signups' },
 ];
 
 const mono: React.CSSProperties = {
