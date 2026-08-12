@@ -7,18 +7,20 @@ import { thresholdApi, ApiError } from '@/services/api';
 import { Page, Band, Card, Action, Quiet, Muted } from '@/components/Shell';
 import { TideLine, Polarity } from '@/components/TideLine';
 
-// Starting a circle. Until this existed, every circle on production was made by
-// running the funnel from a laptop — so the app could be used by anybody
-// invited to a circle and by nobody else.
+// Starting a session: one topic, told and sorted once. Until this existed,
+// every circle on production was made by running the funnel from a laptop — so
+// the app could be used by anybody invited to one and by nobody else.
 //
-// It asks for as little as the machine needs and offers the rest. A circle can
-// open with no topic at all: it goes idle, and the first topic somebody posts
-// is what starts it running (D27/D29). So the topic here is an offer, in the
-// same spirit as D34 — putting a circle up has to be cheap, because the person
-// doing it is usually not the person with the first story.
+// A session is what this app offers publicly, so the page no longer asks which
+// kind to make: it always sends `mode: 'single'`. Ongoing circles are real and
+// still run, and they are started by an operator from the platform admin —
+// continuity is a commitment somebody makes on purpose, not a radio button a
+// stranger meets on their first screen.
 //
-// The one place it INSISTS is a one-off, which is a circle with a single seed
-// by definition (D1) and therefore has nothing to run without one.
+// That decision makes the topic required rather than an offer: a one-off is a
+// circle with a single seed by definition (D1) and has nothing to run without
+// one. (D27/D29's "open with no topic and go idle" is the ongoing shape, and
+// belongs to the surface that starts those.)
 
 /** The address a title will take. The server slugs it too, and identically —
  *  this is shown so nobody discovers their circle's URL after the fact. */
@@ -33,7 +35,6 @@ export default function NewCirclePage() {
   const email = (session?.user as { email?: string } | undefined)?.email ?? '';
 
   const [title, setTitle] = useState('');
-  const [mode, setMode] = useState<'circle' | 'single'>('circle');
   const [topic, setTopic] = useState('');
   const [poleA, setPoleA] = useState('');
   const [poleB, setPoleB] = useState('');
@@ -43,9 +44,8 @@ export default function NewCirclePage() {
   const [error, setError] = useState<string | null>(null);
 
   const urlName = slugify(title);
-  const wantsTopic = mode === 'single' || Boolean(topic.trim() || poleA.trim() || poleB.trim());
   const topicReady = Boolean(topic.trim() && poleA.trim() && poleB.trim());
-  const ready = Boolean(urlName) && (!wantsTopic || topicReady);
+  const ready = Boolean(urlName) && topicReady;
 
   if (status === 'loading') return <Page><Muted>…</Muted></Page>;
 
@@ -53,7 +53,7 @@ export default function NewCirclePage() {
     return (
       <Page>
         <h1 className="mb-2 font-[family-name:var(--font-source-serif)] text-3xl">Sign in</h1>
-        <Muted>A circle belongs to the account that starts it.</Muted>
+        <Muted>A session belongs to the account that starts it.</Muted>
         <div className="mt-5"><Action href="/login">Sign in</Action></div>
       </Page>
     );
@@ -68,13 +68,11 @@ export default function NewCirclePage() {
         {
           title: title.trim(),
           urlName,
-          mode,
+          mode: 'single',
           // Puts the starter's own address on their membership, which is what
           // every later transition mails.
           email,
-          seed: wantsTopic
-            ? { topic: topic.trim(), poleA: poleA.trim(), poleB: poleB.trim() }
-            : undefined,
+          seed: { topic: topic.trim(), poleA: poleA.trim(), poleB: poleB.trim() },
           requireInvitation: !openToLink,
           invitedEmails: openToLink
             ? []
@@ -97,10 +95,10 @@ export default function NewCirclePage() {
       <header className="mb-8">
         <Quiet href="/">Threshold</Quiet>
         <h1 className="mt-2 font-[family-name:var(--font-source-serif)] text-3xl leading-tight">
-          Start a circle
+          Start a session
         </h1>
         <p className="mt-1 mb-4 text-sm text-ink-faint">
-          You host it: you decide what runs next and when a round moves on.
+          One topic, told and sorted once. You host it: you decide when a round moves on.
         </p>
         <TideLine />
       </header>
@@ -114,7 +112,7 @@ export default function NewCirclePage() {
           value={title}
           onChange={e => setTitle(e.target.value)}
           maxLength={80}
-          placeholder="Tuesday group"
+          placeholder="Thursday, being needed"
           className="w-full rounded-lg border border-[var(--rule)] bg-ground/40 p-3 text-[15px] outline-none focus:border-[var(--rule-strong)]"
         />
         {urlName && (
@@ -125,30 +123,8 @@ export default function NewCirclePage() {
       </Card>
 
       <Card className="mb-6">
-        <Band>How long it runs</Band>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Choice
-            selected={mode === 'circle'}
-            onSelect={() => setMode('circle')}
-            title="It keeps going"
-            note="Topics queue up, the most-backed one runs next, and it ends when you close it."
-          />
-          <Choice
-            selected={mode === 'single'}
-            onSelect={() => setMode('single')}
-            title="One topic"
-            note="A single question, shared and sorted once. It finishes when that topic reveals."
-          />
-        </div>
-      </Card>
-
-      <Card className="mb-6">
-        <Band>{mode === 'single' ? 'The topic' : 'The first topic'}</Band>
-        <Muted>
-          {mode === 'single'
-            ? 'A charged word, and the two things it can be.'
-            : 'A charged word, and the two things it can be. You can leave this until later — the circle waits, and the first topic anybody posts starts it.'}
-        </Muted>
+        <Band>The topic</Band>
+        <Muted>A charged word, and the two things it can be.</Muted>
         <input
           value={topic}
           onChange={e => setTopic(e.target.value)}
@@ -179,7 +155,7 @@ export default function NewCirclePage() {
             <Polarity poleA={poleA.trim()} poleB={poleB.trim()} />
           </div>
         )}
-        {wantsTopic && !topicReady && (
+        {!topicReady && (
           <p className="mt-3 text-sm text-ink-faint">
             A topic needs both of its ends before it can run.
           </p>

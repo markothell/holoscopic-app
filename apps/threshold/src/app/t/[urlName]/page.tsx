@@ -110,6 +110,12 @@ export default function CirclePage({ params }: { params: Promise<{ urlName: stri
   const record = circle.seeds.filter(s => s.phase === 'revealed' || s.phase === 'skipped');
   // A one-off has one topic and no queue, so it has nothing to steer (D30).
   const facilitating = circle.isCreator && circle.mode === 'circle' && circle.phase !== 'closed';
+  // What to call this thing on screen. The word "circle" is reserved for a
+  // group with continuity (PLATFORM.md P15), and a one-off has none — it is
+  // the only thing the app offers publicly now, so its host must never be told
+  // they started a circle. Copy that is only ever true of the ongoing shape
+  // (the queue, facilitation) stays gated on `mode` instead.
+  const noun = circle.mode === 'circle' ? 'circle' : 'session';
 
   return (
     <Page>
@@ -130,11 +136,11 @@ export default function CirclePage({ params }: { params: Promise<{ urlName: stri
 
       {circle.phase === 'draft' && (
         <Card>
-          <Muted>This circle opens when its host is ready.</Muted>
+          <Muted>This {noun} opens when its host is ready.</Muted>
           {circle.isCreator && (
             <div className="mt-4">
               <Action disabled={busy} onClick={() => act(() => thresholdApi.start(circle.id, userId))}>
-                Open the circle
+                Open the {noun}
               </Action>
             </div>
           )}
@@ -204,7 +210,11 @@ export default function CirclePage({ params }: { params: Promise<{ urlName: stri
               ? 'One topic, shared and sorted.'
               : `${record.length} topics, shared and sorted.`}
           </Muted>
-          <div className="mt-4"><Action href={`${base}/result`}>See the whole circle</Action></div>
+          <div className="mt-4">
+            <Action href={`${base}/result`}>
+              {circle.mode === 'circle' ? 'See the whole circle' : 'See the record'}
+            </Action>
+          </div>
         </Card>
       )}
 
