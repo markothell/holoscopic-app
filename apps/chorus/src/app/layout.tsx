@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Newsreader, Archivo } from 'next/font/google';
 import { PlayerProvider } from '@hs/audio';
+import VercelAnalytics from '@/components/VercelAnalytics';
 import './globals.css';
 
 // Newsreader carries the voice — the prompt sentence and the stories. Archivo
@@ -41,6 +42,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* One audio element for the whole app, so two memories can never
             talk over each other and playback survives navigation. */}
         <PlayerProvider>{children}</PlayerProvider>
+        {/* Vercel's own measurement, with the query string redacted — the
+            curate link carries a working key in it. Our beacon is mounted per
+            memorial, not here, because it needs the instance. */}
+        <VercelAnalytics />
       </body>
     </html>
   );

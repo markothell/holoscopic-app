@@ -7,6 +7,7 @@ import { InstanceProvider } from "@/contexts/InstanceContext";
 import ServiceWorkerRegistration from "@/components/pwa/ServiceWorkerRegistration";
 import InstanceEndedBanner from "@/components/InstanceEndedBanner";
 import Beacon from "@/components/Beacon";
+import VercelAnalytics from "@/components/VercelAnalytics";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -145,6 +146,10 @@ export default function RootLayout({
                   the homepage alone, which is where the question 'which of
                   these do people take' is being asked. */}
               <Beacon clickPaths={["/"]} />
+              {/* Vercel's own measurement, alongside the beacon rather than
+                  instead of it — with the query string redacted, because
+                  /verify-email and /reset-password carry a live token in it. */}
+              <VercelAnalytics />
               {children}
               <ServiceWorkerRegistration />
             </AuthProvider>

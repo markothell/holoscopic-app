@@ -11,6 +11,7 @@
     "@hs/activities": "*",
     "@types/dagre": "^0.7.54",
     "@types/uuid": "^10.0.0",
+    "@vercel/analytics": "^2.0.1",
     "@xyflow/react": "^12.10.2",
     "axios": "^1.16.1",
     "dagre": "^0.8.5",
