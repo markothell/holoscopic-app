@@ -375,9 +375,10 @@ nowhere to arrive. That surface, plus a `/signup`, is the Threshold-side prerequ
 next to what M5 assumed.
 
 *Progress 2026-08-11 (frontend half, per P16):* **the capture surface exists and the app stopped
-offering ongoing circles.** Threshold's front door now carries the rung-1 offer — the three
-standing topics (Prosperity earned/given, Family born into/chosen, Technology
-connecting/isolating) and an email capture posting `activity-<topic>` straight to the global,
+offering ongoing circles.** Threshold's front door now carries the rung-1 offer — three standing
+topics (since 2026-08-12: Progress combat evil/elevate good, Belonging by origin/from destination,
+Belief as fantasy/as creation — `TOPICS` in threshold's `app/page.tsx`, code not config until the
+M5 former lands) and an email capture posting `activity-<topic>` straight to the global,
 unauthenticated `POST /api/signup` with a plain fetch (routing it through `services/api.ts` would
 mint a game token and 401 the signed-out visitor it exists for). It sits **above** the account ask,
 so a stranger meets the offer first. `/new` creates one-off **sessions** only: the mode choice is

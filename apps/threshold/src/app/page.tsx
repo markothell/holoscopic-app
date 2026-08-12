@@ -35,9 +35,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 /** The standing topics an open session runs on. `key` is the second half of the
  *  `Signup` row's source, so these strings are the shape of the stored data. */
 const TOPICS = [
-  { key: 'prosperity', name: 'Prosperity', poleA: 'earned', poleB: 'given' },
-  { key: 'family', name: 'Family', poleA: 'born into', poleB: 'chosen' },
-  { key: 'technology', name: 'Technology', poleA: 'connecting', poleB: 'isolating' },
+  { key: 'progress', name: 'Progress', poleA: 'combat evil', poleB: 'elevate good' },
+  { key: 'belonging', name: 'Belonging', poleA: 'by origin', poleB: 'from destination' },
+  { key: 'belief', name: 'Belief', poleA: 'as fantasy', poleB: 'as creation' },
 ] as const;
 
 export default function Home() {
