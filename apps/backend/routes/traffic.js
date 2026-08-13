@@ -62,9 +62,16 @@ router.post('/collect', (req, res) => {
     path: body.path,
     target: body.target,
     label: body.label,
-    // The Referer header rather than a client-sent field: it is the one the
-    // browser controls and the one a link-shortener actually sets.
-    referrer: body.referrer || req.headers.referer || '',
+    // The client-sent field, and DELIBERATELY NOT `req.headers.referer`.
+    //
+    // That header looked like the trustworthy choice and was the wrong one: it
+    // describes the request in hand, and this request is a fetch made by the
+    // page itself, so it always carried the page's own origin. Every referrer
+    // host recorded before 2026-08-13 is therefore the site the visitor was
+    // already on, and answers nothing. `Beacon#entryReferrer` reads
+    // `document.referrer` — the only place the real answer exists — and sends
+    // it on the entry view alone.
+    referrer: body.referrer || '',
     // Present only where a page belongs to one tenant — a Chorus memorial.
     // resolveInstance's fallback is deliberately NOT used: it never fails, so
     // an unrecognised header would silently attribute a memorial's traffic to

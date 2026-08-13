@@ -74,7 +74,7 @@ the header had already been copy-pasted twice.
   backend's `GET /api/admin/waitlist` still answers, but no surface writes or reads them today.
 - `/login` — credential form
 - `/traffic` — site traffic: visits and people per app, visits per day, which homepage links get
-  taken, busiest pages. Reads `GET /api/traffic/summary` (admin-gated), which is served from the
+  taken, where arrivals came from, busiest pages. Reads `GET /api/traffic/summary` (admin-gated), which is served from the
   permanent daily rollup — so a 90-day range costs counters, not a scan, and it keeps answering
   after the raw tier's 30-day TTL. **This is arrival, not participation**; the activity stats on an
   instance page are the other thing. App colours are a fixed categorical set validated for

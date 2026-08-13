@@ -154,8 +154,16 @@ can drop it without a chart losing history.
   `unique` on `trafficvisitordays`, every view reports a new person and People silently equals
   Visits; without `unique` on `trafficdailies`, concurrent beacons create duplicate rows that both
   get summed; without the TTL on `trafficevents`, the raw tier never stops growing.
+- **The referrer comes from the beacon's `document.referrer`, never from `req.headers.referer`.**
+  That header describes the beacon's own fetch, which a page makes about itself, so it recorded
+  every visit as arriving from the site it was already on — every `referrerHost` written before
+  2026-08-13 is that, and answers nothing. Only the entry view carries one (`document.referrer`
+  does not change across client-side navigation, so sending it every time would credit one link
+  for the whole visit), and it lands on a permanent `type: 'referrer'` counter keyed by host, so
+  "who sends us traffic" outlives the raw tier like every other number.
 - Query strings are stripped before storage — `?k=` on a Chorus curate link is a credential — and
-  an outbound click is recorded as scheme + host only.
+  an outbound click is recorded as scheme + host only. The referrer keeps its host and nothing
+  else, so a search term cannot arrive with it.
 - `node scripts/seed-traffic.js` writes 30 days of demo rollup rows (`--clear` removes them). It
   refuses production by database name and by `NODE_ENV`.
 

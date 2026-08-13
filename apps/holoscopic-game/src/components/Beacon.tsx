@@ -66,7 +66,39 @@ type Payload = {
   path: string;
   target?: string;
   label?: string;
+  /** Where this visit came from. First view of a page load only — see entryReferrer. */
+  referrer?: string;
 };
+
+/**
+ * Where this visit came from, or '' when the question does not apply.
+ *
+ * Sent explicitly, because the `Referer` header of the beacon's own request
+ * cannot answer it: a fetch made BY a page carries THAT PAGE as its referer, so
+ * the server was recording every visit as having arrived from the site it was
+ * already on. Every referrer host stored before this line existed is that.
+ *
+ * Reported on the first view of a page load and never again. `document.referrer`
+ * does not change across client-side navigation, so sending it every time would
+ * credit the link somebody arrived on for all six pages they went on to read.
+ * That matters most here: this app serves three products, so a visit that lands
+ * on the homepage and walks into interView would otherwise report the same
+ * external referrer against both.
+ *
+ * Same-origin is dropped — our own previous page is not a source of traffic.
+ * Another of OUR domains is kept, because holoscopic.io → threshold.holoscopic.io
+ * is exactly the handoff worth being able to see.
+ */
+function entryReferrer(): string {
+  const referrer = document.referrer || '';
+  if (!referrer) return '';
+  try {
+    if (new URL(referrer).origin === window.location.origin) return '';
+  } catch {
+    return '';   // Unparseable is not attributable.
+  }
+  return referrer;
+}
 
 /**
  * Run after the page has finished loading and the main thread is free.
@@ -124,8 +156,16 @@ export default function Beacon({ clickPaths = [] }: Props) {
 
   useEffect(() => {
     if (!pathname || lastSent.current === pathname) return;
+    // Nothing sent yet on this mount means this is the page somebody actually
+    // landed on, which is the only view a referrer belongs to.
+    const isEntry = lastSent.current === null;
     lastSent.current = pathname;
-    send({ app: appForPath(pathname), type: 'view', path: pathname });
+    send({
+      app: appForPath(pathname),
+      type: 'view',
+      path: pathname,
+      ...(isEntry ? { referrer: entryReferrer() } : {}),
+    });
   }, [pathname]);
 
   const tracksClicks = !!pathname && clickPaths.includes(pathname);

@@ -155,6 +155,48 @@ test('a click counts against its target and leaves the visit total alone', async
   );
 });
 
+test('an arrival credits its referring host on the permanent tier', async () => {
+  const store = fakeStore();
+  const day = traffic.dayKey();
+
+  await traffic.record(
+    { app: 'threshold', type: 'view', path: '/t/circlemo', referrer: 'https://l.instagram.com/x?u=1' },
+    { store },
+  );
+
+  assert.equal(store.daily.get(`${day}|threshold|referrer|l.instagram.com`).views, 1);
+  assert.equal(store.events[0].referrerHost, 'l.instagram.com', 'the path is never stored');
+});
+
+test('a view with no referrer writes no referrer row', async () => {
+  const store = fakeStore();
+  const day = traffic.dayKey();
+
+  await traffic.record({ app: 'threshold', type: 'view', path: '/' }, { store });
+
+  assert.equal(
+    store.daily.get(`${day}|threshold|referrer|`),
+    undefined,
+    'an absent referrer is absent, never an empty-string row',
+  );
+});
+
+test('a click never credits a referrer', async () => {
+  const store = fakeStore();
+  const day = traffic.dayKey();
+
+  await traffic.record(
+    { app: 'site', type: 'click', path: '/', target: '/chorus', referrer: 'https://facebook.com/p' },
+    { store },
+  );
+
+  assert.equal(
+    store.daily.get(`${day}|site|referrer|facebook.com`),
+    undefined,
+    "a click's referrer is the page it happened on, which the row already records as the path",
+  );
+});
+
 test('a click with no resolvable target is dropped', async () => {
   const store = fakeStore();
   const out = await traffic.record({ app: 'site', type: 'click', path: '/', target: '' }, { store });
@@ -186,6 +228,35 @@ test('summary separates per-app totals from path and click breakdowns', async ()
   assert.deepEqual(out.paths.site, [{ key: '/', views: 1 }, { key: '/contact', views: 1 }]);
   assert.deepEqual(out.clicks.site, [{ key: '/chorus', views: 1 }]);
   assert.equal(out.clicks.chorus, undefined);
+  assert.equal(out.paths.site.some(p => p.key.includes('.')), false,
+    'referrer rows must not leak into the per-path breakdown');
+});
+
+test('summary reports referrers per app, ranked', async () => {
+  const store = fakeStore();
+  for (let i = 0; i < 2; i++) {
+    await traffic.record(
+      { app: 'threshold', type: 'view', path: '/', referrer: 'https://facebook.com/feed' },
+      { store },
+    );
+  }
+  await traffic.record(
+    { app: 'threshold', type: 'view', path: '/', referrer: 'https://holoscopic.io/' },
+    { store },
+  );
+  await traffic.record(
+    { app: 'chorus', type: 'view', path: '/c/e', referrer: 'https://mail.google.com/' },
+    { store },
+  );
+
+  const out = await traffic.summary({}, { store });
+
+  assert.deepEqual(out.referrers.threshold, [
+    { key: 'facebook.com', views: 2 },
+    { key: 'holoscopic.io', views: 1 },
+  ]);
+  assert.deepEqual(out.referrers.chorus, [{ key: 'mail.google.com', views: 1 }]);
+  assert.equal(out.referrers.site, undefined);
 });
 
 test('summary ranks the busiest first', async () => {

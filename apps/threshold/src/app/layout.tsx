@@ -3,6 +3,7 @@ import { Source_Serif_4, Inter } from 'next/font/google';
 import PlayerProvider from '@/components/PlayerProviderClient';
 import { SessionProvider } from '@/components/SessionProvider';
 import Beacon from '@/components/Beacon';
+import VercelAnalytics from '@/components/VercelAnalytics';
 import './globals.css';
 
 // A reading serif for the things people wrote, a working sans for the chrome
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             impossible. It also means playback survives navigation. */}
         <SessionProvider><PlayerProvider>{children}</PlayerProvider></SessionProvider>
         <Beacon app="threshold" />
+        <VercelAnalytics />
       </body>
     </html>
   );

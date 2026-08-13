@@ -233,6 +233,17 @@ async function record(raw, { store = mongoStore } = {}) {
       views: 1,
       visitors: firstToday ? 1 : 0,
     });
+
+    // Where the arrival came from, on the permanent tier so "who sends us
+    // traffic" outlives the raw tier's 30-day TTL like every other number the
+    // dashboard draws. Views only, and only entry views carry a referrer at
+    // all: a click's referrer would be the page it happened on, which this row
+    // already records as the `path`.
+    if (doc.referrerHost) {
+      await store.bumpDaily({
+        day, app, type: 'referrer', key: doc.referrerHost, slug: doc.slug, views: 1,
+      });
+    }
   }
 
   return { recorded: true };
@@ -245,9 +256,10 @@ async function record(raw, { store = mongoStore } = {}) {
  *
  * `from`/`to` are 'YYYY-MM-DD' inclusive. Totals and the per-day series come
  * from the permanent rollup so they answer for any range ever recorded; the
- * click and path breakdowns come from the same rollup, so they survive the raw
- * tier's 30-day TTL too. `recent` is the only thing that reads raw events, and
- * it is explicitly a window into the last 30 days rather than a full history.
+ * click, path and referrer breakdowns come from the same rollup, so they
+ * survive the raw tier's 30-day TTL too. `recent` is the only thing that reads
+ * raw events, and it is explicitly a window into the last 30 days rather than a
+ * full history.
  */
 async function summary({ from, to, recentLimit = 50 } = {}, { store = mongoStore } = {}) {
   const end = to || dayKey();
@@ -259,6 +271,7 @@ async function summary({ from, to, recentLimit = 50 } = {}, { store = mongoStore
   const series = {};       // day → { app → views }
   const paths = {};        // app → { path → views }
   const clicks = {};       // app → { target → views }
+  const referrers = {};    // app → { host → arrivals }
 
   for (const row of rows) {
     const { day, app, type, key, views = 0, visitors = 0 } = row;
@@ -279,6 +292,11 @@ async function summary({ from, to, recentLimit = 50 } = {}, { store = mongoStore
     if (type === 'click') {
       clicks[app] = clicks[app] || {};
       clicks[app][key] = (clicks[app][key] || 0) + views;
+      continue;
+    }
+    if (type === 'referrer') {
+      referrers[app] = referrers[app] || {};
+      referrers[app][key] = (referrers[app][key] || 0) + views;
     }
   }
 
@@ -300,6 +318,7 @@ async function summary({ from, to, recentLimit = 50 } = {}, { store = mongoStore
     series: Object.keys(series).sort().map(day => ({ day, ...series[day] })),
     paths: Object.fromEntries(Object.keys(paths).map(a => [a, rank(paths[a], 25)])),
     clicks: Object.fromEntries(Object.keys(clicks).map(a => [a, rank(clicks[a], 25)])),
+    referrers: Object.fromEntries(Object.keys(referrers).map(a => [a, rank(referrers[a], 25)])),
     recentLimit,
   };
 }

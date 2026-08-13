@@ -70,6 +70,25 @@ a drifted copy fails as a dropped event.
 No cookie, no localStorage, no visitor id: the server derives an anonymous hash with the calendar
 day inside the digest, so it cannot link anyone across two days.
 
+**The referrer is sent by the beacon, on the entry view only, and the `Referer` header is
+deliberately ignored** — a fetch made by a page carries that page as its referer, so the header
+recorded every visit as arriving from the site it was already on. Every `referrerHost` stored
+before 2026-08-13 is that, and means nothing; the raw tier's 30-day TTL retires it. Same-origin is
+dropped client-side, another of our own domains is kept.
+
+**Vercel Web Analytics runs alongside it, in four apps** — chorus, holoscopic-game, synthesis and
+threshold, each mounting a mirrored `src/components/VercelAnalytics.tsx` that drops the query
+string before it leaves the browser (this repo puts credentials in query strings). Enabled per
+Vercel project in the dashboard; the component is the other half and neither works alone.
+
+**The two systems will never agree, and that is not a bug.** Vercel starts counting the day its
+script ships, counts one Vercel *project* rather than one of our products (holoscopic.io is three:
+`site`, `interview`, `map-sequence`), defaults its dashboard to Production only, filters known
+bots, and loses whatever an ad blocker eats. Ours has counted since the beacon shipped, splits
+those three by path, counts preview deployments, and filters nothing. Expect Vercel to read lower.
+Before comparing two numbers, line up the window, the product and the metric — the admin's "visits"
+are page views, Vercel's headline is unique visitors.
+
 ## Multi-Tenancy
 
 Every `/api` request is resolved to an `Instance` via `apps/backend/middleware/resolveInstance.js`.

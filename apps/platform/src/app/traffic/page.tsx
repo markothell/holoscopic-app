@@ -6,8 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import AdminNav from '@/components/AdminNav';
 import { apiFetch } from '@/lib/api';
 
-// Site traffic. How many people arrived at each app, and which links on the
-// homepage they took.
+// Site traffic. How many people arrived at each app, what sent them, and which
+// links on the homepage they took.
 //
 // Reads GET /api/traffic/summary, which is served from the permanent daily
 // rollup rather than from raw events — so a 90-day range is three queries'
@@ -67,6 +67,7 @@ interface Summary {
   series: Array<Record<string, string | number>>;
   paths: Record<string, Ranked[]>;
   clicks: Record<string, Ranked[]>;
+  referrers: Record<string, Ranked[]>;
 }
 
 const mono: React.CSSProperties = {
@@ -177,6 +178,8 @@ export default function TrafficPage() {
             <AppTable rows={data.apps} total={totalViews} />
 
             <ClickTable clicks={homepageClicks} total={totalClicks} />
+
+            <ReferrerTables referrers={data.referrers} />
 
             <PathTables paths={data.paths} />
           </div>
@@ -378,6 +381,82 @@ function ClickTable({ clicks, total }: { clicks: Ranked[]; total: number }) {
             ))}
           </tbody>
         </table>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Who sends us traffic, per app.
+ *
+ * Per app rather than one merged list, because the answer differs by product in
+ * the way that matters: a memorial arrives by text message, a game arrives from
+ * a post. Merging them would average that away into a platform-wide top ten
+ * nobody can act on.
+ *
+ * Only ARRIVALS appear here — the first page of a visit. A referrer is recorded
+ * once per page load and never for the pages somebody then walks to, so these
+ * numbers are smaller than that app's visits and are meant to be.
+ *
+ * A visit with no referrer — typed, bookmarked, opened from an app that strips
+ * it — is simply absent rather than shown as a "direct" row. We cannot tell
+ * those apart from a referrer a browser withheld, and a row that quietly means
+ * two different things is worse than no row.
+ */
+function ReferrerTables({ referrers }: { referrers: Record<string, Ranked[]> }) {
+  const apps = Object.keys(referrers || {}).filter(a => referrers[a]?.length);
+
+  return (
+    <div style={card}>
+      <h2 style={sectionTitle}>Where people came from</h2>
+      <p style={sectionNote}>
+        The host that sent an arrival — never the full URL, so a search term or a private page cannot land here.
+      </p>
+      {!apps.length ? (
+        <p style={{ ...mono, color: 'var(--ink-light)' }}>
+          No referrers recorded in this range yet.
+        </p>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
+          {apps.map(app => {
+            const peak = Math.max(...referrers[app].map(r => r.views), 1);
+            return (
+              <div key={app}>
+                <div style={{ ...mono, color: 'var(--ink-mid)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
+                  <span style={{
+                    display: 'inline-block', width: 8, height: 8, borderRadius: 2,
+                    background: APP_COLORS[app] || 'var(--ink-light)', marginRight: 8,
+                  }} />
+                  {APP_LABELS[app] || app}
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <tbody>
+                    {referrers[app].slice(0, 10).map(r => (
+                      <tr key={r.key} style={{ borderTop: '1px solid var(--border)' }}>
+                        <td style={{ padding: '0.4rem 0', fontSize: '0.8rem', fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>
+                          {r.key}
+                        </td>
+                        <td style={{ padding: '0.4rem 0.5rem', width: '35%' }}>
+                          <div style={{ background: 'var(--bg)', borderRadius: 4, height: 8 }}>
+                            <div style={{
+                              width: `${(r.views / peak) * 100}%`,
+                              height: '100%',
+                              background: APP_COLORS[app] || 'var(--ink-light)',
+                              borderRadius: 4,
+                            }} />
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.4rem 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, width: 48 }}>
+                          {r.views.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

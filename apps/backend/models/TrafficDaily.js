@@ -10,9 +10,15 @@ const mongoose = require('mongoose');
 // failure is invisible until somebody asks for a chart.
 //
 // `key` is overloaded on purpose, and the convention is load-bearing:
-//   type 'view',  key '*'      → that app's total views for the day
-//   type 'view',  key '/path'  → views of one path
-//   type 'click', key '/target'→ clicks that went to one destination
+//   type 'view',     key '*'      → that app's total views for the day
+//   type 'view',     key '/path'  → views of one path
+//   type 'click',    key '/target'→ clicks that went to one destination
+//   type 'referrer', key 'host'   → arrivals credited to one referring host
+//
+// 'referrer' is a `type` rather than a prefixed `key` because the alternative —
+// 'ref:example.com' filed under type 'view' — puts a row that is not a page
+// view into the per-path breakdown, where every reader of that list would have
+// to know to skip it.
 //
 // VISITORS ARE ONLY MEANINGFUL ON THE '*' ROWS. A unique-visitor count cannot
 // be summed — one person viewing five paths is one visitor, not five — so it
@@ -27,7 +33,7 @@ const trafficDailySchema = new mongoose.Schema({
   day: { type: String, required: true },
 
   app: { type: String, required: true },
-  type: { type: String, enum: ['view', 'click'], required: true },
+  type: { type: String, enum: ['view', 'click', 'referrer'], required: true },
   key: { type: String, required: true },
 
   views: { type: Number, default: 0 },
