@@ -28,6 +28,33 @@ function slugify(s: string) {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
 }
 
+/**
+ * How long a round waits before it moves on by itself.
+ *
+ * ONE control drives both phases. The two are separately configurable on the
+ * model, and a host who wants them apart has `advance` on the circle page —
+ * but a first screen that asks the same question twice is how somebody decides
+ * this app is work, and telling a story and sorting stories are close enough
+ * in a one-topic session to share an answer.
+ *
+ * `null` is a real value, not a missing one (D16): that phase gets no clock and
+ * ends when everyone is done or when the host says so. It survives the schema's
+ * `default: 72` because a default fills an *undefined* path — which is also why
+ * this has to send an explicit value rather than omitting `config`.
+ *
+ * Sending nothing here is what this replaced, and it was not a neutral choice:
+ * there is no route that edits `config` after creation, so every circle started
+ * from the front door took a three-day clock on each phase and kept it. A
+ * session whose sorting round nobody enters therefore sat for 72 hours and then
+ * mailed its result to a group that had moved on days earlier.
+ */
+const ROUND_LENGTHS: { label: string; note: string; hours: number | null }[] = [
+  { label: 'A day', note: 'A round runs 24 hours, then moves on by itself.', hours: 24 },
+  { label: 'Three days', note: 'A round runs 72 hours. Room for a weekend.', hours: 72 },
+  { label: 'A week', note: 'A round runs seven days. Room for a busy one.', hours: 168 },
+  { label: 'I move it on', note: 'A round waits for you, and moves the moment everyone is done.', hours: null },
+];
+
 export default function NewCirclePage() {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -40,6 +67,7 @@ export default function NewCirclePage() {
   const [poleB, setPoleB] = useState('');
   const [openToLink, setOpenToLink] = useState(true);
   const [invites, setInvites] = useState('');
+  const [roundHours, setRoundHours] = useState<number | null>(72);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,6 +101,9 @@ export default function NewCirclePage() {
           // every later transition mails.
           email,
           seed: { topic: topic.trim(), poleA: poleA.trim(), poleB: poleB.trim() },
+          // Both phases take the one answer. See ROUND_LENGTHS for why a null
+          // here is meant, and why omitting the whole object is not the same.
+          config: { shareHours: roundHours, rankHours: roundHours },
           requireInvitation: !openToLink,
           invitedEmails: openToLink
             ? []
@@ -162,7 +193,7 @@ export default function NewCirclePage() {
         )}
       </Card>
 
-      <Card className="mb-8">
+      <Card className="mb-6">
         <Band>Who can join</Band>
         <div className="grid gap-3 sm:grid-cols-2">
           <Choice
@@ -187,6 +218,25 @@ export default function NewCirclePage() {
             className="mt-3 w-full resize-none rounded-lg border border-[var(--rule)] bg-ground/40 p-3 text-[15px] outline-none focus:border-[var(--rule-strong)]"
           />
         )}
+      </Card>
+
+      <Card className="mb-8">
+        <Band>How long a round runs</Band>
+        <Muted>
+          A session has two rounds: telling your story, then sorting everyone&rsquo;s. This is how
+          long each one waits. You can move a round on early whenever you like.
+        </Muted>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {ROUND_LENGTHS.map(o => (
+            <Choice
+              key={o.label}
+              selected={roundHours === o.hours}
+              onSelect={() => setRoundHours(o.hours)}
+              title={o.label}
+              note={o.note}
+            />
+          ))}
+        </div>
       </Card>
 
       <Action disabled={!ready || busy} onClick={create}>

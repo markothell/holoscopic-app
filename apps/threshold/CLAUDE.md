@@ -38,7 +38,8 @@ fixture's members carry no address, so nothing can send.
 circle, and `/signup` makes the account (`/login` moved off `Scaffold` to match). Before this,
 every circle on production was made by running the funnel from a laptop, so the app could be used
 by anybody invited to a circle and by nobody else. `Scaffold.tsx` is still live on `error.tsx` and
-`not-found.tsx`.
+`not-found.tsx`. **`/new` also sets the round length** — a day, three days, a week, or no clock at
+all — and it is the only surface that sets one, since nothing edits `config` after creation.
 
 **`node scripts/seed-threshold-dev.js` from `apps/backend` is the fastest way to see any of it.**
 It builds a circle holding every state at once — a live cycle mid-sort, a queue with uneven support
@@ -155,6 +156,10 @@ the round may have turned over.
   `createCircle` does not get you one**: `models/Circle.js` declares `shareHours`/`rankHours` with
   `default: 72`, so `config: {}` is a three-day clock on every phase. Hand-driven takes an explicit
   null, and the funnel's `hoursForPhase` only ever sees what the schema already filled in.
+  `/new` therefore always sends `config` — a form that omitted it silently chose 72, and **there is
+  no route that edits `config` afterwards**, so a clock is decided once at creation and lived with.
+  What that cost while `/new` sent nothing: a session whose sorting round drew nobody sat the full
+  three days and then mailed its result and a fresh "post a topic" ask to a group that had moved on.
 - **A seed id is unique across circles**, so `/seeds/:seedId/*` finds its circle by it. The client
   never carries both ids.
 - **Mail links to the circle, never to a phase surface**, and its base is `THRESHOLD_URL` — never
