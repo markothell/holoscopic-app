@@ -214,48 +214,6 @@
   text-decoration: none;
 }
 
-/* ---- THE SHAPE — the Venn and its three definitions ---- */
-
-.vennPanel {
-  margin: 2.5rem 0 1rem;
-  display: flex;
-  justify-content: center;
-}
-
-.vennSvg {
-  width: 100%;
-  max-width: 480px;
-  height: auto;
-  display: block;
-}
-
-.defList {
-  margin: 1.5rem 0 0;
-  border-top: 1px solid var(--rule);
-  max-width: 560px;
-}
-
-.defRow {
-  padding: 1.4rem 0;
-  border-bottom: 1px solid var(--rule);
-}
-
-.defTerm {
-  font-family: var(--font-barlow), sans-serif;
-  font-size: 1.15rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
-}
-
-.defDesc {
-  margin: 0.4rem 0 0;
-  font-size: 1.05rem;
-  color: var(--ink-light);
-  line-height: 1.8;
-  font-weight: 300;
-}
-
 /* ---- THE MODEL — the circle-of-circles figure between the two claims ---- */
 
 .modelFigure {
@@ -535,8 +493,7 @@
   font-weight: 300;
 }
 
-/* The capture form itself lives in components/EmailCapture.module.css — two
-   surfaces carry it now (this page and /circles). */
+/* The capture form itself lives in components/EmailCapture.module.css. */
 
 /* ---- RESPONSIVE ---- */
 

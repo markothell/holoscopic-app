@@ -260,70 +260,6 @@ function ConvergeArt() {
   );
 }
 
-// The three overlapping things Holoscopic is at once. Each lobe wears one of
-// the site's accents; the centre stays ink, because the overlap is the subject
-// and a fourth colour there would read as a fourth thing.
-function VennVisual() {
-  const R = 110;
-  const lobes: { cx: number; cy: number; color: string; label: string[]; lx: number; ly: number }[] = [
-    { cx: 210, cy: 114, color: '#C83B50', label: ['WORKSHOP'], lx: 210, ly: 62 },
-    { cx: 153, cy: 213, color: '#2B49D8', label: ['SOCIAL', 'MEDIA'], lx: 100, ly: 256 },
-    { cx: 267, cy: 213, color: '#0E8F66', label: ['OPEN', 'SOURCE'], lx: 320, ly: 256 },
-  ];
-  return (
-    <svg
-      viewBox="0 0 420 340"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={styles.vennSvg}
-      role="img"
-      aria-label="Three overlapping circles — workshop, social media, open source — with Holoscopic at the overlap"
-    >
-      {lobes.map(l => (
-        <circle
-          key={l.label.join('')}
-          cx={l.cx}
-          cy={l.cy}
-          r={R}
-          fill={l.color}
-          fillOpacity="0.07"
-          stroke={l.color}
-          strokeOpacity="0.5"
-          strokeWidth="1.5"
-        />
-      ))}
-      {lobes.map(l =>
-        l.label.map((line, i) => (
-          <text
-            key={l.label.join('') + i}
-            x={l.lx}
-            y={l.ly + i * 17}
-            textAnchor="middle"
-            fill={l.color}
-            fontSize="12"
-            fontFamily="monospace"
-            letterSpacing="1.4"
-          >
-            {line}
-          </text>
-        )),
-      )}
-      <text
-        x="210"
-        y="187"
-        textAnchor="middle"
-        fill="#0F0D0B"
-        fillOpacity="0.72"
-        fontSize="12"
-        fontFamily="monospace"
-        letterSpacing="1"
-      >
-        HOLOSCOPIC
-      </text>
-    </svg>
-  );
-}
-
 export default function HomePage() {
   const scrollTo = useCallback((id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -412,82 +348,6 @@ export default function HomePage() {
             <br />
             Holoscopic asks: what happens if we start designing them
             consciously, together?
-          </p>
-        </RevealSection>
-
-        <div className={styles.divider} />
-
-        {/* ── The Shape — three familiar things, and Holoscopic at the
-               overlap. The Venn is the argument; the three rows underneath
-               say what each lobe means here. ─────────────────────────────── */}
-        <RevealSection id="shape" className={styles.section}>
-          <p className={styles.sectionLabel}>The Shape</p>
-          <h2 className={styles.sectionHeadline}>
-            Three things
-            <br />
-            at <em>once.</em>
-          </h2>
-          <p className={styles.sectionBody}>
-            Holoscopic sits where three familiar things overlap.
-          </p>
-          <div className={styles.vennPanel}>
-            <VennVisual />
-          </div>
-          <dl className={styles.defList}>
-            <div className={styles.defRow}>
-              <dt className={styles.defTerm}>Personal development workshop</dt>
-              <dd className={styles.defDesc}>
-                A transformative social process, the way Nonviolent
-                Communication and Imago dialogue are: structured practice that
-                changes how a group talks to itself.
-              </dd>
-            </div>
-            <div className={styles.defRow}>
-              <dt className={styles.defTerm}>Social media</dt>
-              <dd className={styles.defDesc}>
-                The human bazaar, with mechanisms for elevating the ideas that
-                work.
-              </dd>
-            </div>
-            <div className={styles.defRow}>
-              <dt className={styles.defTerm}>Open source software</dt>
-              <dd className={styles.defDesc}>
-                A platform where people share, experiment, and iterate on tools
-                for social coherence.
-              </dd>
-            </div>
-          </dl>
-        </RevealSection>
-
-        <div className={styles.divider} />
-
-        {/* ── The Model — the pitch. Circles promoted out of the card stack:
-               the circle is the social model the experiments feed, so it gets
-               the section, the drawing, and the "we are whole" claim. The
-               long read stays on /circles. ─────────────────────────────── */}
-        <RevealSection id="model" className={styles.section}>
-          <p className={styles.sectionLabel}>The Model</p>
-          <h2 className={styles.sectionHeadline}>
-            We are <em>whole.</em>
-          </h2>
-          <p className={styles.sectionBody}>
-            The circle is a social model with ancient roots: four to twelve
-            people, all equal, all facing a common center, gathered to learn
-            as one — record stories, map where everyone stands, find the
-            group&apos;s thresholds, arrive at shared words. What a circle
-            makes, it keeps.
-          </p>
-          <div className={styles.modelFigure}>
-            <GatheringArt className={styles.modelArt} />
-          </div>
-          <p className={styles.sectionBody}>
-            Circles gather too. Members mix across tables the way a World
-            Caf&eacute; runs, trade what their home circles learned, and carry
-            the exchange back. Circles that gather become a collective —
-            itself a circle, and the platform is the outermost one.{' '}
-            <Link href="/circles" className={styles.inlineLink}>
-              The circle, at length &rarr;
-            </Link>
           </p>
         </RevealSection>
 
@@ -600,6 +460,34 @@ export default function HomePage() {
               </span>
             </Link>
           </div>
+        </RevealSection>
+
+        <div className={styles.divider} />
+
+        {/* ── The Social Model — the pitch, after the instruments: what the
+               instruments are played inside. Circles promoted out of the card
+               stack, so the circle gets the section and the drawing. ────── */}
+        <RevealSection id="model" className={styles.section}>
+          <p className={styles.sectionLabel}>The Social Model</p>
+          <h2 className={styles.sectionHeadline}>
+            <em>Circles.</em>
+          </h2>
+          <p className={styles.sectionBody}>
+            The circle is a social model with ancient roots: four to twelve
+            people, all equal, all facing a common center, gathered to learn
+            as one — record stories, map where everyone stands, find the
+            group&apos;s thresholds, arrive at shared words. What a circle
+            makes, it keeps.
+          </p>
+          <div className={styles.modelFigure}>
+            <GatheringArt className={styles.modelArt} />
+          </div>
+          <p className={styles.sectionBody}>
+            Circles gather too. Members mix across tables the way a World
+            Caf&eacute; runs, trade what their home circles learned, and carry
+            the exchange back. Circles that gather become a collective —
+            itself a circle, and the platform is the outermost one.
+          </p>
         </RevealSection>
 
         <div className={styles.divider} />
