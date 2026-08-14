@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { Wordmark } from './Wordmark';
 
-// Toyrok's chrome, in the Toono language: felt ground, larch ink, hairlines
+// Holoscopic's product chrome, in the Toono language: felt ground, larch ink, hairlines
 // over boxes. The header renders coherently signed out (P5 generalizes here),
 // and per DESIGN.md rule 1 nothing in the chrome ever takes the sky color —
 // that belongs to whatever is live on the page itself.
@@ -23,7 +23,7 @@ function TopBar() {
   const signedIn = Boolean((session?.user as { id?: string } | undefined)?.id);
   return (
     <div className="mb-10 flex items-center justify-between pt-6">
-      <Link href={signedIn ? '/circles' : '/'} aria-label="Toyrok home" className="block">
+      <Link href={signedIn ? '/circles' : '/'} aria-label="Holoscopic home" className="block">
         <Wordmark size={24} />
       </Link>
       {status !== 'loading' && (

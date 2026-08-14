@@ -5,13 +5,19 @@ import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Page, Action, Muted } from '@/components/Shell';
 
-// Sign in to Toyrok. The account machinery is the platform's shared backend,
-// and no copy here says so (P18): these are Toyrok accounts as far as anyone
-// on this page is concerned — including every account that already exists.
+// Sign in with your Holoscopic account — the same one that plays every app
+// on the platform (P18, revised: the product IS Holoscopic, so saying so is
+// correct now). Every existing account works here from day one.
 
 function LoginForm() {
   const params = useSearchParams();
-  const callbackUrl = params.get('callbackUrl') || '/circles';
+  // Same-origin paths only — an absolute or scheme-relative callbackUrl here
+  // is an open redirect off a credential form.
+  const rawCallback = params.get('callbackUrl') || '/circles';
+  const callbackUrl =
+    rawCallback.startsWith('/') && !rawCallback.startsWith('//') && !rawCallback.startsWith('/\\')
+      ? rawCallback
+      : '/circles';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);

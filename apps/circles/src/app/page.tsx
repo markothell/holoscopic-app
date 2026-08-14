@@ -25,7 +25,7 @@ export default function Home() {
         <h1 className="text-4xl leading-tight">Thinking tools for community.</h1>
         <p className="mt-4 text-[17px] leading-relaxed text-ink-soft">
           A circle is a group of people who gather, each on their own time, to
-          explore what they think — and keep what they make. Toyrok is where
+          explore what they think — and keep what they make. This is where
           your circles live.
         </p>
         <div className="mt-8 flex items-center gap-5">

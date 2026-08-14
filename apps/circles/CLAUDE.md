@@ -1,10 +1,11 @@
-# Toyrok
+# Circles
 
-**The first product** (PLATFORM.md **P18** — read it before working here). toyrok.com; local dev
-port **4007**. Circles are the central social unit; this app is where they live. holoscopic.io
-stays the lab — and **no surface here ever mentions Holoscopic**: accounts read as Toyrok's own,
-though they are the platform's shared `User` collection underneath, so every existing production
-account signs straight in.
+**The first product, branded Holoscopic** (PLATFORM.md **P18** — read it before working here;
+built as "Toyrok" for one day, renamed 2026-08-14). Ships to **circles.holoscopic.io**; local
+dev port **4007**. Circles are the central social unit; this app is where they live. The
+holoscopic.io homepage stays the lab. Accounts are **Holoscopic accounts, said plainly** — the
+platform's shared `User` collection, so every existing production account signs straight in,
+and the same-apex subdomain keeps the P2 cookie-SSO path open.
 
 Next.js 16 + React 19 + Tailwind v4, same stack as the sibling apps. **`DESIGN.md` is the visual
 spec** — the "Toono" language MO chose 2026-08-14. The one rule that is easy to break: `--sky`
@@ -43,16 +44,16 @@ player, invitations/joining surfaces, and the `/api/circles` promotion.
 - `NEXTAUTH_SECRET` must equal the backend's `GAME_TOKEN_SECRET` (dev already shares one).
 - The map's `participation` block is server-redacted (threshold D9/D17); the client never
   receives an identity it may not show. Keep it that way when porting surfaces.
-- No Beacon and no Vercel Analytics yet — the traffic allowlist has no `toyrok` app. Add both
+- No Beacon and no Vercel Analytics yet — the traffic allowlist has no `circles` app. Add both
   deliberately when this deploys.
-- Deploy day: add toyrok.com to the backend `CLIENT_URL`, set the shared secret, DNS, Vercel
+- Deploy day: add circles.holoscopic.io to the backend `CLIENT_URL`, set the shared secret, DNS, Vercel
   project. None of it exists yet.
 
 ## Running it
 
 ```bash
 npm run dev:backend   # 4001
-npm run dev:toyrok    # 4007
+npm run dev:circles    # 4007
 ```
 
 Sign in with any dev account (`node scripts/seed-threshold-dev.js` prints them; the 9-member

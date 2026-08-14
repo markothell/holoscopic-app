@@ -6,7 +6,7 @@ import './globals.css';
 // Seravek for the chrome (DESIGN.md — the webfont decision is open). No
 // next/font, nothing fetched.
 export const metadata: Metadata = {
-  title: 'Toyrok',
+  title: 'Holoscopic',
   description: 'Thinking tools for community.',
 };
 

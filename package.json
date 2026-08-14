@@ -21,7 +21,7 @@
     "dev:synthesis": "npm run dev --workspace=apps/synthesis",
     "dev:chorus": "npm run dev --workspace=apps/chorus",
     "dev:threshold": "npm run dev --workspace=apps/threshold",
-    "dev:toyrok": "npm run dev --workspace=apps/toyrok",
+    "dev:circles": "npm run dev --workspace=apps/circles",
     "build": "turbo build",
     "dev": "turbo dev",
     "dev:tunnel": "node apps/backend/scripts/dev-tunnel.js"

@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { toyrokApi, ApiError } from '@/services/api';
+import { circlesApi, ApiError } from '@/services/api';
 import type { Circle, Placement, Pole, Seed, SeedResult, Share, ShareAudio, ShareResult } from '@/lib/types';
 import { Page, Band, Card, Action, Quiet, Muted } from '@/components/Shell';
 import { Polarity } from '@/components/Polarity';
@@ -33,7 +33,7 @@ export default function TopicPage({ params }: { params: Promise<{ urlName: strin
 
   const load = useCallback(async () => {
     try {
-      const { circle } = await toyrokApi.getCircle(urlName, userId);
+      const { circle } = await circlesApi.getCircle(urlName, userId);
       setCircle(circle);
       setError(null);
     } catch (e) {
@@ -161,7 +161,7 @@ function Tell({ circle, seed, userId, header, base, onDone, pageError }: {
     if (pending.length === 0) return;
     setBusy(true);
     try {
-      await toyrokApi.submitShares(
+      await circlesApi.submitShares(
         seed.id,
         pending.map(pole => ({
           pole,
@@ -189,7 +189,7 @@ function Tell({ circle, seed, userId, header, base, onDone, pageError }: {
     }
     setBusy(true);
     try {
-      await toyrokApi.deleteShare(seed.id, pole, userId);
+      await circlesApi.deleteShare(seed.id, pole, userId);
       await onDone();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'That did not work');
@@ -404,7 +404,7 @@ function Sort({ circle, seed, userId, header, base, onChanged }: {
     if (shares.filter(s => !next[s.id]).length === 0) setReviewing(true);
     if (submitted) return;
     try {
-      await toyrokApi.saveRankingDraft(seed.id, asPlacements(next), userId);
+      await circlesApi.saveRankingDraft(seed.id, asPlacements(next), userId);
     } catch {
       setError('That placement is saved here but did not reach the server yet.');
     }
@@ -413,7 +413,7 @@ function Sort({ circle, seed, userId, header, base, onChanged }: {
   const submit = async () => {
     setBusy(true);
     try {
-      await toyrokApi.submitRanking(seed.id, asPlacements(placements), userId);
+      await circlesApi.submitRanking(seed.id, asPlacements(placements), userId);
       await onChanged();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'That did not submit');
@@ -584,7 +584,7 @@ function Reveal({ circle, seed, userId, header, base }: {
   const [open, setOpen] = useState<string | null>(null);
 
   useEffect(() => {
-    toyrokApi.seedResult(seed.id, userId)
+    circlesApi.seedResult(seed.id, userId)
       .then(setData)
       .catch(e => setError(e instanceof ApiError ? e.message : 'Could not load this topic'));
   }, [seed.id, userId]);

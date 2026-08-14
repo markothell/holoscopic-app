@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import type { Circle, Member, Seed, SeedParticipation } from '@/lib/types';
 
-// The circle home map: the circle drawn as a circle — Toyrok's hero surface,
+// The circle home map: the circle drawn as a circle — the product's hero surface,
 // in the Toono skin. Members sit on a ring, all equal, all facing a common
 // centre. What the group explored TOGETHER gathers in the middle, one node per
 // finished topic, sized by how much of the circle took part and positioned

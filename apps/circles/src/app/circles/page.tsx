@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { toyrokApi, ApiError } from '@/services/api';
+import { circlesApi, ApiError } from '@/services/api';
 import type { Circle } from '@/lib/types';
 import { Page, Action, Muted } from '@/components/Shell';
 
@@ -20,7 +20,7 @@ export default function CirclesPage() {
 
   useEffect(() => {
     if (!userId) return;
-    toyrokApi.myCircles(userId)
+    circlesApi.myCircles(userId)
       .then(({ circles }) => setCircles(circles))
       .catch(e => setError(e instanceof ApiError ? e.message : 'Could not load your circles'));
   }, [userId]);

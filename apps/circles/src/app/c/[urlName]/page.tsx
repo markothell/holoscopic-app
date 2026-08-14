@@ -3,12 +3,12 @@
 import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { toyrokApi, ApiError } from '@/services/api';
+import { circlesApi, ApiError } from '@/services/api';
 import type { Circle } from '@/lib/types';
 import { Page, Band, Card, Action, Muted } from '@/components/Shell';
 import { CircleMap } from '@/components/CircleMap';
 
-// The circle home — Toyrok's hero surface. The map IS the page: the circle
+// The circle home — the product's hero surface. The map IS the page: the circle
 // seen whole, every member, what each has explored alone and together, and
 // the one thing running now underneath it. Activity surfaces (telling,
 // sorting, the reveal) arrive with the Threshold port; until then the topic
@@ -27,7 +27,7 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
 
   const load = useCallback(async () => {
     try {
-      const { circle } = await toyrokApi.getCircle(urlName, userId);
+      const { circle } = await circlesApi.getCircle(urlName, userId);
       setCircle(circle);
       setError(null);
     } catch (e) {

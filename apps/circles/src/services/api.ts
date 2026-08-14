@@ -3,9 +3,9 @@
 // backend's enforceVerifiedUser checks that the token's sub matches the claimed
 // x-user-id, so the header alone proves nothing.
 //
-// Same account machinery as the rest of the platform (one global User
-// collection behind one backend), but no surface here ever says so — Toyrok's
-// accounts read as Toyrok's own (PLATFORM.md P18).
+// Same account machinery as the rest of the platform — one global User
+// collection behind one backend, and these are Holoscopic accounts, said
+// plainly (PLATFORM.md P18). Every existing account signs straight in.
 //
 // v1 reads the Circle machine through /api/threshold, its only REST surface
 // today. When Synthesis joins, the generic circle operations get promoted to
@@ -76,7 +76,7 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
   return json as T;
 }
 
-export const toyrokApi = {
+export const circlesApi = {
   /** Every circle I'm a member of. */
   myCircles(userId: string) {
     return apiFetch<{ circles: Circle[] }>('/threshold/me/circles', { userId });
