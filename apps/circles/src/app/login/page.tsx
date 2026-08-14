@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import { Page, Action, Muted } from '@/components/Shell';
+import { Page, Action, Muted, Quiet } from '@/components/Shell';
 
 // Sign in with your Holoscopic account — the same one that plays every app
 // on the platform (P18, revised: the product IS Holoscopic, so saying so is
@@ -67,6 +67,20 @@ export default function LoginPage() {
       <Suspense fallback={<Muted>…</Muted>}>
         <LoginForm />
       </Suspense>
+      <p className="mt-6">
+        <Suspense fallback={null}><SignupLink /></Suspense>
+      </p>
     </Page>
+  );
+}
+
+/** Keeps the invitation destination through the account-making detour. */
+function SignupLink() {
+  const params = useSearchParams();
+  const cb = params.get('callbackUrl');
+  return (
+    <Quiet href={cb ? `/signup?callbackUrl=${encodeURIComponent(cb)}` : '/signup'}>
+      New here — make an account
+    </Quiet>
   );
 }

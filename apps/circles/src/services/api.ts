@@ -89,6 +89,20 @@ export const circlesApi = {
   },
 
   /**
+   * Take a seat. The invitation gate is server-side: when the circle requires
+   * one, the email submitted here must be an address the invitation went to
+   * (utils/circles.js#joinCircle). The email also lands on the member row as
+   * where this circle's mail reaches you. Joining in week six is the ordinary
+   * way in, not an edge case — nothing is withheld for having missed the
+   * beginning.
+   */
+  join(circleId: string, userId: string, email?: string) {
+    return apiFetch<{ circle: Circle }>(`/threshold/circles/${circleId}/join`, {
+      method: 'POST', body: { email }, userId,
+    });
+  },
+
+  /**
    * A whole telling turn in one write — one side or both. Two calls do not
    * work and cannot be made to: the server evaluates completion after a
    * write, and a member holding one story already reads as finished, so the
@@ -132,6 +146,31 @@ export const circlesApi = {
     );
   },
 };
+
+/**
+ * Make a Holoscopic account.
+ *
+ * Its own function rather than a `circlesApi` method, because `/api/auth`
+ * predates the response-envelope convention and answers `{ success, error }`
+ * where everything else answers `{ thing }` or `{ error }` — `apiFetch` reads
+ * the latter, so a refusal here would arrive as a success with no user on it.
+ *
+ * Signup sends a verification email and does not wait for it: the guard
+ * checks that a game token's subject matches the claimed user, never that an
+ * address has been confirmed, so a new account can join a circle straight away.
+ */
+export async function signup(body: { email: string; password: string; name?: string }) {
+  const res = await fetch(`${API_BASE}/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-instance-id': INSTANCE_ID },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json?.success) {
+    throw new ApiError(res.status, json?.error || 'That did not work');
+  }
+  return json as { success: true; user: { id: string; email: string; name?: string } };
+}
 
 /**
  * Upload a recording straight from the browser to Vercel Blob, and return the

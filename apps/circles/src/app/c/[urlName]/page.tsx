@@ -85,9 +85,7 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
       {circle.isMember && circle.participation ? (
         <CircleMap circle={circle} userId={userId} />
       ) : (
-        <Muted>
-          A circle's map is for its members. If you were invited, the invitation link is the way in.
-        </Muted>
+        <JoinCard circle={circle} userId={userId} onJoined={load} />
       )}
 
       {circle.phase === 'cycle' && seed && circle.isMember && (() => {
@@ -131,6 +129,14 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
         );
       })()}
 
+      {!circle.isMember && (
+        <p className="mt-8 text-sm text-ink-faint">
+          {circle.phase === 'cycle' && seed
+            ? `Running now: ${seed.payload.topic}.`
+            : 'The circle is open, gathering its next topic.'}
+        </p>
+      )}
+
       {record.length > 0 && circle.isMember && (
         <section className="mt-10">
           <Band>The record</Band>
@@ -154,5 +160,68 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
         </section>
       )}
     </Page>
+  );
+}
+
+/**
+ * The seat at the edge of the circle. A signed-in visitor who is not a member
+ * sees the shell — title, people, what is running — and this card. The
+ * invitation gate lives server-side (joinCircle): when the circle requires
+ * one, the email entered here must be an address the invitation went to, so
+ * the card asks for it in exactly those words. The same address becomes where
+ * this circle's mail reaches you, which the card also says — one field, both
+ * facts, no fine print.
+ */
+function JoinCard({ circle, userId, onJoined }: {
+  circle: Circle;
+  userId: string;
+  onJoined: () => Promise<void>;
+}) {
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const join = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await circlesApi.join(circle.id, userId, email.trim() || undefined);
+      await onJoined();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'That did not work');
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 max-w-md">
+      <Card>
+        <Band>Take a seat</Band>
+        <Muted>
+          {circle.memberCount === 0
+            ? 'This circle is just forming.'
+            : `${circle.memberCount} ${circle.memberCount === 1 ? 'person is' : 'people are'} in this circle.`}{' '}
+          If an invitation brought you here, enter the email it went to — that address is also
+          where the circle&rsquo;s mail will reach you.
+        </Muted>
+        <form
+          onSubmit={e => { e.preventDefault(); void join(); }}
+          className="mt-4 space-y-3"
+        >
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="Email your invitation went to"
+            autoComplete="email"
+            className="w-full rounded-lg border border-[var(--rule)] bg-ground/50 p-3 text-[15px] outline-none focus:border-[var(--rule-strong)]"
+          />
+          {error && <p className="text-sm text-pole-b">{error}</p>}
+          <Action type="submit" disabled={busy}>
+            {busy ? 'Taking your seat…' : 'Take your seat'}
+          </Action>
+        </form>
+      </Card>
+    </div>
   );
 }

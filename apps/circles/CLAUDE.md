@@ -25,8 +25,13 @@ client-timed duration and peaks. Uploads keep the `threshold/<seedId>/` pathname
 a circle's recordings live in one place whichever front door told them. **The device caveat is
 Threshold's M3b caveat, inherited**: a laptop WebM take exercises none of the Safari/iOS
 MP4/AAC branches — a real iPhone recording is still owed. Playback is native `<audio>` for
-now. Still to come per P18: Synthesis inside (with audio and editable edges), the shared
-player, invitations/joining surfaces, and the `/api/circles` promotion.
+now. **Joining is in**: a signed-in non-member on `/c/[urlName]` sees the shell and a
+take-a-seat card (the invitation email is the server-side gate — `joinCircle` — and the same
+address becomes the member row's mail address), and `/signup` exists so an invitee without an
+account has a door; both callbackUrl flows carry the same open-redirect guard as `/login`.
+Verified against dev: a wrong email is refused with the server's words, the right one seats
+you and the map appears. Still to come per P18: Synthesis inside (with audio and editable
+edges), the shared player, and the `/api/circles` promotion.
 
 ## Architecture
 
