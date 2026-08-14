@@ -7,9 +7,11 @@
 // collection behind one backend, and these are Holoscopic accounts, said
 // plainly (PLATFORM.md P18). Every existing account signs straight in.
 //
-// v1 reads the Circle machine through /api/threshold, its only REST surface
-// today. When Synthesis joins, the generic circle operations get promoted to
-// /api/circles (the M8 trigger) and this file's paths change in one place.
+// The generic circle operations (snapshot, my circles, join) ride
+// /api/circles — the M8 promotion, triggered by this app being the Circle
+// layer's second consumer. The ACTIVITY verbs (telling, sorting, the reveal)
+// stay on /api/threshold: they are Threshold's, and each future activity
+// brings its own.
 
 import type { Circle, MyRanking, Placement, Pole, Seed, SeedResult, Share } from '@/lib/types';
 
@@ -79,13 +81,13 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
 export const circlesApi = {
   /** Every circle I'm a member of. */
   myCircles(userId: string) {
-    return apiFetch<{ circles: Circle[] }>('/threshold/me/circles', { userId });
+    return apiFetch<{ circles: Circle[] }>('/circles/me', { userId });
   },
 
   /** The snapshot: the circle, my standing in it, and (for members) the
    *  participation rows the circle-home map draws from. */
   getCircle(urlName: string, userId?: string | null) {
-    return apiFetch<{ circle: Circle }>(`/threshold/circles/${urlName}`, { userId });
+    return apiFetch<{ circle: Circle }>(`/circles/${urlName}`, { userId });
   },
 
   /**
@@ -97,7 +99,7 @@ export const circlesApi = {
    * beginning.
    */
   join(circleId: string, userId: string, email?: string) {
-    return apiFetch<{ circle: Circle }>(`/threshold/circles/${circleId}/join`, {
+    return apiFetch<{ circle: Circle }>(`/circles/${circleId}/join`, {
       method: 'POST', body: { email }, userId,
     });
   },

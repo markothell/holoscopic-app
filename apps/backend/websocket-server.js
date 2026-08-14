@@ -551,6 +551,11 @@ function loadAPIRoutes() {
       // reads its share from `?s=`, never from req.instanceId.
       app.use('/api/threshold/hooks', thresholdRoutes.hooks);
       app.use('/api/threshold', enforceVerifiedUser, thresholdRoutes);
+      // The activity-AGNOSTIC circle surface (M8's promotion — snapshot, my
+      // circles, join). Mounted after the threshold require above so every
+      // activity module is registered before this router can be asked to
+      // serve a snapshot that calls its hooks.
+      app.use('/api/circles', enforceVerifiedUser, require('./routes/circles'));
       // Off-site copy of a shared recording, injected exactly as Chorus's is.
       // Until this runs a voice exists only in Vercel Blob, which has no
       // snapshots and no undelete; scripts/backup-blobs.js sweeps up whatever

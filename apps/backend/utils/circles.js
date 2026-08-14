@@ -774,6 +774,51 @@ async function sweepCircles({ store = mongoStore, now = new Date() } = {}) {
   return { examined: running.length, advanced };
 }
 
+/**
+ * Who has taken part in what — the circle-home map's data, one row per seed
+ * that the activity module chooses to answer for. The LAYER contributes the
+ * iteration, the membership gate and the seedId; the MODULE contributes the
+ * row, because the activity owns the redaction ladder (threshold's: done →
+ * attributed, rank → count only, share/pending → own flag only). A module
+ * without the hook yields an empty map, which renders as members alone —
+ * correct for an activity that has no participation story yet.
+ */
+async function participation({ circle, viewerId = null }) {
+  assertMember(circle, viewerId);
+  const mod = activities.get(circle.activity);
+  const rows = await Promise.all(
+    circle.seeds.map(async seed => {
+      const row = await mod.participation({ circle, seed, viewerId });
+      return row ? { seedId: seed.id, ...row } : null;
+    }),
+  );
+  return rows.filter(Boolean);
+}
+
+/**
+ * The one-call snapshot: sweep, serialize, and — for a member — attach the
+ * participation map and whatever the ACTIVITY adds for the live seed (its
+ * `snapshotExtras` hook; Threshold's carries shares, myRanking and the
+ * waiting marker, each already redacted by its own rules). Both the generic
+ * router and an activity's own router serve exactly this, so the payload
+ * cannot drift between the two front doors.
+ */
+async function snapshot({ store = mongoStore, circle, viewerId = null }) {
+  // Sweep on read, as a fallback to the tick — a page load should never show
+  // a phase the clock has already ended.
+  await evaluate({ store, circle });
+  const payload = toClient(circle, { userId: viewerId });
+  if (payload.isMember) {
+    const seed = activeSeed(circle);
+    if (seed) {
+      const mod = activities.get(circle.activity);
+      Object.assign(payload, (await mod.snapshotExtras({ circle, seed, viewerId })) || {});
+    }
+    payload.participation = await participation({ circle, viewerId });
+  }
+  return payload;
+}
+
 // ---------------------------------------------------------------------------
 // Wire shape
 // ---------------------------------------------------------------------------
@@ -847,6 +892,8 @@ module.exports = {
   advanceCircle,
   evaluate,
   sweepCircles,
+  participation,
+  snapshot,
   toClient,
   toClientSeed,
   activeSeed,

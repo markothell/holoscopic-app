@@ -1,18 +1,19 @@
-// The Holoscopic wordmark: plain lettering in the display face. MO saw a
-// ring-in-the-O treatment and rejected it (2026-08-14) — the ring stays the
-// signature motif of the SURFACES (the map, empty states, the loading moment)
-// and the wordmark stays type. A typographic refinement pass is being mocked
-// in the branding session; this is the placeholder until his pick lands.
+// The Holoscopic wordmark: lowercase Seravek Medium, ink. MO settled the face
+// (Seravek over the rounded serif, 2026-08-14); his current lean adds an
+// ochre full stop, which WAITS for his final pick — hold this at plain ink
+// until the branding session relays the wordmark + circle-mark pair. The ring
+// lives beside the letters as a separate mark, never inside them (DESIGN.md
+// rule 4).
 export function Wordmark({ size = 28 }: { size?: number }) {
   return (
     <span
       style={{
-        font: `600 ${size}px "Iowan Old Style", Palatino, Georgia, serif`,
+        font: `500 ${size}px Seravek, "Gill Sans", "Trebuchet MS", system-ui, sans-serif`,
         color: 'var(--ink)',
-        letterSpacing: '0.01em',
+        letterSpacing: '0.005em',
       }}
     >
-      Holoscopic
+      holoscopic
     </span>
   );
 }

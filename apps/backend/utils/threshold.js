@@ -452,37 +452,6 @@ function toClientShare(share, { viewerId = null, attributed = false } = {}) {
 }
 
 /**
- * Who told a story on which topic — the circle-home map's data, one row per
- * seed, under the SAME redaction ladder as listShares (D9/D17):
- *
- *   revealed/skipped — tellers attributed. The reveal already names them, so
- *                      an edge from a member to a finished topic leaks nothing.
- *   rank phase       — a count only. Everyone can already read every story
- *                      anonymously, so how many exist is public; whose they
- *                      are is not, and the roster stays null.
- *   share/pending    — nothing beyond your own flag. listShares is own-only
- *                      here, so even the count would say who has moved.
- *
- * Membership is asserted on the way in, like listShares — this is a member
- * surface, not part of the public shell.
- */
-async function circleParticipation({ store = mongoStore, circle, viewerId = null }) {
-  assertMember(circle, viewerId);
-  return Promise.all(circle.seeds.map(async seed => {
-    const shares = await store.listShares(seed.id);
-    const tellerIds = [...new Set(shares.map(s => s.userId))];
-    const iTold = Boolean(viewerId) && tellerIds.includes(viewerId);
-    if (circles.DONE_PHASES.includes(seed.phase)) {
-      return { seedId: seed.id, tellerIds, tellerCount: tellerIds.length, iTold };
-    }
-    if (seed.phase === 'rank') {
-      return { seedId: seed.id, tellerIds: null, tellerCount: tellerIds.length, iTold };
-    }
-    return { seedId: seed.id, tellerIds: null, tellerCount: null, iTold };
-  }));
-}
-
-/**
  * Attach a transcript that arrived from Deepgram.
  *
  * Separate from submitShare because it is a CALLBACK path: the caller is a
@@ -798,6 +767,45 @@ function createModule({ store = mongoStore } = {}) {
       return true;
     },
 
+    // The member's live-seed enrichment for the one-call snapshot: the
+    // stories as this viewer may see them (listShares' ladder), their own
+    // ranking, and the derived waiting marker (D32 — derived, never stored;
+    // a member who joined in week six has no ranking, so everything reads as
+    // waiting, with no special case).
+    async snapshotExtras({ circle, seed, viewerId }) {
+      const shares = await listShares({ store, circle, seedId: seed.id, viewerId });
+      const ranking = await store.findRanking(seed.id, viewerId);
+      const myRanking = ranking
+        ? { placements: ranking.placements, submittedAt: ranking.submittedAt }
+        : null;
+      const placed = new Set((ranking?.placements || []).map(p => p.shareId));
+      const waitingShareIds = seed.phase === 'rank'
+        ? shares.filter(s => !placed.has(s.id)).map(s => s.id)
+        : [];
+      return { shares, myRanking, waitingShareIds };
+    },
+
+    // Who told a story on what, for the circle-home map — the SAME redaction
+    // ladder as listShares (D9/D17): a finished topic attributes its tellers
+    // (the reveal already does), a rank round is a count only (every story is
+    // already readable anonymously, so how many exist is public; whose they
+    // are is not), and a share or pending round says nothing beyond your own
+    // flag — listShares is own-only there, so even a count would say who has
+    // moved. The activity answers this, not the circle layer, because the
+    // ladder is a property of Threshold's phases.
+    async participation({ seed, viewerId }) {
+      const shares = await store.listShares(seed.id);
+      const tellerIds = [...new Set(shares.map(s => s.userId))];
+      const iTold = Boolean(viewerId) && tellerIds.includes(viewerId);
+      if (circles.DONE_PHASES.includes(seed.phase)) {
+        return { tellerIds, tellerCount: tellerIds.length, iTold };
+      }
+      if (seed.phase === 'rank') {
+        return { tellerIds: null, tellerCount: tellerIds.length, iTold };
+      }
+      return { tellerIds: null, tellerCount: null, iTold };
+    },
+
     // The boundary where every story becomes a placement its teller already
     // made (D22). Runs once per cycle, on the transition into ranking.
     async onPhaseOpen({ circle, seed, phase }) {
@@ -881,7 +889,6 @@ module.exports = {
   submitShares,
   deleteShare,
   listShares,
-  circleParticipation,
   toClientShare,
   saveRankingDraft,
   submitRanking,

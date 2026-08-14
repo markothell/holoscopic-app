@@ -23,6 +23,20 @@ const OPTIONAL = {
   // Returning null means "this person has nothing to do" — the main lever
   // against a 12-seed circle sending 400+ messages (PLAN §3.6).
   notificationFor: async () => null,
+  // What the activity adds to a MEMBER's circle snapshot while a seed is
+  // live — Threshold's returns { shares, myRanking, waitingShareIds }, each
+  // already redacted by its own rules. Returning null adds nothing. This is
+  // what keeps the snapshot one call for every activity: the generic router
+  // asks the module rather than knowing any activity's nouns.
+  snapshotExtras: async () => null,
+  // Who has taken part in a seed's cycle, for the circle-home map — the
+  // activity owns the answer because it owns the redaction rules (who may be
+  // named, and when, is a property of the activity's phases). Returning null
+  // means "nothing to draw for this seed"; a row is
+  //   { tellerIds: string[]|null, tellerCount: number|null, iTold: boolean }
+  // where tellerIds may only be non-null once naming the participants leaks
+  // nothing the activity's own surfaces would not show. The layer adds seedId.
+  participation: async () => null,
 };
 
 // 'pending' / 'revealed' / 'skipped' are seed states the machine writes itself;

@@ -573,7 +573,7 @@ test('the map: participation follows the redaction ladder (D9/D17)', async () =>
     pole: 'A', text: 'told while queued',
   });
 
-  const rows = await threshold.circleParticipation({ store, circle, viewerId: 'u2' });
+  const rows = await circles.participation({ circle, viewerId: 'u2' });
   const by = Object.fromEntries(rows.map(r => [r.seedId, r]));
 
   // Revealed: attributed, like the reveal itself.
@@ -590,7 +590,7 @@ test('the map: participation follows the redaction ladder (D9/D17)', async () =>
   }
 
   // The teller still sees their own moves.
-  const mine = await threshold.circleParticipation({ store, circle, viewerId: 'u1' });
+  const mine = await circles.participation({ circle, viewerId: 'u1' });
   assert.equal(mine.find(r => r.seedId === second.id).iTold, true);
   assert.equal(mine.find(r => r.seedId === third.id).iTold, true);
 
@@ -602,7 +602,7 @@ test('the map: participation follows the redaction ladder (D9/D17)', async () =>
     });
   }
   assert.equal(second.phase, 'rank');
-  const ranked = await threshold.circleParticipation({ store, circle, viewerId: 'u2' });
+  const ranked = await circles.participation({ circle, viewerId: 'u2' });
   const liveRow = ranked.find(r => r.seedId === second.id);
   assert.equal(liveRow.tellerIds, null);
   assert.equal(liveRow.tellerCount, 3);
@@ -610,7 +610,7 @@ test('the map: participation follows the redaction ladder (D9/D17)', async () =>
 
   // Membership is the boundary, like listShares.
   await assert.rejects(
-    () => threshold.circleParticipation({ store, circle, viewerId: 'stranger' }),
+    () => circles.participation({ circle, viewerId: 'stranger' }),
     /Not a member/,
   );
 });
@@ -1238,4 +1238,38 @@ test('the rank nudge names both poles and skips people who submitted', async () 
   const forU2 = await mod.notificationFor({ circle, seed, phase: 'rank', userId: 'u2' });
   assert.match(forU2.text, /Liberating/);
   assert.match(forU2.text, /Constricting/);
+});
+
+test('the one-call snapshot: layer assembles, module enriches, redaction holds', async () => {
+  const store = memStore();
+  useStore(store);
+  const circle = await runningCircle(store, { members: 3 });
+  const seed = circle.seeds[0];
+  for (const u of ['u1', 'u2', 'u3']) {
+    await threshold.submitShare({
+      store, circleId: circle.id, seedId: seed.id, userId: u, username: u.toUpperCase(),
+      pole: 'A', text: `story from ${u}`,
+    });
+  }
+  assert.equal(seed.phase, 'rank');
+
+  // A member mid-rank: stories present and anonymous, ranking pre-placed with
+  // their own story (D22), waiting marker derived, participation attached.
+  const mine = await circles.snapshot({ store, circle, viewerId: 'u2' });
+  assert.equal(mine.isMember, true);
+  assert.equal(mine.shares.length, 3);
+  for (const s of mine.shares.filter(x => !x.isMine)) {
+    assert.equal(s.userId, undefined, 'anonymous while ranking');
+  }
+  assert.equal(mine.myRanking.submittedAt, null, 'a draft, from pre-placement');
+  assert.equal(mine.waitingShareIds.length, 2, 'own story placed itself');
+  assert.equal(mine.participation.length, 1);
+  assert.equal(mine.participation[0].tellerCount, 3);
+
+  // A stranger gets the shell alone: no stories, no ranking, no participation.
+  const shell = await circles.snapshot({ store, circle, viewerId: 'outsider' });
+  assert.equal(shell.isMember, false);
+  assert.equal(shell.shares, undefined);
+  assert.equal(shell.participation, undefined);
+  assert.equal(shell.title, 'Authority circle', 'the shell stays readable');
 });

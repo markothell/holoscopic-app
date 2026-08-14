@@ -131,47 +131,14 @@ router.get('/circles/:urlName', async (req, res) => {
     const circle = await Circle.findOne({ instanceId: req.instanceId, urlName: req.params.urlName });
     if (!circle) return res.status(404).json({ error: 'Circle not found' });
 
-    // Sweep on read, as a fallback to the tick — not the primary path (§3.5),
-    // but a page load should never show a phase the clock has already ended.
-    await circles.evaluate({ store, circle });
-
-    const userId = userIdOf(req);
-    const payload = circles.toClient(circle, { userId });
-
-    // The shell — title, phase, member count — stays readable to anyone signed
-    // in, because somebody following an invitation has to be able to see what
-    // they are being asked to join before they join it. The STORIES do not:
-    // those need membership, and toClient carries no share content.
-    const seed = circles.activeSeed(circle);
-    if (seed && payload.isMember) {
-      payload.shares = await threshold.listShares({ store, circle, seedId: seed.id, viewerId: userId });
-      const ranking = await store.findRanking(seed.id, userId);
-      payload.myRanking = ranking
-        ? { placements: ranking.placements, submittedAt: ranking.submittedAt }
-        : null;
-
-      // "What is waiting on me" — DERIVED, never stored (D32). The two lines
-      // above already carry everything it needs, and the difference between
-      // them is the answer. It is also why a member who joined in week six
-      // needs no special handling: they have no ranking, so everything reads as
-      // waiting. Do NOT add a per-share "heard it" flag to get this.
-      //
-      // Your own stories need no special case here: opening the rank phase
-      // placed them (utils/threshold.js#preplaceOwnStories, D22), so they are
-      // already in `placements` and drop out of this by themselves.
-      const placed = new Set((ranking?.placements || []).map(p => p.shareId));
-      payload.waitingShareIds = seed.phase === 'rank'
-        ? payload.shares.filter(s => !placed.has(s.id)).map(s => s.id)
-        : [];
-    }
-
-    // The circle-home map: who told a story on what, one row per seed, under
-    // listShares' redaction ladder (utils/threshold.js#circleParticipation).
-    // Member surface only — the public shell carries no participation.
-    if (payload.isMember) {
-      payload.participation = await threshold.circleParticipation({ store, circle, viewerId: userId });
-    }
-    res.json({ circle: payload });
+    // The one-call snapshot lives on the circle LAYER now (circles.snapshot):
+    // sweep on read, the shell readable to anyone signed in (somebody
+    // following an invitation has to see what they are joining), and — for a
+    // member — the participation map plus this module's snapshotExtras (the
+    // stories under listShares' ladder, myRanking, the derived waiting
+    // marker, D32). routes/circles.js serves the identical payload, which is
+    // the point: two front doors, one snapshot, no drift.
+    res.json({ circle: await circles.snapshot({ store, circle, viewerId: userIdOf(req) }) });
   } catch (err) {
     fail(res, err);
   }

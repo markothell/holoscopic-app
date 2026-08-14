@@ -30,22 +30,28 @@ take-a-seat card (the invitation email is the server-side gate — `joinCircle` 
 address becomes the member row's mail address), and `/signup` exists so an invitee without an
 account has a door; both callbackUrl flows carry the same open-redirect guard as `/login`.
 Verified against dev: a wrong email is refused with the server's words, the right one seats
-you and the map appears. Still to come per P18: Synthesis inside (with audio and editable
-edges), the shared player, and the `/api/circles` promotion.
+you and the map appears. **`/api/circles` exists** (the M8 promotion, triggered by this app being the Circle layer's
+second consumer): the one-call snapshot, my-circles and join are activity-agnostic routes whose
+per-activity content comes from two module hooks — `snapshotExtras` (shares/myRanking/waiting,
+redacted by the activity) and `participation` (the map's rows). Both front doors serve the
+identical payload from `circles.snapshot`, verified in a browser on both apps. Activity verbs
+(telling, sorting, the reveal) stay on `/api/threshold`. Still to come per P18: Synthesis
+inside (with audio and editable edges) and the shared player.
 
 ## Architecture
 
 | Where | What |
 |---|---|
 | `src/components/CircleMap.tsx` | The hero: members on a ring, shared explorations sized by participation, ochre solo spurs, the faint toono crown. Ported from threshold's prototype |
-| `src/components/{Shell,Wordmark}.tsx` | Chrome in the Toono language; the ring-O wordmark (still the board sketch — refinement is open work) |
-| `src/services/api.ts` | All HTTP. v1 reads the Circle machine via `/api/threshold` — the promotion to `/api/circles` is the M8 trigger, and the paths change in one place here |
+| `src/components/{Shell,Wordmark}.tsx` | Chrome in the Toono language; the wordmark is plain lowercase Seravek (final treatment pending the branding session) |
+| `src/services/api.ts` | All HTTP. Generic circle ops ride `/api/circles`; activity verbs stay on `/api/threshold` |
 | `src/lib/{auth,types}.ts` | Auth stack copy #5 (M2's `@hs/auth` dedupes them) and the wire types, mirrored from threshold |
 
 ## Gotchas
 
-- `NEXT_PUBLIC_INSTANCE_ID=threshold` — circles live in the Threshold parent instance until the
-  `/api/circles` promotion. A wrong value reads as "circle not found", not as an auth error.
+- `NEXT_PUBLIC_INSTANCE_ID=threshold` — circles still live in the Threshold parent instance
+  (P6's one-platform-instance is future work). `/api/circles` has no app gate by design: every
+  lookup is instance-scoped, so a wrong value reads as "circle not found", not as an auth error.
 - `NEXTAUTH_SECRET` must equal the backend's `GAME_TOKEN_SECRET` (dev already shares one).
 - The map's `participation` block is server-redacted (threshold D9/D17); the client never
   receives an identity it may not show. Keep it that way when porting surfaces.

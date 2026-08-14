@@ -1025,3 +1025,42 @@ test('unimplemented optional hooks are filled with no-ops', async () => {
   assert.equal(circle.seeds.filter(s => s.phase === 'revealed').length, 2);
   assert.equal(store._emails.length, 0, 'no notificationFor means no mail');
 });
+
+// ---------------------------------------------------------------------------
+// Participation (the circle-home map's data)
+// ---------------------------------------------------------------------------
+
+test('participation: the layer iterates and gates, the module answers', async () => {
+  const store = memStore();
+  stubActivity();
+  const circle = await openCircle(store, { members: 2 });
+  await post(store, circle, 'u1', 'first');
+
+  // The stub declares no participation hook, so the map has nothing to draw —
+  // an activity without a participation story yields an empty list, not rows
+  // of nulls and not an error.
+  assert.deepEqual(await circles.participation({ circle, viewerId: 'u1' }), []);
+
+  // A module that answers gets seedId attached by the layer, per seed.
+  activities.reset();
+  activities.register('stub', {
+    phases: ['share', 'rank'],
+    async normalizeSeed(p) { return { topic: String(p.topic) }; },
+    async isMemberDone() { return false; },
+    async participation({ seed, viewerId }) {
+      void seed;
+      return { tellerIds: null, tellerCount: 1, iTold: viewerId === 'u1' };
+    },
+  });
+  const rows = await circles.participation({ circle, viewerId: 'u1' });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].seedId, circle.seeds[0].id);
+  assert.equal(rows[0].tellerCount, 1);
+  assert.equal(rows[0].iTold, true);
+
+  // Membership is the boundary, at the layer — a module never sees a stranger.
+  await assert.rejects(
+    () => circles.participation({ circle, viewerId: 'nobody' }),
+    /Not a member/,
+  );
+});
