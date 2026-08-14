@@ -7,6 +7,7 @@ import { thresholdApi, ApiError } from '@/services/api';
 import type { Circle, Seed } from '@/lib/types';
 import { Page, Band, Card, Action, Quiet, Muted } from '@/components/Shell';
 import { TideLine, Polarity } from '@/components/TideLine';
+import { CircleMap } from '@/components/CircleMap';
 
 // THE page you return to. Every transition email links here rather than to a
 // phase surface, because a link to a phase is the most likely thing to go stale
@@ -127,7 +128,14 @@ export default function CirclePage({ params }: { params: Promise<{ urlName: stri
           {circle.memberCount} {circle.memberCount === 1 ? 'person' : 'people'}
           {record.length > 0 && ` · ${record.length} ${record.length === 1 ? 'topic' : 'topics'} so far`}
         </p>
-        <TideLine />
+        {/* The circle home map — the ongoing circle seen whole. A one-off
+            session has one topic and no continuity, so it keeps the tide line
+            (P15: the map is a picture of a group with a history). */}
+        {circle.mode === 'circle' && circle.isMember && circle.participation ? (
+          <CircleMap circle={circle} userId={userId} />
+        ) : (
+          <TideLine />
+        )}
       </header>
 
       {error && circle && <p className="mb-6 text-sm text-pole-b">{error}</p>}

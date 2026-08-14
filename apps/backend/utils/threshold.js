@@ -452,6 +452,37 @@ function toClientShare(share, { viewerId = null, attributed = false } = {}) {
 }
 
 /**
+ * Who told a story on which topic — the circle-home map's data, one row per
+ * seed, under the SAME redaction ladder as listShares (D9/D17):
+ *
+ *   revealed/skipped — tellers attributed. The reveal already names them, so
+ *                      an edge from a member to a finished topic leaks nothing.
+ *   rank phase       — a count only. Everyone can already read every story
+ *                      anonymously, so how many exist is public; whose they
+ *                      are is not, and the roster stays null.
+ *   share/pending    — nothing beyond your own flag. listShares is own-only
+ *                      here, so even the count would say who has moved.
+ *
+ * Membership is asserted on the way in, like listShares — this is a member
+ * surface, not part of the public shell.
+ */
+async function circleParticipation({ store = mongoStore, circle, viewerId = null }) {
+  assertMember(circle, viewerId);
+  return Promise.all(circle.seeds.map(async seed => {
+    const shares = await store.listShares(seed.id);
+    const tellerIds = [...new Set(shares.map(s => s.userId))];
+    const iTold = Boolean(viewerId) && tellerIds.includes(viewerId);
+    if (circles.DONE_PHASES.includes(seed.phase)) {
+      return { seedId: seed.id, tellerIds, tellerCount: tellerIds.length, iTold };
+    }
+    if (seed.phase === 'rank') {
+      return { seedId: seed.id, tellerIds: null, tellerCount: tellerIds.length, iTold };
+    }
+    return { seedId: seed.id, tellerIds: null, tellerCount: null, iTold };
+  }));
+}
+
+/**
  * Attach a transcript that arrived from Deepgram.
  *
  * Separate from submitShare because it is a CALLBACK path: the caller is a
@@ -850,6 +881,7 @@ module.exports = {
   submitShares,
   deleteShare,
   listShares,
+  circleParticipation,
   toClientShare,
   saveRankingDraft,
   submitRanking,

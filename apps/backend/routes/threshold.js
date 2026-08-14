@@ -164,6 +164,13 @@ router.get('/circles/:urlName', async (req, res) => {
         ? payload.shares.filter(s => !placed.has(s.id)).map(s => s.id)
         : [];
     }
+
+    // The circle-home map: who told a story on what, one row per seed, under
+    // listShares' redaction ladder (utils/threshold.js#circleParticipation).
+    // Member surface only — the public shell carries no participation.
+    if (payload.isMember) {
+      payload.participation = await threshold.circleParticipation({ store, circle, viewerId: userId });
+    }
     res.json({ circle: payload });
   } catch (err) {
     fail(res, err);

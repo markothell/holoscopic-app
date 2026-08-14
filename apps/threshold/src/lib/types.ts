@@ -72,6 +72,25 @@ export interface Seed {
 export interface Member {
   userId: string;
   username: string;
+  /** Not served yet — the slot the circle-home map fills the day members have
+   *  pictures. Absent means initials. */
+  pictureUrl?: string;
+}
+
+/**
+ * One row per seed on GET /circles/:urlName, members only — who told a story
+ * on what, for the circle-home map. Mirrors
+ * apps/backend/utils/threshold.js#circleParticipation, which applies
+ * listShares' redaction ladder (D9/D17):
+ * revealed/skipped → attributed; rank → count only; share/pending → own flag only.
+ */
+export interface SeedParticipation {
+  seedId: string;
+  /** Attributed only once the topic is done; null before that. */
+  tellerIds: string[] | null;
+  /** Public from the rank phase on; null while sharing or queued. */
+  tellerCount: number | null;
+  iTold: boolean;
 }
 
 export interface Circle {
@@ -111,6 +130,8 @@ export interface Circle {
   startedAt: string | null;
   completedAt: string | null;
 
+  /** Present only on GET /circles/:urlName, and only for members. */
+  participation?: SeedParticipation[];
   /** Present only on GET /circles/:urlName, and only while a seed is live. */
   shares?: Share[];
   myRanking?: MyRanking | null;

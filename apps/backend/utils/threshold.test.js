@@ -534,6 +534,87 @@ test('after the reveal every story is attributed', async () => {
   assert.equal(wire.every(s => s.username), true);
 });
 
+test('the map: participation follows the redaction ladder (D9/D17)', async () => {
+  const store = memStore();
+  useStore(store);
+  const circle = await runningCircle(store, { members: 3, seeds: 2 });
+  const [first, second] = circle.seeds;
+
+  // First topic all the way through: everyone shares, everyone ranks.
+  for (const u of ['u1', 'u2', 'u3']) {
+    await threshold.submitShare({
+      store, circleId: circle.id, seedId: first.id, userId: u, username: u.toUpperCase(),
+      pole: 'A', text: `story from ${u}`,
+    });
+  }
+  const ids = store._shares.map(s => s.id);
+  for (const u of ['u1', 'u2', 'u3']) {
+    await threshold.submitRanking({
+      store, circleId: circle.id, seedId: first.id, userId: u,
+      placements: ids.map(id => ({ shareId: id, pole: 'A' })),
+    });
+  }
+  assert.equal(first.phase, 'revealed');
+  assert.equal(second.phase, 'share', 'the queue started the next topic');
+
+  // Second topic mid-share: only u1 has a story in. Third topic queued, with
+  // the author's early story on it (D34).
+  await threshold.submitShare({
+    store, circleId: circle.id, seedId: second.id, userId: 'u1', username: 'U1',
+    pole: 'B', text: 'early on the live one',
+  });
+  await circles.addSeed({
+    store, circleId: circle.id, userId: 'u1',
+    payload: { ...SEED, topic: 'Queued topic' },
+  });
+  const third = circle.seeds[2];
+  await threshold.submitShare({
+    store, circleId: circle.id, seedId: third.id, userId: 'u1', username: 'U1',
+    pole: 'A', text: 'told while queued',
+  });
+
+  const rows = await threshold.circleParticipation({ store, circle, viewerId: 'u2' });
+  const by = Object.fromEntries(rows.map(r => [r.seedId, r]));
+
+  // Revealed: attributed, like the reveal itself.
+  assert.deepEqual(new Set(by[first.id].tellerIds), new Set(['u1', 'u2', 'u3']));
+  assert.equal(by[first.id].tellerCount, 3);
+  assert.equal(by[first.id].iTold, true);
+
+  // Mid-share and pending: no roster, and not even a count — listShares is
+  // own-only in both, so a count would say who has moved.
+  for (const row of [by[second.id], by[third.id]]) {
+    assert.equal(row.tellerIds, null);
+    assert.equal(row.tellerCount, null);
+    assert.equal(row.iTold, false);
+  }
+
+  // The teller still sees their own moves.
+  const mine = await threshold.circleParticipation({ store, circle, viewerId: 'u1' });
+  assert.equal(mine.find(r => r.seedId === second.id).iTold, true);
+  assert.equal(mine.find(r => r.seedId === third.id).iTold, true);
+
+  // Rank phase: the count becomes public, the roster does not.
+  for (const u of ['u2', 'u3']) {
+    await threshold.submitShare({
+      store, circleId: circle.id, seedId: second.id, userId: u, username: u.toUpperCase(),
+      pole: 'A', text: `story from ${u}`,
+    });
+  }
+  assert.equal(second.phase, 'rank');
+  const ranked = await threshold.circleParticipation({ store, circle, viewerId: 'u2' });
+  const liveRow = ranked.find(r => r.seedId === second.id);
+  assert.equal(liveRow.tellerIds, null);
+  assert.equal(liveRow.tellerCount, 3);
+  assert.equal(liveRow.iTold, true);
+
+  // Membership is the boundary, like listShares.
+  await assert.rejects(
+    () => threshold.circleParticipation({ store, circle, viewerId: 'stranger' }),
+    /Not a member/,
+  );
+});
+
 // ---------------------------------------------------------------------------
 // Rankings
 // ---------------------------------------------------------------------------
