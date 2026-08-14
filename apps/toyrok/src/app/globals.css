@@ -23,6 +23,16 @@
   --rope:        #B49A6E;
   --shared:      #EDE3D0;
 
+  /* The two ends of a polarity. This pair was MEASURED, not eyeballed —
+     ΔL* 0.8 so neither reads as heavier, ΔE 32.0 apart under deuteranopia
+     (the check lives in apps/threshold/src/app/globals.css's header). The
+     measurement belongs to the polarity mechanic, not to any one app's brand,
+     so the pair travels with it. Re-run the check before changing either. */
+  --pole-a:      #2F7D7B;
+  --pole-b:      #B15C3C;
+  --pole-a-soft: #DCE8E7;
+  --pole-b-soft: #F0DFD7;
+
   --rule:        rgba(58, 46, 32, 0.14);
   --rule-strong: rgba(58, 46, 32, 0.30);
 
@@ -41,6 +51,10 @@
   --color-ochre:       var(--ochre);
   --color-rope:        var(--rope);
   --color-shared:      var(--shared);
+  --color-pole-a:      var(--pole-a);
+  --color-pole-b:      var(--pole-b);
+  --color-pole-a-soft: var(--pole-a-soft);
+  --color-pole-b-soft: var(--pole-b-soft);
   --color-rule:        var(--rule);
 
   --font-display: "Iowan Old Style", Palatino, Georgia, serif;

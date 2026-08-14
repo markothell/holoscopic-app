@@ -90,21 +90,46 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
         </Muted>
       )}
 
-      {circle.phase === 'cycle' && seed && circle.isMember && (
-        <div className="mt-8">
-          <Card>
-            <Band>Running now</Band>
-            <h2 className="text-2xl leading-snug">{seed.payload.topic}</h2>
-            <p className="mt-1 text-sm text-ink-soft">
-              {seed.payload.poleA} · {seed.payload.poleB}
-            </p>
-            <p className="mt-3 text-sm text-ink-faint">
-              Taking part happens on the activity's own pages — they move into Toyrok with the
-              Threshold port.
-            </p>
-          </Card>
-        </div>
-      )}
+      {circle.phase === 'cycle' && seed && circle.isMember && (() => {
+        const iTold = (circle.shares ?? []).some(s => s.isMine);
+        const waiting = circle.waitingShareIds?.length ?? 0;
+        const topicHref = `/c/${circle.urlName}/topic/${seed.id}`;
+        return (
+          <div className="mt-8">
+            <Card>
+              <Band>Running now</Band>
+              <h2 className="text-2xl leading-snug">{seed.payload.topic}</h2>
+              <p className="mt-1 text-sm text-ink-soft">
+                {seed.payload.poleA} · {seed.payload.poleB}
+              </p>
+              {seed.phase === 'share' && (
+                <>
+                  <p className="mt-3 text-sm text-ink-soft">
+                    {iTold
+                      ? 'Your story is in. You can change it while this round is open.'
+                      : 'Tell a time it was one of those two things.'}
+                  </p>
+                  <div className="mt-4">
+                    <Action href={topicHref}>{iTold ? 'Change your story' : 'Tell your story'}</Action>
+                  </div>
+                </>
+              )}
+              {seed.phase === 'rank' && (
+                <>
+                  <p className="mt-3 text-sm text-ink-soft">
+                    {waiting > 0
+                      ? `${waiting} ${waiting === 1 ? 'story is' : 'stories are'} waiting on you.`
+                      : 'Your sorting is in.'}
+                  </p>
+                  <div className="mt-4">
+                    <Action href={topicHref}>{waiting > 0 ? 'Read and sort' : 'See your sorting'}</Action>
+                  </div>
+                </>
+              )}
+            </Card>
+          </div>
+        );
+      })()}
 
       {record.length > 0 && circle.isMember && (
         <section className="mt-10">

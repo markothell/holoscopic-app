@@ -22,7 +22,8 @@ built by hand, architecture that converges. The circle home is a toono seen from
 | `--sky-soft` | `#DCE8F2` | | live surfaces' ground |
 | `--ochre` | `#C08A3E` | | solo work — the spur color |
 | `--rope` | `#B49A6E` | | shared-node strokes, quiet emphasis |
-| `--shared` | `#EDE3D0` | | shared-node fill |
+| `--shared` | `#EDE3D0` | | shared-node fill, the middle band's wash |
+| `--pole-a` / `--pole-b` | `#2F7D7B` / `#B15C3C` | teal / clay | **the two ends of any polarity** — measured for weight parity and deuteranopia separation (check in threshold's globals.css); the pair travels with the mechanic, not the brand |
 
 ## Type
 

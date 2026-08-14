@@ -12,10 +12,15 @@ marks what is live and nothing else; `--ochre` is the solo mark.
 
 ## Status
 
-Scaffold, built 2026-08-14: sign in → `/circles` (my circles) → `/c/[urlName]` (**the circle
-home** — the map is the hero surface) → read-only `/c/[urlName]/topic/[seedId]`. The v1 plan
-(P18) brings Threshold's and Synthesis's participation surfaces inside as packages; Synthesis
-gains audio and editable edges on the way in. Until then the topic pages say so and do nothing.
+Built 2026-08-14: sign in → `/circles` (my circles) → `/c/[urlName]` (**the circle home** — the
+map is the hero surface) → `/c/[urlName]/topic/[seedId]`, **one phase-routed surface carrying
+the whole loop**: telling (typed-first; staged both poles, one write — threshold D36), sorting
+(queue then review, drafts as you go, complete-or-nothing submit — D21/D11), and the reveal
+(reader's cutoff, three bands, attribution — D23/D24). Verified in a browser against dev: a
+story written, a ranking submitted, a reveal read. Audio **playback** works (native `<audio>`;
+circles carry recordings from their Threshold life); **recording** waits on the `@hs/audio`
+port. Still to come per P18: Synthesis inside (with audio and editable edges), the shared
+player, invitations/joining surfaces, and the `/api/circles` promotion.
 
 ## Architecture
 
