@@ -8,7 +8,7 @@ sit in the middle — that middle is the threshold.
 Local dev port **4006**, ships to `threshold.holoscopic.io` (add to backend `CLIENT_URL` at
 cutover). Next.js 16 + React 19 + Tailwind v4 (`@theme inline` in `globals.css`, no config file).
 
-**`PLAN.md` is the source of truth**, §-numbered, with settled decisions D1–D35 in §12 and open
+**`PLAN.md` is the source of truth**, §-numbered, with settled decisions D1–D36 in §12 and open
 questions in §13. Read the relevant § before changing behavior it describes. Two lists come off it:
 `M3B-CHECKLIST.md` (what has to be provisioned before the audio half can start) and
 `BACKEND-SETUP.md` (the server-side runbook).
@@ -17,7 +17,7 @@ questions in §13. Read the relevant § before changing behavior it describes. T
 
 **Built:** the backend through M3a including the topic queue (M1b), and **every participant
 surface** — the circle page, the seed form, the share surface, the ranking queue, the per-cycle
-reveal and the circle-final record — in the tide-line language (§9.2). 312 backend tests, plus 17
+reveal and the circle-final record — in the tide-line language (§9.2). ~324 backend tests, plus 19
 integration checks in `scripts/check-circles.js` against a real database.
 
 **M3b, audio, is built and awaiting a device**: the recorder, the Blob upload route, playback in
@@ -31,14 +31,13 @@ fixture's members carry no address, so nothing can send.
 **Not built: M6, the launch pass.**
 
 `components/TideLine.tsx` is the app's one mark and `components/Shell.tsx` its chrome.
-`components/Scaffold.tsx` is **still live on four routes** — `/` , `/login`, `error.tsx` and
-`not-found.tsx` — so it cannot be deleted yet, whatever an earlier note here said.
+`components/Scaffold.tsx` is **still live on two routes** — `error.tsx` and `not-found.tsx` — so it
+cannot be deleted yet.
 
 **The front door is built**: `/` says what Threshold is and offers the way in, `/new` starts a
 circle, and `/signup` makes the account (`/login` moved off `Scaffold` to match). Before this,
 every circle on production was made by running the funnel from a laptop, so the app could be used
-by anybody invited to a circle and by nobody else. `Scaffold.tsx` is still live on `error.tsx` and
-`not-found.tsx`. **`/new` also sets the round length** — a day, three days, a week, or no clock at
+by anybody invited to a circle and by nobody else. **`/new` also sets the round length** — a day, three days, a week, or no clock at
 all — and it is the only surface that sets one, since nothing edits `config` after creation.
 
 **`node scripts/seed-threshold-dev.js` from `apps/backend` is the fastest way to see any of it.**
@@ -76,7 +75,7 @@ the round may have turned over.
 | `src/services/api.ts` | All HTTP. Mints a game token from the NextAuth session and attaches it beside `x-user-id` |
 | `src/lib/types.ts` | Wire types, mirroring `utils/circles.js#toClient` and `utils/threshold.js#toClientShare` exactly |
 | `src/components/Beacon.tsx` | The fifth copy — see the note in the file |
-| `apps/backend/models/Circle.js` | The generic cohort + round machine. Threshold is its only consumer |
+| `apps/backend/models/Circle.js` | The generic cohort + round machine. Threshold and the circles app are its consumers; generic ops live in `routes/circles.js` |
 | `apps/backend/utils/circles.js` | The round machine's funnel — membership, seeds, phases, mail |
 | `apps/backend/utils/circleActivities.js` | `register(key, module)`. Requiring `routes/threshold.js` is what registers `'threshold'` |
 | `apps/backend/utils/threshold.js` | **The write funnel** — shares, rankings, the gradient. Never write these collections anywhere else |
@@ -164,7 +163,7 @@ the round may have turned over.
   never carries both ids.
 - **Mail links to the circle, never to a phase surface**, and its base is `THRESHOLD_URL` — never
   `email.js#appUrl()`, which falls back to the first entry of `CLIENT_URL`, and one backend serves
-  five apps. A round advances on a 60s tick, so `/t/<urlName>/rank` in an email is the likeliest
+  six apps. A round advances on a 60s tick, so `/t/<urlName>/rank` in an email is the likeliest
   thing in the system to be stale by the time somebody opens their inbox.
 - **Muting a circle stops mail and never notifications** (D31). Somebody who mutes has said "stop
   emailing me", not "stop telling me". `List-Unsubscribe` points at the logged-in `/notifications`
@@ -192,7 +191,7 @@ the round may have turned over.
 - **A green test suite does NOT mean a `models/Circle.js` change is safe.** `circles.test.js` and
   `threshold.test.js` run against an injectable in-memory store with no Mongoose in the loop, so
   schema validation never executes — an enum you narrowed or a field you removed stays invisible to
-  all 307 tests while every real write fails. This is not hypothetical: an early cut of the queue
+  the whole suite while every real write fails. This is not hypothetical: an early cut of the queue
   (M1b) left the suite fully green with a funnel writing two `phase`/`status` values the schema
   rejected. Exercise a model change against a real database — `scripts/check-circles.js` is the
   standing tool for exactly that, it is dev-only by design, and M1b's four new enum values

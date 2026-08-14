@@ -1,6 +1,6 @@
 # @hs/activities
 
-Shared React component library and activity-type engine. Consumed by `apps/holoscopic-game`. No runtime dependencies beyond React (peer dep). TypeScript source is consumed directly (no build step) via `"main": "./src/index.ts"`.
+Shared React component library and activity-type engine. Consumed by `apps/holoscopic-game` (full UI) and `apps/synthesis` (pure resolve logic only). No runtime dependencies beyond React (peer dep). TypeScript source is consumed directly (no build step) via `"main": "./src/index.ts"`.
 
 ## What This Package Is Responsible For
 
@@ -68,7 +68,7 @@ All three utility classes are thin wrappers re-exported from the game app's `src
 
 ## Dependencies on Other Modules
 
-- Consumed by `apps/holoscopic-game` — import paths use `@hs/activities`
+- Consumed by `apps/holoscopic-game` and (resolve logic only) `apps/synthesis` — import paths use `@hs/activities`
 - The backend `Activity` schema enum must stay in sync with the types here
 - `normalizeActivityType()` must handle all values that may exist in the DB
 

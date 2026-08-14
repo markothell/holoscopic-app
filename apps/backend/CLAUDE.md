@@ -12,6 +12,10 @@ Express + Socket.IO + Mongoose server. Single entry point: `websocket-server.js`
 | `utils/holons.js` | `transact()` and `spend()` — the only way to move Holon balances |
 | `utils/notify.js` | Creates `Notification` documents for a user |
 | `utils/entries.js` | The single write funnel for entries (upsert, vote, clear, seed) + wire serializers `toClient`/`toRedacted` |
+| `models/Circle.js` | The generic cohort + round machine (members, seed queue, phase machine) — activity-agnostic by design |
+| `utils/circles.js` | The round machine's funnel: membership, seeds, phases, mail, the one-call `snapshot`, `participation` |
+| `utils/circleActivities.js` | The module registry that keeps `utils/circles.js` generic — `register(key, module)`, hooks incl. `snapshotExtras`/`participation` |
+| `routes/circles.js` | `/api/circles` — the activity-agnostic surface (snapshot, my circles, join); activity verbs stay on each activity's router |
 | `models/Entry.js` | Source of truth for participation: position + text + votes per (activity, user, slot, question), with denormalized `instanceId`/`topicId` |
 | `models/Activity.js` | Map configuration + membership (`participants[]`) + stake ledger — no entry content |
 | `models/Sequence.js` | Ordered collection of activities with members and round visibility |
@@ -53,7 +57,7 @@ This makes a restart expensive rather than free. Until Mongo connects — 1s war
 
 ## Running It Locally
 
-`npm run dev` (workspace script: `nodemon websocket-server.js`) watches all of `apps/backend`, so every save by every agent restarts the server and inflicts the boot cost above on all six frontends. When other agents are working in this tree, run it without the watcher instead:
+`npm run dev` (workspace script: `nodemon websocket-server.js`) watches all of `apps/backend`, so every save by every agent restarts the server and inflicts the boot cost above on all seven frontends. When other agents are working in this tree, run it without the watcher instead:
 
 ```bash
 npm run start --workspace=apps/backend        # plain node, no restarts

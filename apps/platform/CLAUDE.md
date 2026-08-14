@@ -1,6 +1,6 @@
 # Holoscopic Platform
 
-Admin app for managing instances. Runs on port 3002. See root `CLAUDE.md` for monorepo structure and multi-tenancy.
+Admin app for managing instances. Dev on port 4002 (`npm start` serves 3002). See root `CLAUDE.md` for monorepo structure and multi-tenancy.
 
 ## Structure
 
@@ -10,7 +10,10 @@ apps/platform/
     ├── app/
     │   ├── api/memorial-photo/  # the one server route — Blob upload for Chorus subject photos
     │   ├── login/
-    │   └── instances/           # list, new, [id]
+    │   ├── instances/           # list, new, [id]
+    │   ├── users/
+    │   ├── signups/             # the Signup admin tab (replaced Waitlist)
+    │   └── traffic/             # site-traffic dashboard
     ├── components/
     │   └── AdminNav.tsx         # the one header — every page uses it
     ├── contexts/

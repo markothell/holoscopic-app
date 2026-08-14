@@ -11,7 +11,7 @@ therefore a row created in the platform admin (Instances → New → App: Chorus
 no env var — which is what PLAN §11 was built toward, and the whole of what it cost was making
 `INSTANCE_ID` a parameter instead of a module constant.
 
-Design source of truth is `PLAN.md` (§-numbered, settled decisions D1–D11 in §10). Read the
+Design source of truth is `PLAN.md` (§-numbered, settled decisions D1–D13 in §10). Read the
 relevant § before changing behavior it describes. The Mongoose model files carry long header
 comments explaining why each field exists.
 

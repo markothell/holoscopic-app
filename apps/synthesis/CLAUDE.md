@@ -2,7 +2,7 @@
 
 A networked pseudonymous group blog, at `synthesis.holoscopic.io`. Local dev port **4004**. Next.js 16 + React 19 + Tailwind v4 (no config file — `@theme inline` in `globals.css`), `@xyflow/react` for the graph, NextAuth credentials against the shared backend.
 
-Design source of truth is `PLAN.md` (§-numbered, with settled decisions D1–D15 in §10) and `UNION.md` (the whole-corpus LLM spec that replaces the M3 Q&A chat). Both are current — read the relevant § before changing behavior they describe.
+Design source of truth is `PLAN.md` (§-numbered, with settled decisions D1–D16 in §10) and `UNION.md` (the whole-corpus LLM spec that replaces the M3 Q&A chat). Both are current — read the relevant § before changing behavior they describe.
 
 **The word "synthesis" is overloaded, so each sense has its own noun.** *Synthesis* = the app. An *idea* = the container (a child `Instance`, slug `idea-<code>`). The *Union* (∪) = the LLM's read of everything the group has published. A *statement* = something a member puts to the group to vote on. *Reaching Synthesis* = the state a group enters when a statement clears the ⅔ bar. The Mongoose model files carry long header comments explaining *why* each field exists; read those before touching a schema.
 
