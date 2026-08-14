@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import OverlayShell from '@/components/overlays/OverlayShell';
+import ReadonlyMap from '@/components/graph/ReadonlyMap';
 import { SynthesisService } from '@/services/synthesisService';
 import type { Collaborator, SynNode } from '@/lib/types';
 
@@ -27,9 +28,11 @@ function Stat({ n, one, many }: { n: number; one: string; many: string }) {
   );
 }
 
-// One collaborator's published thinking, grouped by the topic hub it hangs
-// under — which is the shape of their map, without standing up a second graph
-// engine to say so.
+// One collaborator's published thinking, AS THEIR MAP (D18) — the real graph
+// rendering, read-only, laid out the way their own map lays it out. Tapping
+// a thought opens its post; hubs are labels and open nothing. The earlier
+// cut grouped these into a flat list; the map is what "see how someone is
+// thinking" actually meant.
 function CollaboratorMap({
   code,
   collaborator,
@@ -57,16 +60,6 @@ function CollaboratorMap({
   }, [code, collaborator.handle, userId]);
 
   const thoughts = (nodes ?? []).filter(n => n.kind === 'thought');
-  const hubs = new Map((nodes ?? []).filter(n => n.kind === 'topic').map(h => [h.id, h]));
-
-  // Hub label → its thoughts. Anything with no hub above it lands in one
-  // trailing group rather than being dropped.
-  const grouped = new Map<string, SynNode[]>();
-  for (const t of thoughts) {
-    const label = (t.topicId && hubs.get(t.topicId)?.content.topic) || 'On its own';
-    if (!grouped.has(label)) grouped.set(label, []);
-    grouped.get(label)!.push(t);
-  }
 
   return (
     <div className="flex flex-col gap-4 pb-4">
@@ -97,29 +90,14 @@ function CollaboratorMap({
         </p>
       )}
 
-      {[...grouped.entries()].map(([label, items]) => (
-        <section key={label}>
-          <p className="eyebrow mb-2 !text-[0.6rem]" style={{ color: 'var(--mist-faint)' }}>{label}</p>
-          <div className="flex flex-col gap-2">
-            {items.map(t => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => onOpenPost(t.id)}
-                className="rounded-2xl border px-4 py-3 text-left transition-colors hover:border-own"
-                style={{ borderColor: 'var(--line-strong)', background: 'var(--dusk-raised)' }}
-              >
-                <span className="voice-serif block text-sm leading-snug text-mist">
-                  {t.content.thought}
-                </span>
-                <span className="eyebrow mt-1.5 block !text-[0.55rem]" style={{ color: 'var(--own)' }}>
-                  open →
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-      ))}
+      {nodes && thoughts.length > 0 && (
+        <>
+          <ReadonlyMap nodes={nodes} onOpenThought={onOpenPost} />
+          <p className="eyebrow !text-[0.55rem]" style={{ color: 'var(--mist-faint)' }}>
+            tap a thought to open it · drag to look around
+          </p>
+        </>
+      )}
     </div>
   );
 }

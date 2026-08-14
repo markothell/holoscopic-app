@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "@hs/activities": "*",
+    "@hs/audio": "*",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/blob": "^2.6.1",
     "@xyflow/react": "^12.10.2",
     "next": "16.2.6",
     "next-auth": "^4.24.14",

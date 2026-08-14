@@ -123,11 +123,15 @@ function GraphInner({
     refreshFrames();
   }, [refreshFrames]);
 
-  const { nodes, byId, addRoot, addChild, marry, editNode, setAxes, setPublished, mergeNode } =
+  const { nodes, byId, addRoot, addChild, marry, editNode, setAxes, setPublished, mergeNode, reparentNode } =
     useMyMap(instanceId, userId, ownerHandle, { seedMock: useMock, resolveLocalFrame, refreshFrames });
 
   const [marryMode, setMarryMode] = useState(false);
   const [marrySelection, setMarrySelection] = useState<string[]>([]);
+  // D19 move mode: armed from the node sheet; the next tap picks the new
+  // parent. Mirrors marry mode's shape — one armed state, one bottom bar.
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
   const [popupNodeId, setPopupNodeId] = useState<string | null>(null);
   const [sheetNodeId, setSheetNodeId] = useState<string | null>(null);
   const [createIntent, setCreateIntent] = useState<CreateIntent | null>(null);
@@ -267,6 +271,19 @@ function GraphInner({
   }
 
   function handleNodeClick(nodeId: string) {
+    if (movingId) {
+      if (nodeId !== movingId) {
+        // The hook's cycle guard answers synchronously; the server enforces
+        // the same rule again on the sync call.
+        if (reparentNode(movingId, [nodeId])) {
+          setMovingId(null);
+          setMoveError(null);
+        } else {
+          setMoveError('Not there — that would loop the map. Pick another spot.');
+        }
+      }
+      return;
+    }
     if (marryMode) {
       setMarrySelection(prev => {
         if (prev.includes(nodeId)) return prev.filter(id => id !== nodeId);
@@ -288,6 +305,13 @@ function GraphInner({
     setPopupNodeId(null);
     setMarryMode(true);
     setMarrySelection([nodeId]);
+  }
+
+  function startMoveFrom(nodeId: string) {
+    setSheetNodeId(null);
+    setPopupNodeId(null);
+    setMoveError(null);
+    setMovingId(nodeId);
   }
 
   // The create intent carries its own parentId (rather than reading
@@ -410,7 +434,7 @@ function GraphInner({
         <Background variant={BackgroundVariant.Dots} gap={26} size={1} color="rgba(236,231,245,0.10)" />
       </ReactFlow>
 
-      {!marryMode && (
+      {!marryMode && !movingId && (
         <button
           onClick={() => setCreateIntent({ type: 'root' })}
           aria-label="Add to your map"
@@ -421,7 +445,7 @@ function GraphInner({
         </button>
       )}
 
-      {!marryMode && (
+      {!marryMode && !movingId && (
         <button
           onClick={() => setMarryMode(true)}
           className="eyebrow tone-in absolute bottom-24 left-5 z-20 rounded-full border px-4 py-3"
@@ -429,6 +453,29 @@ function GraphInner({
         >
           ◆ Marry
         </button>
+      )}
+
+      {movingId && (
+        <div
+          className="tone-in absolute inset-x-4 bottom-24 z-20 rounded-2xl border p-4"
+          style={{ borderColor: 'var(--line-strong)', background: 'var(--dusk-raised)' }}
+        >
+          <p className="text-sm" style={{ color: 'var(--mist)' }}>
+            Moving &ldquo;{(() => {
+              const n = byId.get(movingId);
+              return ((n?.kind === 'topic' ? n?.content.topic : n?.content.thought) ?? '').slice(0, 40);
+            })()}&rdquo; — tap its new parent.
+          </p>
+          {moveError && <p className="mt-1 text-xs" style={{ color: 'var(--live)' }}>{moveError}</p>}
+          <button
+            type="button"
+            onClick={() => { setMovingId(null); setMoveError(null); }}
+            className="eyebrow mt-2 underline"
+            style={{ color: 'var(--mist-faint)' }}
+          >
+            Leave it where it is
+          </button>
+        </div>
       )}
 
       {marryMode && (
@@ -476,6 +523,8 @@ function GraphInner({
         node={sheetNode}
         open={!!sheetNode && !createIntent}
         frames={frames}
+        instanceId={instanceId}
+        parentNodes={(sheetNode?.parentIds ?? []).map(id => byId.get(id)).filter((n): n is SynNode => !!n)}
         onClose={() => setSheetNodeId(null)}
         onEdit={content => sheetNode && editNode(sheetNode.id, content)}
         onSetAxes={ids => sheetNode && setAxes(sheetNode.id, ids)}
@@ -483,6 +532,12 @@ function GraphInner({
         onPublishToggle={() => sheetNode && setPublished(sheetNode.id, sheetNode.visibility !== 'published')}
         onAddChild={() => sheetNode && addBelow(sheetNode.id)}
         onStartMarry={() => sheetNode && startMarryFrom(sheetNode.id)}
+        onStartMove={() => sheetNode && startMoveFrom(sheetNode.id)}
+        onUnmarry={keepId => {
+          if (!sheetNode) return;
+          reparentNode(sheetNode.id, [keepId]);
+          setSheetNodeId(null);
+        }}
         onOpenSource={openSource}
       />
 
@@ -490,6 +545,7 @@ function GraphInner({
         open={!!createIntent}
         intent={createIntent}
         frames={frames}
+        instanceId={instanceId}
         onCancel={() => setCreateIntent(null)}
         onSubmit={submitCreate}
         onCoinFrame={coinFrame}

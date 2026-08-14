@@ -334,9 +334,36 @@ router.get('/ideas/:code/collaborators/:handle/map', async (req, res) => {
       visibility: 'published',
     }).sort({ publishedAt: -1 });
 
+    // D18: the map view needs the SKELETON the published thoughts hang on —
+    // the topic hubs they reference — or every thought renders as a rootless
+    // scatter. Hubs are private scaffold (never published), so this is a
+    // deliberate, narrow widening of exactly what the list view always
+    // intended to show ("grouped the way their own map groups it"): the hub
+    // LABELS reachable from a published thought's ancestry, nothing else. A
+    // hub with no published descendant stays invisible, and draft THOUGHTS
+    // are untouched by this — the one privacy contract still holds for
+    // content.
+    const byIdAll = new Map();
+    (await SynNode.find({ instanceId: instance.id, ownerId: theirs.userId }))
+      .forEach(n => byIdAll.set(n.id, n));
+    const skeleton = new Map();
+    for (const t of nodes) {
+      let walk = t.parentIds.slice();
+      const guard = new Set();
+      while (walk.length) {
+        const id = walk.pop();
+        if (guard.has(id)) continue;
+        guard.add(id);
+        const p = byIdAll.get(id);
+        if (!p) continue;
+        if (p.kind === 'topic' && p.visibility !== 'published') skeleton.set(p.id, p);
+        walk.push(...p.parentIds);
+      }
+    }
+
     res.json({
       collaborator: ideaFunnel.toClientMembership(theirs),
-      nodes: nodes.map(nodeFunnel.toClient),
+      nodes: [...nodes, ...skeleton.values()].map(nodeFunnel.toClient),
     });
   } catch (error) {
     fail(res, error);

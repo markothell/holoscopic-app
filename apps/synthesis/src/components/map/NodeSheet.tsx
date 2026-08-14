@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { SynFrame, SynNode } from '@/lib/types';
+import type { NodeContent, SynFrame, SynNode } from '@/lib/types';
 import Sheet from '@/components/ui/Sheet';
 import Button from '@/components/ui/Button';
 import { TextField, TextArea } from '@/components/ui/TextField';
 import AxisPicker from './AxisPicker';
+import Recorder from './Recorder';
 import ProvenanceBreadcrumb from '@/components/graph/ProvenanceBreadcrumb';
 
 // The action sheet for an existing node: edit its content, set its axes
@@ -18,6 +19,8 @@ export default function NodeSheet({
   node,
   open,
   frames,
+  instanceId,
+  parentNodes,
   onClose,
   onEdit,
   onSetAxes,
@@ -25,29 +28,40 @@ export default function NodeSheet({
   onPublishToggle,
   onAddChild,
   onStartMarry,
+  onStartMove,
+  onUnmarry,
   onOpenSource,
 }: {
   node: SynNode | null;
   open: boolean;
   frames: SynFrame[];
+  instanceId: string;
+  /** The node's parents, resolved — what the unmarry choice names (D19). */
+  parentNodes: SynNode[];
   onClose: () => void;
-  onEdit: (content: { topic?: string; thought?: string; context?: string }) => void;
+  onEdit: (content: Partial<NodeContent>) => void;
   onSetAxes: (ids: string[]) => void;
   onCoinFrame: (poleA: string, poleB: string) => Promise<string> | string;
   onPublishToggle: () => void;
   onAddChild: () => void;
   onStartMarry: () => void;
+  /** D19: arm move mode — the map's next tap picks the new parent. */
+  onStartMove: () => void;
+  /** D19: drop the other parent of a join node; keep this one. */
+  onUnmarry: (keepParentId: string) => void;
   onOpenSource?: (sourceNodeId: string) => void;
 }) {
   const [topic, setTopic] = useState('');
   const [thought, setThought] = useState('');
   const [context, setContext] = useState('');
+  const [recording, setRecording] = useState(false);
 
   useEffect(() => {
     if (!node) return;
     setTopic(node.content.topic);
     setThought(node.content.thought);
     setContext(node.content.context);
+    setRecording(false);
   }, [node]);
 
   if (!node) return null;
@@ -110,6 +124,40 @@ export default function NodeSheet({
               rows={4}
               className="mb-4 !text-sm"
             />
+            {/* D20: the voice on this thought. Saving follows the sheet's
+                own idiom — a finished take saves immediately, like blur. */}
+            <div className="mb-4">
+              {recording ? (
+                <Recorder
+                  instanceId={instanceId}
+                  onDone={a => { onEdit({ audio: a }); setRecording(false); }}
+                  onCancel={() => setRecording(false)}
+                />
+              ) : node.content.audio ? (
+                <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--line-strong)', background: 'var(--dusk-deep)' }}>
+                  <audio controls preload="none" src={node.content.audio.url} className="w-full" />
+                  <div className="mt-2 flex gap-4">
+                    <button type="button" onClick={() => setRecording(true)}
+                      className="text-xs underline underline-offset-4" style={{ color: 'var(--mist-soft)' }}>
+                      Record a different one
+                    </button>
+                    <button type="button" onClick={() => onEdit({ audio: null })}
+                      className="text-xs underline underline-offset-4" style={{ color: 'var(--mist-faint)' }}>
+                      Remove the voice
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setRecording(true)}
+                  className="w-full rounded-xl border px-3 py-2.5 text-sm"
+                  style={{ borderColor: 'var(--line-strong)', color: 'var(--mist-soft)' }}
+                >
+                  ⏺ Add a voice to this thought
+                </button>
+              )}
+            </div>
             <AxisPicker
               frames={frames}
               selected={node.axisFrameIds}
@@ -132,6 +180,36 @@ export default function NodeSheet({
             <Button variant="own" onClick={onAddChild}>+ Add below</Button>
             <Button variant="join" onClick={onStartMarry}>Marry from here</Button>
           </div>
+
+          {/* D19: the two correction gestures. Move re-files this node —
+              the next map tap picks its new parent. Unmarry names the two
+              parents and keeps the chosen one; the arity flip back to an
+              ordinary child happens server-side (utils/synNodes.js#reparent).
+              The home hub is the map's fixed centre and moves nowhere. */}
+          {!node.isHome && (
+            node.edgeKind === 'marriage' && parentNodes.length === 2 ? (
+              <div>
+                <p className="eyebrow mb-1.5 !text-[0.6rem]" style={{ color: 'var(--mist-faint)' }}>
+                  Unmarry — keep it under one parent
+                </p>
+                <div className="flex gap-2">
+                  {parentNodes.map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => onUnmarry(p.id)}
+                      className="flex-1 rounded-xl border px-3 py-2.5 text-left text-xs leading-snug"
+                      style={{ borderColor: 'var(--line-strong)', color: 'var(--mist-soft)' }}
+                    >
+                      keep under &ldquo;{(p.kind === 'topic' ? p.content.topic : p.content.thought).slice(0, 26)}&rdquo;
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <Button variant="ghost" onClick={onStartMove}>Move — file it elsewhere</Button>
+            )
+          )}
         </div>
       </div>
     </Sheet>

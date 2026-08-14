@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { NodeKind, SynFrame } from '@/lib/types';
+import type { NodeAudio, NodeContent, NodeKind, SynFrame } from '@/lib/types';
 import Sheet from '@/components/ui/Sheet';
 import Button from '@/components/ui/Button';
 import { TextField, TextArea } from '@/components/ui/TextField';
 import AxisPicker from './AxisPicker';
+import Recorder from './Recorder';
 
 export type CreateIntent =
   | { type: 'root' }                                                        // top-level FAB
@@ -24,6 +25,7 @@ export default function CreateSheet({
   open,
   intent,
   frames,
+  instanceId,
   onCancel,
   onSubmit,
   onCoinFrame,
@@ -31,19 +33,23 @@ export default function CreateSheet({
   open: boolean;
   intent: CreateIntent | null;
   frames: SynFrame[];
+  instanceId: string;
   onCancel: () => void;
-  onSubmit: (kind: NodeKind, content: { topic?: string; thought?: string; context?: string }, axisFrameIds: string[]) => void;
+  onSubmit: (kind: NodeKind, content: Partial<NodeContent>, axisFrameIds: string[]) => void;
   onCoinFrame: (poleA: string, poleB: string) => Promise<string> | string;
 }) {
   const [kind, setKind] = useState<NodeKind>('thought');
   const [topic, setTopic] = useState('');
   const [thought, setThought] = useState('');
   const [context, setContext] = useState('');
+  const [audio, setAudio] = useState<NodeAudio | null>(null);
+  const [recording, setRecording] = useState(false);
   const [axisFrameIds, setAxisFrameIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!intent) return;
     setTopic(''); setThought(''); setContext(''); setAxisFrameIds([]);
+    setAudio(null); setRecording(false);
     setKind(intent.type === 'marry' ? intent.kind : intent.type === 'child' ? 'thought' : 'thought');
   }, [intent]);
 
@@ -63,7 +69,7 @@ export default function CreateSheet({
 
   function submit() {
     if (!canSubmit) return;
-    onSubmit(kind, { topic: topic.trim(), thought: thought.trim(), context }, axisFrameIds);
+    onSubmit(kind, { topic: topic.trim(), thought: thought.trim(), context, audio }, axisFrameIds);
   }
 
   return (
@@ -114,6 +120,40 @@ export default function CreateSheet({
               rows={3}
               className="mb-4 !text-sm"
             />
+            {/* D20: a voice rides with the thought — staged here, sent with
+                Create, exactly like the typed context beside it. */}
+            <div className="mb-4">
+              {recording ? (
+                <Recorder
+                  instanceId={instanceId}
+                  onDone={a => { setAudio(a); setRecording(false); }}
+                  onCancel={() => setRecording(false)}
+                />
+              ) : audio ? (
+                <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--line-strong)', background: 'var(--dusk-deep)' }}>
+                  <audio controls src={audio.url} className="w-full" />
+                  <div className="mt-2 flex gap-4">
+                    <button type="button" onClick={() => { setAudio(null); setRecording(true); }}
+                      className="text-xs underline underline-offset-4" style={{ color: 'var(--mist-soft)' }}>
+                      Record a different one
+                    </button>
+                    <button type="button" onClick={() => setAudio(null)}
+                      className="text-xs underline underline-offset-4" style={{ color: 'var(--mist-faint)' }}>
+                      Drop it
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setRecording(true)}
+                  className="w-full rounded-xl border px-3 py-2.5 text-sm"
+                  style={{ borderColor: 'var(--line-strong)', color: 'var(--mist-soft)' }}
+                >
+                  ⏺ Add a voice — optional
+                </button>
+              )}
+            </div>
             <AxisPicker
               frames={frames}
               selected={axisFrameIds}

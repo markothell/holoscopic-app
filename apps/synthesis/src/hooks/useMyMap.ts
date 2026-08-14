@@ -267,6 +267,34 @@ export function useMyMap(instanceId: string, userId: string, ownerHandle: string
       .catch(err => console.debug('[synthesis] axes not synced', err));
   }, [instanceId, userId, seedMock, resolveLocalFrame, refreshFrames]);
 
+  // D19: the two correction gestures — MOVE (a new single parent) and UNMARRY
+  // (dropping one parent of a join node) are both this one call; the server
+  // flips edgeKind by arity (utils/synNodes.js#reparent) and this mirrors
+  // that locally so the map answers the gesture without a round trip.
+  const reparentNode = useCallback((nodeId: string, newParentIds: string[]): boolean => {
+    const node = byId.get(nodeId);
+    if (!node) return false;
+    if (wouldCreateCycle(nodeId, newParentIds, nodes)) {
+      setError('That would create a cycle in the map');
+      return false;
+    }
+    const parents = newParentIds.map(id => byId.get(id)).filter((n): n is SynNode => !!n);
+    setNodes(prev => prev.map(n => (n.id === nodeId
+      ? {
+          ...n,
+          parentIds: newParentIds,
+          edgeKind: newParentIds.length === 0 ? 'root' : newParentIds.length === 1 ? 'child' : 'marriage',
+          topicId: deriveTopicId(n.kind, parents),
+          updatedAt: new Date().toISOString(),
+        }
+      : n)));
+    setError(null);
+    SynthesisService.reparent(instanceId, nodeId, newParentIds, userId)
+      .then(({ node: serverNode }) => setNodes(prev => prev.map(n => (n.id === nodeId ? { ...serverNode } : n))))
+      .catch(err => console.debug('[synthesis] reparent not synced', err));
+    return true;
+  }, [byId, nodes, instanceId, userId]);
+
   const setPublished = useCallback((nodeId: string, published: boolean) => {
     setNodes(prev => prev.map(n => (n.id === nodeId
       ? { ...n, visibility: published ? 'published' : 'private', publishedAt: published ? new Date().toISOString() : null }
@@ -275,5 +303,5 @@ export function useMyMap(instanceId: string, userId: string, ownerHandle: string
     call(instanceId, nodeId, userId).catch(err => console.debug('[synthesis] publish state not synced', err));
   }, [instanceId, userId]);
 
-  return { nodes, byId, error, clearError: () => setError(null), addRoot, addChild, marry, editNode, setAxes, setPublished, mergeNode };
+  return { nodes, byId, error, clearError: () => setError(null), addRoot, addChild, marry, editNode, setAxes, setPublished, mergeNode, reparentNode };
 }
