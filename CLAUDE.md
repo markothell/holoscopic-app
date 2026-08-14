@@ -1,6 +1,7 @@
 # Holoscopic Monorepo (GitHub: markothell/holoscopic-app)
 
 `main` is the production branch: pushing it deploys the backend (Render) and the frontends (Vercel). The games (newest first, as on the holoscopic.io homepage):
+- **Toyrok** — `apps/toyrok`, **the first product** (PLATFORM.md P18): circles as the central social unit, ships to toyrok.com; holoscopic.io stays the lab. Scaffold so far — sign in → my circles → the circle home map — reading the Circle machine via `/api/threshold`. **No surface mentions Holoscopic**; accounts are the shared `User` collection presented as Toyrok's own. See `apps/toyrok/CLAUDE.md` + `DESIGN.md` (the Toono visual language).
 - **Threshold** — `apps/threshold`, where a group's dividing line falls on a polarity (backend surface: `apps/backend/routes/threshold.js` + `utils/threshold.js`, on the generic `Circle` layer; see `apps/threshold/CLAUDE.md`). Built through M4 — backend, every participant surface in the tide-line language, audio, and round-transition mail; **M6, the launch pass, is what remains**. Live at threshold.holoscopic.io, on the production backend, since 2026-08-10: its instance is slugged **`circlemo`**, not `threshold`, and the deployed frontend sends that as `x-instance-id`. The only app whose rounds advance on a **background tick** rather than sweep-on-read — nobody has the page open, so a phase transition is what sends the mail that brings people back.
 - **Chorus** — `apps/chorus`, memories about one person, collected from anyone with the link (backend surface: `apps/backend/routes/memorial.js`; see `apps/chorus/CLAUDE.md`). In development; ships to chorus.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover. **The only app with no accounts, no holon economy, and a route mounted without `enforceVerifiedUser`** — all three are deliberate, see its `PLAN.md` §10. One deployment serves every memorial: a memorial is `/c/<slug>`, and creating one is a row in the platform admin, not a deploy.
 - **Synthesis** — `apps/synthesis`, a networked pseudonymous group blog (backend surface: `apps/backend/routes/synthesis.js`; see `apps/synthesis/CLAUDE.md`). In development on branch `unison-m0-m1-loop` (branch predates the rename); ships to synthesis.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover.
@@ -8,7 +9,7 @@
 - **interView** — `apps/holoscopic-game`, the production game app at holoscopic.io
 - **Map + Sequence** — the original create-panel + sequence-builder tools inside `apps/holoscopic-game` (`/create`, `/create/sequences`), presented as the first game behind `/map-sequence`
 
-Local dev ports: spectrum 4000, backend 4001, platform 4002, game 4003, synthesis 4004, chorus 4005, threshold 4006.
+Local dev ports: spectrum 4000, backend 4001, platform 4002, game 4003, synthesis 4004, chorus 4005, threshold 4006, toyrok 4007.
 
 Holoscopic is a collective-sensemaking platform where groups map their perspectives on a 2D grid, leave comments, and vote on each other's views. It is multi-tenant: one backend serves multiple isolated deployments ("instances"), each with its own holon economy, quorum rules, and data scope.
 

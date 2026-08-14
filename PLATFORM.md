@@ -207,6 +207,35 @@ P-numbered; per-app decisions (Threshold's D1–D20 etc.) stay in their own plan
     gets a quiet return line pointing at the invitation — touch an instrument, then take a seat.
     Not yet built on the app side.
 
+- **P18 — Toyrok is the first product; Holoscopic is the lab** (MO, 2026-08-14). The platform's
+  consumer face is **toyrok.com** — Toyrok, from Mongolian *тойрог* (toirog), "circle"; the verb
+  sense is *to encircle*. Tagline: **thinking tools for community**. holoscopic.io stays the lab —
+  experiments, lab notes, the manifesto — and primitives graduate from lab to product. Five
+  consequences:
+  - **Toyrok is M6's host app, born with a brand** instead of as a generic "play" app: one
+    Next.js shell on its own domain, activities mounted inside as packages (Tier B), the
+    invariant (§2) holding from day one.
+  - **v1 scope:** sign in → my circles → the **circle home** (the map built 2026-08-14 on
+    Threshold's circle page is the prototype: members on a ring, shared explorations sized by
+    participation, solo spurs) → **Threshold and Synthesis** as the first two activities inside,
+    rebuilt in Toyrok's visual language. Synthesis picks up two feature updates on the way in:
+    audio, and editable edges.
+  - **A separate apex breaks the P2 cookie for this app, and that is accepted.** Same backend,
+    same global `User` collection — the same email/password works — but Toyrok runs its own
+    NextAuth session. No cross-domain SSO claim between toyrok.com and holoscopic.io.
+  - **The circle home map generalizes on the module seam.** Participation moves off direct
+    `ThresholdShare` reads to a per-activity read hook, so the map never knows what a "share"
+    is. The map is the Circle layer's consumer #2 — the trigger M8 was waiting on for promoting
+    generic circle operations to `/api/circles`.
+  - **The visual language is designed first**, in its own design conversation (the Q5 rule),
+    before app code. *Held 2026-08-14; MO chose **Toono*** — the ger's crown ring: felt grounds,
+    larch ink, sky-blue reserved for what is live, ochre for solo work, a warm round serif for
+    display. The direction board (three directions, each skinned onto the circle-home map) is the
+    session's artifact; the token spec lives in `apps/toyrok/DESIGN.md`.
+  - **Accounts read as Toyrok's own** (MO, 2026-08-14): no Holoscopic mention on any Toyrok
+    surface. Production users carry over by construction — same backend, same global `users`
+    collection — so "porting" is CORS + the shared secret at deploy, not a migration.
+
 ## §5 Current state worth knowing (from the 2026-08 audit)
 
 What makes this cheap:
@@ -392,6 +421,9 @@ closed, a session forms, mails its rounds, reveals its threshold, and the promis
 Verified by watching an inbox.
 
 ### M6 — The host app and the manifest (Tier B is born)
+
+*2026-08-14: the host app has a name and a domain — **Toyrok**, toyrok.com (P18). Its v1 is the
+circle home plus Threshold and Synthesis as the first two packaged activities.*
 
 One new "play" app (route-per-activity, thin router; each activity a workspace package = one
 agent's territory) and the `ActivityManifest` (P7) read by homepage, dashboard, admin, and the
