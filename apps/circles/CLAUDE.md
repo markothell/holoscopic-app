@@ -35,8 +35,14 @@ second consumer): the one-call snapshot, my-circles and join are activity-agnost
 per-activity content comes from two module hooks — `snapshotExtras` (shares/myRanking/waiting,
 redacted by the activity) and `participation` (the map's rows). Both front doors serve the
 identical payload from `circles.snapshot`, verified in a browser on both apps. Activity verbs
-(telling, sorting, the reveal) stay on `/api/threshold`. Still to come per P18: Synthesis
-inside (with audio and editable edges) and the shared player.
+(telling, sorting, the reveal) stay on `/api/threshold`. **The Synthesis bridge is in** (synthesis D17): the circle home carries a Syntheses band —
+any member names a session to begin it; the session is an idea stamped with the circle's id,
+its membership mirrored from the circle (idempotent, healed on every read — a week-six joiner
+is simply in), so it appears in every member's synthesis ideas list with no join and no code.
+Sessions ride the circle map's standing grammar: contributors are tellers, one reads as a solo
+spur, more pull it inward. Bridge routes live on /api/synthesis (addressed by circle id);
+`NEXT_PUBLIC_SYNTHESIS_URL` is where session links point (default localhost:4004). Still to
+come per P18: the shared player, and eventually the synthesis surfaces moving in as a package.
 
 ## Architecture
 

@@ -3,8 +3,8 @@
 import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { circlesApi, ApiError } from '@/services/api';
-import type { Circle } from '@/lib/types';
+import { circlesApi, synthesisApi, ApiError, SYNTHESIS_URL } from '@/services/api';
+import type { Circle, SynthesisSession } from '@/lib/types';
 import { Page, Band, Card, Action, Muted } from '@/components/Shell';
 import { CircleMap } from '@/components/CircleMap';
 
@@ -24,6 +24,7 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
 
   const [circle, setCircle] = useState<Circle | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<SynthesisSession[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -42,6 +43,18 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, [status, load]);
+
+  // The circle's synthesis sessions (synthesis D17) — fetched beside the
+  // snapshot, drawn on the map, listed in their own band. Members only; the
+  // route 404s anyone else.
+  useEffect(() => {
+    if (!userId || !circle?.isMember) return;
+    let cancelled = false;
+    synthesisApi.sessions(circle.id, userId)
+      .then(({ sessions }) => { if (!cancelled) setSessions(sessions); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [userId, circle?.id, circle?.isMember]);
 
   if (status === 'loading') return <Page><Muted>…</Muted></Page>;
 
@@ -83,7 +96,7 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
       {error && circle && <p className="mb-4 text-sm text-ochre">{error}</p>}
 
       {circle.isMember && circle.participation ? (
-        <CircleMap circle={circle} userId={userId} />
+        <CircleMap circle={circle} userId={userId} sessions={sessions} />
       ) : (
         <JoinCard circle={circle} userId={userId} onJoined={load} />
       )}
@@ -159,7 +172,96 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
           </ul>
         </section>
       )}
+      {circle.isMember && (
+        <SynthesesBand
+          circle={circle}
+          userId={userId}
+          sessions={sessions}
+          onCreated={s => setSessions(prev => [s, ...prev])}
+        />
+      )}
     </Page>
+  );
+}
+
+/**
+ * The circle's synthesis sessions (synthesis D17): as many as the group
+ * wants, each an ongoing mapping every member is already in — membership
+ * mirrors the circle, so opening one needs no join and no code. The map above
+ * draws each session by its participation; this band is where they are named,
+ * started and entered.
+ */
+function SynthesesBand({ circle, userId, sessions, onCreated }: {
+  circle: Circle;
+  userId: string;
+  sessions: SynthesisSession[];
+  onCreated: (s: SynthesisSession) => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const create = async () => {
+    if (!title.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { session } = await synthesisApi.createSession(circle.id, title.trim(), userId);
+      setTitle('');
+      onCreated(session);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'That did not work');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="mt-10">
+      <Band>Syntheses</Band>
+      {sessions.length === 0 && (
+        <Muted>
+          A synthesis is an ongoing mapping the whole circle is in — everyone grows their own
+          thought map, and what people respond to weaves together. Name one to begin.
+        </Muted>
+      )}
+      {sessions.length > 0 && (
+        <ul className="space-y-3">
+          {sessions.map(s => (
+            <li key={s.id}>
+              <a
+                href={SYNTHESIS_URL}
+                className="-mx-3 block rounded-lg px-3 py-2 transition-colors hover:bg-ground-deep"
+              >
+                <span className="font-[family-name:var(--font-display)] text-lg">{s.title}</span>
+                <span className="mt-0.5 block text-xs text-ink-faint">
+                  {s.contributorCount === 0
+                    ? 'waiting for its first thought'
+                    : `${s.contributorCount} of ${circle.memberCount} mapping`}
+                  {s.synthesisReached && ' · reached synthesis'}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form
+        onSubmit={e => { e.preventDefault(); void create(); }}
+        className="mt-4 flex max-w-md gap-2"
+      >
+        <input
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Name a synthesis to begin"
+          maxLength={80}
+          className="min-w-0 flex-1 rounded-lg border border-[var(--rule)] bg-card p-2.5 text-sm outline-none focus:border-[var(--rule-strong)]"
+        />
+        <Action type="submit" disabled={busy || !title.trim()}>
+          {busy ? 'Beginning…' : 'Begin'}
+        </Action>
+      </form>
+      {error && <p className="mt-2 text-sm text-pole-b">{error}</p>}
+    </section>
   );
 }
 

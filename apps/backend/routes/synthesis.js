@@ -209,6 +209,63 @@ router.post('/ideas', requireEmailVerified, async (req, res) => {
   }
 });
 
+// ── The circle bridge (synthesis D17) ───────────────────────────────────────
+//
+// A circle owns synthesis sessions: an idea stamped with the circle's id,
+// membership mirrored from the circle's members (no separate join — the
+// session appears in every member's ideas list by itself). Addressed by
+// CIRCLE id like /ideas is by code — the resolved x-instance-id is not the
+// authority here, membership in the named circle is, and the Circle model is
+// this file's one deliberate reach across the activity boundary: it IS the
+// bridge point.
+
+const Circle = require('../models/Circle');
+const circleSessions = require('../utils/circleSessions');
+
+async function loadCircleForMember(req, res, userId) {
+  const circle = await Circle.findOne({ id: req.params.circleId });
+  if (!circle || !circle.members.some(m => m.userId === userId)) {
+    // 404 for absent and non-member alike — the circle rule (threshold D20).
+    res.status(404).json({ error: 'Circle not found' });
+    return null;
+  }
+  return circle;
+}
+
+router.get('/circles/:circleId/sessions', async (req, res) => {
+  try {
+    const userId = await requireUser(req, res);
+    if (!userId) return;
+    const circle = await loadCircleForMember(req, res, userId);
+    if (!circle) return;
+    res.json({ sessions: await circleSessions.listSessions({ circle, viewerId: userId }) });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
+router.post('/circles/:circleId/sessions', requireEmailVerified, async (req, res) => {
+  try {
+    const userId = await requireUser(req, res);
+    if (!userId) return;
+    const circle = await loadCircleForMember(req, res, userId);
+    if (!circle) return;
+    const { instance, membership } = await circleSessions.createSession({
+      circle, userId, title: req.body.title,
+    });
+    // The creator's map opens on the idea, like every idea create/join.
+    await nodeFunnel.seedHomeHub({
+      instanceId: instance.id,
+      ownerId: userId,
+      ownerHandle: membership.handle,
+      title: instance.name,
+    });
+    res.status(201).json({ session: ideaFunnel.toClientIdea(instance) });
+  } catch (error) {
+    fail(res, error);
+  }
+});
+
 // Join an existing idea by its shareable code. The ≤50-collaborator gate and
 // per-idea handle uniqueness are enforced in utils/synIdeas.js. Joining seeds
 // the same home hub, so a new collaborator's map opens on the idea rather

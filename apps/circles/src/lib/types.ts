@@ -239,3 +239,21 @@ export interface ThresholdNotification {
   /** Null if the circle has since been removed. */
   circle: { id: string; title: string; urlName: string } | null;
 }
+
+/**
+ * A synthesis session the circle owns (synthesis D17) — an idea whose
+ * membership mirrors the circle's. Mirrors the rows
+ * apps/backend/utils/circleSessions.js#listSessions serves. Contributors are
+ * circle members who published or replied — synthesis is attributed by
+ * design, so this roster is not a redaction concern.
+ */
+export interface SynthesisSession {
+  id: string;
+  title: string;
+  code: string;
+  contributorIds: string[];
+  contributorCount: number;
+  iContribute: boolean;
+  synthesisReached: boolean;
+  createdAt: string;
+}

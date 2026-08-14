@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { Circle, Member, Seed, SeedParticipation } from '@/lib/types';
+import type { Circle, Member, Seed, SeedParticipation, SynthesisSession } from '@/lib/types';
+import { SYNTHESIS_URL } from '@/services/api';
 
 // The circle home map: the circle drawn as a circle — the product's hero surface,
 // in the Toono skin. Members sit on a ring, all equal, all facing a common
@@ -180,14 +181,47 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function CircleMap({ circle, userId }: { circle: Circle; userId: string | null }) {
+export function CircleMap({ circle, userId, sessions }: {
+  circle: Circle;
+  userId: string | null;
+  sessions?: SynthesisSession[];
+}) {
   const { members, seeds, participation, liveSeedId } = circle;
   const base = `/c/${circle.urlName}`;
 
+  // Synthesis sessions ride the same layout as topics (synthesis D17): a
+  // session is an exploration, its contributors are its tellers, and the
+  // standing grammar does the rest — one contributor reads as their solo
+  // spur, more pull it into the middle, sized by how much of the circle is
+  // in. An untouched session has nothing explored yet and stays off the map;
+  // the band under the map still lists it. Seed ids are 8 hex chars, so the
+  // syn- prefix cannot collide.
+  const merged = useMemo(() => {
+    const sessionSeeds: Seed[] = (sessions ?? []).map(s => ({
+      id: `syn-${s.id}`, authorId: '', order: 0,
+      payload: { topic: s.title, poleA: '', poleB: '', secondsPerNote: 0 },
+      phase: 'revealed' as const, supporterCount: 0, iSupport: false,
+      promotedAt: null, openedAt: null, phaseDeadline: null, revealedAt: null, result: null,
+    }));
+    const sessionParts: SeedParticipation[] = (sessions ?? []).map(s => ({
+      seedId: `syn-${s.id}`,
+      tellerIds: s.contributorIds,
+      tellerCount: s.contributorCount,
+      iTold: s.iContribute,
+    }));
+    return {
+      seeds: [...seeds, ...sessionSeeds],
+      participation: [...(participation ?? []), ...sessionParts],
+    };
+  }, [seeds, participation, sessions]);
+
   const geo = useMemo(
-    () => layout(members, seeds, participation ?? [], liveSeedId, userId),
-    [members, seeds, participation, liveSeedId, userId],
+    () => layout(members, merged.seeds, merged.participation, liveSeedId, userId),
+    [members, merged, liveSeedId, userId],
   );
+
+  const isSession = (seed: Seed) => seed.id.startsWith('syn-');
+  const hrefFor = (seed: Seed) => (isSession(seed) ? SYNTHESIS_URL : `${base}/topic/${seed.id}`);
 
   if (members.length === 0) return null;
 
@@ -249,10 +283,10 @@ export function CircleMap({ circle, userId }: { circle: Circle; userId: string |
         {geo.spurs.map(spur => (
           <a
             key={spur.seed.id}
-            href={`${base}/topic/${spur.seed.id}`}
+            href={hrefFor(spur.seed)}
             aria-label={`${spur.seed.payload.topic} — explored alone`}
           >
-            <title>{spur.seed.payload.topic}</title>
+            <title>{spur.seed.payload.topic}{isSession(spur.seed) ? ' · synthesis' : ''}</title>
             <line
               className="cm-fade cm-hit"
               x1={spur.x1} y1={spur.y1} x2={spur.x2} y2={spur.y2}
@@ -270,7 +304,7 @@ export function CircleMap({ circle, userId }: { circle: Circle; userId: string |
         {geo.nodes.map(node => (
           <a
             key={node.seed.id}
-            href={`${base}/topic/${node.seed.id}`}
+            href={hrefFor(node.seed)}
             aria-label={
               node.live
                 ? `${node.seed.payload.topic} — running now`
@@ -279,6 +313,7 @@ export function CircleMap({ circle, userId }: { circle: Circle; userId: string |
           >
             <title>
               {node.seed.payload.topic}
+              {isSession(node.seed) ? ' · synthesis' : ''}
               {node.live ? ' · running now' : node.count != null ? ` · ${node.count} of ${members.length}` : ''}
             </title>
             {node.live && (

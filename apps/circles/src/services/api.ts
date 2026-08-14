@@ -13,7 +13,7 @@
 // stay on /api/threshold: they are Threshold's, and each future activity
 // brings its own.
 
-import type { Circle, MyRanking, Placement, Pole, Seed, SeedResult, Share } from '@/lib/types';
+import type { Circle, MyRanking, Placement, Pole, Seed, SeedResult, Share, SynthesisSession } from '@/lib/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 
@@ -210,3 +210,22 @@ export async function uploadRecording(
 
   return { url: result.url, pathname: result.pathname };
 }
+
+// Where the synthesis surfaces live until they move into this app (P18's
+// Tier-B port). A session appears in a member's ideas list there by itself —
+// membership is mirrored from the circle, so the link needs no code.
+export const SYNTHESIS_URL = process.env.NEXT_PUBLIC_SYNTHESIS_URL || 'http://localhost:4004';
+
+/** The circle's synthesis sessions (synthesis D17) — the bridge rides the
+ *  synthesis router, addressed by circle id; membership in the circle is the
+ *  gate, checked there. */
+export const synthesisApi = {
+  sessions(circleId: string, userId: string) {
+    return apiFetch<{ sessions: SynthesisSession[] }>(`/synthesis/circles/${circleId}/sessions`, { userId });
+  },
+  createSession(circleId: string, title: string, userId: string) {
+    return apiFetch<{ session: SynthesisSession }>(`/synthesis/circles/${circleId}/sessions`, {
+      method: 'POST', body: { title }, userId,
+    });
+  },
+};

@@ -105,6 +105,12 @@ const instanceConfigSchema = new mongoose.Schema({
     // account may join it; a private one is reachable by invite code alone.
     // The MEMBER_CAP applies either way.
     visibility: { type: String, enum: ['public', 'private'], default: 'private' },
+    // Synthesis D17: the circle that owns this idea as one of its sessions —
+    // stamped by utils/circleSessions.js, which then mirrors the circle's
+    // membership in. Null for a free-standing idea. Deliberately unindexed:
+    // the instances collection is tens of rows, and the query that reads it
+    // (listCircleSessionInstances) scans within that.
+    circleId: { type: String, default: null },
     // D12. The share of collaborators that must vote for one statement before
     // the group has reached Synthesis. Per-idea so it can be tuned without a
     // migration; ⅔ is the default bar.
