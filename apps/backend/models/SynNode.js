@@ -28,6 +28,19 @@ const mongoose = require('mongoose');
 // utils/synNodes.js (the single write funnel), never client-side.
 //
 // Scoped to the community Instance like every other multi-tenant document.
+// Mirrors ThresholdShare's audioSchema exactly — one wire shape for every
+// recording on the platform. The client times durationMs (iOS MP4 carries no
+// duration metadata); pathname is stored, never derived, so a blob-store
+// restore can rewrite urls.
+const audioSchema = new mongoose.Schema({
+  url:         { type: String, required: true },
+  pathname:    { type: String, default: '' },
+  contentType: { type: String, default: '' },
+  durationMs:  { type: Number, default: 0 },
+  peaks:       { type: [Number], default: () => [] },
+  sizeBytes:   { type: Number, default: 0 },
+}, { _id: false, id: false });
+
 const contentSchema = {
   // Hub label — meaningful when kind === 'topic'.
   topic:   { type: String, trim: true, maxlength: 120, default: '' },
@@ -36,6 +49,12 @@ const contentSchema = {
   // Prose context with internal/external link markup — the click-to-reveal
   // pair for a thought. Meaningful when kind === 'thought'.
   context: { type: String, default: '' },
+  // A voice on the thought (D20) — recorded as/with its context, played from
+  // the thought popup. Mirrors ThresholdShare.audio / Memory.body.audio so
+  // packages/audio serves all three without a second wire shape. Null means
+  // typed-only. Validated by utils/audioPayload.js#normalizeAudio in the
+  // funnel — the host allowlist is a security control, never client-side.
+  audio: { type: audioSchema, default: null },
 };
 
 const synthesisNodeSchema = new mongoose.Schema({

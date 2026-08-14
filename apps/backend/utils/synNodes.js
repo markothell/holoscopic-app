@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const SynNode = require('../models/SynNode');
 const SynFrame = require('../models/SynFrame');
 const entriesUtil = require('./entries');
+const { normalizeAudio } = require('./audioPayload');
 
 // The single write funnel for Synthesis content, mirroring utils/entries.js and
 // utils/oasGames.js: REST routes and sockets (M1+) are thin wrappers over these
@@ -113,6 +114,7 @@ function toClient(node) {
       topic: (node.content && node.content.topic) || '',
       thought: (node.content && node.content.thought) || '',
       context: (node.content && node.content.context) || '',
+      audio: (node.content && node.content.audio) || null,
     },
     axisFrameIds: [...(node.axisFrameIds || [])],
     topicId: node.topicId || null,
@@ -187,12 +189,17 @@ function deriveTopicId(kind, parentDocs) {
 
 function normContent(kind, content = {}) {
   if (kind === 'topic') {
-    return { topic: String(content.topic || '').trim(), thought: '', context: '' };
+    return { topic: String(content.topic || '').trim(), thought: '', context: '', audio: null };
   }
   return {
     topic: '',
     thought: String(content.thought || '').trim(),
     context: String(content.context || ''),
+    // A voice on the thought (D20). The allowlist gate lives in
+    // utils/audioPayload.js and throws on a url from anywhere but our blob
+    // host — an unchecked url here is stored content-injection on a page
+    // other members load.
+    audio: content.audio ? normalizeAudio(content.audio) : null,
   };
 }
 
@@ -360,6 +367,8 @@ async function editContent({ store = mongoStore, nodeId, content = {} }) {
     topic: content.topic !== undefined ? content.topic : node.content.topic,
     thought: content.thought !== undefined ? content.thought : node.content.thought,
     context: content.context !== undefined ? content.context : node.content.context,
+    // Absent = keep, null = remove the recording, object = replace (D20).
+    audio: content.audio !== undefined ? content.audio : node.content.audio,
   };
   node.content = normContent(node.kind, merged);
   promoteIfBorrowed(node);

@@ -348,39 +348,11 @@ async function writeShare({ store, circle, seedId, userId, username, story }) {
   return share;
 }
 
-/**
- * The blob host allowlist. An unchecked audio URL is stored content-injection
- * on a page other people load — same control as utils/memories.js, and a
- * SUFFIX match so a new store id needs no backend change.
- */
-function normalizeAudio(audio) {
-  const url = String(audio.url || '').trim();
-  if (!url) throw new Error('Audio needs a url');
-
-  const suffix = process.env.BLOB_HOST_SUFFIX || '.public.blob.vercel-storage.com';
-  let host;
-  let urlPath = '';
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'https:') throw new Error('bad protocol');
-    host = parsed.hostname;
-    urlPath = parsed.pathname.replace(/^\/+/, '');
-  } catch {
-    throw new Error('That audio url is not valid');
-  }
-  if (!host.endsWith(suffix)) throw new Error('That audio url is not an allowed host');
-
-  return {
-    url,
-    // Stored, not derived at restore time — the store id lives in the hostname,
-    // so a restore into a new store needs the key independently of the url.
-    pathname: String(audio.pathname || urlPath),
-    contentType: String(audio.contentType || ''),
-    durationMs: Number(audio.durationMs) || 0,
-    peaks: Array.isArray(audio.peaks) ? audio.peaks.slice(0, 200).map(Number) : [],
-    sizeBytes: Number(audio.sizeBytes) || 0,
-  };
-}
+// The blob host allowlist — an unchecked audio URL is stored content-injection
+// on a page other people load. Moved to utils/audioPayload.js when Synthesis
+// became the second writer (synthesis D20): a security control lives once.
+// Re-exported below so this module's surface is unchanged.
+const { normalizeAudio } = require('./audioPayload');
 
 /** Withdraw one of your stories, for as long as you could have told it. */
 async function deleteShare({ store = mongoStore, circleId, seedId, userId, pole }) {

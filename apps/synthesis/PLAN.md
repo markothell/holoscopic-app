@@ -487,6 +487,28 @@ platform 4002 · game 4003 · synthesis 4004).
 - **D16 — A married node is a "join node."** Renamed from "synthesis node"
   (token `--synthesis` → `--join`, same teal) so the word Synthesis means the
   state a group reaches and nothing else. Set-theory adjacent, beside ∪.
+- **D17 — Circles own synthesis activities** (MO, 2026-08-14, in the Holoscopic
+  product session — see PLATFORM.md P18). A circle may run **as many synthesis
+  sessions as it wants**; each is an idea whose membership mirrors the
+  circle's, with no separate join. On the circle-home map every session reads
+  in the standing grammar: one member mapping alone is their solo spur, and
+  engagement (responses, borrows) is what pulls a session into the middle as a
+  shared exploration. The child-instance tenancy stays as a hidden
+  implementation detail behind the mirror.
+- **D18 — Any participant's map is visitable** (MO, same day). Inside a
+  synthesis activity, clicking a member's name opens *their* map — a new
+  read-only surface rendering only their **published** subgraph, in their
+  layout. The privacy contract is unchanged: drafts stay invisible on every
+  read path, and attribution is by handle as always (D3).
+- **D19 — Edges are correctable, not freeform** (MO, same day). Two gestures:
+  **reparent** (the funnel already guards it) and **unmarry** — dropping one
+  parent from a join node so it continues as an ordinary child of the other.
+  No arbitrary edge editor: multi-parent stays the ceremony marriage is, and
+  the map's one-device-per-fact vocabulary holds.
+- **D20 — A thought can carry a voice** (MO, same day). Audio attaches to a
+  thought as/with its context — recorded with the platform recorder
+  (`@hs/audio`), played from the thought popup. One attach point; replies stay
+  text.
 
 **The idea, concretely.** An idea is defined by its thought space rather than by
 its membership: it has a **title**, which is seeded as the `isHome` topic hub at
