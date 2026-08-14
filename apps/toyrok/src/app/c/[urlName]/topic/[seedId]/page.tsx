@@ -4,10 +4,11 @@ import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { toyrokApi, ApiError } from '@/services/api';
-import type { Circle, Placement, Pole, Seed, SeedResult, Share, ShareResult } from '@/lib/types';
+import type { Circle, Placement, Pole, Seed, SeedResult, Share, ShareAudio, ShareResult } from '@/lib/types';
 import { Page, Band, Card, Action, Quiet, Muted } from '@/components/Shell';
 import { Polarity } from '@/components/Polarity';
 import { storyPreview, StoryText, StoryAudio } from '@/components/Story';
+import Recorder from '@/components/Recorder';
 
 // One exploration, phase-routed: telling, sorting, or the reveal — whatever
 // the topic is actually doing when you arrive. The map and the running-now
@@ -112,6 +113,9 @@ export default function TopicPage({ params }: { params: Promise<{ urlName: strin
 // button sends everything in a single write (D36) — two writes would let the
 // first end the round and the second be refused. One story per pole (D10).
 
+/** A story told but not yet sent. */
+type Staged = { text: string; audio: ShareAudio | null };
+
 function Tell({ circle, seed, userId, header, base, onDone, pageError }: {
   circle: Circle; seed: Seed; userId: string;
   header: React.ReactNode; base: string;
@@ -120,26 +124,37 @@ function Tell({ circle, seed, userId, header, base, onDone, pageError }: {
   const router = useRouter();
   const [composing, setComposing] = useState<Pole | null>(null);
   const [text, setText] = useState('');
-  const [staged, setStaged] = useState<Partial<Record<Pole, string>>>({});
+  const [audio, setAudio] = useState<ShareAudio | null>(null);
+  const [recordingUi, setRecordingUi] = useState(false);
+  const [staged, setStaged] = useState<Partial<Record<Pole, Staged>>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(pageError);
 
   const mine = (circle.shares ?? []).filter(s => s.isMine);
   const sent = (pole: Pole) => mine.find(s => s.pole === pole) ?? null;
   const label = (pole: Pole) => (pole === 'A' ? seed.payload.poleA : seed.payload.poleB);
-  const pending = (['A', 'B'] as Pole[]).filter(p => staged[p] !== undefined);
+  const pending = (['A', 'B'] as Pole[]).filter(p => staged[p]);
 
   const open = (pole: Pole) => {
     setComposing(pole);
-    setText(staged[pole] ?? sent(pole)?.text ?? '');
+    setText(staged[pole]?.text ?? sent(pole)?.text ?? '');
+    setAudio(staged[pole]?.audio ?? null);
+    setRecordingUi(false);
     setError(null);
   };
 
-  const keep = () => {
-    if (!composing || !text.trim()) return;
-    setStaged(prev => ({ ...prev, [composing]: text.trim() }));
+  // Held, not sent — so this cannot end the round. `withAudio` is what the
+  // recorder hands back: finishing a take IS telling that story, and anything
+  // already typed rides along.
+  const keep = (withAudio?: ShareAudio) => {
+    if (!composing) return;
+    const a = withAudio ?? audio;
+    if (!text.trim() && !a) return;
+    setStaged(prev => ({ ...prev, [composing]: { text: text.trim(), audio: a } }));
     setComposing(null);
     setText('');
+    setAudio(null);
+    setRecordingUi(false);
   };
 
   const send = async () => {
@@ -148,7 +163,11 @@ function Tell({ circle, seed, userId, header, base, onDone, pageError }: {
     try {
       await toyrokApi.submitShares(
         seed.id,
-        pending.map(pole => ({ pole, text: staged[pole]! })),
+        pending.map(pole => ({
+          pole,
+          text: staged[pole]!.text,
+          audio: staged[pole]!.audio ?? undefined,
+        })),
         userId,
       );
       setStaged({});
@@ -186,6 +205,37 @@ function Tell({ circle, seed, userId, header, base, onDone, pageError }: {
         {error && <p className="mb-6 text-sm text-pole-b">{error}</p>}
         <Card>
           <Band>A time it was {label(composing)}</Band>
+
+          {recordingUi ? (
+            <Recorder
+              seedId={seed.id}
+              maxSeconds={seed.payload.secondsPerNote}
+              doneLabel="That’s it"
+              onDone={a => keep(a)}
+              onCancel={() => setRecordingUi(false)}
+            />
+          ) : audio ? (
+            <div className="rounded-xl border border-[var(--rule)] p-4 text-center">
+              <p className="text-sm text-ink-soft">Your recording is ready to send.</p>
+              <audio controls src={audio.url} className="mt-3 w-full" />
+              <button
+                type="button"
+                onClick={() => { setAudio(null); setRecordingUi(true); }}
+                className="mt-3 cursor-pointer text-sm text-ink-soft underline decoration-[var(--rule-strong)] underline-offset-4 hover:text-ink"
+              >
+                Record a different one
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setRecordingUi(true)}
+              className="mb-3 w-full cursor-pointer rounded-xl border border-[var(--rule-strong)] px-4 py-3 text-[15px] text-ink-soft transition-colors hover:border-ink hover:text-ink"
+            >
+              Record it instead
+            </button>
+          )}
+
           <textarea
             autoFocus
             value={text}
@@ -193,17 +243,22 @@ function Tell({ circle, seed, userId, header, base, onDone, pageError }: {
             maxLength={2000}
             rows={8}
             placeholder="What happened?"
-            className="w-full resize-none rounded-lg border border-[var(--rule)] bg-ground/50 p-3 text-[15px] leading-relaxed outline-none focus:border-[var(--rule-strong)]"
+            className="mt-3 w-full resize-none rounded-lg border border-[var(--rule)] bg-ground/50 p-3 text-[15px] leading-relaxed outline-none focus:border-[var(--rule-strong)]"
           />
           {/* Said BEFORE anything is written: the payload withholds names while
-              the group sorts and hands them back at the reveal (D9/D17). */}
+              the group sorts and hands them back at the reveal (D9/D17). The
+              voice caveat is the honest thing said before the take is sent —
+              the payload strips names; a voice in a group this size does not. */}
           <p className="mt-3 text-xs leading-relaxed text-ink-faint">
             While the group sorts these, they appear with no name on them. Once the topic reveals,
             everyone can see who told which.
+            {(recordingUi || audio) && ' A recording carries your voice, though — in a group this size, people who know you will know you.'}
           </p>
           <div className="mt-4 flex items-center gap-4">
-            <Action disabled={busy || !text.trim()} onClick={keep}>That&rsquo;s it</Action>
-            <Quiet onClick={() => { setComposing(null); setText(''); }}>Leave it</Quiet>
+            <Action disabled={busy || (!text.trim() && !audio)} onClick={() => keep()}>
+              That&rsquo;s it
+            </Action>
+            <Quiet onClick={() => { setComposing(null); setText(''); setAudio(null); }}>Leave it</Quiet>
           </div>
         </Card>
       </Page>
@@ -226,8 +281,12 @@ function Tell({ circle, seed, userId, header, base, onDone, pageError }: {
           const wash = pole === 'A' ? 'var(--pole-a-soft)' : 'var(--pole-b-soft)';
           const held = staged[pole];
           const already = sent(pole);
-          const told = held !== undefined ? held : already?.text;
-          if (told !== undefined) {
+          if (held || already) {
+            // A recording has no text to show, so the card says what it holds
+            // rather than rendering an empty line.
+            const preview = held
+              ? (held.text || (held.audio ? 'A recording, ready to share.' : ''))
+              : (already!.text || 'A recording.');
             return (
               <div key={pole} className="relative rounded-xl p-4" style={{ background: wash }}>
                 <button
@@ -241,11 +300,9 @@ function Tell({ circle, seed, userId, header, base, onDone, pageError }: {
                   ×
                 </button>
                 <p className="pr-8 text-[13px] font-medium" style={{ color: tint }}>{label(pole)}</p>
-                <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-ink">
-                  {told || (already?.audio ? 'A recording.' : '')}
-                </p>
+                <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-ink">{preview}</p>
                 <p className="mt-2 text-xs" style={{ color: tint }}>
-                  {held !== undefined ? 'Told — sends when you share' : 'With the circle'}
+                  {held ? 'Told — sends when you share' : 'With the circle'}
                 </p>
                 <div className="mt-3"><Quiet onClick={() => open(pole)}>Change it</Quiet></div>
               </div>

@@ -17,9 +17,14 @@ map is the hero surface) → `/c/[urlName]/topic/[seedId]`, **one phase-routed s
 the whole loop**: telling (typed-first; staged both poles, one write — threshold D36), sorting
 (queue then review, drafts as you go, complete-or-nothing submit — D21/D11), and the reveal
 (reader's cutoff, three bands, attribution — D23/D24). Verified in a browser against dev: a
-story written, a ranking submitted, a reveal read. Audio **playback** works (native `<audio>`;
-circles carry recordings from their Threshold life); **recording** waits on the `@hs/audio`
-port. Still to come per P18: Synthesis inside (with audio and editable edges), the shared
+story written, a ranking submitted, a reveal read. **Recording is in** (`@hs/audio` +
+`components/Recorder.tsx` + the Blob client-token route at `/api/audio/upload`): a fake-mic
+take was recorded, uploaded to the dev store and shared, and the stored row carries the
+client-timed duration and peaks. Uploads keep the `threshold/<seedId>/` pathname namespace so
+a circle's recordings live in one place whichever front door told them. **The device caveat is
+Threshold's M3b caveat, inherited**: a laptop WebM take exercises none of the Safari/iOS
+MP4/AAC branches — a real iPhone recording is still owed. Playback is native `<audio>` for
+now. Still to come per P18: Synthesis inside (with audio and editable edges), the shared
 player, invitations/joining surfaces, and the `/api/circles` promotion.
 
 ## Architecture

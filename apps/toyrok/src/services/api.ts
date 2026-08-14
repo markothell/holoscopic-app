@@ -132,3 +132,40 @@ export const toyrokApi = {
     );
   },
 };
+
+/**
+ * Upload a recording straight from the browser to Vercel Blob, and return the
+ * URL to hand to the backend. The bytes reach Blob directly — neither this
+ * Next server nor the backend ever sees them, which is what makes a long
+ * recording on a bad connection feasible.
+ *
+ * The pathname keeps the `threshold/<seedId>/` namespace the circles have
+ * always used, so a circle's recordings live in one place no matter which
+ * front door told them, and a per-seed sweep or restore needs no reshuffle.
+ *
+ * `onProgress` is not decoration: a sixty-second note on a weak connection
+ * takes long enough that a still button reads as a broken one.
+ */
+export async function uploadRecording(
+  blob: Blob,
+  { seedId, mimeType, onProgress }: {
+    seedId: string; mimeType: string; onProgress?: (percent: number) => void;
+  },
+): Promise<{ url: string; pathname: string }> {
+  const { upload } = await import('@vercel/blob/client');
+  const { fileExtensionFor, baseMimeType } = await import('@hs/audio');
+
+  const pathname = `threshold/${seedId}/${Date.now()}.${fileExtensionFor(mimeType)}`;
+
+  const result = await upload(pathname, blob, {
+    access: 'public',
+    handleUploadUrl: '/api/audio/upload',
+    // Parameters stripped: Blob's allowlist is an exact string match and the
+    // codecs parameter is spelled differently per browser.
+    contentType: baseMimeType(mimeType),
+    multipart: true,
+    onUploadProgress: onProgress ? (p) => onProgress(Math.round(p.percentage)) : undefined,
+  });
+
+  return { url: result.url, pathname: result.pathname };
+}
