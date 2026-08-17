@@ -247,8 +247,12 @@ What makes this cheap:
 
 - All five `src/lib/auth.ts` and all five `api/auth/game-token/route.ts` are byte-near-identical
   copies — the extractions in M2 are pure deduplication that never had a chance to diverge.
-- Dev already runs one shared `NEXTAUTH_SECRET` across all five apps and the backend; only
-  production's per-project values differ.
+- One `NEXTAUTH_SECRET` already spans the platform in dev AND — by construction — in
+  production: no Vercel project sets a separate `GAME_TOKEN_SECRET`, so every app signs game
+  tokens with its `NEXTAUTH_SECRET`, and any app whose production writes work is therefore
+  already holding the backend's secret (verified 2026-08-17 for holoscopic-game and threshold
+  by their working writes; synthesis and spectrum get confirmed by the first cross-subdomain
+  sign-in after M2 deploys).
 - `models/Notification.js`, the circle layer's opaque payloads, and `resolveInstance`'s header
   path are already the right shapes; they need enforcement, not redesign.
 
@@ -373,8 +377,10 @@ claim-less pre-M2 tokens until every frontend deploy rolls over (tightening is a
 Q3's fuller secret split still open). Verified in dev: login 200 through the shared stack,
 session shows `emailVerified: true`, minted token carries the claims, backend accepts it and
 rejects tampering/wrong-iss/unknown-aud; five apps type-check; 359 backend tests green.
-**At deploy:** set `AUTH_COOKIE_DOMAIN=.holoscopic.io` on all five Vercel projects and align
-production `NEXTAUTH_SECRET` across them = Render's `GAME_TOKEN_SECRET`.
+**At deploy:** `AUTH_COOKIE_DOMAIN=.holoscopic.io` is set on all five Vercel projects
+(2026-08-17). The secrets were already aligned by construction (§5) — the first
+cross-subdomain sign-in is the proof for the two apps whose production writes were never
+exercised (synthesis, spectrum).
 
 *Done when:* logging in on any one subdomain is being logged in on all of them, verified in a
 browser against production domains, not by reading config. Sessions survive navigation between
