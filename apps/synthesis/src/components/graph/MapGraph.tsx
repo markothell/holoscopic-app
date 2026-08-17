@@ -523,7 +523,6 @@ function GraphInner({
         node={sheetNode}
         open={!!sheetNode && !createIntent}
         frames={frames}
-        instanceId={instanceId}
         parentNodes={(sheetNode?.parentIds ?? []).map(id => byId.get(id)).filter((n): n is SynNode => !!n)}
         onClose={() => setSheetNodeId(null)}
         onEdit={content => sheetNode && editNode(sheetNode.id, content)}
@@ -545,7 +544,6 @@ function GraphInner({
         open={!!createIntent}
         intent={createIntent}
         frames={frames}
-        instanceId={instanceId}
         onCancel={() => setCreateIntent(null)}
         onSubmit={submitCreate}
         onCoinFrame={coinFrame}

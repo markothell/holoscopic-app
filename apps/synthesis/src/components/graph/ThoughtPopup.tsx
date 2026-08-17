@@ -58,11 +58,6 @@ export default function ThoughtPopup({
           <button aria-label="Close" onClick={onClose} className="shrink-0 text-mist-faint">✕</button>
         </div>
         <p className="voice-serif mb-3 text-lg leading-snug text-mist">{node.content.thought}</p>
-        {/* D20: the voice, right where the context reveals — a companion to
-            the claim, never a gate on reading it. */}
-        {node.content.audio && (
-          <audio controls preload="none" src={node.content.audio.url} className="mb-3 w-full" />
-        )}
         {context ? (
           <p className="text-sm leading-relaxed text-mist-soft">
             {shown}

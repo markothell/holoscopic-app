@@ -6,7 +6,6 @@ import Sheet from '@/components/ui/Sheet';
 import Button from '@/components/ui/Button';
 import { TextField, TextArea } from '@/components/ui/TextField';
 import AxisPicker from './AxisPicker';
-import Recorder from './Recorder';
 import ProvenanceBreadcrumb from '@/components/graph/ProvenanceBreadcrumb';
 
 // The action sheet for an existing node: edit its content, set its axes
@@ -19,7 +18,6 @@ export default function NodeSheet({
   node,
   open,
   frames,
-  instanceId,
   parentNodes,
   onClose,
   onEdit,
@@ -35,7 +33,6 @@ export default function NodeSheet({
   node: SynNode | null;
   open: boolean;
   frames: SynFrame[];
-  instanceId: string;
   /** The node's parents, resolved — what the unmarry choice names (D19). */
   parentNodes: SynNode[];
   onClose: () => void;
@@ -54,14 +51,12 @@ export default function NodeSheet({
   const [topic, setTopic] = useState('');
   const [thought, setThought] = useState('');
   const [context, setContext] = useState('');
-  const [recording, setRecording] = useState(false);
 
   useEffect(() => {
     if (!node) return;
     setTopic(node.content.topic);
     setThought(node.content.thought);
     setContext(node.content.context);
-    setRecording(false);
   }, [node]);
 
   if (!node) return null;
@@ -124,40 +119,6 @@ export default function NodeSheet({
               rows={4}
               className="mb-4 !text-sm"
             />
-            {/* D20: the voice on this thought. Saving follows the sheet's
-                own idiom — a finished take saves immediately, like blur. */}
-            <div className="mb-4">
-              {recording ? (
-                <Recorder
-                  instanceId={instanceId}
-                  onDone={a => { onEdit({ audio: a }); setRecording(false); }}
-                  onCancel={() => setRecording(false)}
-                />
-              ) : node.content.audio ? (
-                <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--line-strong)', background: 'var(--dusk-deep)' }}>
-                  <audio controls preload="none" src={node.content.audio.url} className="w-full" />
-                  <div className="mt-2 flex gap-4">
-                    <button type="button" onClick={() => setRecording(true)}
-                      className="text-xs underline underline-offset-4" style={{ color: 'var(--mist-soft)' }}>
-                      Record a different one
-                    </button>
-                    <button type="button" onClick={() => onEdit({ audio: null })}
-                      className="text-xs underline underline-offset-4" style={{ color: 'var(--mist-faint)' }}>
-                      Remove the voice
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setRecording(true)}
-                  className="w-full rounded-xl border px-3 py-2.5 text-sm"
-                  style={{ borderColor: 'var(--line-strong)', color: 'var(--mist-soft)' }}
-                >
-                  ⏺ Add a voice to this thought
-                </button>
-              )}
-            </div>
             <AxisPicker
               frames={frames}
               selected={node.axisFrameIds}

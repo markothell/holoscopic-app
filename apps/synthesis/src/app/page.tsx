@@ -14,7 +14,7 @@ import LoggedOutLanding from '@/components/ideas/LoggedOutLanding';
 import { useIdeas } from '@/hooks/useIdeas';
 import { synthesisSocket } from '@/services/socket';
 import { SynthesisService } from '@/services/synthesisService';
-import { MOCK_COMMUNITY, MOCK_MAX_MEMBERS, MOCK_USER_HANDLE, MOCK_USER_ID } from '@/lib/mock';
+import { MOCK_COMMUNITY, MOCK_USER_HANDLE, MOCK_USER_ID } from '@/lib/mock';
 
 // The `synthesis` PARENT_INSTANCE_ID (services/api.ts) only fronts auth and
 // /synthesis/ideas* (draft/join by code) — a joined idea is its OWN child
@@ -46,6 +46,20 @@ function LoadingShell({ label }: { label: string }) {
   );
 }
 
+// Two figures — the members door in the map's top-left corner. Drawn rather
+// than imported: it is the only icon on this surface, and a glyph would sit
+// at whatever weight the system font decided.
+function MembersIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3.2 19c0-3.1 2.6-5.2 5.8-5.2s5.8 2.1 5.8 5.2" />
+      <path d="M16.4 5.2a3.2 3.2 0 0 1 0 5.9" />
+      <path d="M17.6 13.9c1.9.6 3.2 2.3 3.2 4.4" />
+    </svg>
+  );
+}
+
 export default function HomePage() {
   const { userId, userName, isAuthenticated, isLoading, logout } = useAuth();
   const {
@@ -58,13 +72,12 @@ export default function HomePage() {
   // reply citation chip (UnionOverlay) — MapGraph forwards it to
   // PostOverlay so the specific reply can be scrolled to and highlighted.
   const [openPostRequest, setOpenPostRequest] = useState<{ nodeId: string; replyId?: string } | null>(null);
-  const [copied, setCopied] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   // The group's live measure, held here so the map's home hub and the dock
   // agree with the voting surface without either owning the other.
   const [inSynthesis, setInSynthesis] = useState(false);
-  // The roster is opened from the collaborator count, never from the dock:
-  // it answers a question you have while looking at the map, and the dock is
+  // The roster is opened from the members icon, never from the dock: it
+  // answers a question you have while looking at the map, and the dock is
   // already carrying the four destinations.
   const [showPeople, setShowPeople] = useState(false);
 
@@ -78,17 +91,10 @@ export default function HomePage() {
   const instanceId = idea?.id ?? MOCK_COMMUNITY.id;
   const effectiveUserId = userId ?? MOCK_USER_ID;
   const effectiveHandle = membership?.handle ?? userName ?? MOCK_USER_HANDLE;
-  const ideaTitle = idea?.title ?? MOCK_COMMUNITY.title;
   // Real ideas start at 1 (you); collaboratorCount is backfilled from the
   // lookup endpoint by useIdeas. Only the mock shows the seed count.
-  const memberCount = useMock ? MOCK_COMMUNITY.collaboratorCount : (idea?.collaboratorCount ?? 1);
+  const memberCount = (useMock ? MOCK_COMMUNITY.collaboratorCount : idea?.collaboratorCount) ?? 1;
   const ideaCode = idea?.code ?? null; // the shareable invite code (real idea only)
-  const copyCode = () => {
-    if (!ideaCode) return;
-    navigator.clipboard?.writeText(ideaCode)
-      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); })
-      .catch(() => {});
-  };
 
   // One socket connection per live idea, owned here; overlays and
   // MapGraph only ever subscribe (synthesisSocket.on), never connect/disconnect
@@ -142,29 +148,25 @@ export default function HomePage() {
   return (
     <main className="relative h-dvh w-full overflow-hidden">
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))]">
-        <div className="pointer-events-auto rounded-2xl border border-line px-3 py-2" style={{ background: 'rgba(38,34,51,0.85)', backdropFilter: 'blur(8px)' }}>
-          <p className="eyebrow" style={{ color: 'var(--own)' }}>{ideaTitle}{demoMode && !idea && ' · demo'}</p>
+        {/* Two controls, side by side: the members door, and the way back
+            out. The idea's title is already the home hub at the centre of the
+            map, and the head-count and invite code now live on the people
+            page — so the corner is an icon and a link, not a panel. */}
+        <div className="pointer-events-auto flex items-center gap-2">
           <button
             onClick={() => setShowPeople(true)}
-            className="block text-left text-[0.7rem] text-mist-faint underline decoration-dotted"
             title="See who is working on this idea"
+            aria-label="Members"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-line"
+            style={{ background: 'rgba(38,34,51,0.85)', backdropFilter: 'blur(8px)', color: 'var(--own)' }}
           >
-            {memberCount}/{MOCK_MAX_MEMBERS} voices
+            <MembersIcon />
           </button>
-          {ideaCode && (
-            <button
-              onClick={copyCode}
-              title="Copy the invite code to share with others"
-              className="eyebrow mt-1 rounded-full border border-line px-2 py-0.5 text-[0.6rem]"
-              style={{ color: copied ? 'var(--own)' : undefined }}
-            >
-              {copied ? 'copied ✓' : `invite code ${ideaCode} · copy`}
-            </button>
-          )}
           {!demoMode && idea && (
             <button
               onClick={() => leaveActive()}
-              className="eyebrow mt-1 block text-[0.6rem] text-mist-faint underline"
+              className="eyebrow rounded-full border border-line px-3 py-2 text-[0.6rem] text-mist-faint"
+              style={{ background: 'rgba(38,34,51,0.85)', backdropFilter: 'blur(8px)' }}
             >
               ← ideas
             </button>
@@ -172,7 +174,8 @@ export default function HomePage() {
           {demoMode && !idea && (
             <button
               onClick={() => setDemoMode(false)}
-              className="eyebrow mt-1 block text-[0.6rem] text-mist-faint underline"
+              className="eyebrow rounded-full border border-line px-3 py-2 text-[0.6rem] text-mist-faint"
+              style={{ background: 'rgba(38,34,51,0.85)', backdropFilter: 'blur(8px)' }}
             >
               ← exit demo
             </button>
@@ -234,6 +237,7 @@ export default function HomePage() {
         <PeopleOverlay
           code={ideaCode}
           userId={effectiveUserId}
+          memberCount={memberCount}
           useMock={useMock}
           onClose={() => setShowPeople(false)}
           onOpenPost={id => { setShowPeople(false); setOpenPostRequest({ nodeId: id }); }}
