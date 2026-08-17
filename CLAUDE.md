@@ -138,6 +138,7 @@ Map queries are flat index scans: personal maps via `{instanceId, userId}`, vote
 - **`resolveInstance` never fails.** An unrecognised `x-instance-id` falls through to `getDefault()`, an interView edition. Any router whose data is meaningless outside its own app must check `req.instance.app` itself — `routes/memorial.js` does, because without it an unauthenticated read was writing tag rows into whatever the default instance happened to be.
 - **Activity types**: exactly `dissolve`, `resolve`, `snapshot`. No legacy aliases exist in the schema or the client.
 - **Game-scoped profiles**: `GET /api/users/:userId/games` (player history) and `GET /api/users/:userId/game-map` (redacted personal map — voted-for entries are author-stripped **server-side**). Privacy gate is shared `InstanceMembership`.
+- **Post-login redirects go through `safeRedirect`** (`@hs/auth/redirect`): every login and signup page reads its `?next=` / `?callbackUrl=` through it before handing the value to `router.push()` or `signIn()`, so a credential form can only ever send you to a path on its own origin. The attack vectors are the spec — `packages/auth/src/safeRedirect.test.mjs`.
 
 ## API Response Envelope
 
@@ -163,7 +164,6 @@ Allowed origins from `CLIENT_URL` env var (comma-separated) in `apps/backend/.en
 - Do NOT return another user's identity on voted-for entries — redaction happens in the API layer (`entries.toRedacted`), never client-side.
 - Do NOT use `maxEntries: 0` unless you intend solo tracker mode (creator-only, unlimited slots).
 - Do NOT add new activity types to the DB schema enum without registering them in `@hs/activities`.
-- Do NOT pass a `?next=` / `?callbackUrl=` into `router.push()` or `signIn()` unchecked — every login and signup page routes it through `safeRedirect` from **`@hs/auth/redirect`**. An unchecked one forwards a just-authenticated account to any origin an attacker names. Copying the check into a sixth app instead of importing it is how ten copies came to share one bypass; the vectors are pinned in `packages/auth/src/safeRedirect.test.mjs`.
 - Do NOT run `git add -A` / `git add .` / `git commit -a` — other agents are editing this tree. See **Working in a Shared Tree** below.
 
 ## Working in a Shared Tree
