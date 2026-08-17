@@ -366,8 +366,13 @@ cache (holoscopic-game's mint-deduping copy is canonical), socket handshake. Ali
 `NEXTAUTH_SECRET` across Vercel projects = Render's `GAME_TOKEN_SECRET`. (Threshold's `/signup`
 and the 4051 leftover, once listed here, are already fixed.)
 
-*Progress 2026-08-17:* **built, uncommitted, awaiting MO's diff review (the auth escalation
-rule).** `@hs/auth` (createAuthOptions with the cookies block — domain from `AUTH_COOKIE_DOMAIN`,
+*Deployed and verified in production 2026-08-17:* one sign-in on circles.holoscopic.io is a
+live session on threshold.holoscopic.io, spectrum.holoscopic.io and holoscopic.io (checked
+against the production domains with a real account; synthesis awaits its cutover). The game's
+Vercel project needed `NEXTAUTH_URL=https://holoscopic.io` added — without it NextAuth ran in
+non-secure cookie naming and could not see the `__Secure-` session cookie. **M2 is done.**
+
+*Build notes 2026-08-17 (reviewed by MO before landing):* `@hs/auth` (createAuthOptions with the cookies block — domain from `AUTH_COOKIE_DOMAIN`,
 set `.holoscopic.io` in production only; CSRF renamed `__Secure-` off `__Host-`; session/callback
 cookie NAMES unchanged so existing production sessions survive; `emailVerified` carried into the
 JWT and session) and `@hs/api` (ApiError, the mint-deduping token cache from holoscopic-game,
