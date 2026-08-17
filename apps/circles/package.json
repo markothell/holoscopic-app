@@ -8,7 +8,9 @@
     "start": "next start -p 4007"
   },
   "dependencies": {
+    "@hs/api": "*",
     "@hs/audio": "*",
+    "@hs/auth": "*",
     "@vercel/blob": "^2.6.1",
     "next": "16.2.6",
     "next-auth": "^4.24.14",

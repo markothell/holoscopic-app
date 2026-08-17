@@ -2,6 +2,8 @@
 // short-lived game token minted from the NextAuth session by
 // /api/auth/game-token; the backend's enforceVerifiedUser checks that the
 // token's sub matches the claimed x-user-id. Same pattern as apps/spectrum.
+import { ApiError, getGameToken } from '@hs/api';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 
 // The PARENT instance for Synthesis — used for auth and community create/join.
@@ -9,34 +11,10 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 // requests override with the community's own instance id.
 export const PARENT_INSTANCE_ID = process.env.NEXT_PUBLIC_INSTANCE_ID || 'synthesis';
 
-export class ApiError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
-
-// Game-token cache: tokens live 15 minutes; refresh with a minute to spare.
-let cachedToken: { token: string; expiresAt: number } | null = null;
-
-async function getGameToken(): Promise<string | null> {
-  if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) {
-    return cachedToken.token;
-  }
-  try {
-    const res = await fetch('/api/auth/game-token');
-    if (!res.ok) return null;
-    cachedToken = await res.json();
-    return cachedToken?.token ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export function clearGameToken() {
-  cachedToken = null;
-}
+// The token cache and error shape are @hs/api's (M2) — the same deduped mint
+// every app now shares. buildHeaders stays local because apiStream needs it
+// too, and a streaming POST is this app's own shape.
+export { ApiError, clearGameToken } from '@hs/api';
 
 async function buildHeaders(options: { userId?: string | null; instanceId?: string }): Promise<Record<string, string>> {
   const headers: Record<string, string> = {

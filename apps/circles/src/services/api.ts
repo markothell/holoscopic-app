@@ -13,6 +13,7 @@
 // stay on /api/threshold: they are Threshold's, and each future activity
 // brings its own.
 
+import { ApiError, createApiFetch } from '@hs/api';
 import type { Circle, MyRanking, Placement, Pole, Seed, SeedResult, Share, SynthesisSession } from '@/lib/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
@@ -22,61 +23,11 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 // checks Instance.app itself; a wrong value here reads as "circle not found".
 export const INSTANCE_ID = process.env.NEXT_PUBLIC_INSTANCE_ID || 'threshold';
 
-export class ApiError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
+// The token cache, error shape and fetch body are @hs/api's (M2) — the same
+// deduped mint every app now shares.
+export { ApiError, getGameToken, clearGameToken } from '@hs/api';
 
-// Tokens live 15 minutes; refresh with a minute to spare.
-let cachedToken: { token: string; expiresAt: number } | null = null;
-
-export async function getGameToken(): Promise<string | null> {
-  if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) {
-    return cachedToken.token;
-  }
-  try {
-    const res = await fetch('/api/auth/game-token');
-    if (!res.ok) return null;
-    cachedToken = await res.json();
-    return cachedToken?.token ?? null;
-  } catch {
-    return null;
-  }
-}
-
-interface FetchOptions {
-  method?: string;
-  body?: unknown;
-  userId?: string | null;
-}
-
-export async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'x-instance-id': INSTANCE_ID,
-  };
-  if (options.userId) {
-    headers['x-user-id'] = options.userId;
-    const token = await getGameToken();
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: options.method || 'GET',
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-    cache: 'no-store',
-  });
-
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new ApiError(res.status, (json as { error?: string }).error || 'Something went wrong');
-  }
-  return json as T;
-}
+const apiFetch = createApiFetch({ apiBase: API_BASE, instanceId: INSTANCE_ID });
 
 export const circlesApi = {
   /** Every circle I'm a member of. */

@@ -7,7 +7,7 @@ import { useSession } from 'next-auth/react';
 import type { Socket } from 'socket.io-client';
 import { useInstance } from '@/contexts/InstanceContext';
 import { HolonService } from '@/services/holonService';
-import { getGameToken } from '@/lib/api';
+import { socketAuth } from '@hs/api';
 
 interface AuthContextType {
   userId: string | null;
@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sock = socketIO(SOCKET_URL, {
         transports: ['websocket'],
         upgrade: false,
-        auth: (cb) => { getGameToken().then((token) => cb({ token })); },
+        auth: socketAuth,
       });
       socketRef.current = sock;
 

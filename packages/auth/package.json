@@ -1,0 +1,17 @@
+{
+  "name": "@hs/auth",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "next": ">=15.0.0",
+    "next-auth": ">=4.24.0"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}

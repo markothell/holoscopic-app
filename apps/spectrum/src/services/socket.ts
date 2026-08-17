@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { getGameToken } from './api';
+import { socketAuth } from '@hs/api';
 
 // Singleton live channel. Sockets are latency sugar only — every mutation
 // goes through REST, and useOasGame re-fetches the snapshot on
@@ -37,7 +37,7 @@ class OasSocket {
     this.socket = io(SOCKET_URL, {
       transports: ['websocket'],
       upgrade: false,
-      auth: (cb) => { getGameToken().then((token) => cb({ token })); },
+      auth: socketAuth,
     });
     this.socket.on('connect', () => {
       this.socket?.emit('oas:join', { gameId });

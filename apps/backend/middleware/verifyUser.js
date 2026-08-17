@@ -7,8 +7,23 @@ const SECRET = process.env.GAME_TOKEN_SECRET || process.env.NEXTAUTH_SECRET || n
 const isProduction = process.env.NODE_ENV === 'production';
 let warnedNoSecret = false;
 
+// Tokens minted through @hs/auth (M2) carry `iss: 'holoscopic'` and an `aud`
+// naming the app that minted them. One shared secret signs every app's
+// tokens AND the 12h admin tokens AND Chorus's contributor tokens (Q3 is the
+// fuller split), so these claims are what distinguishes a game token from
+// anything else that secret ever signed.
+const ISSUER = 'holoscopic';
+const KNOWN_AUDS = new Set(['interview', 'threshold', 'synthesis', 'spectrum', 'circles']);
+
 // Verify a raw token string. Returns the payload, or null if the token is
-// absent, malformed, expired, or signed with the wrong key.
+// absent, malformed, expired, signed with the wrong key, or carries a wrong
+// `iss`. Tokens WITHOUT `iss`/`aud` still verify — pre-M2 frontends mint
+// them until every deploy has rolled over; tightening to require the claims
+// is a one-line follow-up once they have.
+//
+// `aud` is recorded (req.authedAud), never yet enforced per-route: circles
+// legitimately calls /api/threshold for its activity verbs, so router-level
+// audience rules need the router → allowed-auds map first.
 //
 // Exported so the Socket.IO handshake (websocket-server.js) verifies
 // identities exactly the same way HTTP does. Two implementations of "is this
@@ -17,7 +32,10 @@ let warnedNoSecret = false;
 function verifyToken(token) {
   if (!token || !SECRET) return null;
   try {
-    return jwt.verify(token, SECRET);
+    const payload = jwt.verify(token, SECRET);
+    if (payload.iss !== undefined && payload.iss !== ISSUER) return null;
+    if (payload.aud !== undefined && !KNOWN_AUDS.has(payload.aud)) return null;
+    return payload;
   } catch (_e) {
     return null;
   }
@@ -34,6 +52,9 @@ function attachVerifiedUser(req, _res, next) {
     // Advisory only. requireAdmin still reads the User row — a role claim is
     // up to 15 minutes stale, so it must never be the thing that authorizes.
     if (payload.role) req.authedRole = String(payload.role);
+    // Which app minted the token (absent on pre-M2 tokens). Recorded for
+    // observability and the future per-router audience rule.
+    if (payload.aud) req.authedAud = String(payload.aud);
   }
   next();
 }

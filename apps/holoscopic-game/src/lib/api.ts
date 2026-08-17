@@ -1,3 +1,4 @@
+import { getGameToken } from '@hs/api';
 import { instanceSlugFromPath } from './instanceSlug';
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -15,38 +16,9 @@ export function getCurrentInstanceId(): string | null {
 // ── Game token (proves identity to the backend) ──────────────────────────────
 // Short-lived JWT issued by /api/auth/game-token from the NextAuth session.
 // The backend rejects identity-bearing writes without it, so bare x-user-id
-// headers can't be spoofed. Cached until shortly before expiry.
-
-let gameToken: { token: string; expiresAt: number } | null = null;
-let tokenPromise: Promise<string | null> | null = null;
-
-/**
- * The caller's identity token. Exported because the Socket.IO handshake needs
- * it too — the server derives the personal room from the verified token
- * rather than from a client-supplied userId, so a socket with no token gets
- * no holon or notification push.
- */
-export async function getGameToken(): Promise<string | null> {
-  if (typeof window === 'undefined') return null;
-  if (gameToken && gameToken.expiresAt - Date.now() > 60_000) return gameToken.token;
-  if (!tokenPromise) {
-    tokenPromise = fetch('/api/auth/game-token')
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => {
-        if (d?.token) { gameToken = d; return d.token as string; }
-        gameToken = null;
-        return null;
-      })
-      .catch(() => null)
-      .finally(() => { tokenPromise = null; });
-  }
-  return tokenPromise;
-}
-
-/** Drop the cached token (call on sign-out / account switch). */
-export function clearGameToken() {
-  gameToken = null;
-}
+// headers can't be spoofed. The cache lives in @hs/api now (M2) — this app's
+// mint-deduping implementation was the canonical one it extracted.
+export { getGameToken, clearGameToken } from '@hs/api';
 
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
