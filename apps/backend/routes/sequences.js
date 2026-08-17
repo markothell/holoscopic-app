@@ -5,6 +5,7 @@ const Activity = require('../models/Activity');
 const Entry = require('../models/Entry');
 const User = require('../models/User');
 const requireEmailVerified = require('../middleware/requireEmailVerified');
+const { cloneActivities } = require('../utils/sequences');
 
 // Positioned-entry count for one activity (a "completed mapping")
 function completedMappings(activityId) {
@@ -810,51 +811,15 @@ router.post('/:id/duplicate', async (req, res) => {
       urlName = `${baseUrl}-${counter++}`;
     }
 
-    // Clone each activity and build a map from old ID → new ID
-    const activityIdMap = {};
-    for (const seqAct of original.activities) {
-      const src = await Activity.findOne({ id: seqAct.activityId });
-      if (!src) continue;
-
-      // Find a unique urlName for the cloned activity
-      let actBase = `${src.urlName}-copy`;
-      let actUrl = actBase;
-      let actCounter = 2;
-      while (await Activity.findOne({ urlName: actUrl })) {
-        actUrl = `${actBase}-${actCounter++}`;
-      }
-
-      const cloned = new Activity({
-        instanceId: src.instanceId || req.instanceId,
-        title: `${src.title} (Copy)`,
-        urlName: actUrl,
-        author: src.author,
-        activityType: src.activityType,
-        mapQuestion: src.mapQuestion,
-        mapQuestion2: src.mapQuestion2,
-        xAxis: src.xAxis,
-        yAxis: src.yAxis,
-        commentQuestion: src.commentQuestion,
-        objectNameQuestion: src.objectNameQuestion,
-        preamble: src.preamble,
-        wikiLink: src.wikiLink,
-        starterData: src.starterData,
-        votesPerUser: src.votesPerUser,
-        maxEntries: src.maxEntries,
-        showProfileLinks: src.showProfileLinks,
-        showAxisLabels: src.showAxisLabels,
-        snapshotQuestions: src.snapshotQuestions,
-        xAxisPoints: src.xAxisPoints,
-        yAxisPoints: src.yAxisPoints,
-        xAxisLabels: src.xAxisLabels,
-        yAxisLabels: src.yAxisLabels,
-        isDraft: true,
-        status: 'active',
-        participants: [],
-      });
-      await cloned.save();
-      activityIdMap[seqAct.activityId] = cloned.id;
-    }
+    // Clone each activity and build a map from old ID → new ID. Same copy the
+    // pattern path takes (utils/sequences.js) — one implementation, so the two
+    // cannot disagree about what a copy carries.
+    const activityIdMap = await cloneActivities(original.activities, {
+      instanceId: req.instanceId,
+      titleFor: src => `${src.title} (Copy)`,
+      urlBaseFor: src => `${src.urlName}-copy`,
+      isDraft: true,
+    });
 
     const duplicate = new Sequence({
       title: `${original.title} (Copy)`,

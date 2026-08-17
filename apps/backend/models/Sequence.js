@@ -187,6 +187,10 @@ const SequenceSchema = new mongoose.Schema({
   // Frame references (FrameOfReference ids used across this Pattern's activities)
   frameIds: [{ type: String }],
 
+  // The pattern (Algorithm.id) this session was run from, when it came from
+  // one. Set on the copy, never on the pattern's own template sequence.
+  algorithmId: { type: String, default: null },
+
   // Sequence status
   status: {
     type: String,

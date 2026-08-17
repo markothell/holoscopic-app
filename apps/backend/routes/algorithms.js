@@ -3,9 +3,11 @@ const router = express.Router();
 const Algorithm = require('../models/Algorithm');
 const AlgorithmProposal = require('../models/AlgorithmProposal');
 const Sequence = require('../models/Sequence');
+const Topic = require('../models/Topic');
 const User = require('../models/User');
 const { spend, transact } = require('../utils/holons');
 const { notify } = require('../utils/notify');
+const { cloneActivities, remapSequenceActivities } = require('../utils/sequences');
 
 function generateId() {
   return Math.random().toString(36).substring(2, 10);
@@ -19,27 +21,36 @@ function toSlug(str) {
     .substring(0, 35) + '-' + Math.random().toString(36).substring(2, 6);
 }
 
-async function cloneSequence(fromSequenceId, title, createdBy) {
+// Run a pattern: copy its skeleton into maps this session owns.
+//
+// The pattern's own maps are templates and stay untouched — a session gets
+// fresh copies of the setup, empty and ready for participants. Reusing the
+// template's activityIds here meant every session of a pattern played on the
+// same maps, so the second group walked into the first group's entries.
+async function cloneSequence(fromSequenceId, title, createdBy, instanceId, { live = true, algorithmId = null, topicId = null } = {}) {
   const source = await Sequence.findOne({ id: fromSequenceId }).lean();
   if (!source) return null;
   const urlName = toSlug(title || source.title);
+  const idMap = await cloneActivities(source.activities, {
+    instanceId,
+    urlBaseFor: src => `${urlName}-${toSlug(src.title).replace(/-[a-z0-9]{4}$/, '')}`,
+    // A session's maps are live; a fork copies one skeleton into another, so
+    // those copies stay templates until a session runs them.
+    isDraft: !live,
+    topicId,
+    // Only a session's maps carry provenance: they are what the pattern
+    // generated. A fork's copies are another skeleton, not a result of one.
+    sourceAlgorithmId: live ? algorithmId : null,
+  });
   return await Sequence.create({
     title: title || source.title,
     urlName,
     description: source.description || '',
     createdBy,
-    activities: (source.activities || []).map(a => ({
-      activityId: a.activityId,
-      order: a.order,
-      autoClose: a.autoClose || false,
-      duration: a.duration || null,
-      openedAt: null,
-      closedAt: null,
-      parentActivityIds: a.parentActivityIds || [],
-      round: a.round || null,
-      openOnCreate: a.openOnCreate || false,
-    })),
+    activities: remapSequenceActivities(source.activities, idMap),
     welcomePage: source.welcomePage || {},
+    algorithmId: live ? algorithmId : null,
+    topicId,
     status: 'active',
     startedAt: new Date(),
   });
@@ -54,7 +65,10 @@ async function activateProposal(proposal, algorithm, instanceId, config) {
 
   try {
     if (algorithm.sequenceId) {
-      sequence = await cloneSequence(algorithm.sequenceId, title, proposal.proposedBy);
+      sequence = await cloneSequence(algorithm.sequenceId, title, proposal.proposedBy, instanceId, {
+        algorithmId: algorithm.id,
+        topicId: proposal.topicId || null,
+      });
     } else {
       sequence = await Sequence.create({
         title,
@@ -71,6 +85,16 @@ async function activateProposal(proposal, algorithm, instanceId, config) {
     throw err;
   }
   if (!sequence) return null;
+
+  // Open the first round, same as running a pattern directly. A session whose
+  // rounds are all unopened reads as "Opens later" on every step and links
+  // nowhere — quorum was met, and the people who met it have nothing to click.
+  if (sequence.activities.length) {
+    const firstRound = Math.min(...sequence.activities.map(a => a.round ?? 1));
+    const opened = new Date();
+    sequence.activities.forEach(a => { if ((a.round ?? 1) === firstRound) a.openedAt = opened; });
+    await sequence.save();
+  }
 
   const userIds = proposal.signups.map(s => s.userId);
   const users = await User.find({ id: { $in: userIds } }).select('id email name').lean();
@@ -265,11 +289,66 @@ router.get('/:id/proposals', async (req, res) => {
 });
 
 // POST /api/algorithms/:id/proposals
+// POST /api/algorithms/:id/run — load this pattern's skeleton into a topic.
+//
+// The host's way in, next to the proposal path: proposing gathers people first
+// and builds the session when quorum arrives, while running builds it now and
+// invites people into maps that already exist. Nothing is charged for the
+// load — a map costs its ◈ stake when somebody joins it, same as any other.
+router.post('/:id/run', async (req, res) => {
+  const userId = req.headers['x-user-id'];
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { topicId } = req.body;
+  if (!topicId) return res.status(400).json({ error: 'topicId is required' });
+
+  try {
+    const { instanceId } = req;
+    const algorithm = await Algorithm.findOne({ id: req.params.id, instanceId, status: 'published' });
+    if (!algorithm) return res.status(404).json({ error: 'Pattern not found' });
+    if (!algorithm.sequenceId) return res.status(400).json({ error: 'This pattern has no steps to run' });
+
+    const topic = await Topic.findOne({ id: topicId, instanceId });
+    if (!topic) return res.status(404).json({ error: 'Topic not found' });
+    if (topic.status !== 'confirmed') {
+      return res.status(400).json({ error: 'A topic runs a pattern once it has reached quorum' });
+    }
+
+    const sequence = await cloneSequence(
+      algorithm.sequenceId, `${algorithm.title} — ${topic.title}`, userId, instanceId,
+      { algorithmId: algorithm.id, topicId: topic.id },
+    );
+    if (!sequence) return res.status(500).json({ error: 'Failed to load the pattern' });
+
+    const user = await User.findOne({ id: userId }).select('email name').lean();
+    try { await sequence.addMember(userId, user?.email, user?.name); } catch { }
+
+    // Open the first round so the session is ready for participants; the rest
+    // stay closed for the host to open in turn, which is what makes it a
+    // sequence rather than a pile of maps.
+    const firstRound = Math.min(...sequence.activities.map(a => a.round ?? 1));
+    const opened = new Date();
+    sequence.activities.forEach(a => { if ((a.round ?? 1) === firstRound) a.openedAt = opened; });
+    sequence.startedAt = opened;
+    await sequence.save();
+
+    res.status(201).json({
+      sequenceId: sequence.id,
+      sequenceUrlName: sequence.urlName,
+      activityCount: sequence.activities.length,
+      openedRound: firstRound,
+    });
+  } catch (err) {
+    console.error('[algorithms] run failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/:id/proposals', async (req, res) => {
   const userId = req.headers['x-user-id'];
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { intent } = req.body;
+  const { intent, topicId } = req.body;
   if (!intent || !intent.trim()) return res.status(400).json({ error: 'intent is required' });
 
   try {
@@ -291,6 +370,7 @@ router.post('/:id/proposals', async (req, res) => {
       algorithmId: algorithm.id,
       proposedBy: userId,
       intent: intent.trim(),
+      topicId: topicId || null,
       signups: [{ userId, joinedAt: new Date() }],
       quorumThreshold: algorithmSessionQuorum,
       expiresAt,
@@ -450,7 +530,7 @@ router.post('/:id/fork', async (req, res) => {
     let clonedSequenceId = sequenceId || null;
     let newSequenceUrlName = null;
     if (!sequenceId && parent.sequenceId) {
-      const cloned = await cloneSequence(parent.sequenceId, `${title} — session`, userId);
+      const cloned = await cloneSequence(parent.sequenceId, `${title} — session`, userId, instanceId, { live: false });
       if (cloned) {
         clonedSequenceId = cloned.id;
         newSequenceUrlName = cloned.urlName;

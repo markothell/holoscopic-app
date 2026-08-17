@@ -211,6 +211,32 @@ All routes return plain objects — `{ activity }`, `{ activities, total }`, `{ 
 - `maxEntries === 1/2/4` → standard collaborative mode, `slotNumber` validates against `maxEntries`
 - `activityType === 'snapshot'` → `slotNumber` = question order and `questionId` is set on the entry
 
+## A pattern is a skeleton, not a game
+
+An **Algorithm** ("pattern" in the UI) points at a Sequence that holds map
+*setups* — the questions, the axes, the frame — and nothing that was played.
+Running one copies that skeleton into fresh maps the session owns.
+
+- **Template maps are `isDraft: true`.** That flag already means "outside the
+  live game": drafts are excluded from `GET /activities`, from frame
+  `usageCount`, from topic rollups, and from the activity expiry sweep. A
+  template needs every one of those exclusions, so it reuses the flag rather
+  than adding a second one. The template's Sequence is `status: 'draft'`,
+  which also keeps it out of `GET /sequences/public`.
+- **A template carries no entries and no participants.** Entries live in their
+  own collection keyed by `activityId`, so a copy is empty by construction as
+  long as the copy is a *new activity*.
+- **`utils/sequences.js` is the only implementation of that copy.** Both
+  callers use it: running or forking a pattern (`routes/algorithms.js`
+  `cloneSequence`) and duplicating a sequence in the builder
+  (`POST /sequences/:id/duplicate`). They used to each have their own, and they
+  disagreed: the duplicate endpoint cloned the Activity documents while the
+  pattern path reused the same `activityId`s. That made every session of a
+  pattern share one set of maps with the pattern and with each other — the
+  first run filled the skeleton in, and the second arrived to someone else's
+  entries. `live: true` (a session) produces playable maps; `live: false` (a
+  fork, a builder copy) produces more templates.
+
 ## Close Rule
 
 A map settles at the earliest of (a) complete — table full AND every participant has entered and voted (checked after each vote), or (b) `activityWindowHours` after creation (sweep-on-read in `GET /activities`). Settlement distributes each staker's pool to the entry authors they voted for (`settleActivityStakes`).

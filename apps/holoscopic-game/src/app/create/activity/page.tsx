@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch } from '@/lib/api';
 import { TopicService } from '@/services/topicService';
 import { FrameRefService } from '@/services/frameRefService';
+import { AlgorithmService, Algorithm } from '@/services/algorithmService';
 import AxisPreview from '@/components/AxisPreview';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -105,6 +106,29 @@ function CreateActivityContent() {
   const [frame, setFrame] = useState<Frame | null>(null);
   const [topic, setTopic] = useState<Topic | null>(null);
   const [loadingCtx, setLoadingCtx] = useState(true);
+
+  const [showPatterns, setShowPatterns] = useState(false);
+  const [patterns, setPatterns] = useState<Algorithm[] | null>(null);
+  const [runningPattern, setRunningPattern] = useState<string | null>(null);
+
+  function openPatterns() {
+    setShowPatterns(true);
+    if (patterns === null) {
+      AlgorithmService.list().then(setPatterns).catch(() => setPatterns([]));
+    }
+  }
+
+  async function runPattern(patternId: string) {
+    if (!userId || !topicId) { router.push('/login'); return; }
+    setRunningPattern(patternId);
+    try {
+      const result = await AlgorithmService.run(userId, patternId, topicId);
+      router.push(`/sequence/${result.sequenceUrlName}`);
+    } catch (e: any) {
+      alert(e.message);
+      setRunningPattern(null);
+    }
+  }
 
   const [title, setTitle] = useState('');
   const [activityType, setActivityType] = useState<ActivityType>('dissolve');
@@ -276,6 +300,46 @@ function CreateActivityContent() {
         <h1 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '2rem', letterSpacing: '-0.01em' }}>
           New Map
         </h1>
+
+        {/* A pattern is a set of maps somebody already worked out. Loading one
+            here inherits the topic you arrived with, so the whole run lands
+            where you are rather than asking you where you are again. */}
+        {topicId && (
+          <div style={{ marginBottom: '2rem', border: '1px solid var(--border-default)', borderRadius: 12, padding: '1rem 1.15rem', background: 'var(--bg-secondary)' }}>
+            {!showPatterns ? (
+              <button type="button" onClick={openPatterns}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                ＋ Add existing pattern
+                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem', lineHeight: 1.5 }}>
+                  Load a set of maps somebody has already shaped, straight into {topic?.title ?? 'this topic'}.
+                </span>
+              </button>
+            ) : (
+              <>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '0.7rem' }}>Add existing pattern</div>
+                {patterns === null ? (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Loading…</p>
+                ) : patterns.length === 0 ? (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+                    Published patterns appear here. Build a sequence and publish it, and it becomes one.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    {patterns.map(p => (
+                      <button key={p.id} type="button" onClick={() => runPattern(p.id)} disabled={!!runningPattern}
+                        style={{ textAlign: 'left', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, padding: '0.7rem 0.85rem', cursor: runningPattern ? 'wait' : 'pointer', color: 'var(--text-primary)', fontSize: '0.88rem' }}>
+                        {p.title}
+                        <span style={{ display: 'block', fontSize: '0.72rem', fontFamily: 'var(--font-dm-mono), monospace', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                          {p.activityCount ?? 0} steps · by {p.authorName ?? 'unknown'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {/* Activity type */}

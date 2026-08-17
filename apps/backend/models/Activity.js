@@ -193,6 +193,13 @@ const ActivitySchema = new mongoose.Schema({
   // Topic context (references Topic.id)
   topicId: { type: String, default: null },
 
+  // The pattern (Algorithm.id) whose skeleton produced this map, when a
+  // session was run from one. Provenance, not membership: the map belongs to
+  // its topic and its sequence, and this says where its setup came from — so
+  // a topic can show which of its maps a pattern generated. A pattern's own
+  // template maps leave it null; they are the origin rather than a result.
+  sourceAlgorithmId: { type: String, default: null },
+
   // Stake ledger — tracks who staked holons into this activity's pool
   stakes: [{
     userId:     { type: String, required: true },
