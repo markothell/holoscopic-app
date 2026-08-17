@@ -86,6 +86,16 @@ async function activateProposal(proposal, algorithm, instanceId, config) {
   }
   if (!sequence) return null;
 
+  // Open the first round, same as running a pattern directly. A session whose
+  // rounds are all unopened reads as "Opens later" on every step and links
+  // nowhere — quorum was met, and the people who met it have nothing to click.
+  if (sequence.activities.length) {
+    const firstRound = Math.min(...sequence.activities.map(a => a.round ?? 1));
+    const opened = new Date();
+    sequence.activities.forEach(a => { if ((a.round ?? 1) === firstRound) a.openedAt = opened; });
+    await sequence.save();
+  }
+
   const userIds = proposal.signups.map(s => s.userId);
   const users = await User.find({ id: { $in: userIds } }).select('id email name').lean();
   const userMap = Object.fromEntries(users.map(u => [u.id, u]));

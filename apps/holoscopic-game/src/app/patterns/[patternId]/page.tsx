@@ -26,6 +26,7 @@ export default function PatternDetailPage() {
   const [showTopicPicker, setShowTopicPicker] = useState(false);
   const [topics, setTopics] = useState<Topic[] | null>(null);
   const [running, setRunning] = useState(false);
+  const [proposeTopicId, setProposeTopicId] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -63,7 +64,7 @@ export default function PatternDetailPage() {
     if (!userId) { router.push('/login'); return; }
     setProposing(true);
     try {
-      const result = await AlgorithmService.propose(userId, patternId, intentInput);
+      const result = await AlgorithmService.propose(userId, patternId, intentInput, proposeTopicId ?? undefined);
       refreshBalance();
       if (result.sessionStarted && result.sequenceUrlName) {
         router.push(`/sequence/${result.sequenceUrlName}`);
@@ -158,7 +159,7 @@ export default function PatternDetailPage() {
             </button>
           )}
           {isAuthenticated && !myProposal && !ended && (
-            <button onClick={() => { setShowProposeForm(v => !v); setShowTopicPicker(false); }}
+            <button onClick={() => { setShowProposeForm(v => !v); setShowTopicPicker(false); if (topics === null) TopicService.list('confirmed').then(setTopics).catch(() => setTopics([])); }}
               style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.5rem 1.2rem', borderRadius: 999, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>
               Propose a session
             </button>
@@ -201,14 +202,38 @@ export default function PatternDetailPage() {
         {/* Propose form */}
         {showProposeForm && (
           <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 12, padding: '1.5rem', marginBottom: '2rem' }}>
+            {/* Which topic first: a session's maps live under one, and a
+                session with no topic is a session nobody can find later. */}
+            <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 0.5rem 0' }}>Which topic is this session about?</h3>
+            {topics === null ? (
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>Loading…</p>
+            ) : topics.length === 0 ? (
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+                A topic hosts a session once it has reached quorum. Support one, and it appears here.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1.1rem' }}>
+                {topics.map(t => (
+                  <button key={t.id} onClick={() => setProposeTopicId(t.id)}
+                    style={{
+                      fontSize: '0.78rem', padding: '0.35rem 0.8rem', borderRadius: 999, cursor: 'pointer',
+                      background: proposeTopicId === t.id ? 'var(--accent)' : 'var(--bg-elevated)',
+                      border: `1px solid ${proposeTopicId === t.id ? 'var(--accent)' : 'var(--border-default)'}`,
+                      color: proposeTopicId === t.id ? 'var(--text-primary)' : 'var(--text-muted)',
+                    }}>
+                    {t.title}
+                  </button>
+                ))}
+              </div>
+            )}
             <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 0.75rem 0' }}>What do you want to explore?</h3>
-            <textarea value={intentInput} onChange={e => setIntentInput(e.target.value)} placeholder="Describe the specific topic or question you want this pattern to address…"
+            <textarea value={intentInput} onChange={e => setIntentInput(e.target.value)} placeholder="Describe the specific question you want this pattern to address…"
               style={{ width: '100%', minHeight: 80, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, padding: '0.75rem', fontSize: '0.88rem', color: 'var(--text-primary)', resize: 'vertical', boxSizing: 'border-box' }} />
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', justifyContent: 'flex-end' }}>
               <button onClick={() => setShowProposeForm(false)} style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', padding: '0.4rem 0.9rem', borderRadius: 999, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 Cancel
               </button>
-              <button onClick={handlePropose} disabled={proposing || !intentInput.trim()} style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', padding: '0.4rem 0.9rem', borderRadius: 999, border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: proposing ? 'wait' : 'pointer', opacity: !intentInput.trim() ? 0.5 : 1 }}>
+              <button onClick={handlePropose} disabled={proposing || !intentInput.trim() || !proposeTopicId} style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', padding: '0.4rem 0.9rem', borderRadius: 999, border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: proposing ? 'wait' : 'pointer', opacity: (!intentInput.trim() || !proposeTopicId) ? 0.5 : 1 }}>
                 {proposing ? '…' : 'Propose'}
               </button>
             </div>
