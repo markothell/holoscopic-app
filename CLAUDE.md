@@ -1,15 +1,15 @@
 # Holoscopic Monorepo (GitHub: markothell/holoscopic-app)
 
 `main` is the production branch: pushing it deploys the backend (Render) and the frontends (Vercel). The games (newest first, as on the holoscopic.io homepage):
-- **Toyrok** — `apps/toyrok`, **the first product** (PLATFORM.md P18): circles as the central social unit, ships to toyrok.com; holoscopic.io stays the lab. Scaffold so far — sign in → my circles → the circle home map — reading the Circle machine via `/api/threshold`. **No surface mentions Holoscopic**; accounts are the shared `User` collection presented as Toyrok's own. See `apps/toyrok/CLAUDE.md` + `DESIGN.md` (the Toono visual language).
+- **Circles** — `apps/circles`, **the first product** (PLATFORM.md P18): circles as the central social unit, ships to **circles.holoscopic.io branded Holoscopic** — one brand, tagline *thinking tools for community*; the holoscopic.io homepage stays the lab. Built: sign in and `/signup` → my circles (join included) → the circle home map → the full tell/sort/reveal loop with audio recording; generic circle operations ride `/api/circles` (the M8 promotion, landed 2026-08-14). Accounts are Holoscopic accounts, said plainly. See the app's `CLAUDE.md` + `DESIGN.md` (Toono, Holoscopic's product design language).
 - **Threshold** — `apps/threshold`, where a group's dividing line falls on a polarity (backend surface: `apps/backend/routes/threshold.js` + `utils/threshold.js`, on the generic `Circle` layer; see `apps/threshold/CLAUDE.md`). Built through M4 — backend, every participant surface in the tide-line language, audio, and round-transition mail; **M6, the launch pass, is what remains**. Live at threshold.holoscopic.io, on the production backend, since 2026-08-10: its instance is slugged **`circlemo`**, not `threshold`, and the deployed frontend sends that as `x-instance-id`. The only app whose rounds advance on a **background tick** rather than sweep-on-read — nobody has the page open, so a phase transition is what sends the mail that brings people back.
 - **Chorus** — `apps/chorus`, memories about one person, collected from anyone with the link (backend surface: `apps/backend/routes/memorial.js`; see `apps/chorus/CLAUDE.md`). In development; ships to chorus.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover. **The only app with no accounts, no holon economy, and a route mounted without `enforceVerifiedUser`** — all three are deliberate, see its `PLAN.md` §10. One deployment serves every memorial: a memorial is `/c/<slug>`, and creating one is a row in the platform admin, not a deploy.
-- **Synthesis** — `apps/synthesis`, a networked pseudonymous group blog (backend surface: `apps/backend/routes/synthesis.js`; see `apps/synthesis/CLAUDE.md`). In development on branch `unison-m0-m1-loop` (branch predates the rename); ships to synthesis.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover.
+- **Synthesis** — `apps/synthesis`, a networked pseudonymous group blog (backend surface: `apps/backend/routes/synthesis.js`; see `apps/synthesis/CLAUDE.md`). On `main` since 2026-07-30 (merge `5903658`, via `pre-launch`; the old `unison-m0-m1-loop` branch is deleted with nothing unmerged); ships to synthesis.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover.
 - **On a Spectrum** — `apps/spectrum`, at spectrum.holoscopic.io (backend surface: `apps/backend/routes/oas.js`; see `apps/spectrum/CLAUDE.md`). `routes/spectrum.js`, `models/SpectrumGame.js`, and `utils/spectrumGames.js` are mounted but dormant, and get deleted post-cutover.
 - **interView** — `apps/holoscopic-game`, the production game app at holoscopic.io
 - **Map + Sequence** — the original create-panel + sequence-builder tools inside `apps/holoscopic-game` (`/create`, `/create/sequences`), presented as the first game behind `/map-sequence`
 
-Local dev ports: spectrum 4000, backend 4001, platform 4002, game 4003, synthesis 4004, chorus 4005, threshold 4006, toyrok 4007.
+Local dev ports: spectrum 4000, backend 4001, platform 4002, game 4003, synthesis 4004, chorus 4005, threshold 4006, circles 4007.
 
 Holoscopic is a collective-sensemaking platform where groups map their perspectives on a 2D grid, leave comments, and vote on each other's views. It is multi-tenant: one backend serves multiple isolated deployments ("instances"), each with its own holon economy, quorum rules, and data scope.
 
@@ -20,7 +20,7 @@ Holoscopic is a collective-sensemaking platform where groups map their perspecti
 | Game frontend | Next.js 16, React 19, TypeScript, Tailwind v4 |
 | Platform admin | Next.js 16, React 19, TypeScript, inline styles |
 | Backend | Express, Socket.IO, Mongoose (MongoDB) |
-| Shared components | `@hs/activities` — React component library (local package) |
+| Shared components | `@hs/activities` (activity engine + UI) and `@hs/audio` (recording/playback) — local packages |
 | Monorepo tooling | npm workspaces + Turborepo |
 | Deploy | Backend on Render; frontends deploy separately |
 
@@ -29,6 +29,7 @@ Holoscopic is a collective-sensemaking platform where groups map their perspecti
 ```
 holoscopic/
 ├── apps/
+│   ├── circles/           Circles — the product shell, Next.js frontend (port 4007)  → see apps/circles/CLAUDE.md
 │   ├── threshold/         Threshold — Next.js frontend (port 4006)  → see apps/threshold/CLAUDE.md
 │   ├── chorus/            Chorus — Next.js frontend (port 4005)  → see apps/chorus/CLAUDE.md
 │   ├── synthesis/         Synthesis — Next.js frontend (port 4004)  → see apps/synthesis/CLAUDE.md
@@ -37,7 +38,8 @@ holoscopic/
 │   ├── platform/          Next.js admin UI for instance mgmt (port 4002)  → see apps/platform/CLAUDE.md
 │   └── backend/           Express + Socket.IO API server (port 4001)  → see apps/backend/CLAUDE.md
 ├── packages/
-│   └── activities/        Shared activity engine, types, and UI components  → see packages/activities/CLAUDE.md
+│   ├── activities/        Shared activity engine, types, and UI components  → see packages/activities/CLAUDE.md
+│   └── audio/             @hs/audio — recording, upload, playback (the three browser rules live here)
 ├── package.json           npm workspaces root
 ├── turbo.json             Turborepo pipeline config
 └── render.yaml            Render deploy config (backend only)
@@ -52,11 +54,13 @@ npm run dev:game        # port 4003
 npm run dev:platform    # port 4002
 npm run dev:synthesis   # port 4004
 npm run dev:chorus      # port 4005
+npm run dev:threshold   # port 4006
+npm run dev:circles     # port 4007
 ```
 
 ## Site Traffic
 
-Every frontend carries a `Beacon` client component reporting page views to `POST /api/traffic/collect`;
+Every frontend except circles carries a `Beacon` client component reporting page views to `POST /api/traffic/collect` (circles gets one deliberately at its deploy, once the traffic allowlist grows a `circles` app);
 the holoscopic.io homepage also reports link clicks. Read it in the platform admin at **`/traffic`**.
 Details in `apps/backend/CLAUDE.md` § *Site traffic*.
 
@@ -94,7 +98,7 @@ are page views, Vercel's headline is unique visitors.
 
 Every `/api` request is resolved to an `Instance` via `apps/backend/middleware/resolveInstance.js`.
 
-**`Instance.app` says which game an instance belongs to** — `interview` | `spectrum` | `synthesis` | `chorus`. Read that field; never infer. Before it existed there was no stored answer and four consumers each guessed from a different accident (`parentInstanceId`, `slug === 'spectrum'`, the presence of `config.memorial`, else interView), which is why the admin's create form had nothing to offer and every instance it made was an interView edition.
+**`Instance.app` says which game an instance belongs to** — `interview` | `spectrum` | `synthesis` | `chorus` | `threshold`. Read that field; never infer. Before it existed there was no stored answer and four consumers each guessed from a different accident (`parentInstanceId`, `slug === 'spectrum'`, the presence of `config.memorial`, else interView), which is why the admin's create form had nothing to offer and every instance it made was an interView edition.
 
 - Set it wherever an instance is born: `POST /api/instances`, `utils/oasGames.js`, `utils/synIdeas.js`.
 - **`gameNumber` belongs to `interview` alone.** `Instance.getDefault()` picks the lowest-numbered active instance, so a memorial or an idea holding one can become the platform default and start answering unrelated traffic.
@@ -172,7 +176,7 @@ Allowed origins from `CLIENT_URL` env var (comma-separated) in `apps/backend/.en
 - Run `git status` before committing. If files you never opened are dirty, that is another agent's work in progress — leave it alone.
 - Renames pair up: `git add` on one side of a detected rename can pull in the whole rename set. Check `git diff --cached --name-only` after staging and before committing.
 
-**Never restart or kill another agent's dev server.** All six ports are usually live (`4000`–`4005`). If you need a server, start your own on a spare port and stop it when done.
+**Never restart or kill another agent's dev server.** All eight ports are usually live (`4000`–`4007`). If you need a server, start your own on a spare port and stop it when done.
 
 **Every backend edit restarts the backend for everyone.** `npm run dev` (→ `turbo dev`) runs each workspace's `dev` script, and the backend's is `nodemon websocket-server.js`. Nodemon watches all of `apps/backend`, so *any* agent saving *any* file there — a route, a util, a one-off in `scripts/` — restarts the shared server. Each restart costs 1–9s of Atlas reconnect during which `loadAPIRoutes()` has not fired, so every `/api` request buffers in mongoose for 10s and then 500s. With several agents editing the backend at once it never stays up long enough to serve, and *every* frontend looks broken — the symptom is multi-second hangs and 500s in an app you were not touching.
 

@@ -25,8 +25,8 @@ at every scale: a circle of circles is itself a circle, and the platform is the 
 
 Getting there is mostly consolidation, because the hard half exists: **one backend, one database,
 one global `User` collection** — the same email/password already works in every account-bearing
-app. What's fragmented is everything around the account: four copy-pasted auth stacks whose
-cookies can't cross subdomains, six frontends with no shared shell, four identity mechanisms, and
+app. What's fragmented is everything around the account: five copy-pasted auth stacks whose
+cookies can't cross subdomains, seven frontends with no shared shell, four identity mechanisms, and
 hand-maintained lists (CORS, Beacon allowlist, homepage cards) that grow linearly with every new
 activity. This plan closes those seams and then changes what "new activity" means — from "new
 deployment" to "new row."
@@ -207,22 +207,25 @@ P-numbered; per-app decisions (Threshold's D1–D20 etc.) stay in their own plan
     gets a quiet return line pointing at the invitation — touch an instrument, then take a seat.
     Not yet built on the app side.
 
-- **P18 — Toyrok is the first product; Holoscopic is the lab** (MO, 2026-08-14). The platform's
-  consumer face is **toyrok.com** — Toyrok, from Mongolian *тойрог* (toirog), "circle"; the verb
-  sense is *to encircle*. Tagline: **thinking tools for community**. holoscopic.io stays the lab —
-  experiments, lab notes, the manifesto — and primitives graduate from lab to product. Five
-  consequences:
-  - **Toyrok is M6's host app, born with a brand** instead of as a generic "play" app: one
-    Next.js shell on its own domain, activities mounted inside as packages (Tier B), the
+- **P18 — Circles is the first product, and the brand is Holoscopic** (MO, 2026-08-14; revised
+  the same day — the morning's Toyrok name and its separate toyrok.com apex were dropped before
+  anything deployed). One brand, a branded house: the unified product ships to
+  **circles.holoscopic.io** as **Holoscopic** — tagline: **thinking tools for community** — with
+  the instruments (Threshold, Synthesis, …) as named features inside it, never sub-brands. The
+  holoscopic.io homepage stays the lab face — experiments, lab notes, the manifesto — and
+  primitives graduate from lab to product, visibly, under the one identity. Five consequences:
+  - **`apps/circles` is M6's host app, born with a brand** instead of as a generic "play" app:
+    one Next.js shell on its own subdomain, activities mounted inside as packages (Tier B), the
     invariant (§2) holding from day one.
   - **v1 scope:** sign in → my circles → the **circle home** (the map built 2026-08-14 on
     Threshold's circle page is the prototype: members on a ring, shared explorations sized by
     participation, solo spurs) → **Threshold and Synthesis** as the first two activities inside,
-    rebuilt in Toyrok's visual language. Synthesis picks up two feature updates on the way in:
+    rebuilt in the Toono language. Synthesis picks up two feature updates on the way in:
     audio, and editable edges.
-  - **A separate apex breaks the P2 cookie for this app, and that is accepted.** Same backend,
-    same global `User` collection — the same email/password works — but Toyrok runs its own
-    NextAuth session. No cross-domain SSO claim between toyrok.com and holoscopic.io.
+  - **Same apex, so the P2 cookie path holds.** circles.holoscopic.io sits on `.holoscopic.io`,
+    restoring the domain-cookie SSO that the toyrok.com plan had broken and accepted losing.
+    Same backend, same global `User` collection; deploy needs CORS (`CLIENT_URL`) + the shared
+    secret, same pattern as every other subdomain.
   - **The circle home map generalizes on the module seam.** Participation moves off direct
     `ThresholdShare` reads to a per-activity read hook, so the map never knows what a "share"
     is. The map is the Circle layer's consumer #2 — the trigger M8 was waiting on for promoting
@@ -230,19 +233,21 @@ P-numbered; per-app decisions (Threshold's D1–D20 etc.) stay in their own plan
   - **The visual language is designed first**, in its own design conversation (the Q5 rule),
     before app code. *Held 2026-08-14; MO chose **Toono*** — the ger's crown ring: felt grounds,
     larch ink, sky-blue reserved for what is live, ochre for solo work, a warm round serif for
-    display. The direction board (three directions, each skinned onto the circle-home map) is the
-    session's artifact; the token spec lives in `apps/toyrok/DESIGN.md`.
-  - **Accounts read as Toyrok's own** (MO, 2026-08-14): no Holoscopic mention on any Toyrok
-    surface. Production users carry over by construction — same backend, same global `users`
-    collection — so "porting" is CORS + the shared secret at deploy, not a migration.
+    display. Toono is **Holoscopic's product design language**; its ring motif carries into the
+    Holoscopic wordmark (the o's are the rings). The direction board (three directions, each
+    skinned onto the circle-home map) is the session's artifact; the token spec lives in
+    `apps/circles/DESIGN.md`.
+  - **Accounts are Holoscopic accounts, presented as such** (MO, 2026-08-14, reversing the
+    morning's Toyrok-branded-accounts rule): same backend, same global `users` collection, same
+    email/password, and the product says so plainly. There is no porting story at all.
 
 ## §5 Current state worth knowing (from the 2026-08 audit)
 
 What makes this cheap:
 
-- All four `src/lib/auth.ts` and all four `api/auth/game-token/route.ts` are byte-near-identical
+- All five `src/lib/auth.ts` and all five `api/auth/game-token/route.ts` are byte-near-identical
   copies — the extractions in M2 are pure deduplication that never had a chance to diverge.
-- Dev already runs one shared `NEXTAUTH_SECRET` across all four apps and the backend; only
+- Dev already runs one shared `NEXTAUTH_SECRET` across all five apps and the backend; only
   production's per-project values differ.
 - `models/Notification.js`, the circle layer's opaque payloads, and `resolveInstance`'s header
   path are already the right shapes; they need enforcement, not redesign.
@@ -256,10 +261,10 @@ Loose ends to fix while passing through (each is in a milestone below):
 - One HS256 secret currently signs game tokens, 12h admin tokens, and Chorus's unexpiring
   contributor tokens; game tokens carry no `aud`/`iss`, so any app's token is valid on every
   route.
-- Threshold has `/login` but no `/signup`; its `.env.local` points `NEXT_PUBLIC_API_URL` at port
-  4051 (a stable-backend leftover).
-- `models/Signup.js` has no admin read surface, and nothing in the repo sends outbound mail to a
-  list — every existing capture only notifies the operator.
+- ✅ Threshold's missing `/signup` and the 4051 `.env.local` leftover — both fixed with the
+  front-door pass (2026-08).
+- `models/Signup.js` has its admin tab (M4 progress, 2026-08-12); outbound mail to a list still
+  does not exist — every existing capture only notifies the operator.
 
 ## §6 Milestones
 
@@ -347,15 +352,29 @@ link's border-bottom.
 carries its voice lines; the seat capture writes `Signup` rows under `first-gathering`; the copy
 passes MO's read; no negation-copy in the offer register.
 
-### M2 — One session everywhere (`packages/auth`, all four apps, backend) — **auth-sensitive**
+### M2 — One session everywhere (`packages/auth`, all five apps, backend) — **auth-sensitive**
 
 Extract `@hs/auth`: shared `authOptions` with an explicit `cookies:` block
 (`domain: '.holoscopic.io'`, `sameSite: 'lax'`, CSRF cookie renamed off `__Host-`), the
 game-token route handler (adding `aud`/`iss`; backend verifies them), `emailVerified` carried
 into the JWT/session. Extract `@hs/api` in the same pass: `apiFetch`, `ApiError`, the token
 cache (holoscopic-game's mint-deduping copy is canonical), socket handshake. Align production
-`NEXTAUTH_SECRET` across Vercel projects = Render's `GAME_TOKEN_SECRET`. Give threshold its
-`/signup`. Fix the 4051 leftover.
+`NEXTAUTH_SECRET` across Vercel projects = Render's `GAME_TOKEN_SECRET`. (Threshold's `/signup`
+and the 4051 leftover, once listed here, are already fixed.)
+
+*Progress 2026-08-17:* **built, uncommitted, awaiting MO's diff review (the auth escalation
+rule).** `@hs/auth` (createAuthOptions with the cookies block — domain from `AUTH_COOKIE_DOMAIN`,
+set `.holoscopic.io` in production only; CSRF renamed `__Secure-` off `__Host-`; session/callback
+cookie NAMES unchanged so existing production sessions survive; `emailVerified` carried into the
+JWT and session) and `@hs/api` (ApiError, the mint-deduping token cache from holoscopic-game,
+`createApiFetch`, `socketAuth`). All five apps rewired; game tokens now carry `aud` (per-app) +
+`iss: 'holoscopic'`, and `verifyToken` rejects a wrong `iss` or unknown `aud` while accepting
+claim-less pre-M2 tokens until every frontend deploy rolls over (tightening is a follow-up;
+Q3's fuller secret split still open). Verified in dev: login 200 through the shared stack,
+session shows `emailVerified: true`, minted token carries the claims, backend accepts it and
+rejects tampering/wrong-iss/unknown-aud; five apps type-check; 359 backend tests green.
+**At deploy:** set `AUTH_COOKIE_DOMAIN=.holoscopic.io` on all five Vercel projects and align
+production `NEXTAUTH_SECRET` across them = Render's `GAME_TOKEN_SECRET`.
 
 *Done when:* logging in on any one subdomain is being logged in on all of them, verified in a
 browser against production domains, not by reading config. Sessions survive navigation between
@@ -364,8 +383,8 @@ apps; Chorus and platform admin are untouched.
 ### M3 — One shell (`packages/shell`, all frontends)
 
 `@hs/shell`: header, account menu, notification bell, footer, and the one true `Beacon`. Renders
-coherently for anonymous visitors (P5). Adopted by all five current frontends; the five Beacon
-mirrors are deleted. No activity-engine dependency, enforced by the package's dependency list.
+coherently for anonymous visitors (P5). Adopted by all six current frontends; the five Beacon
+mirrors are deleted (circles never grew one). No activity-engine dependency, enforced by the package's dependency list.
 
 *Done when:* one component tree serves every app's chrome; a wire-shape change to Beacon is one
 edit; `grep -r "Beacon" apps/*/src/components` finds only imports.
@@ -397,11 +416,9 @@ circle and invites members by email; backend support (`createCircle`, `invitedEm
 `requireInvitation`) already exists, so this is a platform-admin creation surface (Q6), with
 invitations sent manually by MO (Q7) and open-activity rooms of 10 (Q8). **The
 Threshold frontend is no longer the blocker**: every participant surface is built in the tide-line
-language (§9.2) and live on production at threshold.holoscopic.io since 2026-08-10. What M5 still
-waits on there is **the front door** — `src/app/page.tsx` renders a `NotBuilt` placeholder, so
-nothing in the UI creates a circle or explains joining one, and a cohort the former stamps has
-nowhere to arrive. That surface, plus a `/signup`, is the Threshold-side prerequisite; it is small
-next to what M5 assumed.
+language (§9.2) and live on production at threshold.holoscopic.io since 2026-08-10, and the front
+door, `/new`, and `/signup` shipped after it (progress note below) — the Threshold-side
+prerequisites are done. What M5 still waits on is the backend former.
 
 *Progress 2026-08-11 (frontend half, per P16):* **the capture surface exists and the app stopped
 offering ongoing circles.** Threshold's front door now carries the rung-1 offer — three standing
@@ -422,8 +439,9 @@ Verified by watching an inbox.
 
 ### M6 — The host app and the manifest (Tier B is born)
 
-*2026-08-14: the host app has a name and a domain — **Toyrok**, toyrok.com (P18). Its v1 is the
-circle home plus Threshold and Synthesis as the first two packaged activities.*
+*2026-08-14: the host app has a name and a domain — **Circles**, circles.holoscopic.io, branded
+Holoscopic (P18). Its v1 is the circle home plus Threshold and Synthesis as the first two
+packaged activities.*
 
 One new "play" app (route-per-activity, thin router; each activity a workspace package = one
 agent's territory) and the `ActivityManifest` (P7) read by homepage, dashboard, admin, and the
@@ -444,6 +462,12 @@ opportunistic or never.
 
 ### M8 — Composition and the gathering (Tier A, `/api/circles`, circle-of-circles)
 
+*2026-08-14: the `/api/circles` promotion is done ahead of the rest of M8 — consumer #2 arrived
+as the circles app (82199ae). Generic snapshot/my-circles/join routes are live, with per-activity
+content flowing through two module hooks (`participation`, `snapshotExtras`) on the
+`circleActivities` seam, and both front doors serve the identical payload. Tier A, the World Café
+module and the root circle remain.*
+
 When two or three activities run on shared primitives: manifest-defined activities in the admin
 (Tier A), promotion of generic circle operations from `/api/threshold` to `/api/circles`
 (consumer #2 exists now), and the World Café module + `memberCircleIds[]` per P13. The root
@@ -457,15 +481,15 @@ artifact home.
 - **Q1 — Sign-in host.** One login page at holoscopic.io/login, or an accounts subdomain? (M2
   works with either; the domain cookie makes it cosmetic, but it sets the brand for "your
   Holoscopic account.")
-- **Q2 — Host app address.** `holoscopic.io/a/<key>` on the apex vs `play.holoscopic.io`.
-  Interacts with Q1 and the dashboard living on the apex.
+- ✅ **Q2 — decided 2026-08-14: circles.holoscopic.io** (P18). A subdomain on the shared apex,
+  so the Q1 domain cookie applies unchanged.
 - **Q3 — Secret split.** Should admin tokens and Chorus contributor tokens move off the shared
   HS256 secret while M2 is touching it, or is `aud`/`iss` separation enough for now?
 - **Q4 — Standing topics.** The launch set of topic + polarity pairs (drafts in §8 are
   placeholders); three, each from a different life-domain, poles symmetric per Threshold's rule
   that neither pole can look like the good one.
-- **Q5 — Threshold visual language.** The design conversation itself — scheduled, not folded into
-  a build session.
+- ✅ **Q5 — held; the tide-line language shipped.** Every Threshold participant surface wears it
+  (§9.2), live on production since 2026-08-10.
 - ✅ **Q6 — decided 2026-08-10: host circle creation lives in the platform admin first.** MO is
   the only host for now; a public creator flow on the Threshold front door waits for its design
   language and a second host.
