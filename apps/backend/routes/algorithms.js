@@ -6,6 +6,7 @@ const Sequence = require('../models/Sequence');
 const User = require('../models/User');
 const { spend, transact } = require('../utils/holons');
 const { notify } = require('../utils/notify');
+const { cloneActivities, remapSequenceActivities } = require('../utils/sequences');
 
 function generateId() {
   return Math.random().toString(36).substring(2, 10);
@@ -19,26 +20,29 @@ function toSlug(str) {
     .substring(0, 35) + '-' + Math.random().toString(36).substring(2, 6);
 }
 
-async function cloneSequence(fromSequenceId, title, createdBy) {
+// Run a pattern: copy its skeleton into maps this session owns.
+//
+// The pattern's own maps are templates and stay untouched — a session gets
+// fresh copies of the setup, empty and ready for participants. Reusing the
+// template's activityIds here meant every session of a pattern played on the
+// same maps, so the second group walked into the first group's entries.
+async function cloneSequence(fromSequenceId, title, createdBy, instanceId, { live = true } = {}) {
   const source = await Sequence.findOne({ id: fromSequenceId }).lean();
   if (!source) return null;
   const urlName = toSlug(title || source.title);
+  const idMap = await cloneActivities(source.activities, {
+    instanceId,
+    urlBaseFor: src => `${urlName}-${toSlug(src.title).replace(/-[a-z0-9]{4}$/, '')}`,
+    // A session's maps are live; a fork copies one skeleton into another, so
+    // those copies stay templates until a session runs them.
+    isDraft: !live,
+  });
   return await Sequence.create({
     title: title || source.title,
     urlName,
     description: source.description || '',
     createdBy,
-    activities: (source.activities || []).map(a => ({
-      activityId: a.activityId,
-      order: a.order,
-      autoClose: a.autoClose || false,
-      duration: a.duration || null,
-      openedAt: null,
-      closedAt: null,
-      parentActivityIds: a.parentActivityIds || [],
-      round: a.round || null,
-      openOnCreate: a.openOnCreate || false,
-    })),
+    activities: remapSequenceActivities(source.activities, idMap),
     welcomePage: source.welcomePage || {},
     status: 'active',
     startedAt: new Date(),
@@ -54,7 +58,7 @@ async function activateProposal(proposal, algorithm, instanceId, config) {
 
   try {
     if (algorithm.sequenceId) {
-      sequence = await cloneSequence(algorithm.sequenceId, title, proposal.proposedBy);
+      sequence = await cloneSequence(algorithm.sequenceId, title, proposal.proposedBy, instanceId);
     } else {
       sequence = await Sequence.create({
         title,
@@ -450,7 +454,7 @@ router.post('/:id/fork', async (req, res) => {
     let clonedSequenceId = sequenceId || null;
     let newSequenceUrlName = null;
     if (!sequenceId && parent.sequenceId) {
-      const cloned = await cloneSequence(parent.sequenceId, `${title} — session`, userId);
+      const cloned = await cloneSequence(parent.sequenceId, `${title} — session`, userId, instanceId, { live: false });
       if (cloned) {
         clonedSequenceId = cloned.id;
         newSequenceUrlName = cloned.urlName;
