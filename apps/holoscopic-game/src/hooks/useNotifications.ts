@@ -25,10 +25,24 @@ export function useNotifications(userId: string | null, socket: Socket | null = 
     } catch { /* silent */ }
   }, [userId]);
 
+  // The socket push below is the live path; this poll is the backstop for a
+  // dropped connection. Paused while the tab is hidden — otherwise a tab left
+  // open in the background hits /notifications twice a minute forever, and
+  // that cost scales with every logged-in user. Refetch on focus so a
+  // returning tab is current without waiting out the interval.
   useEffect(() => {
     fetchAll();
-    const interval = setInterval(fetchAll, 30000);
-    return () => clearInterval(interval);
+    const soft = () => {
+      if (document.visibilityState === 'visible') fetchAll();
+    };
+    const interval = setInterval(soft, 30000);
+    window.addEventListener('focus', soft);
+    document.addEventListener('visibilitychange', soft);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', soft);
+      document.removeEventListener('visibilitychange', soft);
+    };
   }, [fetchAll]);
 
   // Live push: prepend new notification when server emits one
@@ -56,5 +70,5 @@ export function useNotifications(userId: string | null, socket: Socket | null = 
     setUnreadCount(0);
   }
 
-  return { notifications, unreadCount, markRead, markAllRead, refresh: fetch };
+  return { notifications, unreadCount, markRead, markAllRead, refresh: fetchAll };
 }

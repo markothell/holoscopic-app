@@ -427,10 +427,6 @@ setInterval(() => {
     console.log(`Clearing ${operationsInProgress.size} stale operations`);
     operationsInProgress.clear();
   }
-  
-  if (global.gc && Math.random() < 0.1) {
-    global.gc();
-  }
 }, CONNECTIONS_CLEANUP_INTERVAL);
 
 // Stale connection cleanup
