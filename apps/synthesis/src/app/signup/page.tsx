@@ -11,7 +11,16 @@ import { apiFetch } from '@/services/api';
 function SignupForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get('next') || '/';
+  // Same-origin paths only — an absolute or scheme-relative next here is an
+  // open redirect off a credential form.
+  // Control characters go first: URL parsing drops tab/LF/CR, so a
+  // percent-encoded "/<TAB>//evil.com" decodes past a prefix check and
+  // then resolves off-site.
+  const rawNext = (params.get('next') || '/').replace(/[\u0000-\u001F\u007F]/g, '');
+  const next =
+    rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.startsWith('/\\')
+      ? rawNext
+      : '/';
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

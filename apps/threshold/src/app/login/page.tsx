@@ -15,7 +15,16 @@ import { TideLine } from '@/components/TideLine';
 
 function LoginForm() {
   const params = useSearchParams();
-  const callbackUrl = params.get('callbackUrl') || '/me';
+  // Same-origin paths only — an absolute or scheme-relative callbackUrl here
+  // is an open redirect off a credential form.
+  // Control characters go first: URL parsing drops tab/LF/CR, so a
+  // percent-encoded "/<TAB>//evil.com" decodes past a prefix check and
+  // then resolves off-site.
+  const rawCallback = (params.get('callbackUrl') || '/me').replace(/[\u0000-\u001F\u007F]/g, '');
+  const callbackUrl =
+    rawCallback.startsWith('/') && !rawCallback.startsWith('//') && !rawCallback.startsWith('/\\')
+      ? rawCallback
+      : '/me';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);

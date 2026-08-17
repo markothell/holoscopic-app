@@ -9,7 +9,16 @@ import styles from './page.module.css';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  // Same-origin paths only — an absolute or scheme-relative callbackUrl here
+  // is an open redirect off a credential form.
+  // Control characters go first: URL parsing drops tab/LF/CR, so a
+  // percent-encoded "/<TAB>//evil.com" decodes past a prefix check and
+  // then resolves off-site.
+  const rawCallback = (searchParams.get('callbackUrl') || '/dashboard').replace(/[\u0000-\u001F\u007F]/g, '');
+  const callbackUrl =
+    rawCallback.startsWith('/') && !rawCallback.startsWith('//') && !rawCallback.startsWith('/\\')
+      ? rawCallback
+      : '/dashboard';
   // /signup and /reset-password both hand off here with ?message= after doing
   // their work. Nothing rendered it, so "Account created. Please sign in."
   // arrived as a blank sign-in form and read as the signup having failed.

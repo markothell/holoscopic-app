@@ -9,7 +9,16 @@ import styles from './page.module.css';
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  // Same-origin paths only — an absolute or scheme-relative callbackUrl here
+  // is an open redirect off a credential form.
+  // Control characters go first: URL parsing drops tab/LF/CR, so a
+  // percent-encoded "/<TAB>//evil.com" decodes past a prefix check and
+  // then resolves off-site.
+  const rawCallback = (searchParams.get('callbackUrl') || '/dashboard').replace(/[\u0000-\u001F\u007F]/g, '');
+  const callbackUrl =
+    rawCallback.startsWith('/') && !rawCallback.startsWith('//') && !rawCallback.startsWith('/\\')
+      ? rawCallback
+      : '/dashboard';
   const { data: session, status } = useSession();
 
   const [name, setName] = useState('');
