@@ -213,6 +213,11 @@ export default function SequenceDetailPage() {
   });
   const roundNumbers = Array.from(roundMap.keys()).sort((a, b) => a - b);
 
+  // An open sequence is readable by anyone who has the link: a passer-by can
+  // open its maps and look, and enrolling is what buys a place on them. An
+  // invitation-only sequence keeps its maps for its members.
+  const canBrowse = isEnrolled || !sequence.requireInvitation;
+
   // CTA label
   const getCTALabel = () => {
     if (enrolling) return 'Joining…';
@@ -481,15 +486,16 @@ export default function SequenceDetailPage() {
                                     member who clicked Participate — including
                                     anyone following the Relationship Blueprint
                                     demo linked from /map-sequence. */}
-                                {activity && seqActivity.openedAt && isEnrolled && (
+                                {activity && seqActivity.openedAt && canBrowse && (
                                   <Link
                                     href={`/a/${activity.urlName}?sequence=${sequence.id}`}
                                     className={styles.activityLink}
                                   >
-                                    {status.text === 'Closed' ? 'View Results →' : 'Participate →'}
+                                    {status.text === 'Closed' ? 'View Results →'
+                                      : isEnrolled ? 'Participate →' : 'Take a look →'}
                                   </Link>
                                 )}
-                                {activity && seqActivity.openedAt && status.text !== 'Closed' && !isEnrolled && (
+                                {activity && seqActivity.openedAt && status.text !== 'Closed' && !canBrowse && (
                                   <p className={styles.activityHint}>Enroll to participate</p>
                                 )}
                                 {!activity && (
