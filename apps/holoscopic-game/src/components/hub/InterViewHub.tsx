@@ -46,9 +46,16 @@ type NodeData = {
 
 // ─── Geometry & time ─────────────────────────────────────────────────────────
 
-function radialPos(i: number, total: number, radius: number) {
-  const angle = total === 1 ? -Math.PI / 2 : (2 * Math.PI * i / total) - Math.PI / 2;
+function radialAngle(i: number, total: number) {
+  return total === 1 ? -Math.PI / 2 : (2 * Math.PI * i / total) - Math.PI / 2;
+}
+
+function posAt(angle: number, radius: number) {
   return { x: Math.round(Math.cos(angle) * radius), y: Math.round(Math.sin(angle) * radius) };
+}
+
+function radialPos(i: number, total: number, radius: number) {
+  return posAt(radialAngle(i, total), radius);
 }
 
 function timeLeft(iso?: string | null): string {
@@ -384,6 +391,11 @@ function PopupCard({ node, onClose, userId, onAction, holonBalance, holonsConfig
         )}
         {d.nodeType === 'pattern' && meta.id && (
           <Link href={`/patterns/${meta.id as string}`} style={{ ...btn('fill'), textDecoration: 'none' }}>View {STR.pattern.toLowerCase()} →</Link>
+        )}
+        {/* A pattern node standing for a run inside a topic — its session is
+            folded into this node, so keep the way in. */}
+        {d.nodeType === 'pattern' && meta.sequenceUrlName && (
+          <Link href={`/sequence/${meta.sequenceUrlName as string}`} style={{ ...btn('outline'), textDecoration: 'none' }}>Enter session →</Link>
         )}
         {/* Moderation: admin-only removal; escrow refunds happen server-side */}
         {isAdmin && (d.nodeType === 'topic' || d.nodeType === 'activity') && (
@@ -827,23 +839,71 @@ function HubInner({ view }: { view: HubView }) {
               meta: { topicId: item.id, description: item.description, supporterCount: item.supporterCount, quorumThreshold: item.quorumThreshold, holonPool: item.holonPool, status: item.status, expiresAt: item.expiresAt, isNominator: item.nominatedBy === userId, isSupporter: item.supporters?.some((s: any) => s.userId === userId) },
             },
           };
-          const [actR, seqR] = await Promise.allSettled([
+          const [actR, seqR, patR] = await Promise.allSettled([
             apiFetch(`/activities?topicId=${selectedId}`).then(d => d.activities ?? []),
             apiFetch(`/sequences/public?topicId=${selectedId}`).then((d: any) => d ?? []),
+            AlgorithmService.list(),
           ]);
           const acts = actR.status === 'fulfilled' ? actR.value : [];
           const seqs = seqR.status === 'fulfilled' ? seqR.value : [];
-          const total = acts.length + seqs.length;
+          const pats: any[] = patR.status === 'fulfilled' ? (patR.value ?? []) : [];
+          const patternById = Object.fromEntries(pats.map(p => [p.id, p]));
+
+          // Maps a pattern generated hang off that pattern rather than off the
+          // topic: the topic is what they are about, the pattern is where they
+          // came from, and a run of six steps would otherwise read as six
+          // unrelated maps someone happened to start.
+          const runs = new Map<string, any[]>();
+          const loose: any[] = [];
+          for (const a of acts) {
+            const pid = a.sourceAlgorithmId;
+            if (pid && patternById[pid]) runs.set(pid, [...(runs.get(pid) ?? []), a]);
+            else loose.push(a);
+          }
+          // The run's own sequence is folded into its pattern node — showing
+          // both would put the same session on the canvas twice.
+          const seqsShown = seqs.filter((s: any) => !(s.algorithmId && runs.has(s.algorithmId)));
+          const seqByPattern = Object.fromEntries(
+            seqs.filter((s: any) => s.algorithmId).map((s: any) => [s.algorithmId, s])
+          );
+
+          const mapNode = (a: any, pos: { x: number; y: number }, parentNodeId?: string) => {
+            const joined = a.participants?.length ?? 0;
+            const closing = a.status === 'active' && a.closesAt ? ` · ${timeLeft(a.closesAt)}` : a.status === 'completed' ? ' · settled' : '';
+            return {
+              id: a.id, type: 'radial' as const, position: { x: pos.x - 74, y: pos.y - 26 },
+              data: { label: a.title, nodeType: 'activity' as const, meta: { urlName: a.urlName, activityType: a.activityType, question: a.mapQuestion, slots: a.maxEntries ? Math.max(0, a.maxEntries - joined) : null, subtitle: a.maxEntries ? `${joined}/${a.maxEntries} joined${closing}` : undefined, topicId: item.id, parentNodeId } },
+            };
+          };
+
+          const total = loose.length + seqsShown.length + runs.size;
           radialNodes = [
-            ...acts.map((a: any, i: number) => {
-              const { x, y } = radialPos(i, total || 1, 270);
-              const joined = a.participants?.length ?? 0;
-              const closing = a.status === 'active' && a.closesAt ? ` · ${timeLeft(a.closesAt)}` : a.status === 'completed' ? ' · settled' : '';
-              return { id: a.id, type: 'radial' as const, position: { x: x - 74, y: y - 26 }, data: { label: a.title, nodeType: 'activity' as const, meta: { urlName: a.urlName, activityType: a.activityType, question: a.mapQuestion, slots: a.maxEntries ? Math.max(0, a.maxEntries - joined) : null, subtitle: a.maxEntries ? `${joined}/${a.maxEntries} joined${closing}` : undefined, topicId: item.id } } };
-            }),
-            ...seqs.map((s: any, i: number) => {
-              const { x, y } = radialPos(acts.length + i, total || 1, 270);
+            ...loose.map((a: any, i: number) => mapNode(a, radialPos(i, total || 1, 270))),
+            ...seqsShown.map((s: any, i: number) => {
+              const { x, y } = radialPos(loose.length + i, total || 1, 270);
               return { id: s.id, type: 'radial' as const, position: { x: x - 74, y: y - 26 }, data: { label: s.title, nodeType: 'sequence' as const, meta: { urlName: s.urlName, memberCount: s.members?.length ?? 0, status: s.status, description: s.description } } };
+            }),
+            ...[...runs.entries()].flatMap(([pid, generated], gi) => {
+              const pattern = patternById[pid];
+              const session = seqByPattern[pid];
+              const angle = radialAngle(loose.length + seqsShown.length + gi, total || 1);
+              const { x, y } = posAt(angle, 270);
+              const patternNode = {
+                id: `pattern-${pid}`, type: 'radial' as const, position: { x: x - 74, y: y - 26 },
+                data: {
+                  label: pattern.title, nodeType: 'pattern' as const,
+                  meta: {
+                    id: pid, description: pattern.thesis || pattern.description, authorName: pattern.authorName,
+                    subtitle: `${generated.length} ${(generated.length === 1 ? STR.map : STR.maps).toLowerCase()} from this ${STR.pattern.toLowerCase()}`,
+                    sequenceUrlName: session?.urlName, status: session?.status,
+                  },
+                },
+              };
+              // Children fan out beyond their pattern, along its own spoke.
+              const spread = 0.34;
+              const steps = generated.map((a: any, j: number) =>
+                mapNode(a, posAt(angle + (j - (generated.length - 1) / 2) * spread, 470), patternNode.id));
+              return [patternNode, ...steps];
             }),
           ];
 
@@ -903,7 +963,9 @@ function HubInner({ view }: { view: HubView }) {
               animated: false,
             }))
           : radialNodes.map(n => ({
-              id: `e-${n.id}`, source: 'center', target: n.id,
+              // A generated map hangs off its pattern; everything else off the
+              // centre.
+              id: `e-${n.id}`, source: (n.data.meta?.parentNodeId as string) || 'center', target: n.id,
               sourceHandle: 'out-c', targetHandle: 'in-c',
               type: 'straight',
               style: { stroke: 'rgba(15,13,11,0.24)', strokeWidth: 1 },

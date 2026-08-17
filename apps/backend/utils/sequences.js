@@ -42,6 +42,8 @@ const SETUP_FIELDS = [
  * @param {boolean} [opts.isDraft]  true for a template or a builder copy,
  *                                  false for maps a run is about to play
  * @param {string} [opts.topicId]   topic the copies belong to
+ * @param {string} [opts.sourceAlgorithmId] pattern these copies came from, so
+ *                                  a topic can show which maps it generated
  * @returns {Object} map of source activityId → copy activityId
  */
 async function cloneActivities(seqActivities, {
@@ -50,6 +52,7 @@ async function cloneActivities(seqActivities, {
   urlBaseFor = src => `${src.urlName}-copy`,
   isDraft = true,
   topicId = null,
+  sourceAlgorithmId = null,
 }) {
   const idMap = {};
   for (const seqAct of seqActivities || []) {
@@ -61,6 +64,7 @@ async function cloneActivities(seqActivities, {
       title: titleFor(src),
       urlName: await uniqueUrlName(urlBaseFor(src)),
       topicId,
+      sourceAlgorithmId,
       ...Object.fromEntries(SETUP_FIELDS.map(f => [f, src[f]])),
       isDraft,
       isPublic: src.isPublic,

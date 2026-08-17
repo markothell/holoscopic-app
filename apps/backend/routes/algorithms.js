@@ -26,7 +26,7 @@ function toSlug(str) {
 // fresh copies of the setup, empty and ready for participants. Reusing the
 // template's activityIds here meant every session of a pattern played on the
 // same maps, so the second group walked into the first group's entries.
-async function cloneSequence(fromSequenceId, title, createdBy, instanceId, { live = true } = {}) {
+async function cloneSequence(fromSequenceId, title, createdBy, instanceId, { live = true, algorithmId = null, topicId = null } = {}) {
   const source = await Sequence.findOne({ id: fromSequenceId }).lean();
   if (!source) return null;
   const urlName = toSlug(title || source.title);
@@ -36,6 +36,10 @@ async function cloneSequence(fromSequenceId, title, createdBy, instanceId, { liv
     // A session's maps are live; a fork copies one skeleton into another, so
     // those copies stay templates until a session runs them.
     isDraft: !live,
+    topicId,
+    // Only a session's maps carry provenance: they are what the pattern
+    // generated. A fork's copies are another skeleton, not a result of one.
+    sourceAlgorithmId: live ? algorithmId : null,
   });
   return await Sequence.create({
     title: title || source.title,
@@ -44,6 +48,8 @@ async function cloneSequence(fromSequenceId, title, createdBy, instanceId, { liv
     createdBy,
     activities: remapSequenceActivities(source.activities, idMap),
     welcomePage: source.welcomePage || {},
+    algorithmId: live ? algorithmId : null,
+    topicId,
     status: 'active',
     startedAt: new Date(),
   });
@@ -58,7 +64,10 @@ async function activateProposal(proposal, algorithm, instanceId, config) {
 
   try {
     if (algorithm.sequenceId) {
-      sequence = await cloneSequence(algorithm.sequenceId, title, proposal.proposedBy, instanceId);
+      sequence = await cloneSequence(algorithm.sequenceId, title, proposal.proposedBy, instanceId, {
+        algorithmId: algorithm.id,
+        topicId: proposal.topicId || null,
+      });
     } else {
       sequence = await Sequence.create({
         title,
@@ -273,7 +282,7 @@ router.post('/:id/proposals', async (req, res) => {
   const userId = req.headers['x-user-id'];
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { intent } = req.body;
+  const { intent, topicId } = req.body;
   if (!intent || !intent.trim()) return res.status(400).json({ error: 'intent is required' });
 
   try {
@@ -295,6 +304,7 @@ router.post('/:id/proposals', async (req, res) => {
       algorithmId: algorithm.id,
       proposedBy: userId,
       intent: intent.trim(),
+      topicId: topicId || null,
       signups: [{ userId, joinedAt: new Date() }],
       quorumThreshold: algorithmSessionQuorum,
       expiresAt,
