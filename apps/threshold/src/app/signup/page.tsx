@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { signup, ApiError } from '@/services/api';
 import { Page, Action, Quiet, Muted } from '@/components/Shell';
 import { TideLine } from '@/components/TideLine';
+import { safeRedirect } from '@hs/auth/redirect';
 
 // Making the account. Threshold had none of this: a person following an
 // invitation could sign in with an account they already had, and otherwise had
@@ -23,16 +24,11 @@ import { TideLine } from '@/components/TideLine';
 
 function SignupForm() {
   const params = useSearchParams();
-  // Same-origin paths only — an absolute or scheme-relative callbackUrl here
-  // is an open redirect off a credential form.
-  // Control characters go first: URL parsing drops tab/LF/CR, so a
-  // percent-encoded "/<TAB>//evil.com" decodes past a prefix check and
-  // then resolves off-site.
-  const rawCallback = (params.get('callbackUrl') || '/').replace(/[\u0000-\u001F\u007F]/g, '');
-  const callbackUrl =
-    rawCallback.startsWith('/') && !rawCallback.startsWith('//') && !rawCallback.startsWith('/\\')
-      ? rawCallback
-      : '/';
+  // Same-origin paths only — an unchecked redirect off a credential form
+  // is a phishing hop from a real domain, taken the moment a password
+  // has been typed in. The guard and its attack vectors live in
+  // @hs/auth/redirect, because ten copies of it shared one hole.
+  const callbackUrl = safeRedirect(params.get('callbackUrl'), '/');
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

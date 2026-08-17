@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { signup, ApiError } from '@/services/api';
 import { Page, Action, Quiet, Muted } from '@/components/Shell';
+import { safeRedirect } from '@hs/auth/redirect';
 
 // Making the account. An invitation link is how people arrive at circles, and
 // most invitees have no account yet — this is their door. It is a Holoscopic
@@ -18,16 +19,11 @@ import { Page, Action, Quiet, Muted } from '@/components/Shell';
 
 function SignupForm() {
   const params = useSearchParams();
-  // Same-origin paths only — an absolute or scheme-relative callbackUrl here
-  // is an open redirect off a credential form.
-  // Control characters go first: URL parsing drops tab/LF/CR, so a
-  // percent-encoded "/<TAB>//evil.com" decodes past a prefix check and
-  // then resolves off-site.
-  const rawCallback = (params.get('callbackUrl') || '/circles').replace(/[\u0000-\u001F\u007F]/g, '');
-  const callbackUrl =
-    rawCallback.startsWith('/') && !rawCallback.startsWith('//') && !rawCallback.startsWith('/\\')
-      ? rawCallback
-      : '/circles';
+  // Same-origin paths only — an unchecked redirect off a credential form
+  // is a phishing hop from a real domain, taken the moment a password
+  // has been typed in. The guard and its attack vectors live in
+  // @hs/auth/redirect, because ten copies of it shared one hole.
+  const callbackUrl = safeRedirect(params.get('callbackUrl'), '/circles');
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

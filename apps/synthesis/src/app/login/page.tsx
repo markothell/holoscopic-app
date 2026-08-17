@@ -6,20 +6,16 @@ import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
+import { safeRedirect } from '@hs/auth/redirect';
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  // Same-origin paths only — an absolute or scheme-relative next here is an
-  // open redirect off a credential form.
-  // Control characters go first: URL parsing drops tab/LF/CR, so a
-  // percent-encoded "/<TAB>//evil.com" decodes past a prefix check and
-  // then resolves off-site.
-  const rawNext = (params.get('next') || '/').replace(/[\u0000-\u001F\u007F]/g, '');
-  const next =
-    rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.startsWith('/\\')
-      ? rawNext
-      : '/';
+  // Same-origin paths only — an unchecked redirect off a credential form
+  // is a phishing hop from a real domain, taken the moment a password
+  // has been typed in. The guard and its attack vectors live in
+  // @hs/auth/redirect, because ten copies of it shared one hole.
+  const next = safeRedirect(params.get('next'), '/');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);

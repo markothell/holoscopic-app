@@ -163,6 +163,7 @@ Allowed origins from `CLIENT_URL` env var (comma-separated) in `apps/backend/.en
 - Do NOT return another user's identity on voted-for entries — redaction happens in the API layer (`entries.toRedacted`), never client-side.
 - Do NOT use `maxEntries: 0` unless you intend solo tracker mode (creator-only, unlimited slots).
 - Do NOT add new activity types to the DB schema enum without registering them in `@hs/activities`.
+- Do NOT pass a `?next=` / `?callbackUrl=` into `router.push()` or `signIn()` unchecked — every login and signup page routes it through `safeRedirect` from **`@hs/auth/redirect`**. An unchecked one forwards a just-authenticated account to any origin an attacker names. Copying the check into a sixth app instead of importing it is how ten copies came to share one bypass; the vectors are pinned in `packages/auth/src/safeRedirect.test.mjs`.
 - Do NOT run `git add -A` / `git add .` / `git commit -a` — other agents are editing this tree. See **Working in a Shared Tree** below.
 
 ## Working in a Shared Tree
