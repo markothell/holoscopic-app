@@ -6,26 +6,12 @@ export type EdgeKind = 'root' | 'child' | 'marriage';
 export type Origin = 'own' | 'borrowed';
 export type Visibility = 'private' | 'published';
 
-// The platform's one recording wire shape — mirrors ThresholdShare.audio and
-// Memory.body.audio, validated server-side by utils/audioPayload.js.
-export interface NodeAudio {
-  url: string;
-  pathname?: string;
-  contentType: string;
-  /** Timed by the client while recording — iOS MP4 carries no duration
-   *  metadata, so the file's own reading is Infinity. */
-  durationMs: number;
-  peaks: number[];
-  sizeBytes: number;
-}
-
+// A thought is text, and only text (D20, reversed 2026-08-17): the claim, and
+// the prose behind it.
 export interface NodeContent {
   topic: string;    // meaningful when kind === 'topic'
   thought: string;  // meaningful when kind === 'thought' — the one-sentence claim
   context: string;  // meaningful when kind === 'thought' — prose, click-to-reveal
-  /** D20 — a voice on the thought, recorded as/with its context. Null or
-   *  absent means typed-only. Never on a topic hub. */
-  audio?: NodeAudio | null;
 }
 
 export interface SynNode {

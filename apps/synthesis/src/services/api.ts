@@ -79,33 +79,3 @@ export async function apiStream(
   }
   return res;
 }
-
-/**
- * Upload a recording straight from the browser to Vercel Blob and return the
- * URL to hand to the backend (D20). The bytes reach Blob directly — neither
- * this Next server nor the backend ever sees them. Namespaced by community
- * instance, so a per-idea sweep or restore needs no reshuffle.
- */
-export async function uploadRecording(
-  blob: Blob,
-  { instanceId, mimeType, onProgress }: {
-    instanceId: string; mimeType: string; onProgress?: (percent: number) => void;
-  },
-): Promise<{ url: string; pathname: string }> {
-  const { upload } = await import('@vercel/blob/client');
-  const { fileExtensionFor, baseMimeType } = await import('@hs/audio');
-
-  const pathname = `synthesis/${instanceId}/${Date.now()}.${fileExtensionFor(mimeType)}`;
-
-  const result = await upload(pathname, blob, {
-    access: 'public',
-    handleUploadUrl: '/api/audio/upload',
-    // Parameters stripped: Blob's allowlist is an exact string match and the
-    // codecs parameter is spelled differently per browser.
-    contentType: baseMimeType(mimeType),
-    multipart: true,
-    onUploadProgress: onProgress ? (p) => onProgress(Math.round(p.percentage)) : undefined,
-  });
-
-  return { url: result.url, pathname: result.pathname };
-}

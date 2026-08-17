@@ -99,10 +99,6 @@ export default function PostOverlay({
       )}
 
       <p className="voice-serif mb-3 text-xl leading-snug text-mist">{node.content.thought}</p>
-      {/* D20: the voice on the thought, on the read-first surface too. */}
-      {node.content.audio && (
-        <audio controls preload="none" src={node.content.audio.url} className="mb-3 w-full" />
-      )}
       {node.content.context ? (
         <p className="mb-4 whitespace-pre-wrap text-sm leading-relaxed text-mist-soft">{node.content.context}</p>
       ) : (

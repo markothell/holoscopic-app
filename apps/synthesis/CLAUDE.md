@@ -2,7 +2,7 @@
 
 A networked pseudonymous group blog, at `synthesis.holoscopic.io`. Local dev port **4004**. Next.js 16 + React 19 + Tailwind v4 (no config file — `@theme inline` in `globals.css`), `@xyflow/react` for the graph, NextAuth credentials against the shared backend.
 
-Design source of truth is `PLAN.md` (§-numbered, with settled decisions D1–D16 in §10) and `UNION.md` (the whole-corpus LLM spec that replaces the M3 Q&A chat). Both are current — read the relevant § before changing behavior they describe.
+Design source of truth is `PLAN.md` (§-numbered, with settled decisions D1–D20 in §10) and `UNION.md` (the whole-corpus LLM spec that replaces the M3 Q&A chat). Both are current — read the relevant § before changing behavior they describe.
 
 **The word "synthesis" is overloaded, so each sense has its own noun.** *Synthesis* = the app. An *idea* = the container (a child `Instance`, slug `idea-<code>`). The *Union* (∪) = the LLM's read of everything the group has published. A *statement* = something a member puts to the group to vote on. *Reaching Synthesis* = the state a group enters when a statement clears the ⅔ bar. The Mongoose model files carry long header comments explaining *why* each field exists; read those before touching a schema.
 
@@ -12,7 +12,22 @@ Each member privately grows a DAG of nodes on their own map. Publishing a though
 
 Two node kinds only: `topic` (a hub label many thoughts attach to) and `thought` (a one-sentence claim + prose context, owning 1–2 axes). Context is a click-to-reveal popup, not a third shape.
 
-Milestones M0–M3 are built. Community synthesis is the active work.
+Milestones M0–M3 are built, and so is the community synthesis — the Union, and the statement
+mechanism through *Reaching Synthesis* (PLAN.md §Phase 5). Of the move into the circles app
+(P18): the move/unmarry edge gestures and the visit-their-map view are in (D18–D19). What
+remains is the circle↔idea membership bridge and sessions appearing on the circle-home map
+(D17).
+
+**A thought is text, and only text.** D20 gave one a recording; it was removed on 2026-08-17,
+end to end — recorder, the `/api/audio/upload` blob route, the `@hs/audio` and `@vercel/blob`
+dependencies, `NodeContent.audio`, `SynNode`'s `audioSchema`, and the funnel's `normalizeAudio`
+call. Rows written while it existed keep an `audio` subdocument in MongoDB, undeclared in the
+schema and read by nothing. Do not reintroduce it without reopening D20.
+
+**The map's top-left corner is a members icon and `← ideas`, nothing more.** The idea's title is
+already the home hub at the centre of the map, and the head-count and invite code live on the
+people page (`components/ideas/PeopleOverlay.tsx`) — facts about the roster, on the roster's own
+surface.
 
 ## Architecture
 
@@ -24,11 +39,13 @@ Milestones M0–M3 are built. Community synthesis is the active work.
 | `src/components/graph/` | The map: `MapGraph`, `nodes`, `ThoughtPopup`, `ProvenanceBreadcrumb` |
 | `src/components/resolve/` | Response composer + aggregate reply grid |
 | `src/components/overlays/` | `OverlayShell` + Feed / Post / Union overlays |
+| `src/components/statements/` | `StatementsOverlay` + `SynthesisMeter` — the board, and the ⅔ bar |
 | `apps/backend/routes/synthesis.js` | REST surface, mounted at `/api/synthesis` behind `resolveInstance` + `enforceVerifiedUser` |
 | `apps/backend/utils/synNodes.js` | **The node write funnel** — DAG edges, marry, publish, respond/borrow, upvote, feed |
 | `apps/backend/utils/synIdeas.js` | Community create/join + the ≤50-member gate |
 | `apps/backend/utils/synIndex.js` | Embedding index over the published corpus |
 | `apps/backend/utils/synUnion.js` | Corpus selection, positional summaries, prompts, cache |
+| `apps/backend/utils/synStatements.js` | **The statement write funnel** — slots (D14), votes, the ⅔ bar, withdraw |
 | `apps/backend/utils/synIndexHooks.js` | Production wiring injected via `setIndex()`; fires on every corpus change |
 | `apps/backend/sockets/synthesis.js` | `syn:join` / `syn:leave` community rooms |
 
@@ -58,6 +75,7 @@ Never write these collections directly:
 | `Entry` (replies) | `utils/entries.js`, per the root CLAUDE.md rule |
 | `SynEmbedding` | `utils/synIndex.js` |
 | `SynUnion` | `utils/synUnion.js` |
+| `SynStatement` | `utils/synStatements.js` — slots, votes, the ⅔ bar |
 
 Replies **duck-type a published node as their activity**: a reply Entry has `activityId = <published node id>`. There is no `Activity` document for a post. Zero `Entry` schema change was needed and none should be added.
 

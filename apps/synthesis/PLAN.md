@@ -505,10 +505,13 @@ platform 4002 · game 4003 · synthesis 4004).
   parent from a join node so it continues as an ordinary child of the other.
   No arbitrary edge editor: multi-parent stays the ceremony marriage is, and
   the map's one-device-per-fact vocabulary holds.
-- **D20 — A thought can carry a voice** (MO, same day). Audio attaches to a
-  thought as/with its context — recorded with the platform recorder
-  (`@hs/audio`), played from the thought popup. One attach point; replies stay
-  text.
+- **D20 — A thought is text, and only text** (MO, 2026-08-17). D20 first gave a
+  thought a recording, attached as/with its context. It is **pulled**: a
+  recorder, a blob-upload route, a host allowlist and a playback control on
+  four surfaces, all so a claim could be said aloud as well as written.
+  Synthesis is a *written* form — the claim, the prose behind it, and replies
+  on axes — and the voice earned none of that machinery. Documents written
+  while it existed keep an `audio` subdocument in MongoDB; nothing reads it.
 
 **The idea, concretely.** An idea is defined by its thought space rather than by
 its membership: it has a **title**, which is seeded as the `isHome` topic hub at
@@ -516,6 +519,6 @@ the centre of *every* collaborator's map (`synNodes.js#seedHomeHub`, idempotent,
 one per owner). Everything a collaborator adds hangs beneath the idea itself, so
 a map reads as one thought space instead of a scatter of unrelated roots.
 
-**Still open:** _(none blocking — the statement mechanism, §Phase 5, is the
-active work.)_
+**Still open:** _(none — the statement mechanism, §Phase 5, is built: funnel,
+routes, and the statements board with the Synthesis meter all shipped.)_
 ```

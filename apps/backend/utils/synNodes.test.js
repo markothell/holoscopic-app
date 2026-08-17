@@ -342,58 +342,6 @@ test("setAxes: replaces a thought's axes wholesale; rejects on a topic hub", asy
   );
 });
 
-// ── D20: a voice on a thought ───────────────────────────────────────────────
-
-const GOOD_AUDIO = {
-  url: 'https://x1234.public.blob.vercel-storage.com/syn/a1/take.webm',
-  contentType: 'audio/webm', durationMs: 2500, peaks: [0.2, 0.6], sizeBytes: 4096,
-};
-
-test('D20: a thought carries a voice, normalized through the allowlist', async () => {
-  const store = memStore();
-  const hub = await funnel.createRoot({ store, instanceId: COMM, ...alice, kind: 'topic', content: { topic: 'Rituals' } });
-  const t = await funnel.createChild({
-    store, instanceId: COMM, ...alice, kind: 'thought',
-    content: { thought: 'A ritual needs witnesses', audio: GOOD_AUDIO }, parentId: hub.id,
-  });
-  assert.equal(t.content.audio.url, GOOD_AUDIO.url);
-  assert.equal(t.content.audio.durationMs, 2500);
-  assert.equal(t.content.audio.pathname, 'syn/a1/take.webm', 'derived from the url path');
-  assert.equal(funnel.toClient(t).content.audio.url, GOOD_AUDIO.url, 'crosses the wire');
-});
-
-test('D20: an off-host or non-https audio url is refused, and a topic strips audio', async () => {
-  const store = memStore();
-  const hub = await funnel.createRoot({ store, instanceId: COMM, ...alice, kind: 'topic', content: { topic: 'Rituals', audio: GOOD_AUDIO } });
-  assert.equal(hub.content.audio, null, 'hubs are labels, not recordings');
-
-  await assert.rejects(() => funnel.createChild({
-    store, instanceId: COMM, ...alice, kind: 'thought',
-    content: { thought: 'x', audio: { ...GOOD_AUDIO, url: 'https://evil.example/a.webm' } },
-    parentId: hub.id,
-  }), /not an allowed host/);
-  await assert.rejects(() => funnel.createChild({
-    store, instanceId: COMM, ...alice, kind: 'thought',
-    content: { thought: 'x', audio: { ...GOOD_AUDIO, url: 'http://x.public.blob.vercel-storage.com/a' } },
-    parentId: hub.id,
-  }), /not valid|not an allowed host/);
-});
-
-test('D20: editContent keeps, replaces, or removes the voice — absent/object/null', async () => {
-  const store = memStore();
-  const hub = await funnel.createRoot({ store, instanceId: COMM, ...alice, kind: 'topic', content: { topic: 'Rituals' } });
-  const t = await funnel.createChild({
-    store, instanceId: COMM, ...alice, kind: 'thought',
-    content: { thought: 'first', audio: GOOD_AUDIO }, parentId: hub.id,
-  });
-
-  const kept = await funnel.editContent({ store, nodeId: t.id, content: { thought: 'edited words' } });
-  assert.equal(kept.content.audio.url, GOOD_AUDIO.url, 'absent means keep');
-
-  const cleared = await funnel.editContent({ store, nodeId: t.id, content: { audio: null } });
-  assert.equal(cleared.content.audio, null, 'null means remove');
-});
-
 // ── D19: unmarry is reparent to one parent ──────────────────────────────────
 
 test('D19: dropping one parent from a join node makes it an ordinary child again', async () => {

@@ -4,11 +4,17 @@ import { useEffect, useState } from 'react';
 import OverlayShell from '@/components/overlays/OverlayShell';
 import ReadonlyMap from '@/components/graph/ReadonlyMap';
 import { SynthesisService } from '@/services/synthesisService';
+import { MOCK_MAX_MEMBERS } from '@/lib/mock';
 import type { Collaborator, SynNode } from '@/lib/types';
 
 // Who is working on this idea — scoped to the idea, always. There is no
 // global profile in Synthesis: a handle means something *here*, inside one
 // thought space, and the same person in another idea is another handle.
+//
+// It also carries the head-count and the invite code, which used to sit in a
+// panel over the map. Both are facts *about the roster* — how full it is, and
+// how you add to it — so they belong on the page the roster is on, and the
+// map's corner gets back to being a map.
 //
 // The roster is a door, not a directory. Two stats per person say what they
 // have actually done — thoughts published, replies written — and tapping
@@ -102,15 +108,55 @@ function CollaboratorMap({
   );
 }
 
+// The head-count and the invite code, above the roster. The count is the
+// group's size against the ≤50 gate (utils/synIdeas.js); the code is how it
+// grows, so the two read as one line of the same sentence.
+function RosterHead({ memberCount, code }: { memberCount: number; code: string | null }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    if (!code) return;
+    navigator.clipboard?.writeText(code)
+      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); })
+      .catch(() => {});
+  };
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+      <span className="eyebrow !text-[0.6rem]" style={{ color: 'var(--mist-soft)' }}>
+        {memberCount}/{MOCK_MAX_MEMBERS} voices
+      </span>
+      {code && (
+        <button
+          type="button"
+          onClick={copy}
+          title="Copy the invite code to share with others"
+          className="eyebrow rounded-full border px-2.5 py-1 !text-[0.6rem]"
+          style={{
+            borderColor: copied ? 'var(--own)' : 'var(--line-strong)',
+            color: copied ? 'var(--own)' : 'var(--mist-faint)',
+          }}
+        >
+          {copied ? 'copied ✓' : `invite code ${code} · copy`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function PeopleOverlay({
   code,
   userId,
+  memberCount,
   useMock,
   onClose,
   onOpenPost,
 }: {
   code: string | null;
   userId: string;
+  /** Size of the group, as the map already counts it — passed in rather than
+   *  derived from `people`, which is the PUBLISHED roster and can run short. */
+  memberCount: number;
   useMock: boolean;
   onClose: () => void;
   onOpenPost: (nodeId: string) => void;
@@ -149,9 +195,13 @@ export default function PeopleOverlay({
       ) : error ? (
         <p className="text-sm" style={{ color: 'var(--live)' }}>{error}</p>
       ) : !people ? (
-        <p className="eyebrow text-mist-faint">Loading…</p>
+        <>
+          <RosterHead memberCount={memberCount} code={code} />
+          <p className="eyebrow text-mist-faint">Loading…</p>
+        </>
       ) : (
         <div className="flex flex-col gap-2 pb-4">
+          <RosterHead memberCount={memberCount} code={code} />
           {people.map(p => (
             <button
               key={p.id}
