@@ -3,6 +3,7 @@ const circles = require('../utils/circles');
 // Requiring gather registers the 'gather' activity module (PRIMITIVES.md §9)
 // before startJobs() arms the tick — same load-order contract as threshold.
 const gather = require('../utils/gather');
+const gatherTranscribe = require('../utils/gatherTranscribe');
 const Circle = require('../models/Circle');
 const User = require('../models/User');
 
@@ -200,3 +201,32 @@ router.post('/:id/seeds/:seedId/responses/:shareId/react', async (req, res) => {
 });
 
 module.exports = router;
+
+// --- Vendor callbacks -------------------------------------------------------
+//
+// Mounted OUTSIDE enforceVerifiedUser (websocket-server.js puts this router at
+// /api/circles/hooks ahead of the authenticated mount) — Deepgram has no
+// account here. It authenticates on its own `?t=` HMAC and reads its share
+// from `?s=`, never from req.instanceId. Same shape as threshold's hooks.
+
+const hooks = express.Router();
+
+hooks.post('/deepgram', async (req, res) => {
+  const shareId = String(req.query.s || '');
+  const token = String(req.query.t || '');
+  if (!shareId || !gatherTranscribe.verifyCallbackToken(shareId, token)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  try {
+    const text = gatherTranscribe.extractTranscript(req.body);
+    await gather.attachTranscript({ shareId, text });
+    // Always 200 once authenticated: Deepgram retries on a failure status, and
+    // an empty or unparseable transcript is not something a retry can improve.
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[gather] transcript callback failed:', err.message);
+    res.json({ ok: true });
+  }
+});
+
+module.exports.hooks = hooks;

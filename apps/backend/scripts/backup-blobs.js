@@ -51,6 +51,7 @@ const mongoose = require('mongoose');
 const Memory = require('../models/Memory');
 const Instance = require('../models/Instance');
 const ThresholdShare = require('../models/ThresholdShare');
+const Share = require('../models/Share');
 const mirror = require('../utils/blobMirror');
 
 const DRY = process.argv.includes('--dry-run');
@@ -162,13 +163,21 @@ async function main() {
     'audio.url': { $exists: true, $ne: '' },
   }).lean();
 
+  // Gather responses (the primitive Share collection, PRIMITIVES.md §9).
+  // Same rule again: a voice told into a circle activity is not regenerable,
+  // and one job answers "is every recording backed up?" for all of them.
+  const gatherShares = await Share.find({
+    'audio.url': { $exists: true, $ne: '' },
+  }).lean();
+
   const targets = [
     ...memories.map(m => ({ label: m.title || m.id, url: m.body.audio.url, pathname: mirror.pathnameFor(m.body.audio) })),
     ...shares.map(s => ({ label: `${s.title || s.id} (threshold)`, url: s.audio.url, pathname: mirror.pathnameFor(s.audio) })),
+    ...gatherShares.map(s => ({ label: `${s.title || s.id} (gather)`, url: s.audio.url, pathname: mirror.pathnameFor(s.audio) })),
     ...photos.map(p => ({ label: `${p.slug} (photo)`, url: p.url, pathname: '' })),
   ].map(t => ({ ...t, key: mirror.keyFor(t.pathname || mirror.pathnameFor({ url: t.url })) }));
 
-  console.log(`${targets.length} objects referenced (${memories.length} recordings, ${shares.length} threshold shares, ${photos.length} photos)\n`);
+  console.log(`${targets.length} objects referenced (${memories.length} recordings, ${shares.length} threshold shares, ${gatherShares.length} gather shares, ${photos.length} photos)\n`);
 
   const bucket = mirror.config().bucket;
   const previous = await loadGone(s3, bucket);

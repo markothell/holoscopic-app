@@ -32,6 +32,44 @@ const circles = require('./circles');
 const activities = require('./circleActivities');
 const { normalizeAudio } = require('./audioPayload');
 
+// ── Injected side effects ───────────────────────────────────────────────────
+//
+// Injected rather than imported, exactly as utils/threshold.js and
+// utils/memories.js do it, so this funnel never pulls in an HTTP client or an
+// S3 client and stays testable with no network. Both are wired in
+// websocket-server.js#loadAPIRoutes.
+//
+// Both are FIRE AND FORGET and structurally unable to fail a submission: a
+// response that recorded successfully must never be rejected because a mirror
+// or a transcript was slow. They fire exactly once per share, because audio is
+// fixed from submission (B5) — the recording a share carries is the recording
+// it dies with.
+let blobMirror = null;
+function setBlobMirror(fn) { blobMirror = fn; }
+
+let transcriber = null;
+function setTranscriber(fn) { transcriber = fn; }
+
+function fireBlobMirror(share) {
+  if (!blobMirror || !share?.audio?.url) return;
+  Promise.resolve()
+    .then(() => blobMirror({ share }))
+    .catch(err => console.error('[gather] blob mirror hook failed:', err.message));
+}
+
+function fireTranscribe(share, store) {
+  if (!transcriber || !share?.audio?.url) return;
+  Promise.resolve()
+    .then(() => transcriber({
+      share,
+      // Only marked pending once Deepgram has ACCEPTED the job. Setting it
+      // before would leave a share stuck on 'pending' forever whenever the
+      // enqueue was skipped or refused, which is the normal state in local dev.
+      markPending: () => store.markTranscriptPending(share.id),
+    }))
+    .catch(err => console.error('[gather] transcription hook failed:', err.message));
+}
+
 const PROMPT_MAX = 200;
 const CONTEXT_MAX = 1000;
 const TITLE_MAX = 80;
@@ -77,6 +115,19 @@ const mongoStore = {
 
   async findResponse(seedId, userId) {
     return require('../models/Share').findOne({ seedId, userId, slot: SLOT });
+  },
+  async findResponseById(id) {
+    return require('../models/Share').findOne({ id });
+  },
+  async markTranscriptPending(id) {
+    return require('../models/Share').updateOne(
+      { id }, { $set: { 'transcript.status': 'pending' } },
+    );
+  },
+  async attachTranscript(id, text, status) {
+    return require('../models/Share').updateOne(
+      { id }, { $set: { 'transcript.status': status, 'transcript.text': text } },
+    );
   },
   async listResponses(seedId) {
     return require('../models/Share').find({ seedId, slot: SLOT }).sort({ createdAt: 1 });
@@ -456,6 +507,10 @@ async function submitResponse({
     throw new Error('A story needs words or a voice');
   }
 
+  // Fixed-from-submission (B5) means this is true at most once in a share's
+  // life — the one moment the mirror and the transcriber have anything to do.
+  const newRecording = Boolean(cleanAudio && !(existing && existing.audio));
+
   let share = existing;
   if (share) {
     // A moved position drops the reactions it collected — they endorsed a
@@ -493,6 +548,11 @@ async function submitResponse({
       wordIds: wordIds || [],
       reactedIds: [],
     });
+  }
+
+  if (newRecording) {
+    fireBlobMirror(share);
+    fireTranscribe(share, store);
   }
 
   if (pos) {
@@ -574,6 +634,23 @@ async function reactToResponse({ store = mongoStore, circleId, seedId, shareId, 
       wordsById: await wordsByIdFor({ store, seed }),
     }),
   };
+}
+
+/**
+ * Attach a transcript that arrived from Deepgram.
+ *
+ * Called by the /api/circles/hooks/deepgram callback, which authenticates on
+ * its own HMAC — so no phase or membership gates apply, and none should: a
+ * transcript may legitimately land after the reveal, after the circle closes,
+ * whenever Deepgram gets around to it. An empty transcript is recorded as
+ * 'failed' rather than retried — silence transcribes to nothing every time.
+ */
+async function attachTranscript({ store = mongoStore, shareId, text, status = 'ready' }) {
+  const share = await store.findResponseById(shareId);
+  if (!share) throw new Error('Response not found');
+  const clean = String(text || '').trim().slice(0, TEXT_MAX);
+  await store.attachTranscript(shareId, clean, clean ? status : 'failed');
+  return { ok: true, status: clean ? status : 'failed' };
 }
 
 // ---------------------------------------------------------------------------
@@ -792,11 +869,14 @@ module.exports = {
   normalizeSeed,
   submitResponse,
   reactToResponse,
+  attachTranscript,
   listResponses,
   vocabularyFor,
   aggregateFor,
   computeAggregate,
   createModule,
   mongoStore,
+  setBlobMirror,
+  setTranscriber,
   SHAPES,
 };

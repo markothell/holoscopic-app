@@ -48,6 +48,17 @@ function memStore() {
     async findResponse(seedId, userId) {
       return shares.find(s => s.seedId === seedId && s.userId === userId && s.slot === '') || null;
     },
+    async findResponseById(id) {
+      return shares.find(s => s.id === id) || null;
+    },
+    async markTranscriptPending(id) {
+      const s = shares.find(x => x.id === id);
+      if (s) s.transcript = { ...(s.transcript || {}), status: 'pending' };
+    },
+    async attachTranscript(id, text, status) {
+      const s = shares.find(x => x.id === id);
+      if (s) s.transcript = { status, text };
+    },
     async listResponses(seedId) {
       return shares.filter(s => s.seedId === seedId && s.slot === '');
     },
@@ -426,6 +437,69 @@ test('participation follows the reveal setting', async () => {
   await respond(circle, open, 'u2', { text: 'y' });
   const openRow = await mod.participation({ seed: open, viewerId: 'u1' });
   assert.deepEqual(openRow, { tellerIds: ['u2'], tellerCount: 1, iTold: false });
+});
+
+// --- audio side effects: mirror + transcription (injected, fire-and-forget) --
+
+test('a new recording fires the mirror and transcriber once, and neither can fail the write', async () => {
+  const circle = await circleWith(3);
+  const seed = await ask(circle, { prompt: 'p', shape: 'story' });
+  const url = 'https://abc123.public.blob.vercel-storage.com/threshold/x/a.webm';
+
+  const mirrored = [];
+  const queued = [];
+  gather.setBlobMirror(async ({ share }) => { mirrored.push(share.audio.url); });
+  gather.setTranscriber(async ({ share, markPending }) => {
+    queued.push(share.id);
+    // Only marked pending once the vendor ACCEPTS the job.
+    await markPending();
+  });
+  try {
+    const { share } = await respond(circle, seed, 'u1', { audio: { url, durationMs: 5000, peaks: [] } });
+    await new Promise(r => setImmediate(r)); // both hooks are fire-and-forget
+    assert.deepEqual(mirrored, [url]);
+    assert.deepEqual(queued, [share.id]);
+    assert.equal(store._shares.find(s => s.id === share.id).transcript.status, 'pending');
+
+    // A text resubmission alongside the kept recording fires nothing — audio
+    // is fixed from submission, so the hooks' moment has passed.
+    await respond(circle, seed, 'u1', { text: 'and words' });
+    await new Promise(r => setImmediate(r));
+    assert.equal(mirrored.length, 1);
+    assert.equal(queued.length, 1);
+
+    // Dead vendors must never reject a story somebody just told.
+    gather.setBlobMirror(async () => { throw new Error('S3 is down'); });
+    gather.setTranscriber(async () => { throw new Error('Deepgram exploded'); });
+    const { share: second } = await respond(circle, seed, 'u2', { audio: { url, durationMs: 1000, peaks: [] } });
+    await new Promise(r => setImmediate(r));
+    assert.equal(second.audio.url, url, 'the response was still written');
+  } finally {
+    gather.setBlobMirror(null);
+    gather.setTranscriber(null);
+  }
+});
+
+test('attachTranscript stores text, and an empty one is marked failed', async () => {
+  const circle = await circleWith(2);
+  const seed = await ask(circle, { prompt: 'p', shape: 'story' });
+  const url = 'https://abc123.public.blob.vercel-storage.com/threshold/x/a.webm';
+  const { share } = await respond(circle, seed, 'u1', { audio: { url, durationMs: 5000, peaks: [] } });
+
+  await gather.attachTranscript({ store, shareId: share.id, text: '  I remember the rain.  ' });
+  assert.deepEqual(
+    store._shares.find(s => s.id === share.id).transcript,
+    { status: 'ready', text: 'I remember the rain.' },
+  );
+
+  const empty = await gather.attachTranscript({ store, shareId: share.id, text: '   ' });
+  assert.equal(empty.status, 'failed');
+  assert.equal(store._shares.find(s => s.id === share.id).transcript.status, 'failed');
+
+  await assert.rejects(
+    gather.attachTranscript({ store, shareId: 'nope', text: 'x' }),
+    /Response not found/,
+  );
 });
 
 // --- the words shape ---------------------------------------------------------

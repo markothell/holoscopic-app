@@ -25,7 +25,8 @@ Express + Socket.IO + Mongoose server. Single entry point: `websocket-server.js`
 | `models/Sequence.js` | Ordered collection of activities with members and round visibility |
 | `models/Instance.js` | Per-deployment config: which `app` it belongs to, holons, quorum, domains, access |
 | `utils/memorialDefaults.js` | What a new Chorus memorial starts life with — shared by `POST /instances` and `scripts/seed-memorial.js` so both make the same product |
-| `utils/blobMirror.js` | Off-site copy of Chorus media. Vercel Blob has no snapshots or undelete, so recordings are mirrored to the backup bucket on write and reconciled nightly |
+| `utils/blobMirror.js` | Off-site copy of every recording (Chorus memories, Threshold shares, gather responses) plus memorial photos. Vercel Blob has no snapshots or undelete, so media is mirrored to the backup bucket on write and reconciled nightly by `scripts/backup-blobs.js` |
+| `utils/gatherTranscribe.js` | Deepgram adapter for gather responses — third sibling over `utils/transcribe.js` (with `memorialTranscribe` and `thresholdTranscribe`); callback at `/api/circles/hooks/deepgram`, injected into `utils/gather.js` in `loadAPIRoutes` |
 | `utils/backupNamespace.js` | Which part of the shared backup bucket a run may write to, decided from the cluster it connected to rather than from a variable somebody has to set |
 | `utils/traffic.js` | Site traffic write funnel — page views and link clicks, two storage tiers. **Not** `routes/analytics.js`, which counts participation inside activities |
 | `utils/email.js` | The only place mail leaves this platform. One Resend call, never throws — a send is always a side effect of something that already succeeded. `utils/alerts.js` adds throttling on top for operator mail |

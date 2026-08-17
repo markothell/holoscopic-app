@@ -462,9 +462,15 @@ editable while pending, so no retire/reorder reconciliation is needed), portrait
 computed on read (gotcha 1 — `useCount` deliberately unmaintained), sealed mode hiding other
 members' coinages and all counts until the close, and a changed word set dropping its
 reactions (gotcha 2, same rule as a moved dot). Words are position-like under B5: fixed at
-the close, text stays editable. Full backend suite green. Remaining:
-transcription/blob-mirror wiring for gather audio, and the `apps/circles` frontend (picker,
-respond, reveal).
+the close, text stays editable. **Gather audio is wired (2026-08-17)**: blob-mirror +
+transcription injected into the funnel exactly as threshold's (fire-and-forget, structurally
+unable to fail a submission, firing exactly once per share since audio is fixed from
+submission), `utils/gatherTranscribe.js` as the third ~30-line sibling over the
+`transcribe.js` core, the Deepgram callback at `/api/circles/hooks/deepgram` (own HMAC,
+outside `enforceVerifiedUser`), the mirror reusing `mirrorShare` since the primitive Share
+deliberately mirrors ThresholdShare's audio shape, and the nightly `backup-blobs.js` sweep
+covering the primitive `shares` collection. Full backend suite green. Remaining: the
+`apps/circles` frontend (picker, respond, reveal).
 
 ### The creator process
 
