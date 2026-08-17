@@ -1,5 +1,8 @@
 const express = require('express');
 const circles = require('../utils/circles');
+// Requiring gather registers the 'gather' activity module (PRIMITIVES.md §9)
+// before startJobs() arms the tick — same load-order contract as threshold.
+const gather = require('../utils/gather');
 const Circle = require('../models/Circle');
 const User = require('../models/User');
 
@@ -10,10 +13,13 @@ const User = require('../models/User');
 // snapshotExtras/participation hooks, so a new activity changes nothing in
 // this file — which is the invariant (§2) applied to routing.
 //
-// What does NOT live here: activity verbs (telling, sorting, revealing —
+// What does NOT live here: Threshold's own verbs (telling, sorting —
 // /api/threshold), circle creation (the platform admin and Threshold's /new,
 // deliberately — hosting is invitation-only per P15), and the notification
-// surfaces (unmoved until a second consumer needs them).
+// surfaces (unmoved until a second consumer needs them). What DOES: the
+// generic seed verbs (post/support/advance — the machine validates through
+// the seed's own module) and the gather activity's verbs (respond/react),
+// since gather is the platform's activity rather than any one app's.
 //
 // There is deliberately NO assertOwnApp gate. resolveInstance never fails,
 // but every read and write here resolves through an (instanceId, key) lookup,
@@ -82,6 +88,111 @@ router.post('/:id/join', async (req, res) => {
       username: await displayNameFor(req), email: req.body.email || '',
     });
     res.json({ circle: circles.toClient(after, { userId: userIdOf(req) }) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Finds the circle by id within the caller's instance, or 404s.
+async function circleOr404(req, res) {
+  const circle = await Circle.findOne({ id: req.params.id, instanceId: req.instanceId });
+  if (!circle) {
+    res.status(404).json({ error: 'Circle not found' });
+    return null;
+  }
+  return circle;
+}
+
+// --- Generic seed verbs (activity-agnostic: the machine validates through the
+// --- seed's own module, so these serve threshold topics and gather asks alike)
+
+// Post an activity/topic into the circle's queue. `activity` names the module
+// for THIS seed (PRIMITIVES.md §9 — a circle runs mixed activities); omitted,
+// the seed runs the circle's own. `seedId` edits your own pending seed.
+router.post('/:id/seeds', async (req, res) => {
+  try {
+    const circle = await circleOr404(req, res);
+    if (!circle) return;
+    const { circle: after } = await circles.addSeed({
+      store, circleId: circle.id, userId: userIdOf(req),
+      payload: req.body.payload || {},
+      seedId: req.body.seedId || null,
+      activity: req.body.activity || null,
+    });
+    res.json({ circle: await circles.snapshot({ store, circle: after, viewerId: userIdOf(req) }) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Toggle my support for a queued seed.
+router.post('/:id/seeds/:seedId/support', async (req, res) => {
+  try {
+    const circle = await circleOr404(req, res);
+    if (!circle) return;
+    const { circle: after } = await circles.supportSeed({
+      store, circleId: circle.id, seedId: req.params.seedId, userId: userIdOf(req),
+    });
+    res.json({ circle: circles.toClient(after, { userId: userIdOf(req) }) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Manual advance — the facilitator's escape hatch (creator, or the seed's
+// author). Names its seed, since maxLive > 1 runs several at once.
+router.post('/:id/seeds/:seedId/advance', async (req, res) => {
+  try {
+    const circle = await circleOr404(req, res);
+    if (!circle) return;
+    const { circle: after } = await circles.advanceCircle({
+      store, circleId: circle.id, userId: userIdOf(req), seedId: req.params.seedId,
+    });
+    res.json({ circle: await circles.snapshot({ store, circle: after, viewerId: userIdOf(req) }) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// --- Gather verbs (the builder's single-round activity — PRIMITIVES.md §9)
+
+// Submit or update my response. One per member, upserted; open after the
+// reveal (B4); text-only once closed (B5).
+router.post('/:id/seeds/:seedId/respond', async (req, res) => {
+  try {
+    const circle = await circleOr404(req, res);
+    if (!circle) return;
+    const { circle: after, share } = await gather.submitResponse({
+      circleId: circle.id,
+      seedId: req.params.seedId,
+      userId: userIdOf(req),
+      username: await displayNameFor(req),
+      title: req.body.title || '',
+      text: req.body.text || '',
+      audio: req.body.audio || null,
+      position: req.body.position || null,
+    });
+    res.json({
+      share,
+      circle: await circles.snapshot({ store, circle: after, viewerId: userIdOf(req) }),
+    });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Toggle my reaction on a response.
+router.post('/:id/seeds/:seedId/responses/:shareId/react', async (req, res) => {
+  try {
+    const circle = await circleOr404(req, res);
+    if (!circle) return;
+    const { share } = await gather.reactToResponse({
+      circleId: circle.id,
+      seedId: req.params.seedId,
+      shareId: req.params.shareId,
+      userId: userIdOf(req),
+    });
+    res.json({ share });
   } catch (err) {
     fail(res, err);
   }

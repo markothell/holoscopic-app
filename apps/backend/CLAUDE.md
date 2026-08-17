@@ -12,10 +12,13 @@ Express + Socket.IO + Mongoose server. Single entry point: `websocket-server.js`
 | `utils/holons.js` | `transact()` and `spend()` — the only way to move Holon balances |
 | `utils/notify.js` | Creates `Notification` documents for a user |
 | `utils/entries.js` | The single write funnel for entries (upsert, vote, clear, seed) + wire serializers `toClient`/`toRedacted` |
-| `models/Circle.js` | The generic cohort + round machine (members, seed queue, phase machine) — activity-agnostic by design |
-| `utils/circles.js` | The round machine's funnel: membership, seeds, phases, mail, the one-call `snapshot`, `participation` |
+| `models/Circle.js` | The generic cohort + round machine (members, seed queue, phase machine) — activity-agnostic by design. Since 2026-08-17: `seeds[].activity` (per-seed module, null = the circle's own) and `config.maxLive` (concurrent cycles, default 1 = the original machine) |
+| `utils/circles.js` | The round machine's funnel: membership, seeds, phases, mail, the one-call `snapshot`, `participation`. Resolves the module PER SEED (`modFor`), runs up to `maxLive` cycles at once, and a seed payload's `<phase>Hours` key overrides the circle's clock |
 | `utils/circleActivities.js` | The module registry that keeps `utils/circles.js` generic — `register(key, module)`, hooks incl. `snapshotExtras`/`participation` |
-| `routes/circles.js` | `/api/circles` — the activity-agnostic surface (snapshot, my circles, join); activity verbs stay on each activity's router |
+| `routes/circles.js` | `/api/circles` — the activity-agnostic surface (snapshot, my circles, join) plus the generic seed verbs (post/support/advance) and the gather verbs (respond/react); Threshold's own verbs stay on `/api/threshold` |
+| `utils/gather.js` | The builder's single-round activity (PRIMITIVES.md §9): prompt → responses → reveal, shapes story/placement/story+placement, sealed-or-open reveal, reactions, on-read aggregate. Registers itself as activity `gather`; write funnel for the primitive collections |
+| `models/Share.js` | PRIMITIVE voice/text contribution (P8) — first writer is gather; unique `(seedId, userId, slot)` IS the cardinality rule |
+| `models/Placement.js` | PRIMITIVE located opinion (P8): position / bucket / rank, unique `(seedId, userId, kind, targetId, axis)`; draft vs committed via `committedAt` |
 | `models/Entry.js` | Source of truth for participation: position + text + votes per (activity, user, slot, question), with denormalized `instanceId`/`topicId` |
 | `models/Activity.js` | Map configuration + membership (`participants[]`) + stake ledger — no entry content |
 | `models/Sequence.js` | Ordered collection of activities with members and round visibility |

@@ -34,6 +34,13 @@ const seedSchema = new mongoose.Schema({
   authorId: { type: String, required: true },
   order:    { type: Number, required: true },
 
+  // Which activity module runs THIS seed's cycle. null = the circle's own
+  // `activity` — every seed written before this field existed reads null and
+  // behaves exactly as it always did. Set when a circle runs mixed activities
+  // (PRIMITIVES.md §9: a circle holds Threshold topics and single-round
+  // 'gather' asks side by side), and resolved by utils/circles.js#modFor.
+  activity: { type: String, default: null },
+
   // OPAQUE to the circle. Validated and normalized by the activity module's
   // normalizeSeed(); read by nothing in utils/circles.js.
   payload:  { type: mongoose.Schema.Types.Mixed, default: {} },
@@ -126,6 +133,11 @@ const circleSchema = new mongoose.Schema({
 
     advanceOnComplete: { type: Boolean, default: true },
 
+    // How many cycles may run at once (PRIMITIVES.md §9 B1). Default 1
+    // preserves the original one-cycle-at-a-time machine for every existing
+    // circle — Threshold's D28 — while a builder circle opts into 3.
+    maxLive: { type: Number, default: 1, min: 1, max: 10 },
+
     // Starting point for the seed form. Activity-specific, opaque.
     seedDefaults: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
   },
@@ -137,7 +149,9 @@ const circleSchema = new mongoose.Schema({
   seeds:      { type: [seedSchema], default: () => [] },
   // Which cycle is live, by seed id — null while idle. An id rather than an
   // index into seeds[], because the queue's order is computed from support and
-  // is therefore not the array's order.
+  // is therefore not the array's order. With config.maxLive > 1 this is the
+  // FIRST live seed (compatibility for single-live readers); the full live set
+  // is derived from seeds[].phase by utils/circles.js#liveSeeds, never stored.
   liveSeedId: { type: String, default: null },
 
   transitions: { type: [transitionSchema], default: () => [] },
