@@ -3,8 +3,8 @@
 `main` is the production branch: pushing it deploys the backend (Render) and the frontends (Vercel). The games (newest first, as on the holoscopic.io homepage):
 - **Circles** — `apps/circles`, **the first product** (PLATFORM.md P18): circles as the central social unit, ships to **circles.holoscopic.io branded Holoscopic** — one brand, tagline *thinking tools for community*; the holoscopic.io homepage stays the lab. Built: sign in and `/signup` → my circles (join included) → the circle home map → the full tell/sort/reveal loop with audio recording; generic circle operations ride `/api/circles` (the M8 promotion, landed 2026-08-14). Accounts are Holoscopic accounts, said plainly. See the app's `CLAUDE.md` + `DESIGN.md` (Toono, Holoscopic's product design language).
 - **Threshold** — `apps/threshold`, where a group's dividing line falls on a polarity (backend surface: `apps/backend/routes/threshold.js` + `utils/threshold.js`, on the generic `Circle` layer; see `apps/threshold/CLAUDE.md`). Built through M4 — backend, every participant surface in the tide-line language, audio, and round-transition mail; **M6, the launch pass, is what remains**. Live at threshold.holoscopic.io, on the production backend, since 2026-08-10: its instance is slugged **`circlemo`**, not `threshold`, and the deployed frontend sends that as `x-instance-id`. The only app whose rounds advance on a **background tick** rather than sweep-on-read — nobody has the page open, so a phase transition is what sends the mail that brings people back.
-- **Chorus** — `apps/chorus`, memories about one person, collected from anyone with the link (backend surface: `apps/backend/routes/memorial.js`; see `apps/chorus/CLAUDE.md`). In development; ships to chorus.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover. **The only app with no accounts, no holon economy, and a route mounted without `enforceVerifiedUser`** — all three are deliberate, see its `PLAN.md` §10. One deployment serves every memorial: a memorial is `/c/<slug>`, and creating one is a row in the platform admin, not a deploy.
-- **Synthesis** — `apps/synthesis`, a networked pseudonymous group blog (backend surface: `apps/backend/routes/synthesis.js`; see `apps/synthesis/CLAUDE.md`). On `main` since 2026-07-30 (merge `5903658`, via `pre-launch`; the old `unison-m0-m1-loop` branch is deleted with nothing unmerged); ships to synthesis.holoscopic.io, which needs adding to the backend's `CLIENT_URL` at cutover.
+- **Chorus** — `apps/chorus`, memories about one person, collected from anyone with the link (backend surface: `apps/backend/routes/memorial.js`; see `apps/chorus/CLAUDE.md`). Live at chorus.holoscopic.io (verified serving 2026-08-17). **The only app with no accounts, no holon economy, and a route mounted without `enforceVerifiedUser`** — all three are deliberate, see its `PLAN.md` §10. One deployment serves every memorial: a memorial is `/c/<slug>`, and creating one is a row in the platform admin, not a deploy.
+- **Synthesis** — `apps/synthesis`, a networked pseudonymous group blog (backend surface: `apps/backend/routes/synthesis.js`; see `apps/synthesis/CLAUDE.md`). On `main` since 2026-07-30 (merge `5903658`, via `pre-launch`; the old `unison-m0-m1-loop` branch is deleted with nothing unmerged); live at synthesis.holoscopic.io — domain, CORS and the shared M2 session all verified 2026-08-17.
 - **On a Spectrum** — `apps/spectrum`, at spectrum.holoscopic.io (backend surface: `apps/backend/routes/oas.js`; see `apps/spectrum/CLAUDE.md`). `routes/spectrum.js`, `models/SpectrumGame.js`, and `utils/spectrumGames.js` are mounted but dormant, and get deleted post-cutover.
 - **interView** — `apps/holoscopic-game`, the production game app at holoscopic.io
 - **Map + Sequence** — the original create-panel + sequence-builder tools inside `apps/holoscopic-game` (`/create`, `/create/sequences`), presented as the first game behind `/map-sequence`
@@ -60,16 +60,16 @@ npm run dev:circles     # port 4007
 
 ## Site Traffic
 
-Every frontend except circles carries a `Beacon` client component reporting page views to `POST /api/traffic/collect` (circles gets one deliberately at its deploy, once the traffic allowlist grows a `circles` app);
+Every frontend carries a `Beacon` client component reporting page views to `POST /api/traffic/collect` (circles got its copy with its deploy, 2026-08-17, when the allowlist grew a `circles` app);
 the holoscopic.io homepage also reports link clicks. Read it in the platform admin at **`/traffic`**.
 Details in `apps/backend/CLAUDE.md` § *Site traffic*.
 
-**`src/components/Beacon.tsx` is mirrored in five apps** — chorus, spectrum, synthesis, threshold
-and holoscopic-game. Not a shared package, because chorus, spectrum and threshold have no
+**`src/components/Beacon.tsx` is mirrored in six apps** — chorus, circles, spectrum, synthesis,
+threshold and holoscopic-game. Not a shared package, because chorus, spectrum and threshold have no
 dependency on `@hs/activities` and a memorial app should not import the activity engine for forty
 lines of `fetch`. The game app's copy is the one that differs beyond its type union: it splits
 `site` / `interview` / `map-sequence` by path, since three products share that deployment. Change
-the wire shape in one, change it in all five — the server validates `app` against an allowlist, so
+the wire shape in one, change it in all six — the server validates `app` against an allowlist, so
 a drifted copy fails as a dropped event.
 
 No cookie, no localStorage, no visitor id: the server derives an anonymous hash with the calendar
@@ -81,8 +81,8 @@ recorded every visit as arriving from the site it was already on. Every `referre
 before 2026-08-13 is that, and means nothing; the raw tier's 30-day TTL retires it. Same-origin is
 dropped client-side, another of our own domains is kept.
 
-**Vercel Web Analytics runs alongside it, in four apps** — chorus, holoscopic-game, synthesis and
-threshold, each mounting a mirrored `src/components/VercelAnalytics.tsx` that drops the query
+**Vercel Web Analytics runs alongside it, in five apps** — chorus, circles, holoscopic-game,
+synthesis and threshold, each mounting a mirrored `src/components/VercelAnalytics.tsx` that drops the query
 string before it leaves the browser (this repo puts credentials in query strings). Enabled per
 Vercel project in the dashboard; the component is the other half and neither works alone.
 

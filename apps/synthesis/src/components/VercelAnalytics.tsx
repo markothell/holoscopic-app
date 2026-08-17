@@ -5,7 +5,7 @@ import { Analytics, type BeforeSendEvent } from '@vercel/analytics/next';
 // Vercel Web Analytics, wrapped so nothing sensitive reaches it.
 //
 // THIS FILE IS MIRRORED across the apps whose Vercel project has Web Analytics
-// enabled — today chorus, holoscopic-game, synthesis and threshold. It sits
+// enabled — today chorus, circles, holoscopic-game, synthesis and threshold. It sits
 // alongside Beacon.tsx and answers a different question: Vercel measures the
 // *edge* (who arrived, from where, on what), our beacon measures the *platform*
 // (which of seven products, on permanent counters we own). Neither replaces the

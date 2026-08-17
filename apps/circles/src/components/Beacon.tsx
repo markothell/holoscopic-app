@@ -23,7 +23,7 @@ import { useEffect, useRef } from 'react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 
-type App = 'chorus';
+type App = 'circles';
 
 interface Props {
   app: App;

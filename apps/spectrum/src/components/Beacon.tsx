@@ -6,8 +6,8 @@ import { useEffect, useRef } from 'react';
 // The traffic beacon. One page view per navigation, and — where a page asks
 // for it — one event per link click.
 //
-// THIS FILE IS MIRRORED, byte for byte apart from its `App` union, across five
-// apps: chorus, spectrum, synthesis, threshold and holoscopic-game. It is not in
+// THIS FILE IS MIRRORED, byte for byte apart from its `App` union, across six
+// apps: chorus, circles, spectrum, synthesis, threshold and holoscopic-game. It is not in
 // a package because the apps that need it do not share one: chorus, spectrum,
 // threshold and platform have no dependency on @hs/activities, and giving a
 // memorial app the whole activity engine to import forty lines of fetch would be

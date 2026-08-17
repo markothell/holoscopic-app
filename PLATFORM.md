@@ -251,8 +251,8 @@ What makes this cheap:
   production: no Vercel project sets a separate `GAME_TOKEN_SECRET`, so every app signs game
   tokens with its `NEXTAUTH_SECRET`, and any app whose production writes work is therefore
   already holding the backend's secret (verified 2026-08-17 for holoscopic-game and threshold
-  by their working writes; synthesis and spectrum get confirmed by the first cross-subdomain
-  sign-in after M2 deploys).
+  by their working writes; synthesis and spectrum were then confirmed directly by the M2
+  cross-subdomain sign-in check on 2026-08-17).
 - `models/Notification.js`, the circle layer's opaque payloads, and `resolveInstance`'s header
   path are already the right shapes; they need enforcement, not redesign.
 
@@ -367,8 +367,8 @@ cache (holoscopic-game's mint-deduping copy is canonical), socket handshake. Ali
 and the 4051 leftover, once listed here, are already fixed.)
 
 *Deployed and verified in production 2026-08-17:* one sign-in on circles.holoscopic.io is a
-live session on threshold.holoscopic.io, spectrum.holoscopic.io and holoscopic.io (checked
-against the production domains with a real account; synthesis awaits its cutover). The game's
+live session on threshold.holoscopic.io, spectrum.holoscopic.io, synthesis.holoscopic.io and
+holoscopic.io — all five account-bearing domains, checked with a real account. The game's
 Vercel project needed `NEXTAUTH_URL=https://holoscopic.io` added — without it NextAuth ran in
 non-secure cookie naming and could not see the `__Secure-` session cookie. **M2 is done.**
 

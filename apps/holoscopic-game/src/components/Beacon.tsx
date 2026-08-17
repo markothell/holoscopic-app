@@ -6,7 +6,8 @@ import { useEffect, useRef } from 'react';
 // The traffic beacon. One page view per navigation, and — where a page asks
 // for it — one event per link click.
 //
-// MIRRORED in apps/chorus, apps/spectrum, apps/synthesis and apps/threshold.
+// MIRRORED in apps/chorus, apps/circles, apps/spectrum, apps/synthesis and
+// apps/threshold.
 // This copy is the one that differs beyond its type union, because
 // holoscopic.io is THREE products served from one Next deployment and only this
 // app knows which of its own routes is which. It is not in a package because

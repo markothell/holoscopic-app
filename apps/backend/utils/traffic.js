@@ -35,6 +35,7 @@ const APPS = new Set([
   'synthesis',
   'chorus',
   'threshold',
+  'circles',       // circles.holoscopic.io — the unified product (P18)
 ]);
 
 const TYPES = new Set(['view', 'click']);

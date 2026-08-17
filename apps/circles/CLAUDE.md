@@ -61,10 +61,12 @@ come per P18: the shared player, and eventually the synthesis surfaces moving in
 - `NEXTAUTH_SECRET` must equal the backend's `GAME_TOKEN_SECRET` (dev already shares one).
 - The map's `participation` block is server-redacted (threshold D9/D17); the client never
   receives an identity it may not show. Keep it that way when porting surfaces.
-- No Beacon and no Vercel Analytics yet — the traffic allowlist has no `circles` app. Add both
-  deliberately when this deploys.
-- Deploy day: add circles.holoscopic.io to the backend `CLIENT_URL`, set the shared secret, DNS, Vercel
-  project. None of it exists yet.
+- Beacon and Vercel Analytics both mounted (2026-08-17, with the deploy): the sixth `Beacon.tsx`
+  mirror and the fifth `VercelAnalytics.tsx` mirror, and the traffic allowlist knows `circles`.
+  The Vercel-side Web Analytics toggle for the project is the dashboard half.
+- Deployed 2026-08-17: live at circles.holoscopic.io on the `holoscopic-app-circles` Vercel
+  project (root `apps/circles`), instance `circlemo`, CORS in the backend `CLIENT_URL`, Blob via
+  the shared threshold store, one M2 session across the apex.
 
 ## Running it
 

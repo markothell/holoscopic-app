@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { SessionProvider } from '@/components/SessionProvider';
+import Beacon from '@/components/Beacon';
+import VercelAnalytics from '@/components/VercelAnalytics';
 import './globals.css';
 
 // Type is system-resident by design for now: Iowan Old Style for display,
@@ -15,6 +17,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <SessionProvider>{children}</SessionProvider>
+        <Beacon app="circles" />
+        <VercelAnalytics />
       </body>
     </html>
   );
