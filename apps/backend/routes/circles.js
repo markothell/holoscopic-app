@@ -171,6 +171,7 @@ router.post('/:id/seeds/:seedId/respond', async (req, res) => {
       text: req.body.text || '',
       audio: req.body.audio || null,
       position: req.body.position || null,
+      words: req.body.words || null,
     });
     res.json({
       share,

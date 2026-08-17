@@ -61,6 +61,11 @@ const shareSchema = new mongoose.Schema({
     text:   { type: String, default: '' },
   },
 
+  // Vocabulary ids this response picked (the words shape, PRIMITIVES.md §9) —
+  // the application side of the Vocabulary primitive, the same move as
+  // Memory's tag arrays. Empty on every other shape.
+  wordIds: { type: [String], default: () => [] },
+
   // Reactions (PRIMITIVES.md §9: free, toggled, no self-react). Ids rather
   // than a count, so a reaction can be taken back and nobody reacts twice.
   reactedIds: { type: [String], default: () => [] },

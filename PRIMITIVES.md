@@ -452,9 +452,19 @@ P8 collections exist: `models/Share.js` and `models/Placement.js`, unique keys a
 rules, specs added to `scripts/ensure-indexes.js` (production needs a `--create-missing` run at
 deploy). The `gather` module + funnel is `utils/gather.js` (registered on the seam by
 `routes/circles.js`), REST verbs on `/api/circles` (generic: seeds/support/advance; gather:
-respond/react). 29 new tests (`circlesMulti.test.js`, `gather.test.js`); full backend suite
-green. Remaining: the words shape + Vocabulary model, transcription/blob-mirror wiring for
-gather audio, and the `apps/circles` frontend (picker, respond, reveal).
+respond/react). **The words shape landed 2026-08-17**: `models/Vocabulary.js` is the §4.3
+primitive (generic `scopeId`/`set`, `origin: seeded|contributed`, `createdBy` for the coin
+cap; unique `(scopeId, set, key)` in `ensure-indexes.js`), the picked ids ride
+`Share.wordIds`, and gather's funnel does the rest — labels on the wire, MemoryTag's
+normalize-and-dedupe, `pickMax`/`coinMax` (coin budget spent permanently), seeded rows
+materialized lazily from the frozen seed payload (`ensureVocabulary` — a seed is only
+editable while pending, so no retire/reorder reconciliation is needed), portrait counts
+computed on read (gotcha 1 — `useCount` deliberately unmaintained), sealed mode hiding other
+members' coinages and all counts until the close, and a changed word set dropping its
+reactions (gotcha 2, same rule as a moved dot). Words are position-like under B5: fixed at
+the close, text stays editable. Full backend suite green. Remaining:
+transcription/blob-mirror wiring for gather audio, and the `apps/circles` frontend (picker,
+respond, reveal).
 
 ### The creator process
 

@@ -3,7 +3,7 @@
 // in the SEED PAYLOAD — a circle activity built in the picker is a seed, not a
 // deployment — and this one module runs every shape of it.
 //
-//   prompt → responses (story / placement / story + placement) → reveal
+//   prompt → responses (story / placement / story + placement / words) → reveal
 //
 // Settled rules it encodes (§9 B1–B7):
 //   - all contributions are NAMED — no anonymity inside a circle;
@@ -20,8 +20,10 @@
 //   - the aggregate is computed ON READ (§9 gotcha 1) — seed.result is only a
 //     cache stamped at reveal.
 //
-// Storage is the PRIMITIVE collections (P8): models/Share.js and
-// models/Placement.js. Never write either outside this funnel.
+// Storage is the PRIMITIVE collections (P8): models/Share.js,
+// models/Placement.js and models/Vocabulary.js (the words shape: pick ≤k /
+// coin ≤j from a seeded word set, revealed as the portrait — words sized by
+// count). Never write any of them outside this funnel.
 //
 // Every function takes `store` defaulting to `mongoStore` — same pattern as
 // utils/threshold.js — so gather.test.js runs the whole loop offline.
@@ -40,7 +42,15 @@ const DEFAULT_SECONDS = 60;
 const MIN_SECONDS = 15;
 const MAX_SECONDS = 300;
 
-const SHAPES = ['story', 'placement', 'story-placement'];
+// The words shape (pick ≤k / coin ≤j from a seeded vocabulary).
+const WORD_MAX = 24;          // MemoryTag's label ceiling, kept
+const SEED_WORDS_MAX = 40;    // the creator's list
+const PICK_DEFAULT = 5;       // k
+const PICK_LIMIT = 10;
+const COIN_DEFAULT = 2;       // j — Chorus's per-submission cap, kept
+const COIN_LIMIT = 5;
+
+const SHAPES = ['story', 'placement', 'story-placement', 'words'];
 const SLOT = ''; // one response per member: the Share slot is constant
 
 /** Where the circles app lives, for links in mail — its own variable for the
@@ -92,6 +102,16 @@ const mongoStore = {
   async savePlacement(placement) {
     return placement.save();
   },
+
+  async listWords(scopeId) {
+    return require('../models/Vocabulary').find({ scopeId, set: '' });
+  },
+  async findWordByKey(scopeId, key) {
+    return require('../models/Vocabulary').findOne({ scopeId, set: '', key });
+  },
+  async createWord(fields) {
+    return require('../models/Vocabulary').create(fields);
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -111,10 +131,10 @@ function normalizeSeed(payload) {
   const shape = String(p.shape || 'story');
   if (!SHAPES.includes(shape)) throw new Error('Unknown response shape');
 
-  // Axes: none for a story ask; one or two pole pairs when placing.
-  const wantsAxes = shape !== 'story';
+  // Axes: none for a story or words ask; one or two pole pairs when placing.
+  const wantsAxes = shape === 'placement' || shape === 'story-placement';
   const rawAxes = Array.isArray(p.axes) ? p.axes : [];
-  if (!wantsAxes && rawAxes.length > 0) throw new Error('A story ask has no axes');
+  if (!wantsAxes && rawAxes.length > 0) throw new Error(`A ${shape} ask has no axes`);
   if (wantsAxes && (rawAxes.length < 1 || rawAxes.length > 2)) {
     throw new Error('A placement ask needs one or two axes');
   }
@@ -143,11 +163,56 @@ function normalizeSeed(payload) {
     respondHours = Math.min(8760, Math.max(1, Math.round(h)));
   }
 
+  const base = { prompt, context, shape, axes, reveal, reactions, editAfterClose, respondHours };
+
+  // The words shape: the creator's seed list plus the two caps (pick ≤k,
+  // coin ≤j). The list here is the canonical source — Vocabulary rows are
+  // materialized from it once the seed goes live (ensureVocabulary), and a
+  // seed is only editable while pending, so the two can never disagree after.
+  if (shape === 'words') {
+    const rawWords = Array.isArray(p.words) ? p.words : [];
+    const seen = new Set();
+    const words = [];
+    for (const raw of rawWords) {
+      const label = cleanWordLabel(raw);
+      if (!label) continue;
+      const key = normalizeWordKey(label);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      words.push(label);
+    }
+    if (!words.length) throw new Error('A words ask needs seed words');
+    if (words.length > SEED_WORDS_MAX) throw new Error('That word list is too long');
+
+    let pickMax = Math.round(Number(p.pickMax));
+    if (!Number.isFinite(pickMax)) pickMax = PICK_DEFAULT;
+    pickMax = Math.min(PICK_LIMIT, Math.max(1, pickMax));
+
+    let coinMax = Math.round(Number(p.coinMax));
+    if (!Number.isFinite(coinMax)) coinMax = COIN_DEFAULT;
+    coinMax = Math.min(COIN_LIMIT, Math.max(0, coinMax));
+
+    return { ...base, words, pickMax, coinMax };
+  }
+  if (Array.isArray(p.words) && p.words.length) {
+    throw new Error(`A ${shape} ask has no word list`);
+  }
+
   let seconds = Number(p.secondsPerNote);
   if (!Number.isFinite(seconds)) seconds = DEFAULT_SECONDS;
   seconds = Math.min(MAX_SECONDS, Math.max(MIN_SECONDS, Math.round(seconds)));
 
-  return { prompt, context, shape, axes, reveal, reactions, editAfterClose, respondHours, secondsPerNote: seconds };
+  return { ...base, secondsPerNote: seconds };
+}
+
+// The dedupe axis for words — MemoryTag's normalization, kept: case-folded,
+// whitespace-collapsed, punctuation left alone (an apostrophe is meaningful).
+function normalizeWordKey(label) {
+  return String(label || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function cleanWordLabel(raw) {
+  return String(raw || '').trim().replace(/\s+/g, ' ').slice(0, WORD_MAX);
 }
 
 function isGatherSeed(circle, seed) {
@@ -160,6 +225,137 @@ function assertGatherSeed(circle, seed) {
 
 function seedDone(seed) {
   return circles.DONE_PHASES.includes(seed.phase);
+}
+
+// ---------------------------------------------------------------------------
+// The vocabulary — a words ask's shared word set (PRIMITIVES.md §4.3)
+// ---------------------------------------------------------------------------
+
+/**
+ * Materialize the seed's word list into Vocabulary rows, idempotently — the
+ * syncSeedTags move, smaller: a seed freezes when it goes live, so this only
+ * ever ADDS rows that are not there yet (first live read or write), and the
+ * unique (scopeId, set, key) index turns a concurrent double-create into a
+ * re-read. Returns every row for the seed, contributed words included.
+ */
+async function ensureVocabulary({ store, circle, seed }) {
+  const rows = await store.listWords(seed.id);
+  const have = new Set(rows.map(r => r.key));
+  const labels = seed.payload.words || [];
+  for (let i = 0; i < labels.length; i++) {
+    const key = normalizeWordKey(labels[i]);
+    if (have.has(key)) continue;
+    let created;
+    try {
+      created = await store.createWord({
+        instanceId: circle.instanceId,
+        circleId: circle.id,
+        scopeId: seed.id,
+        set: '',
+        label: labels[i],
+        key,
+        origin: 'seeded',
+        createdBy: '',
+        seedRank: i,
+      });
+    } catch (err) {
+      created = await store.findWordByKey(seed.id, key);
+      if (!created) throw err;
+    }
+    have.add(key);
+    rows.push(created);
+  }
+  return rows;
+}
+
+/**
+ * Turn the labels a member picked into Vocabulary ids — labels on the wire
+ * (§4.3), ids in storage. Unknown labels are coined against the member's
+ * budget (coin ≤j, spent permanently: a coined word joins the shared set and
+ * is never deleted, so dropping it from your response does not refund it).
+ */
+async function resolveWordIds({ store, circle, seed, userId, labels }) {
+  const cfg = seed.payload;
+  const picked = [];
+  const seen = new Set();
+  for (const raw of labels || []) {
+    const label = cleanWordLabel(raw);
+    if (!label) continue;
+    const key = normalizeWordKey(label);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    picked.push({ label, key });
+  }
+  if (!picked.length) throw new Error('Pick at least one word');
+  if (picked.length > cfg.pickMax) throw new Error(`This ask takes up to ${cfg.pickMax} words`);
+
+  const rows = await ensureVocabulary({ store, circle, seed });
+  const byKey = new Map(rows.map(r => [r.key, r]));
+  const fresh = picked.filter(w => !byKey.has(w.key));
+  if (fresh.length) {
+    const minted = rows.filter(r => r.createdBy === userId).length;
+    if (minted + fresh.length > cfg.coinMax) {
+      throw new Error(cfg.coinMax > 0
+        ? `This ask takes up to ${cfg.coinMax} new words of your own`
+        : 'This ask picks from its list only');
+    }
+    for (const w of fresh) {
+      let row;
+      try {
+        row = await store.createWord({
+          instanceId: circle.instanceId,
+          circleId: circle.id,
+          scopeId: seed.id,
+          set: '',
+          label: w.label,
+          key: w.key,
+          origin: 'contributed',
+          createdBy: userId,
+        });
+      } catch (err) {
+        row = await store.findWordByKey(seed.id, w.key);
+        if (!row) throw err;
+      }
+      byKey.set(w.key, row);
+    }
+  }
+  return picked.map(w => byKey.get(w.key).id);
+}
+
+/**
+ * The picker + portrait list a viewer may see. Sealed before the close, a
+ * contributed word would say who has moved and roughly what they said, so the
+ * viewer gets the seed list plus only their OWN coinages (the response
+ * visibility rule, applied to the vocabulary); open or done, everything.
+ * Counts are computed on read from the responses that picked each word (§9
+ * gotcha 1) and withheld while sealed.
+ */
+async function vocabularyFor({ store, circle, seed, viewerId = null }) {
+  const rows = await ensureVocabulary({ store, circle, seed });
+  const open = seed.payload.reveal === 'open' || seedDone(seed);
+
+  let counts = null;
+  if (open) {
+    counts = new Map();
+    for (const share of await store.listResponses(seed.id)) {
+      for (const id of share.wordIds || []) counts.set(id, (counts.get(id) || 0) + 1);
+    }
+  }
+
+  return rows
+    .filter(r => !r.hidden)
+    .filter(r => open || r.origin === 'seeded' || r.createdBy === viewerId)
+    .sort((a, b) =>
+      (counts ? (counts.get(b.id) || 0) - (counts.get(a.id) || 0) : 0)
+      || (a.seedRank ?? 9999) - (b.seedRank ?? 9999)
+      || a.label.localeCompare(b.label))
+    .map(r => ({
+      id: r.id,
+      label: r.label,
+      origin: r.origin,
+      mine: Boolean(viewerId && r.createdBy === viewerId),
+      count: counts ? counts.get(r.id) || 0 : null,
+    }));
 }
 
 // ---------------------------------------------------------------------------
@@ -191,7 +387,7 @@ function normalizePosition(seed, position) {
  */
 async function submitResponse({
   store = mongoStore, circleId, seedId, userId, username = '',
-  title = '', text = '', audio = null, position = null,
+  title = '', text = '', audio = null, position = null, words = null,
 }) {
   const circle = await store.findCircleById(circleId);
   if (!circle) throw new Error('Circle not found');
@@ -211,14 +407,16 @@ async function submitResponse({
   const cleanText = String(text || '').trim();
   if (cleanText.length > TEXT_MAX) throw new Error('That story is too long');
 
-  const wantsStory = cfg.shape !== 'placement';
-  const wantsPlacement = cfg.shape !== 'story';
+  const wantsStory = cfg.shape === 'story' || cfg.shape === 'story-placement';
+  const wantsPlacement = cfg.shape === 'placement' || cfg.shape === 'story-placement';
+  const wantsWords = cfg.shape === 'words';
 
   if (done && existing) {
     // B5 — the post-close window on an existing response is text-only.
     if (!cfg.editAfterClose) throw new Error('This activity no longer takes edits');
     if (audio) throw new Error('A recording is fixed once submitted');
     if (position) throw new Error('Positions are fixed once the activity closes');
+    if (words) throw new Error('Words are fixed once the activity closes');
     if (wantsStory && !cleanText && !existing.audio) throw new Error('A story needs words or a voice');
     existing.title = cleanTitle;
     existing.text = cleanText;
@@ -228,6 +426,7 @@ async function submitResponse({
 
   // Open input: first submission, resubmission during respond, or a LATE
   // first response after the reveal (B4).
+  if (audio && wantsWords) throw new Error('A words ask has no recording');
   const cleanAudio = audio ? normalizeAudio(audio) : null;
   if (existing && audio && existing.audio) throw new Error('A recording is fixed once submitted');
 
@@ -244,6 +443,15 @@ async function submitResponse({
     throw new Error('This ask has no axes');
   }
 
+  let wordIds = null;
+  if (wantsWords) {
+    // A resubmission may keep its picked words; a first response must pick.
+    if (words) wordIds = await resolveWordIds({ store, circle, seed, userId, labels: words });
+    else if (!existing || !(existing.wordIds || []).length) throw new Error('Pick at least one word');
+  } else if (words) {
+    throw new Error('This ask has no word list');
+  }
+
   if (wantsStory && !cleanText && !cleanAudio && !(existing && existing.audio)) {
     throw new Error('A story needs words or a voice');
   }
@@ -257,9 +465,17 @@ async function submitResponse({
       const moved = !held || held.position.x !== pos.x || held.position.y !== pos.y;
       if (moved) share.reactedIds = [];
     }
+    // A changed word set is the same case: the reaction endorsed words that
+    // are no longer the response.
+    if (wordIds && share.reactedIds && share.reactedIds.length) {
+      const before = new Set(share.wordIds || []);
+      const changed = wordIds.length !== before.size || wordIds.some(id => !before.has(id));
+      if (changed) share.reactedIds = [];
+    }
     share.title = cleanTitle;
     share.text = cleanText;
     if (cleanAudio && !share.audio) share.audio = cleanAudio;
+    if (wordIds) share.wordIds = wordIds;
     if (username) share.username = username;
     await store.saveResponse(share);
   } else {
@@ -274,6 +490,7 @@ async function submitResponse({
       text: cleanText,
       audio: cleanAudio,
       transcript: { status: 'skipped', text: '' },
+      wordIds: wordIds || [],
       reactedIds: [],
     });
   }
@@ -308,8 +525,17 @@ async function submitResponse({
   return {
     circle: after,
     seed: seedAfter,
-    share: toClientResponse(share, { attributed: true, isMine: true }),
+    share: toClientResponse(share, {
+      attributed: true, isMine: true,
+      wordsById: await wordsByIdFor({ store, seed }),
+    }),
   };
+}
+
+// The label lookup a words-shape response renders with; null on other shapes.
+async function wordsByIdFor({ store, seed }) {
+  if (seed.payload.shape !== 'words') return null;
+  return new Map((await store.listWords(seed.id)).map(r => [r.id, r]));
 }
 
 /**
@@ -342,7 +568,12 @@ async function reactToResponse({ store = mongoStore, circleId, seedId, shareId, 
   share.reactedIds = ids;
   await store.saveResponse(share);
 
-  return { share: toClientResponse(share, { attributed: true, isMine: false, viewerId: userId }) };
+  return {
+    share: toClientResponse(share, {
+      attributed: true, isMine: false, viewerId: userId,
+      wordsById: await wordsByIdFor({ store, seed }),
+    }),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -359,6 +590,7 @@ async function listResponses({ store = mongoStore, circle, seed, viewerId = null
   const open = seed.payload.reveal === 'open' || seedDone(seed);
   const placements = await store.listPlacements(seed.id);
   const posFor = new Map(placements.map(p => [p.userId, p.position]));
+  const wordsById = await wordsByIdFor({ store, seed });
 
   return rows
     .filter(r => open || r.userId === viewerId)
@@ -367,10 +599,13 @@ async function listResponses({ store = mongoStore, circle, seed, viewerId = null
       isMine: r.userId === viewerId,
       viewerId,
       position: posFor.get(r.userId) || null,
+      wordsById,
     }));
 }
 
-function toClientResponse(share, { attributed = true, isMine = false, viewerId = null, position = null } = {}) {
+function toClientResponse(share, {
+  attributed = true, isMine = false, viewerId = null, position = null, wordsById = null,
+} = {}) {
   const out = {
     id: share.id,
     seedId: share.seedId,
@@ -378,6 +613,10 @@ function toClientResponse(share, { attributed = true, isMine = false, viewerId =
     text: share.text || '',
     audio: share.audio || null,
     transcript: share.transcript && share.transcript.status !== 'skipped' ? share.transcript : null,
+    words: wordsById
+      ? (share.wordIds || []).map(id => wordsById.get(id)).filter(Boolean)
+          .map(w => ({ id: w.id, label: w.label }))
+      : [],
     reactionCount: (share.reactedIds || []).length,
     iReacted: viewerId ? (share.reactedIds || []).includes(viewerId) : false,
     isMine,
@@ -395,10 +634,24 @@ function toClientResponse(share, { attributed = true, isMine = false, viewerId =
 // The aggregate — computed on read, never trusted from a stored snapshot
 // ---------------------------------------------------------------------------
 
-function computeAggregate({ seed, placements, responseCount }) {
+function computeAggregate({ seed, placements, responseCount, shares = [], words = [] }) {
   const cfg = seed.payload;
   const out = { responses: responseCount, computedAt: new Date() };
   if (cfg.shape === 'story') return out;
+
+  // The portrait — words sized by count (§9). Only words somebody picked;
+  // the full pickable list is the vocabulary, served separately.
+  if (cfg.shape === 'words') {
+    const counts = new Map();
+    for (const s of shares) {
+      for (const id of s.wordIds || []) counts.set(id, (counts.get(id) || 0) + 1);
+    }
+    out.words = words
+      .filter(w => !w.hidden && counts.has(w.id))
+      .map(w => ({ id: w.id, label: w.label, count: counts.get(w.id) }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+    return out;
+  }
 
   const stats = values => {
     if (!values.length) return { mean: null, spread: null, count: 0 };
@@ -416,11 +669,12 @@ function computeAggregate({ seed, placements, responseCount }) {
 }
 
 async function aggregateFor({ store = mongoStore, seed }) {
-  const [placements, rows] = await Promise.all([
+  const [placements, rows, words] = await Promise.all([
     store.listPlacements(seed.id),
     store.listResponses(seed.id),
+    seed.payload.shape === 'words' ? store.listWords(seed.id) : [],
   ]);
-  return computeAggregate({ seed, placements, responseCount: rows.length });
+  return computeAggregate({ seed, placements, responseCount: rows.length, shares: rows, words });
 }
 
 // ---------------------------------------------------------------------------
@@ -445,8 +699,8 @@ function createModule({ store = mongoStore } = {}) {
       return Boolean(await store.findResponse(seed.id, userId));
     },
 
-    // { responses, myResponse, aggregate } — names distinct from Threshold's
-    // extras, since both can flat-merge into the same snapshot.
+    // { responses, myResponse, aggregate, vocabulary } — names distinct from
+    // Threshold's extras, since both can flat-merge into the same snapshot.
     async snapshotExtras({ circle, seed, viewerId }) {
       const responses = await listResponses({ store, circle, seed, viewerId });
       const mine = responses.find(r => r.isMine) || null;
@@ -455,6 +709,9 @@ function createModule({ store = mongoStore } = {}) {
         responses,
         myResponse: mine,
         aggregate: open ? await aggregateFor({ store, seed }) : null,
+        vocabulary: seed.payload.shape === 'words'
+          ? await vocabularyFor({ store, circle, seed, viewerId })
+          : null,
       };
     },
 
@@ -536,6 +793,7 @@ module.exports = {
   submitResponse,
   reactToResponse,
   listResponses,
+  vocabularyFor,
   aggregateFor,
   computeAggregate,
   createModule,

@@ -13,12 +13,13 @@ function memStore() {
   const rows = [];
   const shares = [];
   const placements = [];
+  const words = [];
   const notifications = [];
   const emails = [];
   let nextId = 1;
 
   return {
-    _circles: rows, _shares: shares, _placements: placements,
+    _circles: rows, _shares: shares, _placements: placements, _words: words,
     _notifications: notifications, _emails: emails,
 
     async findCircleById(id) { return rows.find(c => c.id === id) || null; },
@@ -73,6 +74,21 @@ function memStore() {
       return doc;
     },
     async savePlacement(placement) { return placement; },
+
+    async listWords(scopeId) {
+      return words.filter(w => w.scopeId === scopeId && w.set === '');
+    },
+    async findWordByKey(scopeId, key) {
+      return words.find(w => w.scopeId === scopeId && w.set === '' && w.key === key) || null;
+    },
+    async createWord(fields) {
+      const doc = {
+        id: `vw${nextId++}`, set: '', origin: 'contributed', createdBy: '',
+        useCount: 0, seedRank: 9999, hidden: false, ...fields,
+      };
+      words.push(doc);
+      return doc;
+    },
   };
 }
 
@@ -410,6 +426,167 @@ test('participation follows the reveal setting', async () => {
   await respond(circle, open, 'u2', { text: 'y' });
   const openRow = await mod.participation({ seed: open, viewerId: 'u1' });
   assert.deepEqual(openRow, { tellerIds: ['u2'], tellerCount: 1, iTold: false });
+});
+
+// --- the words shape ---------------------------------------------------------
+
+test('normalizeSeed: words wants a seed list, caps, and no axes', () => {
+  const s = gather.normalizeSeed({
+    prompt: 'This year in one word?', shape: 'words',
+    words: ['Brave', ' brave ', 'Tired', 'Held'],
+  });
+  assert.deepEqual(s.words, ['Brave', 'Tired', 'Held']); // deduped on the normalized key
+  assert.equal(s.pickMax, 5);
+  assert.equal(s.coinMax, 2);
+  assert.equal(s.secondsPerNote, undefined); // no voice on a words ask
+
+  assert.throws(() => gather.normalizeSeed({ prompt: 'p', shape: 'words' }), /needs seed words/);
+  assert.throws(
+    () => gather.normalizeSeed({ prompt: 'p', shape: 'words', words: ['a'], axes: [{ poleA: 'x', poleB: 'y' }] }),
+    /words ask has no axes/,
+  );
+  assert.throws(
+    () => gather.normalizeSeed({ prompt: 'p', shape: 'story', words: ['a'] }),
+    /story ask has no word list/,
+  );
+
+  const capped = gather.normalizeSeed({
+    prompt: 'p', shape: 'words', words: ['a', 'b'], pickMax: 99, coinMax: 0,
+  });
+  assert.equal(capped.pickMax, 10);
+  assert.equal(capped.coinMax, 0); // zero means a closed list, and survives
+});
+
+test('a words ask: pick from the list, coin your own, portrait counts on read', async () => {
+  const circle = await circleWith(3);
+  const seed = await ask(circle, {
+    prompt: 'One word for this year', shape: 'words',
+    words: ['Brave', 'Tired', 'Held'], pickMax: 2,
+  });
+
+  await assert.rejects(respond(circle, seed, 'u1', { text: 'no words' }), /at least one word/);
+  await assert.rejects(
+    respond(circle, seed, 'u1', { words: ['Brave', 'Tired', 'Held'] }),
+    /up to 2 words/,
+  );
+
+  await respond(circle, seed, 'u1', { words: ['Brave', 'Tired'] });
+  await respond(circle, seed, 'u2', { words: ['brave', 'Adrift'] }); // picks Brave, coins Adrift
+  await respond(circle, seed, 'u3', { words: ['Brave'] });
+  assert.equal(seed.phase, 'revealed');
+
+  const agg = await gather.aggregateFor({ store, seed });
+  assert.equal(agg.responses, 3);
+  assert.deepEqual(
+    agg.words.map(w => [w.label, w.count]),
+    [['Brave', 3], ['Adrift', 1], ['Tired', 1]], // count desc, then label; Held unpicked → absent
+  );
+
+  // The reveal carries each response's words, labeled.
+  const rows = await gather.listResponses({ store, circle, seed, viewerId: 'u1' });
+  const u2row = rows.find(r => r.userId === 'u2');
+  assert.deepEqual(u2row.words.map(w => w.label), ['Brave', 'Adrift']);
+});
+
+test('coining spends a permanent budget, and a closed list refuses coinage', async () => {
+  const circle = await circleWith(3);
+  const seed = await ask(circle, {
+    prompt: 'p', shape: 'words', words: ['Seeded'], pickMax: 5, coinMax: 2,
+  });
+
+  await respond(circle, seed, 'u1', { words: ['One', 'Two'] }); // both coined
+  // Dropping a coined word refunds nothing — the budget is spent.
+  await assert.rejects(
+    respond(circle, seed, 'u1', { words: ['One', 'Three'] }),
+    /up to 2 new words/,
+  );
+  // Another member picks u1's coinage freely — it joined the shared set.
+  await respond(circle, seed, 'u2', { words: ['one', 'Seeded'] });
+  assert.equal((await store.listWords(seed.id)).length, 3); // Seeded, One, Two
+
+  const closed = await ask(circle, {
+    prompt: 'closed', shape: 'words', words: ['Only'], coinMax: 0,
+  }, 'u2');
+  await assert.rejects(
+    respond(circle, closed, 'u1', { words: ['Novel'] }),
+    /picks from its list only/,
+  );
+});
+
+test('sealed: another member’s coinage stays invisible until the close', async () => {
+  const circle = await circleWith(3);
+  const seed = await ask(circle, {
+    prompt: 'p', shape: 'words', words: ['Held', 'Brave'], reveal: 'sealed',
+  });
+  await respond(circle, seed, 'u1', { words: ['Adrift'] }); // coined
+
+  const mod = activities.get('gather');
+  const forU2 = await mod.snapshotExtras({ circle, seed, viewerId: 'u2' });
+  assert.deepEqual(forU2.vocabulary.map(w => w.label), ['Held', 'Brave']); // creator's order
+  assert.ok(forU2.vocabulary.every(w => w.count === null)); // even a count would say who moved
+
+  const forU1 = await mod.snapshotExtras({ circle, seed, viewerId: 'u1' });
+  const mine = forU1.vocabulary.find(w => w.label === 'Adrift');
+  assert.ok(mine && mine.mine);
+
+  await respond(circle, seed, 'u2', { words: ['Held'] });
+  await respond(circle, seed, 'u3', { words: ['held'] });
+  assert.equal(seed.phase, 'revealed');
+  const after = await mod.snapshotExtras({ circle, seed, viewerId: 'u2' });
+  assert.deepEqual(after.vocabulary.map(w => [w.label, w.count]),
+    [['Held', 2], ['Adrift', 1], ['Brave', 0]]); // counts out, sorted by use
+});
+
+test('B5: words are fixed once the activity closes; text stays editable', async () => {
+  const circle = await circleWith(2);
+  const seed = await ask(circle, {
+    prompt: 'p', shape: 'words', words: ['A', 'B'],
+  });
+  await respond(circle, seed, 'u1', { words: ['A'], text: 'why A' });
+  await respond(circle, seed, 'u2', { words: ['B'] });
+  assert.equal(seed.phase, 'revealed');
+
+  await respond(circle, seed, 'u1', { text: 'still A, better said' });
+  assert.equal((await store.findResponse(seed.id, 'u1')).text, 'still A, better said');
+  await assert.rejects(respond(circle, seed, 'u1', { words: ['B'] }), /Words are fixed/);
+});
+
+test('a changed word set drops the reactions it collected, like a moved dot', async () => {
+  const circle = await circleWith(3);
+  const seed = await ask(circle, {
+    prompt: 'p', shape: 'words', words: ['A', 'B'], reveal: 'open',
+  });
+  const { share } = await respond(circle, seed, 'u1', { words: ['A'] });
+  await gather.reactToResponse({
+    store, circleId: circle.id, seedId: seed.id, shareId: share.id, userId: 'u2',
+  });
+
+  // The same set (resent) keeps the reaction; a different set loses it.
+  await respond(circle, seed, 'u1', { words: ['a'] });
+  assert.equal((await store.findResponse(seed.id, 'u1')).reactedIds.length, 1);
+  await respond(circle, seed, 'u1', { words: ['B'] });
+  assert.equal((await store.findResponse(seed.id, 'u1')).reactedIds.length, 0);
+});
+
+test('a words ask refuses recordings and positions', async () => {
+  const circle = await circleWith(2);
+  const seed = await ask(circle, { prompt: 'p', shape: 'words', words: ['A'] });
+  await assert.rejects(
+    respond(circle, seed, 'u1', {
+      words: ['A'], audio: { url: 'https://x.public.blob.vercel-storage.com/a.webm' },
+    }),
+    /no recording/,
+  );
+  await assert.rejects(
+    respond(circle, seed, 'u1', { words: ['A'], position: { x: 0.5 } }),
+    /no axes/,
+  );
+  // And the other way round: a story ask takes no words.
+  const story = await ask(circle, { prompt: 'q', shape: 'story' }, 'u2');
+  await assert.rejects(
+    respond(circle, story, 'u1', { text: 't', words: ['A'] }),
+    /no word list/,
+  );
 });
 
 test('a gather ask runs beside a threshold-style seed in one circle', async () => {
