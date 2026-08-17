@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstance } from '@/contexts/InstanceContext';
 import { AlgorithmService, Algorithm, AlgorithmProposal } from '@/services/algorithmService';
+import { TopicService, Topic } from '@/services/topicService';
 import UserMenu from '@/components/UserMenu';
 
 export default function PatternDetailPage() {
@@ -22,6 +23,9 @@ export default function PatternDetailPage() {
   const [showProposeForm, setShowProposeForm] = useState(false);
   const [proposing, setProposing] = useState(false);
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [showTopicPicker, setShowTopicPicker] = useState(false);
+  const [topics, setTopics] = useState<Topic[] | null>(null);
+  const [running, setRunning] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -32,6 +36,28 @@ export default function PatternDetailPage() {
       setProposals(props);
     }).catch(e => setError(e.message)).finally(() => setLoading(false));
   }, [patternId]);
+
+  // Use the pattern: pick which topic it runs on, and the maps are built now.
+  async function openTopicPicker() {
+    if (!userId) { router.push('/login'); return; }
+    setShowTopicPicker(v => !v);
+    setShowProposeForm(false);
+    if (topics === null) {
+      TopicService.list('confirmed').then(setTopics).catch(() => setTopics([]));
+    }
+  }
+
+  async function handleRun(topicId: string) {
+    if (!userId) { router.push('/login'); return; }
+    setRunning(true);
+    try {
+      const result = await AlgorithmService.run(userId, patternId, topicId);
+      router.push(`/sequence/${result.sequenceUrlName}`);
+    } catch (e: any) {
+      alert(e.message);
+      setRunning(false);
+    }
+  }
 
   async function handlePropose() {
     if (!userId) { router.push('/login'); return; }
@@ -125,9 +151,15 @@ export default function PatternDetailPage() {
 
         {/* Action buttons */}
         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2.5rem', flexWrap: 'wrap' }}>
-          {isAuthenticated && !myProposal && !ended && (
-            <button onClick={() => setShowProposeForm(v => !v)}
+          {isAuthenticated && !ended && (
+            <button onClick={openTopicPicker}
               style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.5rem 1.2rem', borderRadius: 999, border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: 'pointer' }}>
+              Use pattern
+            </button>
+          )}
+          {isAuthenticated && !myProposal && !ended && (
+            <button onClick={() => { setShowProposeForm(v => !v); setShowTopicPicker(false); }}
+              style={{ fontSize: '0.65rem', fontFamily: 'var(--font-dm-mono), monospace', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0.5rem 1.2rem', borderRadius: 999, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>
               Propose a session
             </button>
           )}
@@ -138,6 +170,33 @@ export default function PatternDetailPage() {
             </Link>
           )}
         </div>
+
+        {/* Topic picker — which topic this run is about. The maps are built
+            under it, and the topic is how anyone finds them later. */}
+        {showTopicPicker && (
+          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-default)', borderRadius: 12, padding: '1.5rem', marginBottom: '2rem' }}>
+            <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 0.25rem 0' }}>Which topic is this run about?</h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 1rem 0', lineHeight: 1.5 }}>
+              Its {pattern.activityCount ?? ''} steps arrive as maps under that topic, with the first round open.
+            </p>
+            {topics === null ? (
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Loading…</p>
+            ) : topics.length === 0 ? (
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+                A topic runs a pattern once it has reached quorum. Support one, and it appears here.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {topics.map(t => (
+                  <button key={t.id} onClick={() => handleRun(t.id)} disabled={running}
+                    style={{ textAlign: 'left', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, padding: '0.7rem 0.85rem', cursor: running ? 'wait' : 'pointer', color: 'var(--text-primary)', fontSize: '0.88rem' }}>
+                    {t.title}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Propose form */}
         {showProposeForm && (

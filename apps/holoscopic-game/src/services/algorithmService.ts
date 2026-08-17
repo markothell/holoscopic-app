@@ -13,6 +13,8 @@ export interface Algorithm {
   royaltyPercent: number;
   status: 'draft' | 'published';
   publishedAt: string;
+  // Steps in the pattern's skeleton, from its linked sequence (GET /algorithms)
+  activityCount?: number;
   forks?: AlgorithmFork[];
 }
 
@@ -68,9 +70,14 @@ export const AlgorithmService = {
   getProposals: (algorithmId: string) =>
     apiFetch(`/algorithms/${algorithmId}/proposals`).then(d => d.proposals as AlgorithmProposal[]),
 
-  propose: (userId: string, algorithmId: string, intent: string) =>
-    apiFetch(`/algorithms/${algorithmId}/proposals`, { method: 'POST', userId, body: JSON.stringify({ intent }) })
+  propose: (userId: string, algorithmId: string, intent: string, topicId?: string) =>
+    apiFetch(`/algorithms/${algorithmId}/proposals`, { method: 'POST', userId, body: JSON.stringify({ intent, topicId }) })
       .then(d => ({ proposal: d.proposal as AlgorithmProposal, sessionStarted: d.sessionStarted as boolean, sequenceUrlName: d.sequenceUrlName as string | null })),
+
+  // Load a pattern's skeleton into a topic as a session, ready for participants.
+  run: (userId: string, algorithmId: string, topicId: string) =>
+    apiFetch(`/algorithms/${algorithmId}/run`, { method: 'POST', userId, body: JSON.stringify({ topicId }) })
+      .then(d => ({ sequenceId: d.sequenceId as string, sequenceUrlName: d.sequenceUrlName as string, activityCount: d.activityCount as number })),
 
   joinProposal: (userId: string, algorithmId: string, proposalId: string) =>
     apiFetch(`/algorithms/${algorithmId}/proposals/${proposalId}/join`, { method: 'POST', userId })

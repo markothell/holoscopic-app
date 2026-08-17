@@ -3,6 +3,7 @@ const router = express.Router();
 const Algorithm = require('../models/Algorithm');
 const AlgorithmProposal = require('../models/AlgorithmProposal');
 const Sequence = require('../models/Sequence');
+const Topic = require('../models/Topic');
 const User = require('../models/User');
 const { spend, transact } = require('../utils/holons');
 const { notify } = require('../utils/notify');
@@ -278,6 +279,61 @@ router.get('/:id/proposals', async (req, res) => {
 });
 
 // POST /api/algorithms/:id/proposals
+// POST /api/algorithms/:id/run — load this pattern's skeleton into a topic.
+//
+// The host's way in, next to the proposal path: proposing gathers people first
+// and builds the session when quorum arrives, while running builds it now and
+// invites people into maps that already exist. Nothing is charged for the
+// load — a map costs its ◈ stake when somebody joins it, same as any other.
+router.post('/:id/run', async (req, res) => {
+  const userId = req.headers['x-user-id'];
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { topicId } = req.body;
+  if (!topicId) return res.status(400).json({ error: 'topicId is required' });
+
+  try {
+    const { instanceId } = req;
+    const algorithm = await Algorithm.findOne({ id: req.params.id, instanceId, status: 'published' });
+    if (!algorithm) return res.status(404).json({ error: 'Pattern not found' });
+    if (!algorithm.sequenceId) return res.status(400).json({ error: 'This pattern has no steps to run' });
+
+    const topic = await Topic.findOne({ id: topicId, instanceId });
+    if (!topic) return res.status(404).json({ error: 'Topic not found' });
+    if (topic.status !== 'confirmed') {
+      return res.status(400).json({ error: 'A topic runs a pattern once it has reached quorum' });
+    }
+
+    const sequence = await cloneSequence(
+      algorithm.sequenceId, `${algorithm.title} — ${topic.title}`, userId, instanceId,
+      { algorithmId: algorithm.id, topicId: topic.id },
+    );
+    if (!sequence) return res.status(500).json({ error: 'Failed to load the pattern' });
+
+    const user = await User.findOne({ id: userId }).select('email name').lean();
+    try { await sequence.addMember(userId, user?.email, user?.name); } catch { }
+
+    // Open the first round so the session is ready for participants; the rest
+    // stay closed for the host to open in turn, which is what makes it a
+    // sequence rather than a pile of maps.
+    const firstRound = Math.min(...sequence.activities.map(a => a.round ?? 1));
+    const opened = new Date();
+    sequence.activities.forEach(a => { if ((a.round ?? 1) === firstRound) a.openedAt = opened; });
+    sequence.startedAt = opened;
+    await sequence.save();
+
+    res.status(201).json({
+      sequenceId: sequence.id,
+      sequenceUrlName: sequence.urlName,
+      activityCount: sequence.activities.length,
+      openedRound: firstRound,
+    });
+  } catch (err) {
+    console.error('[algorithms] run failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/:id/proposals', async (req, res) => {
   const userId = req.headers['x-user-id'];
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
