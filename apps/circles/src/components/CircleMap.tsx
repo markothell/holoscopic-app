@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import Link from 'next/link';
 import type { Circle, Member, Seed, SeedParticipation, SynthesisSession } from '@/lib/types';
 import { SYNTHESIS_URL } from '@/services/api';
 
@@ -223,6 +224,18 @@ export function CircleMap({ circle, userId, sessions }: {
   const isSession = (seed: Seed) => seed.id.startsWith('syn-');
   const hrefFor = (seed: Seed) => (isSession(seed) ? SYNTHESIS_URL : `${base}/topic/${seed.id}`);
 
+  // Drilling into a topic is an in-app move, so it goes through the router like
+  // every other link in circles. A bare <a> here would be a full document load,
+  // and then the browser Back off it is a cold page load rather than a router
+  // transition — you land on a half-drawn circle home. Synthesis lives on
+  // another origin, so that one stays a real anchor.
+  const SeedLink = ({ seed, label, children }: {
+    seed: Seed; label: string; children: React.ReactNode;
+  }) =>
+    isSession(seed)
+      ? <a href={hrefFor(seed)} aria-label={label}>{children}</a>
+      : <Link href={hrefFor(seed)} aria-label={label}>{children}</Link>;
+
   if (members.length === 0) return null;
 
   return (
@@ -281,10 +294,10 @@ export function CircleMap({ circle, userId, sessions }: {
 
         {/* Solo explorations: a short ochre edge with no circle at its end. */}
         {geo.spurs.map(spur => (
-          <a
+          <SeedLink
             key={spur.seed.id}
-            href={hrefFor(spur.seed)}
-            aria-label={`${spur.seed.payload.topic} — explored alone`}
+            seed={spur.seed}
+            label={`${spur.seed.payload.topic} — explored alone`}
           >
             <title>{spur.seed.payload.topic}{isSession(spur.seed) ? ' · synthesis' : ''}</title>
             <line
@@ -296,16 +309,16 @@ export function CircleMap({ circle, userId, sessions }: {
               x1={spur.x1} y1={spur.y1} x2={spur.x2} y2={spur.y2}
               stroke="transparent" strokeWidth="14"
             />
-          </a>
+          </SeedLink>
         ))}
 
         {/* Shared explorations: sized by how much of the circle took part.
             The live one wears the sky — the only sky on the page. */}
         {geo.nodes.map(node => (
-          <a
+          <SeedLink
             key={node.seed.id}
-            href={hrefFor(node.seed)}
-            aria-label={
+            seed={node.seed}
+            label={
               node.live
                 ? `${node.seed.payload.topic} — running now`
                 : `${node.seed.payload.topic} — ${node.count} of ${members.length} took part`
@@ -327,7 +340,7 @@ export function CircleMap({ circle, userId, sessions }: {
               stroke={node.live ? 'var(--sky)' : 'var(--rope)'}
               strokeWidth={node.live ? 1.8 : 1.2}
             />
-          </a>
+          </SeedLink>
         ))}
 
         {/* The members, on the ring. */}
