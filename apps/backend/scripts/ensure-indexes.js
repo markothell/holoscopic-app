@@ -141,6 +141,23 @@ const INDEXES = [
     options: { unique: true } },
   { collection: 'thresholdrankings', name: 'seedId_submittedAt', keys: { seedId: 1, submittedAt: 1 } },
 
+  // --- Primitive content collections (PLATFORM.md P8; first writer is the
+  //     'gather' module, PRIMITIVES.md §9). The unique indexes ARE the
+  //     cardinality rules: one gather response per member is the shares key,
+  //     one placement per (member, target, axis) the placements key — same
+  //     correctness argument as thresholdshares above. ---
+  { collection: 'shares', name: 'seedId_userId_slot', keys: { seedId: 1, userId: 1, slot: 1 },
+    options: { unique: true } },
+  { collection: 'shares', name: 'seedId_createdAt', keys: { seedId: 1, createdAt: 1 } },
+  { collection: 'placements', name: 'seedId_userId_kind_targetId_axis',
+    keys: { seedId: 1, userId: 1, kind: 1, targetId: 1, axis: 1 },
+    options: { unique: true } },
+  { collection: 'placements', name: 'seedId_committedAt', keys: { seedId: 1, committedAt: 1 } },
+  // vocabularies: unique is the dedupe — without it two members typing the
+  // same word concurrently coin two rows and the portrait splits their counts.
+  { collection: 'vocabularies', name: 'scopeId_set_key', keys: { scopeId: 1, set: 1, key: 1 },
+    options: { unique: true } },
+
   // --- Site traffic. The only entries here whose OPTIONS are load-bearing ---
   //
   // Two of these three are not performance at all. The unique index on

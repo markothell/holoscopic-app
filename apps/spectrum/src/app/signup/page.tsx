@@ -7,11 +7,16 @@ import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import TextField from '@/components/ui/TextField';
 import { apiFetch } from '@/services/api';
+import { safeRedirect } from '@hs/auth/redirect';
 
 function SignupForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get('next') || '/';
+  // Same-origin paths only — an unchecked redirect off a credential form
+  // is a phishing hop from a real domain, taken the moment a password
+  // has been typed in. The guard and its attack vectors live in
+  // @hs/auth/redirect, because ten copies of it shared one hole.
+  const next = safeRedirect(params.get('next'), '/');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

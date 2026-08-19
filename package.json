@@ -24,7 +24,9 @@
     "dev:circles": "npm run dev --workspace=apps/circles",
     "build": "turbo build",
     "dev": "turbo dev",
-    "dev:tunnel": "node apps/backend/scripts/dev-tunnel.js"
+    "dev:tunnel": "node apps/backend/scripts/dev-tunnel.js",
+    "clean": "if lsof -ti TCP:4000-4007 -sTCP:LISTEN >/dev/null 2>&1; then echo '✗ dev servers are running on 4000-4007 — stop them first, or use clean:force'; exit 1; fi; npm run clean:force",
+    "clean:force": "rm -rf apps/*/.next apps/*/.turbo .turbo && echo '✓ build caches cleared'"
   },
   "devDependencies": {
     "turbo": "^2.0.0"

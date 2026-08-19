@@ -5,11 +5,16 @@ import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import styles from './page.module.css';
+import { safeRedirect } from '@hs/auth/redirect';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  // Same-origin paths only — an unchecked redirect off a credential form
+  // is a phishing hop from a real domain, taken the moment a password
+  // has been typed in. The guard and its attack vectors live in
+  // @hs/auth/redirect, because ten copies of it shared one hole.
+  const callbackUrl = safeRedirect(searchParams.get('callbackUrl'), '/dashboard');
   // /signup and /reset-password both hand off here with ?message= after doing
   // their work. Nothing rendered it, so "Account created. Please sign in."
   // arrived as a blank sign-in form and read as the signup having failed.

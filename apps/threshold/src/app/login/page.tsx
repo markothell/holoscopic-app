@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Page, Action, Quiet, Muted } from '@/components/Shell';
 import { TideLine } from '@/components/TideLine';
+import { safeRedirect } from '@hs/auth/redirect';
 
 // A holoscopic account, the same one that plays every other app here (D6).
 //
@@ -15,7 +16,11 @@ import { TideLine } from '@/components/TideLine';
 
 function LoginForm() {
   const params = useSearchParams();
-  const callbackUrl = params.get('callbackUrl') || '/me';
+  // Same-origin paths only — an unchecked redirect off a credential form
+  // is a phishing hop from a real domain, taken the moment a password
+  // has been typed in. The guard and its attack vectors live in
+  // @hs/auth/redirect, because ten copies of it shared one hole.
+  const callbackUrl = safeRedirect(params.get('callbackUrl'), '/me');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);

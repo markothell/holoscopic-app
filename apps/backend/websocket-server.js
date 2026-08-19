@@ -427,10 +427,6 @@ setInterval(() => {
     console.log(`Clearing ${operationsInProgress.size} stale operations`);
     operationsInProgress.clear();
   }
-  
-  if (global.gc && Math.random() < 0.1) {
-    global.gc();
-  }
 }, CONNECTIONS_CLEANUP_INTERVAL);
 
 // Stale connection cleanup
@@ -555,7 +551,24 @@ function loadAPIRoutes() {
       // circles, join). Mounted after the threshold require above so every
       // activity module is registered before this router can be asked to
       // serve a snapshot that calls its hooks.
-      app.use('/api/circles', enforceVerifiedUser, require('./routes/circles'));
+      const circlesRoutes = require('./routes/circles');
+      // Gather's Deepgram callback FIRST and outside enforceVerifiedUser —
+      // same reasoning as threshold's hooks mount above.
+      app.use('/api/circles/hooks', circlesRoutes.hooks);
+      app.use('/api/circles', enforceVerifiedUser, circlesRoutes);
+      // Gather audio, wired like threshold's directly above. The mirror is
+      // the SAME mirrorShare — the primitive Share model deliberately mirrors
+      // ThresholdShare's audio shape (one wire shape, one validator, one
+      // recorder), so the off-site copy needs no third sibling.
+      require('./utils/gather').setBlobMirror(
+        require('./utils/blobMirror').mirrorShare,
+      );
+      // Transcription, over the same utils/transcribe.js core. Optional by
+      // design: with no DEEPGRAM_API_KEY this is a no-op and responses stay
+      // 'skipped', the normal local state.
+      require('./utils/gather').setTranscriber(
+        require('./utils/gatherTranscribe').requestTranscript,
+      );
       // Off-site copy of a shared recording, injected exactly as Chorus's is.
       // Until this runs a voice exists only in Vercel Blob, which has no
       // snapshots and no undelete; scripts/backup-blobs.js sweeps up whatever

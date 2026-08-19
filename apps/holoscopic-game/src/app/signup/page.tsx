@@ -5,11 +5,16 @@ import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import styles from './page.module.css';
+import { safeRedirect } from '@hs/auth/redirect';
 
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  // Same-origin paths only — an unchecked redirect off a credential form
+  // is a phishing hop from a real domain, taken the moment a password
+  // has been typed in. The guard and its attack vectors live in
+  // @hs/auth/redirect, because ten copies of it shared one hole.
+  const callbackUrl = safeRedirect(searchParams.get('callbackUrl'), '/dashboard');
   const { data: session, status } = useSession();
 
   const [name, setName] = useState('');

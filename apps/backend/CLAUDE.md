@@ -12,16 +12,21 @@ Express + Socket.IO + Mongoose server. Single entry point: `websocket-server.js`
 | `utils/holons.js` | `transact()` and `spend()` — the only way to move Holon balances |
 | `utils/notify.js` | Creates `Notification` documents for a user |
 | `utils/entries.js` | The single write funnel for entries (upsert, vote, clear, seed) + wire serializers `toClient`/`toRedacted` |
-| `models/Circle.js` | The generic cohort + round machine (members, seed queue, phase machine) — activity-agnostic by design |
-| `utils/circles.js` | The round machine's funnel: membership, seeds, phases, mail, the one-call `snapshot`, `participation` |
+| `models/Circle.js` | The generic cohort + round machine (members, seed queue, phase machine) — activity-agnostic by design. Since 2026-08-17: `seeds[].activity` (per-seed module, null = the circle's own) and `config.maxLive` (concurrent cycles, default 1 = the original machine) |
+| `utils/circles.js` | The round machine's funnel: membership, seeds, phases, mail, the one-call `snapshot`, `participation`. Resolves the module PER SEED (`modFor`), runs up to `maxLive` cycles at once, and a seed payload's `<phase>Hours` key overrides the circle's clock |
 | `utils/circleActivities.js` | The module registry that keeps `utils/circles.js` generic — `register(key, module)`, hooks incl. `snapshotExtras`/`participation` |
-| `routes/circles.js` | `/api/circles` — the activity-agnostic surface (snapshot, my circles, join); activity verbs stay on each activity's router |
+| `routes/circles.js` | `/api/circles` — the activity-agnostic surface (snapshot, my circles, join) plus the generic seed verbs (post/support/advance) and the gather verbs (respond/react); Threshold's own verbs stay on `/api/threshold` |
+| `utils/gather.js` | The builder's single-round activity (PRIMITIVES.md §9): prompt → responses → reveal, shapes story/placement/story+placement/words, sealed-or-open reveal, reactions, on-read aggregate. Registers itself as activity `gather`; write funnel for the primitive collections |
+| `models/Share.js` | PRIMITIVE voice/text contribution (P8) — first writer is gather; unique `(seedId, userId, slot)` IS the cardinality rule. `wordIds` carries a words-shape response's picks |
+| `models/Placement.js` | PRIMITIVE located opinion (P8): position / bucket / rank, unique `(seedId, userId, kind, targetId, axis)`; draft vs committed via `committedAt` |
+| `models/Vocabulary.js` | PRIMITIVE participant-extendable word set (P8, generalizes MemoryTag) — first writer is gather's words shape; unique `(scopeId, set, key)` is the dedupe; gather computes counts on read and leaves `useCount` at 0 |
 | `models/Entry.js` | Source of truth for participation: position + text + votes per (activity, user, slot, question), with denormalized `instanceId`/`topicId` |
 | `models/Activity.js` | Map configuration + membership (`participants[]`) + stake ledger — no entry content |
 | `models/Sequence.js` | Ordered collection of activities with members and round visibility |
 | `models/Instance.js` | Per-deployment config: which `app` it belongs to, holons, quorum, domains, access |
 | `utils/memorialDefaults.js` | What a new Chorus memorial starts life with — shared by `POST /instances` and `scripts/seed-memorial.js` so both make the same product |
-| `utils/blobMirror.js` | Off-site copy of Chorus media. Vercel Blob has no snapshots or undelete, so recordings are mirrored to the backup bucket on write and reconciled nightly |
+| `utils/blobMirror.js` | Off-site copy of every recording (Chorus memories, Threshold shares, gather responses) plus memorial photos. Vercel Blob has no snapshots or undelete, so media is mirrored to the backup bucket on write and reconciled nightly by `scripts/backup-blobs.js` |
+| `utils/gatherTranscribe.js` | Deepgram adapter for gather responses — third sibling over `utils/transcribe.js` (with `memorialTranscribe` and `thresholdTranscribe`); callback at `/api/circles/hooks/deepgram`, injected into `utils/gather.js` in `loadAPIRoutes` |
 | `utils/backupNamespace.js` | Which part of the shared backup bucket a run may write to, decided from the cluster it connected to rather than from a variable somebody has to set |
 | `utils/traffic.js` | Site traffic write funnel — page views and link clicks, two storage tiers. **Not** `routes/analytics.js`, which counts participation inside activities |
 | `utils/email.js` | The only place mail leaves this platform. One Resend call, never throws — a send is always a side effect of something that already succeeded. `utils/alerts.js` adds throttling on top for operator mail |

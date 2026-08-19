@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { MOCK_HOME_NODE_ID, MOCK_NODES } from '@/lib/mock';
+import { MOCK_NODES } from '@/lib/mock';
 import type { FrameSpec, NodeContent, NodeKind, SynFrame, SynNode } from '@/lib/types';
 import { deriveTopicId, wouldCreateCycle } from '@/lib/graph';
 import { SynthesisService } from '@/services/synthesisService';
@@ -132,14 +132,17 @@ export function useMyMap(instanceId: string, userId: string, ownerHandle: string
     // map stays one connected tree — a fresh "+" node is a child of home,
     // not a second, disconnected root. Skipped only for the home node
     // itself (it has no parent by definition), which addRoot never mints.
-    const hasHome = byId.has(MOCK_HOME_NODE_ID);
+    // Home is found by its isHome flag: on the live path its id is
+    // server-minted, so matching the mock id left every root parentless
+    // and real maps grew as a forest.
+    const home = [...byId.values()].find(n => n.isHome);
     const draft: SynNode = {
       id, instanceId, ownerId: userId, ownerHandle, kind,
       content: { topic: '', thought: '', context: '', ...content },
       axisFrameIds: kind === 'thought' ? axisFrameIds : [],
       topicId: null,
-      parentIds: hasHome ? [MOCK_HOME_NODE_ID] : [],
-      edgeKind: hasHome ? 'child' : 'root',
+      parentIds: home ? [home.id] : [],
+      edgeKind: home ? 'child' : 'root',
       origin: 'own',
       sourceNodeId: null, sourceEntryId: null, sourceOwnerHandle: null,
       visibility: kind === 'thought' ? 'published' : 'private',
@@ -150,7 +153,9 @@ export function useMyMap(instanceId: string, userId: string, ownerHandle: string
     setNodes(prev => [...prev, draft]);
     setError(null);
     sync(
-      SynthesisService.createRoot(instanceId, kind, content, toAxisSpecs(axisFrameIds, seedMock, resolveLocalFrame), userId),
+      home
+        ? SynthesisService.createChild(instanceId, home.id, kind, content, toAxisSpecs(axisFrameIds, seedMock, resolveLocalFrame), userId)
+        : SynthesisService.createRoot(instanceId, kind, content, toAxisSpecs(axisFrameIds, seedMock, resolveLocalFrame), userId),
       id,
       axisFrameIds.length > 0,
     );

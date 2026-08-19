@@ -70,7 +70,11 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST \
 # 200 = allowed.  403 with {"error":"Origin not allowed: …"} = CLIENT_URL is missing it.
 ```
 
-Add a new app's preview origin here whenever one joins.
+**Chorus is the only app on this allowlist, and that is the decision rather than a backlog.**
+Chorus is the only app holding real contributors' data, so it is the only one where a push to
+`main` can lose something irreplaceable. Every other app is tested by pushing straight to
+production, because there is nothing there yet to lose. Add an origin here if another app starts
+carrying data worth protecting.
 
 **And changing an env var through Render's API does NOT restart the service.** The value is stored
 immediately and `PUT` returns 200, but the running process keeps the old one — `allowedOrigins` is

@@ -1,5 +1,11 @@
 # Threshold on preview
 
+> **Not active, as of 2026-08-18.** Threshold has never been wired to preview: the preview
+> backend's `CLIENT_URL` carries no Threshold origin (the probe below answers `403`), and the
+> env-var split described here was never made. Threshold is tested by pushing to production, as
+> every app other than Chorus is — Chorus alone holds data a bad deploy could lose. **This file
+> is the recipe for the day that changes, not a description of what exists.**
+
 **`apps/chorus/PREVIEW.md` is the reference** — it explains what the environment is, the
 `vercel env rm` footgun that deletes Production along with Preview, why a `CLIENT_URL` miss looks
 completely healthy, and why changing a Render env var does not restart the service. Read it first.

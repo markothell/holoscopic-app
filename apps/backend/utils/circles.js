@@ -50,11 +50,22 @@ function deadlineFrom(now, hours) {
   return new Date(now.getTime() + hours * HOUR_MS);
 }
 
+// The module that runs a seed's cycle: the seed's own `activity` when set,
+// else the circle's. A circle may hold mixed activities (PRIMITIVES.md §9) —
+// every seed written before seeds[].activity existed reads null and resolves
+// to the circle's module, exactly as before.
+function modFor(circle, seed = null) {
+  return activities.get((seed && seed.activity) || circle.activity);
+}
+
 // config.shareHours for phase 'share', and so on. Keeping the convention
 // implicit is what lets a new activity declare its own phase names without
-// touching this file.
-function hoursForPhase(circle, phase) {
+// touching this file. A seed PAYLOAD carrying the same key overrides the
+// circle's config — the clock is an activity-creation setting for builder
+// seeds (PRIMITIVES.md §9 B2), and payload is already the per-seed home.
+function hoursForPhase(circle, phase, seed = null) {
   const key = `${phase}Hours`;
+  if (seed && seed.payload && seed.payload[key] !== undefined) return seed.payload[key];
   const v = circle.config ? circle.config[key] : undefined;
   return v === undefined ? null : v;
 }
@@ -64,9 +75,28 @@ function currentDeadline(circle) {
   return seed ? (seed.phaseDeadline || null) : null;
 }
 
+// How many cycles may run at once (PRIMITIVES.md §9 B1). Undefined on every
+// circle written before config.maxLive existed — reads as 1, the original
+// one-cycle-at-a-time machine.
+function maxLive(circle) {
+  const v = circle.config ? circle.config.maxLive : undefined;
+  return v == null ? 1 : Math.max(1, Number(v) || 1);
+}
+
+// The live set, derived from seed phases rather than stored — a seed is live
+// once its cycle opened and until it reveals. liveSeedId mirrors the first of
+// these for single-live readers.
+function liveSeeds(circle) {
+  return circle.seeds.filter(s => s.phase !== 'pending' && !DONE_PHASES.includes(s.phase));
+}
+
 function activeSeed(circle) {
-  if (circle.phase !== 'cycle' || !circle.liveSeedId) return null;
-  return circle.seeds.find(s => s.id === circle.liveSeedId) || null;
+  if (circle.phase !== 'cycle') return null;
+  if (circle.liveSeedId) {
+    const s = circle.seeds.find(x => x.id === circle.liveSeedId);
+    if (s && s.phase !== 'pending' && !DONE_PHASES.includes(s.phase)) return s;
+  }
+  return liveSeeds(circle)[0] || null;
 }
 
 /**
@@ -274,21 +304,24 @@ async function joinCircle({ store = mongoStore, circleId, userId, username, emai
  * its cycle opens — a topic you thought better of is worth more than an
  * immutability rule nothing depends on.
  */
-async function addSeed({ store = mongoStore, circleId, userId, payload, seedId = null }) {
+async function addSeed({ store = mongoStore, circleId, userId, payload, seedId = null, activity = null }) {
   const circle = await store.findCircleById(circleId);
   if (!circle) throw new Error('Circle not found');
   assertOpen(circle);
   assertMember(circle, userId);
 
-  const mod = activities.get(circle.activity);
-  const normalized = await mod.normalizeSeed(payload, { circle, userId });
-
   if (seedId) {
     const mine = seedById(circle, seedId);
     if (mine.authorId !== userId) throw new Error('Only the author can change this topic');
     if (mine.phase !== 'pending') throw new Error('This topic has already been run');
-    mine.payload = normalized;
+    // An edit keeps the seed's activity — its own module re-validates.
+    mine.payload = await modFor(circle, mine).normalizeSeed(payload, { circle, userId });
   } else {
+    // A seed may run a different activity than the circle's own (PRIMITIVES.md
+    // §9). Throws on an unregistered key, same as circle creation.
+    const key = activity && activity !== circle.activity ? activity : null;
+    const mod = activities.get(key || circle.activity);
+    const normalized = await mod.normalizeSeed(payload, { circle, userId });
     // D1: a one-off runs its single topic and has no queue to add to.
     if (circle.mode === 'single' && circle.seeds.length > 0) {
       throw new Error('This is a single-topic circle');
@@ -297,6 +330,7 @@ async function addSeed({ store = mongoStore, circleId, userId, payload, seedId =
       id: generateId(),
       authorId: userId,
       order: circle.seeds.length,
+      activity: key,
       payload: normalized,
       phase: 'pending',
       // Posting a topic is supporting it. Otherwise the first thing every
@@ -428,18 +462,20 @@ async function startCircle({ store = mongoStore, circleId, userId }) {
  * already told a story on it, and the circle moving past their topic is not a
  * reason to throw their story away.
  */
-async function skipSeed({ store = mongoStore, circleId, userId, now = new Date() }) {
+async function skipSeed({ store = mongoStore, circleId, userId, seedId = null, now = new Date() }) {
   const circle = await store.findCircleById(circleId);
   if (!circle) throw new Error('Circle not found');
   if (circle.createdBy !== userId) throw new Error('Only the circle creator can skip a topic');
 
-  const seed = activeSeed(circle);
+  const seed = seedId
+    ? liveSeeds(circle).find(s => s.id === seedId) || null
+    : activeSeed(circle);
   if (!seed) throw new Error('There is no topic running');
 
-  const mod = activities.get(circle.activity);
+  const mod = modFor(circle, seed);
   const pending = [];
   await revealSeed({ store, mod, circle, seed, now, pending, via: 'manual', byUserId: userId, as: 'skipped' });
-  await afterCycle({ store, mod, circle, now, pending, via: 'manual', byUserId: userId });
+  await afterCycle({ store, circle, now, pending, via: 'manual', byUserId: userId });
 
   await store.saveCircle(circle);
   await dispatch({ store, circle, pending });
@@ -461,14 +497,16 @@ async function closeCircle({ store = mongoStore, circleId, userId, now = new Dat
   if (circle.phase === 'draft') throw new Error('This circle has not started');
   assertOpen(circle);
 
-  const mod = activities.get(circle.activity);
   const pending = [];
 
-  const seed = activeSeed(circle);
-  if (seed) {
+  // Every live cycle is revealed on the way out, not just the first — with
+  // maxLive > 1 there may be several mid-flight, and each has stories worth
+  // keeping.
+  for (const seed of liveSeeds(circle)) {
+    const mod = modFor(circle, seed);
     await revealSeed({ store, mod, circle, seed, now, pending, via: 'manual', byUserId: userId, as: 'revealed' });
   }
-  await closeNow({ store, mod, circle, now, pending, via: 'manual', byUserId: userId });
+  await closeNow({ store, mod: modFor(circle), circle, now, pending, via: 'manual', byUserId: userId });
 
   await store.saveCircle(circle);
   await dispatch({ store, circle, pending });
@@ -482,21 +520,55 @@ async function closeCircle({ store = mongoStore, circleId, userId, now = new Dat
  * their own cycle: in a Sharing Circle they are the author of the activity
  * being run, which is what makes the control theirs to hold.
  */
-async function advanceCircle({ store = mongoStore, circleId, userId }) {
+async function advanceCircle({ store = mongoStore, circleId, userId, seedId = null }) {
   const circle = await store.findCircleById(circleId);
   if (!circle) throw new Error('Circle not found');
   if (circle.phase === 'draft') throw new Error('This circle has not started');
   assertOpen(circle);
   if (circle.phase === 'idle') throw new Error('There is no topic running');
 
-  const seed = activeSeed(circle);
+  // With maxLive > 1 several cycles run at once, so a manual advance names its
+  // seed; without one it targets the first live cycle, exactly as before.
+  const seed = seedId
+    ? liveSeeds(circle).find(s => s.id === seedId) || null
+    : activeSeed(circle);
+  if (seedId && !seed) throw new Error('That topic is not running');
+
   const isCreator = circle.createdBy === userId;
   const isSeedAuthor = Boolean(seed && seed.authorId === userId);
   if (!isCreator && !isSeedAuthor) {
     throw new Error('Only the circle creator or this topic\'s author can move the group on');
   }
 
-  return evaluate({ store, circle, force: { via: 'manual', byUserId: userId } });
+  return evaluate({ store, circle, force: { via: 'manual', byUserId: userId, seedId: seed ? seed.id : null } });
+}
+
+/**
+ * Why some live cycle should transition right now, or null. Checks every live
+ * seed (deadline first, then completion), then whether a free slot and a
+ * queued topic mean a new cycle should start. With maxLive at its default of
+ * 1 this reproduces the original machine exactly: a live cycle blocks the
+ * queue, and an idle circle starts the top of it.
+ */
+async function nextTransition({ store, circle, now }) {
+  if (circle.phase === 'draft' || circle.phase === 'closed') return null;
+
+  const live = liveSeeds(circle);
+
+  for (const seed of live) {
+    const dl = seed.phaseDeadline;
+    if (dl && now.getTime() >= dl.getTime()) return { seed, via: 'deadline', byUserId: null };
+  }
+  if (circle.config.advanceOnComplete) {
+    for (const seed of live) {
+      if (await everyoneDone({ store, circle, seed })) return { seed, via: 'complete', byUserId: null };
+    }
+  }
+  if (live.length < maxLive(circle)) {
+    const next = nextInQueue(circle);
+    if (next) return { seed: next, start: true, via: 'queue', byUserId: null };
+  }
+  return null;
 }
 
 /**
@@ -507,17 +579,27 @@ async function advanceCircle({ store = mongoStore, circleId, userId }) {
  * may itself be already complete, e.g. a share round nobody can contribute to).
  */
 async function evaluate({ store = mongoStore, circle, now = new Date(), force = null }) {
-  const mod = activities.get(circle.activity);
   const pending = [];
   let changed = false;
   let forced = force;
 
   for (let i = 0; i < MAX_STEPS; i++) {
-    const reason = forced || await endReasonFor({ store, mod, circle, now });
-    forced = null;
+    let reason = null;
+    if (forced) {
+      // A manual advance ends exactly one phase of exactly one seed; the loop
+      // then continues on its own terms.
+      const s = forced.seedId
+        ? liveSeeds(circle).find(x => x.id === forced.seedId) || null
+        : activeSeed(circle);
+      if (s) reason = { seed: s, via: forced.via, byUserId: forced.byUserId };
+      forced = null;
+      if (!reason) continue;
+    } else {
+      reason = await nextTransition({ store, circle, now });
+    }
     if (!reason) break;
 
-    await step({ store, mod, circle, now, pending, ...reason });
+    await step({ store, circle, now, pending, ...reason });
     changed = true;
     if (circle.phase === 'closed') break;
   }
@@ -532,34 +614,13 @@ async function evaluate({ store = mongoStore, circle, now = new Date(), force = 
   return { circle, changed: true };
 }
 
-/** Why the current phase should end right now, or null. */
-async function endReasonFor({ store, mod, circle, now }) {
-  if (circle.phase === 'draft' || circle.phase === 'closed') return null;
-
-  // An idle circle is waiting for a topic, not for a person or a clock. It
-  // moves the moment the queue has one, which is what makes posting a topic
-  // into starting a cycle.
-  if (circle.phase === 'idle') {
-    return nextInQueue(circle) ? { via: 'queue', byUserId: null } : null;
-  }
-
-  const deadline = currentDeadline(circle);
-  if (deadline && now.getTime() >= deadline.getTime()) return { via: 'deadline', byUserId: null };
-
-  if (circle.config.advanceOnComplete && await everyoneDone({ store, mod, circle })) {
-    return { via: 'complete', byUserId: null };
-  }
-  return null;
-}
-
-async function everyoneDone({ store, mod, circle }) {
+async function everyoneDone({ store, circle, seed }) {
   // A circle with no members would satisfy "everyone is done" vacuously and
   // race through every phase the moment it started.
   if (circle.members.length === 0) return false;
-
-  const seed = activeSeed(circle);
   if (!seed) return false;
 
+  const mod = modFor(circle, seed);
   for (const m of circle.members) {
     const done = await mod.isMemberDone({ store, circle, seed, phase: seed.phase, userId: m.userId });
     if (!done) return false;
@@ -567,23 +628,16 @@ async function everyoneDone({ store, mod, circle }) {
   return true;
 }
 
-/** Apply exactly one transition. */
-async function step({ store, mod, circle, now, pending, via, byUserId }) {
-  // Idle: the only move is starting the top of the queue. endReasonFor has
-  // already established there is one.
-  if (circle.phase === 'idle') {
-    const next = nextInQueue(circle);
-    if (!next) return;
-    return beginCycle({ circle, seed: next, now, pending, via, byUserId, mod, store });
+/** Apply exactly one transition, to the named seed. */
+async function step({ store, circle, now, pending, seed, start, via, byUserId }) {
+  // A queued topic reached a free slot: open its cycle.
+  if (start) {
+    return beginCycle({ circle, seed, now, pending, via, byUserId, store });
   }
 
-  if (circle.phase !== 'cycle') return;
+  if (!seed || seed.phase === 'pending' || DONE_PHASES.includes(seed.phase)) return;
 
-  const seed = activeSeed(circle);
-  // liveSeedId pointing at nothing is a corrupted circle, not an ending — park
-  // it and let the queue restart it rather than closing something nobody closed.
-  if (!seed) return goIdle({ circle, now, pending, via, byUserId, from: 'cycle' });
-
+  const mod = modFor(circle, seed);
   const idx = mod.phases.indexOf(seed.phase);
 
   // Still phases left in this cycle: move to the next one.
@@ -592,16 +646,16 @@ async function step({ store, mod, circle, now, pending, via, byUserId }) {
     await mod.onPhaseClose({ store, circle, seed, phase: seed.phase });
     circle.transitions.push({ at: now, from: seed.phase, to: next, via, byUserId, seedId: seed.id });
     seed.phase = next;
-    seed.phaseDeadline = deadlineFrom(now, hoursForPhase(circle, next));
+    seed.phaseDeadline = deadlineFrom(now, hoursForPhase(circle, next, seed));
     await mod.onPhaseOpen({ store, circle, seed, phase: next });
     pending.push({ seed, phase: next });
     return;
   }
 
-  // Last phase done — reveal, then take the next topic off the queue.
+  // Last phase done — reveal, then let the queue fill the freed slot.
   if (idx >= 0) await mod.onPhaseClose({ store, circle, seed, phase: seed.phase });
   await revealSeed({ store, mod, circle, seed, now, pending, via, byUserId, as: 'revealed' });
-  return afterCycle({ store, mod, circle, now, pending, via, byUserId });
+  return afterCycle({ store, circle, now, pending, via, byUserId });
 }
 
 /**
@@ -616,21 +670,26 @@ async function revealSeed({ store, mod, circle, seed, now, pending, via, byUserI
   seed.phaseDeadline = null;
   await mod.onCycleReveal({ store, circle, seed });
   pending.push({ seed, phase: as });
-  circle.liveSeedId = null;
 }
 
 /**
- * Where a circle goes when a cycle ends: idle, or closed if it was a one-off.
+ * Where a circle goes when a cycle ends: on running (other cycles still
+ * live), idle, or closed if it was a one-off.
  *
  * D33 — revealing the only topic closes a single-mode circle, because closing
  * is a facilitator's act and a one-off has a creator who ran it once and will
  * not come back. Leaving it idle would show "waiting" on an activity that is
  * over. It is the only place the two modes behave differently.
  */
-async function afterCycle({ store, mod, circle, now, pending, via, byUserId }) {
+async function afterCycle({ store, circle, now, pending, via, byUserId }) {
   if (circle.mode === 'single') {
-    return closeNow({ store, mod, circle, now, pending, via, byUserId });
+    return closeNow({ store, mod: modFor(circle), circle, now, pending, via, byUserId });
   }
+  const live = liveSeeds(circle);
+  circle.liveSeedId = live[0] ? live[0].id : null;
+  // Other cycles still running: the circle stays in 'cycle', and nothing asks
+  // for a topic while there is plainly something to do.
+  if (live.length > 0) return;
   return goIdle({ circle, now, pending, via, byUserId, from: 'cycle' });
 }
 
@@ -652,21 +711,23 @@ function goIdle({ circle, now, pending, via, byUserId, from }) {
   if (!nextInQueue(circle)) pending.push({ seed: null, phase: 'idle' });
 }
 
-async function beginCycle({ circle, seed, now, pending, via, byUserId, mod, store }) {
-  const module_ = mod || activities.get(circle.activity);
-  const first = module_.phases[0];
+async function beginCycle({ circle, seed, now, pending, via, byUserId, store }) {
+  const mod = modFor(circle, seed);
+  const first = mod.phases[0];
 
   circle.phase = 'cycle';
   circle.status = 'running';
   circle.phaseDeadline = null; // cycle clocks live on the seed
-  circle.liveSeedId = seed.id;
+  // The first live seed keeps the pointer; later concurrent cycles are found
+  // through liveSeeds() rather than stored.
+  if (!circle.liveSeedId) circle.liveSeedId = seed.id;
 
   seed.phase = first;
   seed.openedAt = now;
-  seed.phaseDeadline = deadlineFrom(now, hoursForPhase(circle, first));
+  seed.phaseDeadline = deadlineFrom(now, hoursForPhase(circle, first, seed));
 
   circle.transitions.push({ at: now, from: 'pending', to: first, via, byUserId, seedId: seed.id });
-  if (module_.onPhaseOpen) await module_.onPhaseOpen({ store, circle, seed, phase: first });
+  if (mod.onPhaseOpen) await mod.onPhaseOpen({ store, circle, seed, phase: first });
   pending.push({ seed, phase: first });
 }
 
@@ -703,7 +764,9 @@ async function dispatch({ store, circle, pending }) {
       seed.notifiedPhases.push(phase);
     }
 
-    const mod = activities.get(circle.activity);
+    // The seed's own module writes its messages; circle-level phases (idle,
+    // closed) have no seed and fall to the circle's module.
+    const mod = modFor(circle, seed);
     for (const member of circle.members) {
       try {
         const msg = await mod.notificationFor({ store, circle, seed, phase, userId: member.userId });
@@ -785,10 +848,9 @@ async function sweepCircles({ store = mongoStore, now = new Date() } = {}) {
  */
 async function participation({ circle, viewerId = null }) {
   assertMember(circle, viewerId);
-  const mod = activities.get(circle.activity);
   const rows = await Promise.all(
     circle.seeds.map(async seed => {
-      const row = await mod.participation({ circle, seed, viewerId });
+      const row = await modFor(circle, seed).participation({ circle, seed, viewerId });
       return row ? { seedId: seed.id, ...row } : null;
     }),
   );
@@ -809,11 +871,19 @@ async function snapshot({ store = mongoStore, circle, viewerId = null }) {
   await evaluate({ store, circle });
   const payload = toClient(circle, { userId: viewerId });
   if (payload.isMember) {
-    const seed = activeSeed(circle);
-    if (seed) {
-      const mod = activities.get(circle.activity);
-      Object.assign(payload, (await mod.snapshotExtras({ circle, seed, viewerId })) || {});
+    // Extras for EVERY live seed, each from its own module. The first live
+    // seed's extras are also flat-merged, which is the whole payload a
+    // single-live activity (Threshold) has always seen; `seedExtras` is the
+    // keyed form a multi-live client reads.
+    const live = liveSeeds(circle);
+    const seedExtras = {};
+    for (const seed of live) {
+      const extras = await modFor(circle, seed).snapshotExtras({ circle, seed, viewerId });
+      if (extras) seedExtras[seed.id] = extras;
     }
+    const first = activeSeed(circle);
+    if (first && seedExtras[first.id]) Object.assign(payload, seedExtras[first.id]);
+    if (Object.keys(seedExtras).length) payload.seedExtras = seedExtras;
     payload.participation = await participation({ circle, viewerId });
   }
   return payload;
@@ -837,6 +907,9 @@ function toClient(circle, { userId = null } = {}) {
     phase: circle.phase,
     phaseDeadline: seed ? seed.phaseDeadline : null,
     liveSeedId: circle.liveSeedId || null,
+    // The full live set — equals [liveSeedId] on a single-live circle.
+    liveSeedIds: liveSeeds(circle).map(s => s.id),
+    maxLive: maxLive(circle),
     seedCount: circle.seeds.length,
     memberCount: circle.members.length,
     members: circle.members.map(m => ({ userId: m.userId, username: m.username })),
@@ -865,6 +938,8 @@ function toClientSeed(seed, { userId = null } = {}) {
     id: seed.id,
     authorId: seed.authorId,
     order: seed.order,
+    // null = the circle's own activity, and the client may treat it so.
+    activity: seed.activity || null,
     payload: seed.payload,
     phase: seed.phase,
     // A count and a flag, never the roster: who supported a topic is nobody's
@@ -897,6 +972,9 @@ module.exports = {
   toClient,
   toClientSeed,
   activeSeed,
+  liveSeeds,
+  maxLive,
+  modFor,
   queue,
   nextInQueue,
   currentDeadline,
