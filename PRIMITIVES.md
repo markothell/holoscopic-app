@@ -449,8 +449,9 @@ existing circle — including live Threshold circles on production — behaves i
 pre-existing circle/threshold tests pass unchanged). The seed-payload clock override
 (`payload.respondHours` read by `hoursForPhase`) implements B2 with no config-schema change. The
 P8 collections exist: `models/Share.js` and `models/Placement.js`, unique keys as cardinality
-rules, specs added to `scripts/ensure-indexes.js` (production needs a `--create-missing` run at
-deploy). The `gather` module + funnel is `utils/gather.js` (registered on the seam by
+rules, specs added to `scripts/ensure-indexes.js` (**the production `--create-missing` run
+happened 2026-08-19**, with the circles-m0 → main deploy: all five shares/placements/vocabularies
+indexes created against zero-row collections, unique flags verified by reading the cluster). The `gather` module + funnel is `utils/gather.js` (registered on the seam by
 `routes/circles.js`), REST verbs on `/api/circles` (generic: seeds/support/advance; gather:
 respond/react). **The words shape landed 2026-08-17**: `models/Vocabulary.js` is the §4.3
 primitive (generic `scopeId`/`set`, `origin: seeded|contributed`, `createdBy` for the coin
