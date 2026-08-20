@@ -138,6 +138,17 @@ const circleSchema = new mongoose.Schema({
     // circle — Threshold's D28 — while a builder circle opts into 3.
     maxLive: { type: Number, default: 1, min: 1, max: 10 },
 
+    // How many supporters an ask needs before the circle STARTS it (2026-08-20).
+    // The author counts as one — posting a topic is supporting it — so the
+    // default of 3 means the author plus two other people. Below that an ask
+    // is NOMINATED: visible in its own list and on the map, gathering support,
+    // but never opened by a free slot.
+    //
+    // Effective value is capped at the member count (utils/circles.js
+    // #approvalsToStart), or a circle smaller than the threshold could never
+    // start anything. Per-circle so circle settings can tune it later.
+    approvalsToStart: { type: Number, default: 3, min: 1, max: 50 },
+
     // Starting point for the seed form. Activity-specific, opaque.
     seedDefaults: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
   },

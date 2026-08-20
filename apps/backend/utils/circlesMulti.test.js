@@ -100,6 +100,27 @@ async function openCircle(store, { members = 3, config = {}, activity = 'twostep
 const seedFor = (circle, key, value) =>
   circle.seeds.find(s => s.payload[key] === value);
 
+/**
+ * Post an ask AND get the circle to approve it. Every ask is NOMINATED first
+ * (2026-08-20) and needs `config.approvalsToStart` supporters — author + 2 by
+ * default, capped at the member count — before it reaches the queue. These
+ * tests are about the multi-cycle machine, so they need to be past that step
+ * to have anything to drive. Nomination itself is circlesNominate.test.js.
+ */
+async function approved(store, circleId, userId, payload, activity = null) {
+  await circles.addSeed({ store, circleId, userId, payload, activity });
+  const fresh = await store.findCircleById(circleId);
+  const key = payload.topic !== undefined ? 'topic' : 'prompt';
+  const seed = fresh.seeds.find(x => x.payload[key] === payload[key]);
+  for (const m of fresh.members) {
+    if (m.userId === userId) continue;
+    await circles.supportSeed({ store, circleId, seedId: seed.id, userId: m.userId });
+    const now = (await store.findCircleById(circleId)).seeds.find(x => x.id === seed.id);
+    if (now.phase !== 'nominated') break;
+  }
+  return store.findCircleById(circleId);
+}
+
 function markDone(state, seed, phase, users) {
   for (const u of users) state.done.add(`${seed.id}:${phase}:${u}`);
 }
@@ -109,8 +130,8 @@ beforeEach(() => { store = memStore(); state = stubActivities(); });
 
 test('maxLive 1 preserves the original machine: the queue waits for the live cycle', async () => {
   const circle = await openCircle(store);
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'a' } });
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u2', payload: { topic: 'b' } });
+  await approved(store, circle.id, 'u1', { topic: 'a' });
+  await approved(store, circle.id, 'u2', { topic: 'b' });
 
   assert.equal(circles.liveSeeds(circle).length, 1);
   assert.equal(seedFor(circle, 'topic', 'a').phase, 'share');
@@ -120,7 +141,7 @@ test('maxLive 1 preserves the original machine: the queue waits for the live cyc
 test('maxLive 3 runs three cycles at once and holds the fourth', async () => {
   const circle = await openCircle(store, { config: { maxLive: 3 } });
   for (const t of ['a', 'b', 'c', 'd']) {
-    await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: t } });
+    await approved(store, circle.id, 'u1', { topic: t });
   }
   const live = circles.liveSeeds(circle);
   assert.equal(live.length, 3);
@@ -134,7 +155,7 @@ test('maxLive 3 runs three cycles at once and holds the fourth', async () => {
 test('one cycle completing frees its slot for the queue, and the circle never idles between', async () => {
   const circle = await openCircle(store, { config: { maxLive: 2 } });
   for (const t of ['a', 'b', 'c']) {
-    await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: t } });
+    await approved(store, circle.id, 'u1', { topic: t });
   }
   const a = seedFor(circle, 'topic', 'a');
   const idleBefore = state.notified.filter(n => n.includes(':idle:')).length;
@@ -154,10 +175,8 @@ test('one cycle completing frees its slot for the queue, and the circle never id
 
 test('a mixed circle runs each seed on its own module and phase list', async () => {
   const circle = await openCircle(store, { config: { maxLive: 2 } });
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'story' } });
-  await circles.addSeed({
-    store, circleId: circle.id, userId: 'u2', payload: { prompt: 'ask' }, activity: 'oneshot',
-  });
+  await approved(store, circle.id, 'u1', { topic: 'story' });
+  await approved(store, circle.id, 'u2', { prompt: 'ask' }, 'oneshot');
 
   const topic = seedFor(circle, 'topic', 'story');
   const ask = seedFor(circle, 'prompt', 'ask');
@@ -176,14 +195,8 @@ test('a mixed circle runs each seed on its own module and phase list', async () 
 
 test('a seed payload clock overrides the circle config, and no key means no clock', async () => {
   const circle = await openCircle(store, { config: { maxLive: 2 } });
-  await circles.addSeed({
-    store, circleId: circle.id, userId: 'u1',
-    payload: { prompt: 'timed', respondHours: 2 }, activity: 'oneshot',
-  });
-  await circles.addSeed({
-    store, circleId: circle.id, userId: 'u1',
-    payload: { prompt: 'clockless' }, activity: 'oneshot',
-  });
+  await approved(store, circle.id, 'u1', { prompt: 'timed', respondHours: 2 }, 'oneshot');
+  await approved(store, circle.id, 'u1', { prompt: 'clockless' }, 'oneshot');
 
   const timed = seedFor(circle, 'prompt', 'timed');
   const clockless = seedFor(circle, 'prompt', 'clockless');
@@ -201,8 +214,8 @@ test('a seed payload clock overrides the circle config, and no key means no cloc
 
 test('manual advance names its seed and leaves the others alone', async () => {
   const circle = await openCircle(store, { config: { maxLive: 2 } });
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'a' } });
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u2', payload: { topic: 'b' } });
+  await approved(store, circle.id, 'u1', { topic: 'a' });
+  await approved(store, circle.id, 'u2', { topic: 'b' });
   const b = seedFor(circle, 'topic', 'b');
 
   await circles.advanceCircle({ store, circleId: circle.id, userId: 'u1', seedId: b.id });
@@ -212,8 +225,8 @@ test('manual advance names its seed and leaves the others alone', async () => {
 
 test('the seed author may advance their own cycle, and only theirs', async () => {
   const circle = await openCircle(store, { config: { maxLive: 2 } });
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u2', payload: { topic: 'mine' } });
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u3', payload: { topic: 'theirs' } });
+  await approved(store, circle.id, 'u2', { topic: 'mine' });
+  await approved(store, circle.id, 'u3', { topic: 'theirs' });
   const mine = seedFor(circle, 'topic', 'mine');
   const theirs = seedFor(circle, 'topic', 'theirs');
 
@@ -228,7 +241,7 @@ test('the seed author may advance their own cycle, and only theirs', async () =>
 test('closing the circle reveals every live cycle, not just the first', async () => {
   const circle = await openCircle(store, { config: { maxLive: 3 } });
   for (const t of ['a', 'b', 'c']) {
-    await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: t } });
+    await approved(store, circle.id, 'u1', { topic: t });
   }
   await circles.closeCircle({ store, circleId: circle.id, userId: 'u1' });
   assert.equal(circle.phase, 'closed');
@@ -240,8 +253,8 @@ test('closing the circle reveals every live cycle, not just the first', async ()
 
 test('skip names its seed under maxLive > 1', async () => {
   const circle = await openCircle(store, { config: { maxLive: 2 } });
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'keep' } });
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u2', payload: { topic: 'drop' } });
+  await approved(store, circle.id, 'u1', { topic: 'keep' });
+  await approved(store, circle.id, 'u2', { topic: 'drop' });
   const drop = seedFor(circle, 'topic', 'drop');
 
   await circles.skipSeed({ store, circleId: circle.id, userId: 'u1', seedId: drop.id });
@@ -252,8 +265,8 @@ test('skip names its seed under maxLive > 1', async () => {
 
 test('the circle goes idle only when the LAST live cycle ends', async () => {
   const circle = await openCircle(store, { config: { maxLive: 2 } });
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'a' } });
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u2', payload: { topic: 'b' } });
+  await approved(store, circle.id, 'u1', { topic: 'a' });
+  await approved(store, circle.id, 'u2', { topic: 'b' });
 
   const idleBefore = state.notified.filter(n => n.includes(':idle:')).length;
   for (const t of ['a', 'b']) {
@@ -272,8 +285,8 @@ test('the circle goes idle only when the LAST live cycle ends', async () => {
 
 test('the wire shape carries the live set and the ceiling', async () => {
   const circle = await openCircle(store, { config: { maxLive: 2 } });
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'a' } });
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u2', payload: { topic: 'b' } });
+  await approved(store, circle.id, 'u1', { topic: 'a' });
+  await approved(store, circle.id, 'u2', { topic: 'b' });
 
   const wire = circles.toClient(circle, { userId: 'u1' });
   assert.equal(wire.maxLive, 2);

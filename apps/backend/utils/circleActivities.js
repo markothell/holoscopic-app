@@ -15,13 +15,6 @@ const NOOP = async () => {};
 
 const REQUIRED = ['normalizeSeed', 'isMemberDone'];
 
-// Declared by a module, not a function: opt in to being NOMINATED before it
-// queues (utils/circles.js PRE_QUEUE_PHASES). A nominated seed is shared with
-// the circle and readable, but a free slot never opens it — somebody other
-// than its author has to support it first. Absent means the old behavior: a
-// posted seed goes straight into the queue.
-const CAPABILITIES = { nominateFirst: false };
-
 const OPTIONAL = {
   onPhaseOpen: NOOP,
   onPhaseClose: NOOP,
@@ -85,7 +78,7 @@ function register(key, mod) {
     }
   }
 
-  REGISTRY.set(key, { ...CAPABILITIES, ...OPTIONAL, ...mod, phases: [...mod.phases] });
+  REGISTRY.set(key, { ...OPTIONAL, ...mod, phases: [...mod.phases] });
   return REGISTRY.get(key);
 }
 

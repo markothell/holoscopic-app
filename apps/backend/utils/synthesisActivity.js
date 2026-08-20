@@ -16,9 +16,12 @@
 //   draft   — an idea nobody has shared. Private to its author and whoever
 //             they invited by code. Invisible to every circle.
 //   nominate— sharing it with a circle. It is a seed now, phase 'nominated':
-//             the circle can READ and CONTRIBUTE, but it is not in the queue.
-//   accept  — anyone other than the author supports it, and it enters the
-//             queue as 'pending'. Handled by utils/circles.js#supportSeed.
+//             the circle can READ and CONTRIBUTE, and it shows in the circle's
+//             nominations list and on the map, but it is not in the queue.
+//   approve — support reaches the circle's threshold (author + 2 by default)
+//             and it enters the queue as 'pending'. utils/circles.js
+//             #supportSeed. This is the machine's rule for every activity, not
+//             something synthesis opts into.
 //   open    — its turn comes up and the cycle runs.
 //
 // THE QUEUE IS ATTENTION, NOT ACCESS. Contributing is unlocked by the share,
@@ -115,10 +118,6 @@ function createModule({ store = mongoStore } = {}) {
     // One phase. A synthesis is not a sequence of rounds — it is a space that
     // is open, and then is not.
     phases: ['exploring'],
-
-    // The whole point of this activity's lifecycle: shared first, queued only
-    // once somebody else says yes. See utils/circles.js PRE_QUEUE_PHASES.
-    nominateFirst: true,
 
     async normalizeSeed(payload, ctx) {
       return normalizeSeed({ store }, payload, ctx || {});

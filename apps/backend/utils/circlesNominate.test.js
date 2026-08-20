@@ -4,14 +4,13 @@ const assert = require('node:assert/strict');
 const circles = require('./circles');
 const activities = require('./circleActivities');
 
-// The pre-queue phase (2026-08-20): an activity that declares `nominateFirst`
-// is SHARED with the circle before it is QUEUED by it. Nominated first,
-// accepted second — and acceptance is somebody other than the author saying
-// yes. Drives the real machine over the same in-memory store shape as
-// circles.test.js.
+// THREE LISTS (MO, 2026-08-20): nominations, the queue, and what is live.
+// Every ask is nominated first and needs `config.approvalsToStart` supporters
+// — author + 2 by default, capped at the member count — before it joins the
+// queue. This is the machine's rule for every activity, not an opt-in.
 //
-// The load-bearing negative is the last test: Threshold and gather do not
-// declare the flag, so nothing about them may change.
+// Drives the real machine over the same in-memory store shape as
+// circles.test.js.
 // Same shape as circles.test.js#memStore — mirrors models/Circle.js defaults,
 // so a field defaulted there but missing here can't hide a machine bug.
 function memStore() {
@@ -40,7 +39,7 @@ function memStore() {
   };
 }
 
-async function circleWith(store, { activity }) {
+async function circleWith(store, { activity, members = ['u2', 'u3'] }) {
   const circle = await circles.createCircle({
     store,
     instanceId: 'inst1',
@@ -54,29 +53,38 @@ async function circleWith(store, { activity }) {
     requireInvitation: false,
     config: {},
   });
-  for (const u of ['u2', 'u3']) {
+  for (const u of members) {
     await circles.joinCircle({ store, circleId: circle.id, userId: u, username: u, email: `${u}@x.com` });
   }
   await circles.startCircle({ store, circleId: circle.id, userId: 'u1' });
   return circle;
 }
 
-function registerBoth() {
+function registerStub() {
   activities.reset();
-  const base = {
+  activities.register('stub', {
     phases: ['exploring'],
     async normalizeSeed(payload) { return { topic: String(payload.topic) }; },
     async isMemberDone() { return false; },
-  };
-  activities.register('shared', { ...base, nominateFirst: true });
-  activities.register('queued', { ...base }); // the old behavior, unchanged
+  });
 }
 
-beforeEach(() => { registerBoth(); });
+beforeEach(() => { registerStub(); });
 
-test('a nominated seed is shared but NOT queued, and an idle circle stays idle', async () => {
+/** Everyone but the author backs it, which clears any threshold. */
+async function backAll(store, circle, seedId, authorId) {
+  const fresh = await store.findCircleById(circle.id);
+  for (const m of fresh.members) {
+    if (m.userId === authorId) continue;
+    const r = await circles.supportSeed({ store, circleId: circle.id, seedId, userId: m.userId });
+    if (r.approved) return r;
+  }
+  return null;
+}
+
+test('a posted ask is a nomination: outside the queue, and an idle circle stays idle', async () => {
   const store = memStore();
-  const circle = await circleWith(store, { activity: 'shared' });
+  const circle = await circleWith(store, { activity: 'stub' });
 
   await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'What holds us' } });
   const after = await store.findCircleById(circle.id);
@@ -84,61 +92,89 @@ test('a nominated seed is shared but NOT queued, and an idle circle stays idle',
 
   assert.equal(seed.phase, 'nominated', 'born outside the queue');
   assert.deepEqual(seed.supporterIds, ['u1'], 'posting it is still supporting it');
+  assert.deepEqual(circles.queue(after).map(s => s.id), [], 'the QUEUE is the approved list, and it is empty');
+  assert.deepEqual(circles.toClient(after, { userId: 'u1' }).nominations.map(s => s.id), [seed.id],
+    'nominations are their own list on the wire');
   // The one that would have gone wrong quietly: a nominated seed must not be
   // counted as a running cycle, or it occupies a maxLive slot forever.
   assert.deepEqual(circles.liveSeeds(after), [], 'not live');
   assert.equal(after.phase, 'idle', 'a free slot does not open a nomination');
 });
 
-test('acceptance is somebody ELSE saying yes; the author cannot accept their own', async () => {
+test('approval is a COUNT — author + 2 — and one other person is not enough', async () => {
   const store = memStore();
-  const circle = await circleWith(store, { activity: 'shared' });
+  // Five members, so the default threshold of 3 sits below the roster and
+  // "not enough yet" is a state the test can actually observe.
+  const circle = await circleWith(store, { activity: 'stub', members: ['u2', 'u3', 'u4', 'u5'] });
   await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'What holds us' } });
   const seedId = (await store.findCircleById(circle.id)).seeds[0].id;
 
-  // The author toggling their own support off and back on never accepts it.
-  await circles.supportSeed({ store, circleId: circle.id, seedId, userId: 'u1' });
+  // The author is already on it, and toggling their own support proves nothing.
   const r1 = await circles.supportSeed({ store, circleId: circle.id, seedId, userId: 'u1' });
-  assert.equal(r1.accepted, false);
+  assert.equal(r1.approved, false);
+
+  // One other person is a pair, not a circle.
+  await circles.supportSeed({ store, circleId: circle.id, seedId, userId: 'u1' }); // back on
+  const r2 = await circles.supportSeed({ store, circleId: circle.id, seedId, userId: 'u2' });
+  assert.equal(r2.approved, false, 'two supporters is short of the threshold');
   assert.equal((await store.findCircleById(circle.id)).seeds[0].phase, 'nominated');
 
-  // Anyone else does.
-  const r2 = await circles.supportSeed({ store, circleId: circle.id, seedId, userId: 'u2' });
-  assert.equal(r2.accepted, true, 'a second person is the whole difference');
-  // The accepting branch runs evaluate(), which returns { circle, changed }.
-  // Handing that wrapper back as `circle` type-checks nowhere and 400s at the
-  // route, which is exactly how it was found — in a browser, not here.
-  assert.ok(Array.isArray(r2.circle.seeds), 'the returned circle is a circle');
-  assert.equal(r2.circle.id, circle.id);
+  // The third crosses it.
+  const r3 = await circles.supportSeed({ store, circleId: circle.id, seedId, userId: 'u3' });
+  assert.equal(r3.approved, true, 'author + 2');
+  // evaluate() returns { circle, changed }; handing that wrapper back as
+  // `circle` 400s at the route, which is how it was found — in a browser.
+  assert.ok(Array.isArray(r3.circle.seeds), 'the returned circle is a circle');
 
   const after = await store.findCircleById(circle.id);
-  // Accepting into an idle circle starts it in the same move.
-  assert.equal(after.seeds[0].phase, 'exploring', 'accepted, queued, and opened');
+  assert.equal(after.seeds[0].phase, 'exploring', 'approved, queued, and opened');
   assert.equal(after.phase, 'cycle');
 });
 
-test('withdrawing support after acceptance does not put it back outside the queue', async () => {
+test('the threshold is capped at the roster, or a small circle could never start', async () => {
   const store = memStore();
-  const circle = await circleWith(store, { activity: 'shared' });
+  // Two members. author + 2 is impossible, so without the cap nothing this
+  // circle ever posts could run.
+  const circle = await circleWith(store, { activity: 'stub', members: ['u2'] });
+  await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'Just us' } });
+  const seedId = (await store.findCircleById(circle.id)).seeds[0].id;
+
+  const r = await circles.supportSeed({ store, circleId: circle.id, seedId, userId: 'u2' });
+  assert.equal(r.approved, true, 'both of them is the whole circle');
+});
+
+test('a facilitator promotion approves a nomination — the quiet-circle escape hatch', async () => {
+  const store = memStore();
+  const circle = await circleWith(store, { activity: 'stub', members: ['u2', 'u3', 'u4', 'u5'] });
+  await circles.addSeed({ store, circleId: circle.id, userId: 'u2', payload: { topic: 'Nobody backed it' } });
+  const seedId = (await store.findCircleById(circle.id)).seeds[0].id;
+
+  await circles.promoteSeed({ store, circleId: circle.id, seedId, userId: 'u1' }); // creator
+  const after = await store.findCircleById(circle.id);
+  assert.equal(after.seeds[0].phase, 'exploring', 'promoted past the threshold and opened');
+});
+
+test('withdrawing support after approval does not put it back outside the queue', async () => {
+  const store = memStore();
+  const circle = await circleWith(store, { activity: 'stub' });
   // Two nominations so the second stays queued rather than opening.
   await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'First' } });
   await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'Second' } });
   const ids = (await store.findCircleById(circle.id)).seeds.map(s => s.id);
 
-  await circles.supportSeed({ store, circleId: circle.id, seedId: ids[0], userId: 'u2' });
-  await circles.supportSeed({ store, circleId: circle.id, seedId: ids[1], userId: 'u2' });
+  await backAll(store, circle, ids[0], 'u1');
+  await backAll(store, circle, ids[1], 'u1');
   let after = await store.findCircleById(circle.id);
-  assert.equal(after.seeds[1].phase, 'pending', 'accepted into the queue, waiting its turn');
+  assert.equal(after.seeds[1].phase, 'pending', 'approved into the queue, waiting its turn');
 
   await circles.supportSeed({ store, circleId: circle.id, seedId: ids[1], userId: 'u2' });
   after = await store.findCircleById(circle.id);
-  assert.equal(after.seeds[1].phase, 'pending', 'acceptance is a door, not a running total');
-  assert.equal(after.seeds[1].supporterIds.length, 1, 'the support itself is still a free toggle');
+  assert.equal(after.seeds[1].phase, 'pending', 'approval is a door the group walked through, not a running total');
 });
 
 test('a nominated seed can still be edited by its author', async () => {
   const store = memStore();
-  const circle = await circleWith(store, { activity: 'shared' });
+  const circle = await circleWith(store, { activity: 'stub' });
   await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'Draft name' } });
   const seedId = (await store.findCircleById(circle.id)).seeds[0].id;
 
@@ -146,14 +182,3 @@ test('a nominated seed can still be edited by its author', async () => {
   assert.equal((await store.findCircleById(circle.id)).seeds[0].payload.topic, 'Better name');
 });
 
-test('an activity WITHOUT the flag is untouched — Threshold and gather behave as before', async () => {
-  const store = memStore();
-  const circle = await circleWith(store, { activity: 'queued' });
-
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'Authority' } });
-  const after = await store.findCircleById(circle.id);
-
-  assert.equal(after.seeds[0].phase, 'exploring', 'straight into the queue and straight open');
-  assert.equal(after.phase, 'cycle');
-  assert.equal(circles.liveSeeds(after).length, 1);
-});

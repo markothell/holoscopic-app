@@ -122,6 +122,29 @@ async function openCircle(store, { members = 3, config = {}, activity = 'stub' }
 const post = (store, circle, userId, topic, extra = {}) =>
   circles.addSeed({ store, circleId: circle.id, userId, payload: { topic }, ...extra });
 
+/**
+ * Post a topic AND get the circle to approve it — which is what simply posting
+ * one meant before 2026-08-20. Every ask is now NOMINATED first and needs
+ * `config.approvalsToStart` supporters (author + 2 by default, capped at the
+ * member count) before it reaches the queue, so a test about the MACHINE has
+ * to get past that step to have anything to test. Tests about nomination
+ * itself drive support directly instead — see circlesNominate.test.js.
+ *
+ * Everyone who is not the author supports it, which clears any threshold.
+ */
+async function approved(store, circle, userId, topic, extra = {}) {
+  await post(store, circle, userId, topic, extra);
+  let fresh = await store.findCircleById(circle.id);
+  const seedId = seedFor(fresh, topic).id;
+  for (const m of fresh.members) {
+    if (m.userId === userId) continue;
+    const r = await circles.supportSeed({ store, circleId: circle.id, seedId, userId: m.userId });
+    fresh = r.circle;
+    if (seedFor(await store.findCircleById(circle.id), topic).phase !== 'nominated') break;
+  }
+  return { circle: await store.findCircleById(circle.id) };
+}
+
 const seedFor = (circle, topic) => circle.seeds.find(s => s.payload.topic === topic);
 
 function markDone(state, seed, phase, users) {
@@ -151,7 +174,7 @@ test('a started circle with nothing queued is idle, and the first topic starts i
   assert.equal(circle.status, 'running');
   assert.equal(circle.liveSeedId, null);
 
-  await post(store, circle, 'u2', 'work');
+  await approved(store, circle, 'u2', 'work');
   assert.equal(circle.phase, 'cycle');
   assert.equal(circle.liveSeedId, circle.seeds[0].id);
   assert.equal(circle.seeds[0].phase, 'share');
@@ -161,24 +184,32 @@ test('a started circle with nothing queued is idle, and the first topic starts i
 test('the queue runs in support order, with posting order as the tiebreak (D27)', async () => {
   const state = stubActivity();
   const store = memStore();
-  const circle = await openCircle(store, { members: 3 });
+  // FIVE members, so the approval threshold (3) sits below the roster and
+  // support can still differentiate above it. In a three-person circle
+  // approval is unanimity and every queued topic is level by construction.
+  const circle = await openCircle(store, { members: 5 });
 
-  // The first post starts running immediately; the rest queue behind it.
-  await post(store, circle, 'u1', 'live');
-  await post(store, circle, 'u1', 'lonely');
-  await post(store, circle, 'u2', 'popular');
-  await post(store, circle, 'u3', 'tied');
+  // Each is approved at the threshold — three supporters — and the first to
+  // clear it starts running; the rest queue behind it, level.
+  await approved(store, circle, 'u1', 'live');
+  await approved(store, circle, 'u1', 'lonely');
+  await approved(store, circle, 'u2', 'popular');
+  await approved(store, circle, 'u3', 'tied');
 
-  // 'popular' picks up two more; 'tied' matches 'lonely' at one and loses on age.
-  await circles.supportSeed({ store, circleId: circle.id, seedId: seedFor(circle, 'popular').id, userId: 'u1' });
-  await circles.supportSeed({ store, circleId: circle.id, seedId: seedFor(circle, 'popular').id, userId: 'u3' });
+  // 'popular' picks up the two members who had not backed it; 'tied' stays
+  // level with 'lonely' and loses on age.
+  for (const u of ['u4', 'u5']) {
+    const seed = seedFor(await store.findCircleById(circle.id), 'popular');
+    if (seed.supporterIds.includes(u)) continue;
+    await circles.supportSeed({ store, circleId: circle.id, seedId: seed.id, userId: u });
+  }
 
   assert.deepEqual(
     circles.queue(circle).map(s => s.payload.topic),
     ['popular', 'lonely', 'tied'],
   );
 
-  await runLiveCycle(store, circle, state, ['u1', 'u2', 'u3']);
+  await runLiveCycle(store, circle, state, ['u1', 'u2', 'u3', 'u4', 'u5']);
   assert.equal(circles.activeSeed(circle).payload.topic, 'popular', 'the group chose what runs next');
 });
 
@@ -187,9 +218,12 @@ test('support is one per member, reversible, and only while a topic is waiting',
   const store = memStore();
   const circle = await openCircle(store, { members: 3 });
 
-  await post(store, circle, 'u1', 'live');
+  await approved(store, circle, 'u1', 'live');
+  // Left as a NOMINATION on purpose: this is the support mechanic itself, and
+  // a nomination is the purest waiting topic there is. Two supporters out of
+  // three never reaches the threshold, so it stays where the test wants it.
   await post(store, circle, 'u2', 'queued');
-  const queued = seedFor(circle, 'queued');
+  const queued = seedFor(await store.findCircleById(circle.id), 'queued');
 
   // Posting is supporting: the author is already on it.
   assert.deepEqual(queued.supporterIds, ['u2']);
@@ -222,9 +256,9 @@ test('a member may post more than one topic — the queue filters, not a one-eac
   const store = memStore();
   const circle = await openCircle(store, { members: 2 });
 
-  await post(store, circle, 'u1', 'first');
-  await post(store, circle, 'u1', 'second');
-  await post(store, circle, 'u1', 'third');
+  await approved(store, circle, 'u1', 'first');
+  await approved(store, circle, 'u1', 'second');
+  await approved(store, circle, 'u1', 'third');
 
   assert.equal(circle.seeds.length, 3);
   assert.deepEqual(circles.queue(circle).map(s => s.payload.topic), ['second', 'third']);
@@ -235,20 +269,20 @@ test('editing your own queued topic replaces it; somebody else cannot', async ()
   const store = memStore();
   const circle = await openCircle(store, { members: 2 });
 
-  await post(store, circle, 'u1', 'live');
-  await post(store, circle, 'u2', 'draft');
+  await approved(store, circle, 'u1', 'live');
+  await approved(store, circle, 'u2', 'draft');
   const mine = seedFor(circle, 'draft');
 
-  await post(store, circle, 'u2', 'better', { seedId: mine.id });
+  await approved(store, circle, 'u2', 'better', { seedId: mine.id });
   assert.equal(circle.seeds.length, 2, 'edited rather than added');
   assert.equal(mine.payload.topic, 'better');
 
   await assert.rejects(
-    () => post(store, circle, 'u1', 'hijacked', { seedId: mine.id }),
+    () => approved(store, circle, 'u1', 'hijacked', { seedId: mine.id }),
     /Only the author/,
   );
   await assert.rejects(
-    () => post(store, circle, 'u1', 'too late', { seedId: circle.liveSeedId }),
+    () => approved(store, circle, 'u1', 'too late', { seedId: circle.liveSeedId }),
     /already been run/,
   );
 });
@@ -258,10 +292,10 @@ test('promote beats the support order, and promotions keep their own order (D30)
   const store = memStore();
   const circle = await openCircle(store, { members: 3 });
 
-  await post(store, circle, 'u1', 'live');
-  await post(store, circle, 'u1', 'popular');
-  await post(store, circle, 'u2', 'promoted');
-  await post(store, circle, 'u3', 'also-promoted');
+  await approved(store, circle, 'u1', 'live');
+  await approved(store, circle, 'u1', 'popular');
+  await approved(store, circle, 'u2', 'promoted');
+  await approved(store, circle, 'u3', 'also-promoted');
 
   await circles.supportSeed({ store, circleId: circle.id, seedId: seedFor(circle, 'popular').id, userId: 'u2' });
   await circles.supportSeed({ store, circleId: circle.id, seedId: seedFor(circle, 'popular').id, userId: 'u3' });
@@ -300,7 +334,7 @@ test('promoting into an idle circle starts it', async () => {
 
   // advanceOnComplete off, so the first post queues without starting anything…
   circle.phase = 'idle';
-  await post(store, circle, 'u2', 'a');
+  await approved(store, circle, 'u2', 'a');
   assert.equal(circle.phase, 'cycle', 'an idle circle always starts on the queue, whatever the config');
 });
 
@@ -311,9 +345,9 @@ test('three topics run one at a time, then the circle goes idle rather than fini
   const store = memStore();
   const circle = await openCircle(store, { members: 3 });
 
-  await post(store, circle, 'u1', 'work');
-  await post(store, circle, 'u2', 'family');
-  await post(store, circle, 'u3', 'money');
+  await approved(store, circle, 'u1', 'work');
+  await approved(store, circle, 'u2', 'family');
+  await approved(store, circle, 'u3', 'money');
 
   assert.equal(circle.phase, 'cycle');
   assert.equal(circles.queue(circle).length, 2, 'one live, two waiting — never in parallel (D28)');
@@ -345,11 +379,11 @@ test('an idle circle starts again the moment somebody posts (D29)', async () => 
   const store = memStore();
   const circle = await openCircle(store, { members: 2 });
 
-  await post(store, circle, 'u1', 'first');
+  await approved(store, circle, 'u1', 'first');
   await runLiveCycle(store, circle, state, ['u1', 'u2']);
   assert.equal(circle.phase, 'idle');
 
-  await post(store, circle, 'u2', 'week six');
+  await approved(store, circle, 'u2', 'week six');
   assert.equal(circle.phase, 'cycle');
   assert.equal(circles.activeSeed(circle).payload.topic, 'week six');
 });
@@ -359,8 +393,8 @@ test('deadline path advances exactly one phase per expiry, never cascading', asy
   const store = memStore();
   const circle = await openCircle(store, { members: 3 });
 
-  await post(store, circle, 'u1', 'work');
-  await post(store, circle, 'u2', 'family');
+  await approved(store, circle, 'u1', 'work');
+  await approved(store, circle, 'u2', 'family');
   const first = circle.seeds[0];
 
   // Nobody ever completes anything; only the clock moves.
@@ -400,7 +434,7 @@ test('D4: an empty share round reveals empty and moves on', async () => {
   const store = memStore();
   const circle = await openCircle(store, { members: 3 });
 
-  await post(store, circle, 'u1', 'work');
+  await approved(store, circle, 'u1', 'work');
   const seed = circle.seeds[0];
 
   await circles.evaluate({ store, circle, now: new Date(Date.now() + 73 * HOUR) });
@@ -413,7 +447,7 @@ test('manual advance: creator may, seed author may, another member may not', asy
   const store = memStore();
   const circle = await openCircle(store, { members: 3 });
 
-  await post(store, circle, 'u2', 'family');
+  await approved(store, circle, 'u2', 'family');
   assert.equal(circle.seeds[0].phase, 'share');
 
   // u2 authored the live seed, so this cycle is theirs to move on.
@@ -440,8 +474,8 @@ test('a manual advance ends exactly one phase', async () => {
   const store = memStore();
   const circle = await openCircle(store, { members: 2 });
 
-  await post(store, circle, 'u1', 'work');
-  await post(store, circle, 'u2', 'family');
+  await approved(store, circle, 'u1', 'work');
+  await approved(store, circle, 'u2', 'family');
   assert.equal(circle.seeds[0].phase, 'share');
 
   await circles.advanceCircle({ store, circleId: circle.id, userId: 'u1' });
@@ -464,7 +498,7 @@ test('advanceOnComplete false: completion is ignored, only the clock and the aut
   const store = memStore();
   const circle = await openCircle(store, { members: 2, config: { advanceOnComplete: false } });
 
-  await post(store, circle, 'u1', 'work');
+  await approved(store, circle, 'u1', 'work');
   const seed = circle.seeds[0];
 
   markDone(state, seed, 'share', ['u1', 'u2']);
@@ -480,7 +514,7 @@ test('a phase with no clock ends only on completion or by hand (D16)', async () 
   const store = memStore();
   const circle = await openCircle(store, { members: 2, config: { shareHours: null } });
 
-  await post(store, circle, 'u1', 'work');
+  await approved(store, circle, 'u1', 'work');
   const seed = circle.seeds[0];
   assert.equal(seed.phaseDeadline, null);
 
@@ -499,8 +533,8 @@ test('skip reveals what the topic has and moves to the next (D30)', async () => 
   const store = memStore();
   const circle = await openCircle(store, { members: 3 });
 
-  await post(store, circle, 'u1', 'stuck');
-  await post(store, circle, 'u2', 'next');
+  await approved(store, circle, 'u1', 'stuck');
+  await approved(store, circle, 'u2', 'next');
   const stuck = circle.seeds[0];
 
   await assert.rejects(
@@ -524,7 +558,7 @@ test('skipping the last topic leaves the circle idle, not finished', async () =>
   const store = memStore();
   const circle = await openCircle(store, { members: 2 });
 
-  await post(store, circle, 'u1', 'only');
+  await approved(store, circle, 'u1', 'only');
   await circles.skipSeed({ store, circleId: circle.id, userId: 'u1' });
 
   assert.equal(circle.phase, 'idle');
@@ -536,7 +570,7 @@ test('close is the only way a circle ends, and only the creator may (D29)', asyn
   const store = memStore();
   const circle = await openCircle(store, { members: 3 });
 
-  await post(store, circle, 'u1', 'work');
+  await approved(store, circle, 'u1', 'work');
   await runLiveCycle(store, circle, state, ['u1', 'u2', 'u3']);
   assert.equal(circle.phase, 'idle');
 
@@ -569,7 +603,7 @@ test('closing mid-cycle reveals the live topic on the way out', async () => {
   const store = memStore();
   const circle = await openCircle(store, { members: 2 });
 
-  await post(store, circle, 'u1', 'unfinished');
+  await approved(store, circle, 'u1', 'unfinished');
   const seed = circle.seeds[0];
   markDone(state, seed, 'share', ['u1', 'u2']);
   await circles.evaluate({ store, circle });
@@ -632,9 +666,9 @@ test('a member who joins in week six takes full part in the live cycle', async (
   const store = memStore();
   const circle = await openCircle(store, { members: 2 });
 
-  await post(store, circle, 'u1', 'early');
+  await approved(store, circle, 'u1', 'early');
   await runLiveCycle(store, circle, state, ['u1', 'u2']);
-  await post(store, circle, 'u2', 'current');
+  await approved(store, circle, 'u2', 'current');
   const live = circles.activeSeed(circle);
 
   await circles.joinCircle({ store, circleId: circle.id, userId: 'u6', username: 'Six', email: 'six@example.com' });
@@ -650,7 +684,7 @@ test('a member who joins in week six takes full part in the live cycle', async (
   assert.equal(live.phase, 'rank');
 
   // And they can support and post like anybody else.
-  await post(store, circle, 'u6', 'mine');
+  await approved(store, circle, 'u6', 'mine');
   await circles.supportSeed({ store, circleId: circle.id, seedId: seedFor(circle, 'mine').id, userId: 'u1' });
   assert.equal(seedFor(circle, 'mine').supporterIds.length, 2);
 
@@ -669,7 +703,7 @@ test('notifications: one per member per phase, and a re-evaluate does not re-sen
   // can do about it.
   assert.equal(store._emails.length, 3, 'going idle mails all three members');
 
-  await post(store, circle, 'u1', 'work');
+  await approved(store, circle, 'u1', 'work');
   const seed = circle.seeds[0];
   const afterOpen = store._emails.length;
   assert.equal(afterOpen, 6, 'the share phase opening mails all three again');
@@ -691,8 +725,8 @@ test('passing through idle on the way to the next topic does not mail about idli
   const store = memStore();
   const circle = await openCircle(store, { members: 2 });
 
-  await post(store, circle, 'u1', 'first');
-  await post(store, circle, 'u2', 'second');
+  await approved(store, circle, 'u1', 'first');
+  await approved(store, circle, 'u2', 'second');
 
   const before = store._emails.length;
   await runLiveCycle(store, circle, state, ['u1', 'u2']);
@@ -717,7 +751,7 @@ test('notificationFor returning null suppresses that member entirely', async () 
 
   const store = memStore();
   const circle = await openCircle(store, { members: 3 });
-  await post(store, circle, 'u1', 'a');
+  await approved(store, circle, 'u1', 'a');
 
   const recipients = store._emails.map(e => e.to);
   assert.ok(!recipients.includes('u2@example.com'));
@@ -729,7 +763,7 @@ test('every phase notifies under ONE type, never one derived from the phase name
   const store = memStore();
   const circle = await openCircle(store, { members: 2 });
 
-  await post(store, circle, 'u1', 'a');
+  await approved(store, circle, 'u1', 'a');
   await runLiveCycle(store, circle, state, ['u1', 'u2']);
   await circles.closeCircle({ store, circleId: circle.id, userId: 'u1' });
 
@@ -753,7 +787,7 @@ test('an opted-out member still gets the in-app notification, just no mail', asy
   const before = store._emails.length;
   const notifiedBefore = store._notifications.length;
 
-  await post(store, circle, 'u1', 'a');
+  await approved(store, circle, 'u1', 'a');
 
   const sent = store._emails.slice(before);
   const notified = store._notifications.slice(notifiedBefore);
@@ -773,7 +807,7 @@ test('a failing notification never rolls back the transition', async () => {
 
   const store = memStore();
   const circle = await openCircle(store, { members: 2 });
-  await post(store, circle, 'u1', 'a');
+  await approved(store, circle, 'u1', 'a');
 
   assert.equal(circle.phase, 'cycle', 'the transition stands');
   assert.equal(circle.seeds[0].phase, 'share');
@@ -785,7 +819,7 @@ test('a member with no email is skipped for mail but still notified', async () =
   const circle = await openCircle(store, { members: 1 });
   await circles.joinCircle({ store, circleId: circle.id, userId: 'u9', username: 'Nine' });
 
-  await post(store, circle, 'u1', 'a');
+  await approved(store, circle, 'u1', 'a');
 
   assert.ok(store._notifications.some(n => n.userId === 'u9'));
   assert.equal(store._emails.filter(e => !e.to).length, 0, 'never mails an empty address');
@@ -798,7 +832,7 @@ test('sweepCircles advances every running circle and survives a broken one', asy
   const store = memStore();
 
   const a = await openCircle(store, { members: 2 });
-  await post(store, a, 'u1', 'a');
+  await approved(store, a, 'u1', 'a');
 
   const b = await circles.createCircle({
     store, instanceId: 'inst1', activity: 'stub', title: 'Other', urlName: 'other',
@@ -835,7 +869,7 @@ test('posting a topic is closed to non-members', async () => {
   const circle = await openCircle(store, { members: 2 });
 
   await assert.rejects(
-    () => post(store, circle, 'stranger', 'x'),
+    () => approved(store, circle, 'stranger', 'x'),
     /Not a member/,
   );
   await assert.rejects(
@@ -942,9 +976,9 @@ test('toClient never leaks member emails, and never the supporter roster', async
   stubActivity();
   const store = memStore();
   const circle = await openCircle(store, { members: 2 });
-  await post(store, circle, 'u1', 'a');
-  await post(store, circle, 'u1', 'b');
-  await post(store, circle, 'u1', 'c');
+  await approved(store, circle, 'u1', 'a');
+  await approved(store, circle, 'u1', 'b');
+  await approved(store, circle, 'u1', 'c');
   await circles.supportSeed({ store, circleId: circle.id, seedId: seedFor(circle, 'b').id, userId: 'u2' });
 
   const wire = circles.toClient(circle, { userId: 'u2' });
@@ -1019,8 +1053,8 @@ test('unimplemented optional hooks are filled with no-ops', async () => {
   // And the machine runs end to end against a module that implements nothing else.
   const store = memStore();
   const circle = await openCircle(store, { members: 2, activity: 'minimal' });
-  await post(store, circle, 'u1', 'a');
-  await post(store, circle, 'u2', 'b');
+  await approved(store, circle, 'u1', 'a');
+  await approved(store, circle, 'u2', 'b');
   assert.equal(circle.phase, 'idle', 'isMemberDone always true runs both straight through');
   assert.equal(circle.seeds.filter(s => s.phase === 'revealed').length, 2);
   assert.equal(store._emails.length, 0, 'no notificationFor means no mail');
@@ -1034,7 +1068,7 @@ test('participation: the layer iterates and gates, the module answers', async ()
   const store = memStore();
   stubActivity();
   const circle = await openCircle(store, { members: 2 });
-  await post(store, circle, 'u1', 'first');
+  await approved(store, circle, 'u1', 'first');
 
   // The stub declares no participation hook, so the map has nothing to draw —
   // an activity without a participation story yields an empty list, not rows
