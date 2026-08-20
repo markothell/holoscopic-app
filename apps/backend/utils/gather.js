@@ -214,7 +214,9 @@ function normalizeSeed(payload) {
     respondHours = Math.min(8760, Math.max(1, Math.round(h)));
   }
 
-  const base = { prompt, context, shape, axes, reveal, reactions, editAfterClose, respondHours };
+  // `topic` is the label every generic circle surface reads (the map, the
+  // queue, the record) and every module fills in — for gather it IS the prompt.
+  const base = { topic: prompt, prompt, context, shape, axes, reveal, reactions, editAfterClose, respondHours };
 
   // S1 — which act the respond surface leads with, on story-bearing shapes:
   // voice-first is the circle default; 'text' flips to the compose sheet for
