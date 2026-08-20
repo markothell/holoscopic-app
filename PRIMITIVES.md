@@ -511,9 +511,13 @@ inherited M3b caveat — a real iPhone recording.
   MO 2026-08-20 — "everything should be run through approval"). The original "any member
   starts one" let one person commit the whole group's attention alone. Now nomination is the
   rule for EVERY activity in circle mode, not a module opt-in (`nominateFirst` is gone):
-  every ask is born `nominated`, and `config.approvalsToStart` supporters (default 3 —
-  author + 2, the author's own counts, capped at the member count) move it to `pending`,
-  which now means "approved, waiting for a slot". Three lists on the wire: `nominations`
+  every ask is born `nominated`, and enough supporters move it to `pending`, which now means
+  "approved, waiting for a slot". **The default threshold is A THIRD of the circle** (MO,
+  2026-08-20 — revised from a flat 3 the same day): floor of 2 so an author never approves
+  alone, capped at the roster; 9 members → 3, 3 members → 2, 30 → 10. A flat
+  `config.approvalsToStart` overrides; the wire's `approvalsToStart` is always the RESOLVED
+  number. A solo circle's ask opens on addSeed — its author already meets the threshold, and
+  no support is coming to re-check it. Three lists on the wire: `nominations`
   (unordered), `queue` (approved, support-ordered), live. Approval is a door, not a running
   total — withdrawing support later does not un-approve. A facilitator promotion approves
   outright (the escape hatch), and single-mode circles are exempt by construction (the
