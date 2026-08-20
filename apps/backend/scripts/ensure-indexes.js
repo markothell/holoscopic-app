@@ -95,8 +95,27 @@ const INDEXES = [
 
   { collection: 'topics', name: 'instanceId_status_expiresAt', keys: { instanceId: 1, status: 1, expiresAt: 1 } },
 
-  // --- Synthesis published feed + LLM corpus read ---
-  { collection: 'synnodes', name: 'instanceId_visibility_publishedAt', keys: { instanceId: 1, visibility: 1, publishedAt: -1 } },
+  // --- Synthesis: the idea's feed + LLM corpus read ---
+  // The per-node visibility gate went on 2026-08-20 (the idea is the boundary),
+  // so the two visibility-prefixed indexes describe fields no document will
+  // carry again. They are listed as superseded rather than left to rot.
+  { collection: 'synnodes', name: 'instanceId_kind_createdAt', keys: { instanceId: 1, kind: 1, createdAt: -1 },
+    supersedes: ['instanceId_visibility_publishedAt', 'instanceId_1_visibility_1', 'instanceId_1_visibility_1_publishedAt_-1'] },
+
+  // --- Synthesis membership ---
+  // DANGER, and the reason this collection appears here at all. Until
+  // 2026-08-20 SynMembership declared a UNIQUE index on
+  // {instanceId, handleLower} to enforce per-idea handle uniqueness.
+  // Pseudonymity was dropped and `handleLower` is no longer written. A unique
+  // index indexes a MISSING field as null, so if that index still exists on a
+  // cluster, the SECOND person to join any idea collides with the first on
+  // (instanceId, null) and the join fails with a duplicate key error.
+  //
+  // The non-unique membership index below is the replacement, and the old one
+  // is named as superseded so `--drop-stale` removes it. Run this against
+  // production BEFORE the code that stops writing handleLower is serving.
+  { collection: 'synmemberships', name: 'instanceId_userId', keys: { instanceId: 1, userId: 1 }, options: { unique: true },
+    supersedes: ['instanceId_1_handleLower_1'] },
 
   // --- Chorus wall. Trailing id direction must match SORTS in utils/memories.js
   //     ({createdAt:-1,id:-1}); a mismatch serves neither ordering. ---
