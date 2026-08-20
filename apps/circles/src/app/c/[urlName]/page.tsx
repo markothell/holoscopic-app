@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { circlesApi, synthesisApi, ApiError, SYNTHESIS_URL } from '@/services/api';
 import type { Circle, MyIdea } from '@/lib/types';
+import { seedActivityOf } from '@/lib/types';
 import { Page, Band, Card, Action, Muted } from '@/components/Shell';
 import { CircleMap } from '@/components/CircleMap';
 
@@ -114,7 +115,7 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
             responses?: unknown[];
             myResponse?: unknown;
           };
-          if (live.activity === 'gather') {
+          if (seedActivityOf(circle, live) === 'gather') {
             const mineIn = Boolean(extras.myResponse);
             const openWall = live.payload.reveal === 'open';
             const answered = (extras.responses ?? []).length;
@@ -204,7 +205,7 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
             {record.map(s => (
               <li key={s.id}>
                 <Link
-                  href={s.activity === 'gather'
+                  href={seedActivityOf(circle, s) === 'gather'
                     ? `/c/${circle.urlName}/activity/${s.id}`
                     : `/c/${circle.urlName}/topic/${s.id}`}
                   className="-mx-3 block rounded-lg px-3 py-2 transition-colors hover:bg-ground-deep"
@@ -213,7 +214,7 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
                     {s.payload.topic}
                   </span>
                   <span className="mt-0.5 block text-xs text-ink-faint">
-                    {s.activity === 'gather'
+                    {seedActivityOf(circle, s) === 'gather'
                       ? ({ story: 'a wall of stories', placement: 'where everyone stands',
                           'story-placement': 'stories on a line', words: 'a word portrait' }[s.payload.shape ?? 'story'] ?? 'an activity')
                       : `${s.payload.poleA} · ${s.payload.poleB}`}

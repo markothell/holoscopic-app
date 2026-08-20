@@ -15,6 +15,7 @@ import { circlesApi, ApiError } from '@/services/api';
 import type {
   Circle, Seed, GatherExtras, GatherResponse, GatherVocabWord, ShareAudio,
 } from '@/lib/types';
+import { seedActivityOf } from '@/lib/types';
 
 export default function ActivityPage({ params }: { params: Promise<{ urlName: string; seedId: string }> }) {
   const { urlName, seedId } = use(params);
@@ -35,8 +36,15 @@ export default function ActivityPage({ params }: { params: Promise<{ urlName: st
         try {
           const { seed: _seed, ...ex } = await circlesApi.seedResponses(circle.id, seedId, userId);
           setExtras(ex as GatherExtras);
-        } catch {
-          setExtras(null); // 404 while queued — the guard below says so in words
+        } catch (e) {
+          // A 404 is the ordinary queued state — the guard below says so in
+          // words. Anything else is a real failure and must not be swallowed
+          // into an empty surface.
+          setExtras(null);
+          if (!(e instanceof ApiError && e.status === 404)) {
+            console.error('[gather] responses read failed:', e);
+            setError(e instanceof ApiError ? e.message : 'Could not load the responses — reload to retry');
+          }
         }
       }
     } catch (e) {
@@ -68,7 +76,7 @@ export default function ActivityPage({ params }: { params: Promise<{ urlName: st
   if (!circle) return <Page><p className="text-ochre">{error}</p></Page>;
 
   const seed = circle.seeds.find(s => s.id === seedId);
-  if (!seed || seed.activity !== 'gather') {
+  if (!seed || seedActivityOf(circle, seed) !== 'gather') {
     return (
       <Page>
         <Muted>Nothing here by that name.</Muted>

@@ -52,6 +52,17 @@ export interface SeedPayload {
 
 export type GatherShape = 'story' | 'placement' | 'story-placement' | 'words';
 
+/** Which module runs a seed: its own, or the circle's when null — the same
+ *  resolution the machine makes (utils/circles.js#modFor). Every surface that
+ *  branches on activity must go through this, or a gather ask in a
+ *  gather-native circle (activity stored null) falls into the threshold arm. */
+export function seedActivityOf(
+  circle: Pick<Circle, 'activity'>,
+  seed: Pick<Seed, 'activity'>,
+): string {
+  return seed.activity ?? circle.activity;
+}
+
 export interface GatherAxis {
   poleA: string;
   poleB: string;

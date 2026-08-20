@@ -477,8 +477,14 @@ input open), `components/gather.tsx` (the reveal ring, R2/R3 charts, portrait, r
 card), the home page rendering every live seed and the map routing gather seeds to their
 surface. Verified end-to-end over HTTP against the dev backend (sealed visibility, coinage
 hiding, portrait counts, manual reveal, late response, open-wall reactions); typecheck and
-production build green. Still owed: an eyes-on browser pass of the new surfaces, and the
-inherited M3b caveat — a real iPhone recording.
+production build green. **The eyes-on browser pass ran 2026-08-20** — a scripted Chrome drove
+two members through the whole loop (picker → four dots → put to the circle → backed →
+approved → chips + coining → sealed waiting → author's confirm-gated reveal → the ring with
+the portrait center and the word-filter lighting pickers), screenshotted at every surface;
+it caught one real bug, fixed the same day: surfaces checked `seed.activity === 'gather'`
+literally, so a gather-NATIVE circle's seeds (stored `activity: null` = the circle's own)
+fell into the threshold arm — every branch now resolves through `seedActivityOf()`. Still
+owed: the inherited M3b caveat — a real iPhone recording.
 
 ### The creator process
 

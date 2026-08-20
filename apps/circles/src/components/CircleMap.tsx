@@ -226,7 +226,7 @@ export function CircleMap({ circle, userId }: {
   // ask has its own surface; everything else is a Threshold topic.
   const hrefFor = (seed: Seed) => (isSession(seed)
     ? (seed.payload.ideaCode ? `${SYNTHESIS_URL}/?idea=${seed.payload.ideaCode}` : SYNTHESIS_URL)
-    : seed.activity === 'gather'
+    : (seed.activity ?? circle.activity) === 'gather'
       ? `${base}/activity/${seed.id}`
       : `${base}/topic/${seed.id}`);
 
