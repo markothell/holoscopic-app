@@ -507,7 +507,17 @@ inherited M3b caveat — a real iPhone recording.
   timer ends — the existing `advanceOnComplete` + `respondHours` pair, `null` hours = no
   timer. Deadline mail at reveal rides the existing dispatch for free. Reminder/nudge mail is
   deliberately undesigned until testing begins.
-- **B3 — Any member starts one, via the existing seed + support queue** (resolves PR-7).
+- **B3 — Any member PUTS one to the circle; the circle starts it** (resolves PR-7; REVISED
+  MO 2026-08-20 — "everything should be run through approval"). The original "any member
+  starts one" let one person commit the whole group's attention alone. Now nomination is the
+  rule for EVERY activity in circle mode, not a module opt-in (`nominateFirst` is gone):
+  every ask is born `nominated`, and `config.approvalsToStart` supporters (default 3 —
+  author + 2, the author's own counts, capped at the member count) move it to `pending`,
+  which now means "approved, waiting for a slot". Three lists on the wire: `nominations`
+  (unordered), `queue` (approved, support-ordered), live. Approval is a door, not a running
+  total — withdrawing support later does not un-approve. A facilitator promotion approves
+  outright (the escape hatch), and single-mode circles are exempt by construction (the
+  founding seed is written straight to pending).
 - **B4 — Input stays open after reveal** (resolves PR-8). Late responses join the artifact —
   Chorus's answer, accepted for the intimate layer. The known cost: for placement shapes a
   late dot is reveal-informed and moves the aggregate after people have seen it (see gotchas).

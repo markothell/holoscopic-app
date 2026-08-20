@@ -193,6 +193,10 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
         </p>
       )}
 
+      {circle.isMember && userId && (
+        <NominationsBand circle={circle} userId={userId} onChanged={load} />
+      )}
+
       {record.length > 0 && circle.isMember && (
         <section className="mt-10">
           <Band>The record</Band>
@@ -224,6 +228,75 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
         <SynthesesBand circle={circle} userId={userId} onShared={load} />
       )}
     </Page>
+  );
+}
+
+/**
+ * What has been put to the circle and not yet taken up (B3 revised,
+ * 2026-08-20: EVERY ask walks through approval — one member must not be able
+ * to commit the whole group's attention alone). Unordered by design; backing
+ * is a count toward approvalsToStart, not a rank. Synthesis documents keep
+ * their own band below — same mechanic, different words.
+ */
+function NominationsBand({ circle, userId, onChanged }: {
+  circle: Circle;
+  userId: string;
+  onChanged: () => Promise<void>;
+}) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const nominations = (circle.nominations ?? []).filter(s => s.activity !== 'synthesis');
+  const queued = (circle.queue ?? []).filter(s => s.activity !== 'synthesis');
+  if (nominations.length === 0 && queued.length === 0) return null;
+
+  const back = async (seedId: string) => {
+    setBusyId(seedId);
+    try {
+      await circlesApi.supportSeed(circle.id, seedId, userId);
+      await onChanged();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <section className="mt-10">
+      <Band>Proposed</Band>
+      <ul className="space-y-3">
+        {nominations.map(s => {
+          const more = Math.max(0, (circle.approvalsToStart ?? 3) - s.supporterCount);
+          return (
+            <li key={s.id} className="flex items-baseline justify-between gap-4">
+              <div>
+                <span className="font-[family-name:var(--font-display)] text-lg">{s.payload.topic}</span>
+                <span className="mt-0.5 block text-xs text-ink-faint">
+                  {more === 0 ? 'Ready to start' : `${more} more ${more === 1 ? 'backer' : 'backers'} to start`}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => back(s.id)}
+                disabled={busyId === s.id}
+                aria-pressed={s.iSupport}
+                className="flex-none cursor-pointer rounded-full border px-4 py-1.5 text-sm transition-colors disabled:opacity-50"
+                style={s.iSupport
+                  ? { borderColor: 'var(--ink)', background: 'var(--ink)', color: 'var(--card)' }
+                  : { borderColor: 'var(--rule-strong)', color: 'var(--ink-soft)' }}
+              >
+                {s.iSupport ? 'Backed' : 'Back this'}
+              </button>
+            </li>
+          );
+        })}
+        {queued.map(s => (
+          <li key={s.id} className="flex items-baseline justify-between gap-4">
+            <div>
+              <span className="font-[family-name:var(--font-display)] text-lg">{s.payload.topic}</span>
+              <span className="mt-0.5 block text-xs text-ink-faint">Approved — waiting for a slot</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

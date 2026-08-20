@@ -490,11 +490,13 @@ export default function NewActivityPage({ params }: { params: Promise<{ urlName:
             </p>
           </Card>
           <p className="mt-4 text-sm text-ink-soft">
-            Launching mails the circle: “{firstName(session)} asks: {draft.prompt || '…'}”
+            Your ask goes to the circle for backing first — it opens once{' '}
+            {circle.approvalsToStart ?? 3} members are behind it, yours included.
+            The circle is mailed when it opens: “{firstName(session)} asks: {draft.prompt || '…'}”
           </p>
           <div className="mt-5 flex items-center gap-5">
             <Action onClick={launch} disabled={sending}>
-              {sending ? 'Asking…' : 'Ask the circle'}
+              {sending ? 'Putting it up…' : 'Put it to the circle'}
             </Action>
             <Quiet onClick={() => setStep('reveal')}>Back</Quiet>
           </div>

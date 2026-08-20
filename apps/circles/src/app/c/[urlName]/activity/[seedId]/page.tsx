@@ -97,11 +97,30 @@ export default function ActivityPage({ params }: { params: Promise<{ urlName: st
   );
 
   if (queued) {
+    const more = Math.max(0, (circle.approvalsToStart ?? 3) - seed.supporterCount);
     return (
       <Page>
         {header}
         <div className="mt-6">
-          <Muted>This ask is waiting its turn in the queue.</Muted>
+          {seed.phase === 'nominated' ? (
+            <>
+              <Muted>
+                Put to the circle — {more === 0
+                  ? 'ready to start.'
+                  : `${more} more ${more === 1 ? 'backer' : 'backers'} and it starts.`}
+              </Muted>
+              <div className="mt-4">
+                <Action onClick={async () => {
+                  await circlesApi.supportSeed(circle.id, seed.id, userId);
+                  await load();
+                }}>
+                  {seed.iSupport ? 'Backed — take it back' : 'Back this'}
+                </Action>
+              </div>
+            </>
+          ) : (
+            <Muted>Approved — waiting for a slot.</Muted>
+          )}
         </div>
       </Page>
     );

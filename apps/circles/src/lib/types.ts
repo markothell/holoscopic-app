@@ -227,10 +227,19 @@ export interface Circle {
   members: Member[];
   currentSeed: Seed | null;
   seeds: Seed[];
-  /** The pending topics, IN THE ORDER THEY WILL RUN — support first, promotions
-   *  ahead of that, posting order as the tiebreak. Render this rather than
-   *  re-deriving the sort, which drifts from the machine the moment either
-   *  changes. */
+  /** Nominations: put to the circle, not yet approved (B3 revised, 2026-08-20
+   *  — EVERY ask walks through approval). Its own unordered list; support is
+   *  a count toward approvalsToStart, never a rank. */
+  nominations: Seed[];
+  /** How many supporters an ask needs before the circle starts it — the
+   *  author's own counts, and the server has already capped this to the
+   *  member count, so `approvalsToStart - supporterCount` is honestly
+   *  "N more". */
+  approvalsToStart: number;
+  /** The APPROVED topics, IN THE ORDER THEY WILL RUN — support first,
+   *  promotions ahead of that, posting order as the tiebreak. Render this
+   *  rather than re-deriving the sort, which drifts from the machine the
+   *  moment either changes. */
   queue: Seed[];
   /** Every topic I posted. A member may post more than one: the queue is
    *  filtered by support, not by a one-each rule. */
