@@ -21,6 +21,7 @@ function memStore() {
       return doc;
     },
     async saveNode(node) { node.updatedAt = new Date(); nodes.set(node.id, node); return node; },
+    async removeNode(id) { nodes.delete(id); },
     async findFrames(instanceId) {
       return [...frames.values()].filter(f => f.instanceId === instanceId);
     },
@@ -86,7 +87,7 @@ test('createRoot: a topic hub is a parentless root with no axes', async () => {
   assert.equal(hub.content.topic, 'Governance');
   assert.deepEqual(hub.axisFrameIds, [], 'topic hubs carry no axes');
   assert.equal(hub.topicId, null);
-  assert.equal(hub.visibility, 'private', 'private-first');
+  assert.equal(hub.visibility, undefined, 'no per-node gate — the idea is the boundary');
 });
 
 test('createChild: a thought attaches to a topic hub and inherits it as topicId', async () => {
@@ -199,16 +200,28 @@ test('CYCLE GUARD: marry rejects when a parent is a descendant of the... (diamon
   assert.equal(diamond.edgeKind, 'marriage');
 });
 
-test('publish / unpublish flips visibility', async () => {
+// Deleting ORPHANS children rather than cascading: a hub somebody only meant
+// to drop must not take a branch with it. The map draws an orphan as its own
+// root (apps/synthesis lib/graph.ts) and the move gesture re-files it.
+test('deleteNode: removes the node, orphans its children, and refuses the home hub', async () => {
   const store = memStore();
-  const t = await funnel.createRoot({ store, instanceId: COMM, ...alice, kind: 'thought', content: { thought: 'post' } });
-  assert.equal(t.visibility, 'private');
-  const pub = await funnel.publish({ store, nodeId: t.id });
-  assert.equal(pub.visibility, 'published');
-  assert.ok(pub.publishedAt instanceof Date);
-  const priv = await funnel.unpublish({ store, nodeId: t.id });
-  assert.equal(priv.visibility, 'private');
-  assert.equal(priv.publishedAt, null);
+  const home = await funnel.seedHomeHub({ store, instanceId: COMM, ...alice, title: 'An idea' });
+  const hub = await funnel.createChild({ store, instanceId: COMM, ...alice, kind: 'topic', content: { topic: 'Governance' }, parentId: home.id });
+  const child = await funnel.createChild({ store, instanceId: COMM, ...alice, kind: 'thought', content: { thought: 'under the hub' }, parentId: hub.id });
+
+  await funnel.deleteNode({ store, nodeId: hub.id });
+  assert.equal(await store.getNode(hub.id), null, 'the hub is gone');
+
+  const orphan = await store.getNode(child.id);
+  assert.ok(orphan, 'its child survives');
+  assert.deepEqual(orphan.parentIds, [hub.id], 'pointing at a parent that no longer exists — an orphan, by design');
+
+  await assert.rejects(
+    () => funnel.deleteNode({ store, nodeId: home.id }),
+    /own hub stays put/,
+    'the idea\'s centre cannot be deleted',
+  );
+  await assert.rejects(() => funnel.deleteNode({ store, nodeId: 'nope' }), /Node not found/);
 });
 
 test('frame dedupe: same poles in either orientation resolve to one frame', async () => {

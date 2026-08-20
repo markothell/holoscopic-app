@@ -54,47 +54,52 @@ function thought(over = {}) {
   return {
     id: 'n1', instanceId: COMM, ownerHandle: 'Ada', kind: 'thought',
     content: { topic: '', thought: 'Quorum should scale with governance size.', context: '' },
-    visibility: 'published', topicId: null,
+    origin: 'own', topicId: null,
     ...over,
   };
 }
 
-test('indexNode: PRIVATE-LEAK GUARD — only published thoughts are ever embedded', async () => {
+test('indexNode: what belongs in the corpus — own thoughts, never hubs, never borrows', async () => {
   const store = memIndexStore();
   const model = fakeModel();
 
-  const pub = await index.indexNode({ store, model, node: thought() });
-  assert.ok(pub, 'a published thought is indexed');
+  const own = await index.indexNode({ store, model, node: thought() });
+  assert.ok(own, 'an own thought is indexed the moment it exists — no publish step');
   assert.equal(store._rows.length, 1);
 
-  // A private/unpublished node is never embedded.
-  const priv = await index.indexNode({ store, model, node: thought({ id: 'n2', visibility: 'private' }) });
-  assert.equal(priv, null, 'private node refused');
-  assert.equal(store._rows.length, 1, 'nothing written for the private node');
+  // A BORROWED node mirrors someone else's thought. Its text is already in the
+  // corpus at its source, so indexing it too would let one sentence answer
+  // twice. This is the guard that replaced the visibility gate.
+  const borrowed = await index.indexNode({ store, model, node: thought({ id: 'n2', origin: 'borrowed' }) });
+  assert.equal(borrowed, null, 'borrowed node refused');
+  assert.equal(store._rows.length, 1, 'nothing written for the borrow');
 
-  // A topic hub (private scaffold) is never a post → never embedded.
-  const hub = await index.indexNode({ store, model, node: { id: 'h1', instanceId: COMM, ownerHandle: 'Ada', kind: 'topic', content: { topic: 'Governance' }, visibility: 'published' } });
+  // A topic hub is structure, never a post → never embedded.
+  const hub = await index.indexNode({ store, model, node: { id: 'h1', instanceId: COMM, ownerHandle: 'Ada', kind: 'topic', content: { topic: 'Governance' }, origin: 'own' } });
   assert.equal(hub, null, 'topic hub refused');
   assert.equal(store._rows.length, 1);
 
-  // An empty-content published thought contributes no retrievable text.
+  // An empty-content thought contributes no retrievable text.
   const empty = await index.indexNode({ store, model, node: thought({ id: 'n3', content: { thought: '', context: '' } }) });
   assert.equal(empty, null);
   assert.equal(store._rows.length, 1);
 });
 
-test('refreshNode: unpublishing removes the row from the corpus', async () => {
+test('refreshNode: promoting a borrow adds it; a node that is still a borrow is dropped', async () => {
   const store = memIndexStore();
   const model = fakeModel();
   const node = thought();
   await index.refreshNode({ store, model, node });
   assert.equal(store._rows.length, 1);
-  // Same node, now private → refresh removes it.
-  await index.refreshNode({ store, model, node: { ...node, visibility: 'private' } });
-  assert.equal(store._rows.length, 0, 'unpublished node is dropped from the index');
+  // Same node, still a borrow → refresh removes it.
+  await index.refreshNode({ store, model, node: { ...node, origin: 'borrowed' } });
+  assert.equal(store._rows.length, 0, 'a borrow is dropped from the index');
+  // Promoted back to own → it rejoins.
+  await index.refreshNode({ store, model, node: { ...node, origin: 'own' } });
+  assert.equal(store._rows.length, 1, 'promotion puts it back in the corpus');
 });
 
-test('retrieve: top-k cosine ranking, instanceId-scoped, published-only', async () => {
+test('retrieve: top-k cosine ranking, scoped to one idea and nothing else', async () => {
   const store = memIndexStore();
   const model = fakeModel();
 
@@ -105,10 +110,11 @@ test('retrieve: top-k cosine ranking, instanceId-scoped, published-only', async 
   // A node in ANOTHER community — must be scoped out even though it matches.
   await index.indexNode({ store, model, node: thought({ id: 'other', instanceId: 'comm2', content: { thought: 'Quorum governance quorum.', context: '' } }) });
 
-  // A STALE private row (simulating a missed removal) — must never be returned.
+  // A row belonging to a THIRD idea, seeded straight into the store — the
+  // instanceId scope is the whole guard now, so this is the one that matters.
   store._rows.push({
-    instanceId: COMM, kind: 'node', refId: 'leak', nodeId: 'leak',
-    ownerHandle: 'Ghost', text: 'Secret quorum governance draft', visibility: 'private',
+    instanceId: 'comm3', kind: 'node', refId: 'leak', nodeId: 'leak',
+    ownerHandle: 'Ghost', text: 'Another idea\'s quorum governance thought',
     vector: [5, 5, 0, 0, 0],
   });
 
@@ -117,7 +123,7 @@ test('retrieve: top-k cosine ranking, instanceId-scoped, published-only', async 
   const ids = hits.map(h => h.refId);
   assert.equal(hits[0].refId, 'gov', 'best match ranks first');
   assert.ok(!ids.includes('other'), 'other community is scoped out');
-  assert.ok(!ids.includes('leak'), 'PRIVATE-LEAK GUARD: private row never retrieved');
+  assert.ok(!ids.includes('leak'), 'SCOPE GUARD: another idea\'s row is never retrieved');
   assert.deepEqual(ids.sort(), ['gov', 'snack'], 'only COMM published rows returned');
   // Snacks node is unrelated → ranks below the governance node.
   const snackHit = hits.find(h => h.refId === 'snack');
@@ -136,10 +142,10 @@ test('retrieve: empty query returns nothing; unconfigured model throws', async (
   );
 });
 
-test('indexReply: a public reply on a published post is embedded by its context prose', async () => {
+test('indexReply: a public reply is embedded by its context prose', async () => {
   const store = memIndexStore();
   const model = fakeModel();
-  const post = thought({ id: 'p1', visibility: 'published' });
+  const post = thought({ id: 'p1' });
   const reply = { id: 'e1', username: 'Bo', text: 'I think quorum is the wrong lever entirely.' };
 
   const row = await index.indexReply({ store, model, entry: reply, post });
@@ -148,10 +154,6 @@ test('indexReply: a public reply on a published post is embedded by its context 
   assert.equal(store._rows[0].refId, 'e1');
   assert.equal(store._rows[0].nodeId, 'p1', 'reply cites its post node');
   assert.equal(store._rows[0].ownerHandle, 'Bo', 'attribution by handle');
-
-  // A reply on a PRIVATE post is never indexed.
-  const onPrivate = await index.indexReply({ store, model, entry: reply, post: { ...post, visibility: 'private' } });
-  assert.equal(onPrivate, null);
 
   // A stance-only reply (no prose) carries no retrievable language → dropped.
   const dropped = await index.indexReply({ store, model, entry: { id: 'e1', username: 'Bo', text: '   ' }, post });

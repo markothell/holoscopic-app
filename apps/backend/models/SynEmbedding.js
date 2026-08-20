@@ -5,11 +5,12 @@ const mongoose = require('mongoose');
 // corpus: a published thought node, or a public reply Entry. Scoped to the
 // community Instance like every other multi-tenant document.
 //
-// PRIVACY CONTRACT (PLAN §8): only PUBLISHED, group-visible content is ever
-// written here. Private/unpublished nodes — including still-borrowed drafts —
-// are never embedded, so they can never be retrieved. `visibility` is
-// denormalized onto the row so retrieval can defensively re-filter even if a
-// removal hook were ever missed. Enforced server-side in utils/synIndex.js.
+// PRIVACY CONTRACT (PLAN §8, rewritten 2026-08-20): the boundary is the IDEA,
+// not the node. Every row is stamped with its idea's instanceId and retrieval
+// is instanceId-scoped, so one idea's corpus can never answer another's. The
+// old denormalized `visibility` column guarded a per-node distinction that no
+// longer exists and went with it. Borrowed nodes are still kept out (their
+// text is indexed at its source) — see utils/synIndex.js.
 //
 // v1 storage is in-Mongo cosine over a small corpus (≤50 people → thousands of
 // chunks). The vector lives inline as an array of numbers; retrieval loads the
@@ -48,8 +49,6 @@ const synthesisEmbeddingSchema = new mongoose.Schema({
   dim:    { type: Number, default: 0 },
   model:  { type: String, default: '' }, // embedding model id that produced the vector
 
-  // Denormalized guard — always 'published' for rows that exist here.
-  visibility: { type: String, default: 'published' },
 }, {
   timestamps: true,
   id: false,

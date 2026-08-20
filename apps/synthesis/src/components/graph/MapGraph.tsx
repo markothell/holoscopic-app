@@ -123,7 +123,7 @@ function GraphInner({
     refreshFrames();
   }, [refreshFrames]);
 
-  const { nodes, byId, addRoot, addChild, marry, editNode, setAxes, setPublished, mergeNode, reparentNode } =
+  const { nodes, byId, addRoot, addChild, marry, editNode, setAxes, deleteNode, mergeNode, reparentNode } =
     useMyMap(instanceId, userId, ownerHandle, { seedMock: useMock, resolveLocalFrame, refreshFrames });
 
   const [marryMode, setMarryMode] = useState(false);
@@ -167,19 +167,10 @@ function GraphInner({
     }
   }, [openPostRequest, onOpenPostRequestHandled]);
 
-  // BUG 2 fix: GET /nodes/:id/post is published-only — it 404s for any
-  // unpublished node, even the owner's own draft. A node on the viewer's OWN
-  // map (byId.has) is content we already hold locally, so only hit this
-  // endpoint for it when it's actually published (to pull the live reply
-  // thread); an unpublished own draft can't have any replies yet anyway, so
-  // there's nothing to fetch — skip the call entirely and render from local
-  // state. A node NOT on this map (a feed item or a borrowed node's source)
-  // is guaranteed published (that's the only way it could have gotten here),
-  // so it always fetches.
+  // Every node in an idea is a post, so this always fetches — the old
+  // published-only skip (and the 404 it was dodging) went with the gate.
   useEffect(() => {
     if (useMock || !postNodeId) { setRemotePost(null); return; }
-    const localNode = byId.get(postNodeId);
-    if (localNode && localNode.visibility !== 'published') { setRemotePost(null); return; }
     let cancelled = false;
     SynthesisService.getPost(instanceId, postNodeId, userId)
       .then(data => { if (!cancelled) setRemotePost(data); })
@@ -528,7 +519,7 @@ function GraphInner({
         onEdit={content => sheetNode && editNode(sheetNode.id, content)}
         onSetAxes={ids => sheetNode && setAxes(sheetNode.id, ids)}
         onCoinFrame={coinFrame}
-        onPublishToggle={() => sheetNode && setPublished(sheetNode.id, sheetNode.visibility !== 'published')}
+        onDelete={() => { if (sheetNode) { deleteNode(sheetNode.id); setSheetNodeId(null); } }}
         onAddChild={() => sheetNode && addBelow(sheetNode.id)}
         onStartMarry={() => sheetNode && startMarryFrom(sheetNode.id)}
         onStartMove={() => sheetNode && startMoveFrom(sheetNode.id)}

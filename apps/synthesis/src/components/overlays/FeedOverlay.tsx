@@ -18,7 +18,7 @@ const LENSES: { key: Lens; label: string }[] = [
 // recency (flat, default), by-topic, and by-author lenses. Mock path sorts
 // the mock feed client-side; real path (M1) reads GET /synthesis/feed —
 // published SynNodes scoped to the community instance, each carrying
-// ownerHandle + topicLabel — and stays live via node_published (a fresh
+// ownerHandle + topicLabel — and stays live via node_created (a fresh
 // publish jumps to the top, recency-first). Tapping an item opens it as a
 // post (task item 1) — Feed is a launch point for PostOverlay, never Post
 // itself.
@@ -54,7 +54,7 @@ export default function FeedOverlay({
   // immediately (recency lens shows it first), without a refetch.
   useEffect(() => {
     if (useMock) return;
-    return synthesisSocket.on('node_published', payload => {
+    return synthesisSocket.on('node_created', payload => {
       const { node } = payload as { node: SynNode };
       if (node.instanceId !== instanceId) return;
       setFeed(prev => [node, ...prev.filter(n => n.id !== node.id)]);

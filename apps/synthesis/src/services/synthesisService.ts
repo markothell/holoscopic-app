@@ -48,9 +48,8 @@ export const SynthesisService = {
     return apiFetch<{ collaborators: Collaborator[] }>(`/synthesis/ideas/${code}/collaborators`, { userId });
   },
 
-  // One collaborator's published thinking inside this idea — the way into
-  // someone's map from the social page. Published nodes only, filtered
-  // server-side.
+  // One collaborator's thinking inside this idea, as their map — the way into
+  // someone's work from the social page.
   collaboratorMap(code: string, handle: string, userId: string) {
     return apiFetch<{ collaborator: Membership; nodes: SynNode[] }>(
       `/synthesis/ideas/${code}/collaborators/${encodeURIComponent(handle)}/map`,
@@ -132,15 +131,11 @@ export const SynthesisService = {
     });
   },
 
-  publish(instanceId: string, nodeId: string, userId: string) {
-    return apiFetch<{ node: SynNode }>(`/synthesis/nodes/${nodeId}/publish`, {
-      method: 'POST', instanceId, userId,
-    });
-  },
-
-  unpublish(instanceId: string, nodeId: string, userId: string) {
-    return apiFetch<{ node: SynNode }>(`/synthesis/nodes/${nodeId}/unpublish`, {
-      method: 'POST', instanceId, userId,
+  // Deleting orphans the children rather than cascading — they stay on the
+  // map as their own root and the move gesture re-files them.
+  deleteNode(instanceId: string, nodeId: string, userId: string) {
+    return apiFetch<{ deleted: string }>(`/synthesis/nodes/${nodeId}`, {
+      method: 'DELETE', instanceId, userId,
     });
   },
 
@@ -155,15 +150,15 @@ export const SynthesisService = {
     });
   },
 
-  // ── M1: publish → borrow → the networking loop ─────────────────────────
+  // ── M1: read → borrow → the networking loop ────────────────────────────
 
-  // Recency-first, published-only across the community; each item carries
+  // Recency-first across the idea; each item carries
   // ownerHandle + topicLabel for Feed's switchable lenses (D10).
   feed(instanceId: string, userId: string) {
     return apiFetch<{ feed: SynNode[] }>('/synthesis/feed', { instanceId, userId });
   },
 
-  // A published post + its public reply thread (comment section, D6/D9).
+  // A post + its public reply thread (comment section, D6/D9).
   getPost(instanceId: string, nodeId: string, userId: string) {
     return apiFetch<{ post: SynNode; replies: SynthesisReply[] }>(`/synthesis/nodes/${nodeId}/post`, {
       instanceId, userId,

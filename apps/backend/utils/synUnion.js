@@ -8,7 +8,7 @@ const indexUtil = require('./synIndex');
 // the Group" Q&A (utils/synthesisChat.js, now removed) with a single cached,
 // whole-community artifact: "here's where the group stands right now" — no
 // question, no per-user thread. Two depths (brief / full), both drawn from
-// the ENTIRE published corpus plus per-post positional summaries, cached per
+// the idea's ENTIRE corpus plus per-post positional summaries, cached per
 // instance and regenerated only on the Synthesize/Expand button (never
 // automatically).
 //
@@ -21,19 +21,19 @@ const indexUtil = require('./synIndex');
 //   • the shared privacy/no-invention/handle-attribution rules (now the head
 //     of both SYNTHESIS_PROMPTS instead of one SYSTEM_PROMPT).
 // What's NEW here (not in synthesisChat.js):
-//   • selectCorpus — coverage (ALL published chunks, S1/§4), not query
+//   • selectCorpus — coverage (ALL of the idea's chunks, S1/§4), not query
 //     relevance. There is no query, so there is no retrieve()/embed() call.
 //   • computePositional — the corrected piece (§5): per-post positional
 //     summaries computed with LOCAL MATH (no LLM) from Entry.position + the
 //     post's SynFrame pole labels.
 //   • the empty-guard rendering canned text with NO model call (same shape as
-//     synthesisChat's silence guard, but on "nothing published" rather than "no
+//     synthesisChat's silence guard, but on "nothing here" rather than "no
 //     relevant hit").
 //   • the SynUnion cache (read/write) + markStale (corpusVersion bump).
 //
 // Privacy: selectCorpus reads the embedding store (utils/synIndex.js),
-// which only ever holds published, instanceId-scoped rows; computePositional
-// reads only published SynNode thoughts. Private content never enters
+// which holds instanceId-scoped rows; computePositional reads the idea's
+// SynNode thoughts. Only this idea's content ever enters
 // either path.
 
 // ── Shared rendering (relocated from utils/synthesisChat.js) ──────────────────
@@ -88,7 +88,7 @@ function renderContext(hits) {
 // depth-specific tail appended. ──────────────────────────────────────────────
 const SHARED_RULES = [
   'You are the collective voice of a small trusted community. You speak ONLY',
-  'from the group\'s published thoughts and replies, and how members',
+  'from the group\'s thoughts and replies, and how members',
   'positioned themselves on each post\'s spectrums — provided to you below as',
   'CONTEXT.',
   '',
@@ -106,7 +106,7 @@ const SHARED_RULES = [
 
 const BRIEF_TAIL = [
   'Write a 2-4 sentence synthesis of where the group currently stands, from',
-  'ONLY the CONTEXT (published thoughts, replies, and how members positioned',
+  'ONLY the CONTEXT (thoughts, replies, and how members positioned',
   'themselves on each post\'s spectrums). Lead with the prevailing sentiment;',
   'name the main tension or strongest dissent if any; attribute distinctive',
   'positions by handle. State the group\'s position — don\'t address a reader',
@@ -127,30 +127,30 @@ const SYNTHESIS_PROMPTS = {
 };
 
 // The canned response when the corpus is silent (no model call) — same
-// no-hallucination guard as M3's SILENT_ANSWER, on "nothing published" rather
+// no-hallucination guard as M3's SILENT_ANSWER, on "nothing here" rather
 // than "no relevant hit".
-const EMPTY_TEXT = "The group hasn't published anything to synthesize yet.";
+const EMPTY_TEXT = "There is nothing here to synthesize yet.";
 
 // ── §4: corpus selection — coverage (feed-all), not query relevance ────────
 
-// All published text chunks (thought + reply prose), instanceId-scoped.
+// All of the idea's text chunks (thought + reply prose), instanceId-scoped.
 // Reuses the embedding store's storage (utils/synIndex.js) but NEVER its
 // retrieve()/embed() query path — synthesis has no query. Privacy is
-// inherited (the store only ever holds published rows) and re-checked here
+// inherited from the idea scope and re-checked here
 // defensively, same discipline as retrieve().
 async function selectCorpus({ store = indexUtil.mongoStore, instanceId }) {
   if (!instanceId) throw new Error('instanceId is required');
   const rows = await store.list(instanceId);
-  return rows.filter(r => r.instanceId === instanceId && r.visibility === 'published');
+  return rows.filter(r => r.instanceId === instanceId);
 }
 
 // ── §5: positional summaries — LOCAL MATH, no LLM ───────────────────────────
 
 const positionalMongoStore = {
-  async findPublishedThoughts(instanceId) {
+  async findThoughts(instanceId) {
     return SynNode
-      .find({ instanceId, kind: 'thought', visibility: 'published' })
-      .sort({ publishedAt: -1 });
+      .find({ instanceId, kind: 'thought' })
+      .sort({ createdAt: -1 });
   },
   // Replies that actually carry a stance — a reply with prose but no
   // position (shouldn't happen via respond(), which requires one) is
@@ -255,7 +255,7 @@ function describeCluster(frames, points) {
   return `the group splits between ${domLabel} (${domCount}) and ${secondLabel} (${second.count}).`;
 }
 
-// Per published thought with positioned replies: one CONTEXT line carrying a
+// Per thought with positioned replies: one CONTEXT line carrying a
 // citation back to the post (kind 'node'). Posts with no axes, or no
 // positioned replies, contribute nothing (there's no stance data to
 // summarize). Frames are re-ordered to axisFrameIds order (Mongo $in doesn't
@@ -263,7 +263,7 @@ function describeCluster(frames, points) {
 // the ResolveGrid convention).
 async function computePositional({ store = positionalMongoStore, instanceId }) {
   if (!instanceId) throw new Error('instanceId is required');
-  const posts = await store.findPublishedThoughts(instanceId);
+  const posts = await store.findThoughts(instanceId);
   const lines = [];
 
   for (const post of posts) {
@@ -323,7 +323,7 @@ async function prepareSynthesis({
   const context = renderContext(hits);
   const messages = [{
     role: 'user',
-    content: `CONTEXT — the group's published thoughts, replies, and how members positioned themselves:\n\n${context}`,
+    content: `CONTEXT — the group's thoughts, replies, and how members positioned themselves:\n\n${context}`,
   }];
   return {
     empty: false,
@@ -379,7 +379,7 @@ async function getOrCreateDoc(instanceId, { store = cacheMongoStore } = {}) {
 }
 
 // Bump the instance's corpusVersion — called by utils/synIndexHooks.js on
-// every publish/unpublish/edit/promote/reply (i.e. whenever the published
+// every create/edit/promote/delete/reply (i.e. whenever the
 // corpus or its positional data could have changed). Atomic upsert so a
 // community that has never synthesized still gets a row to bump.
 async function markStale(instanceId, { store = cacheMongoStore } = {}) {

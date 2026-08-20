@@ -21,7 +21,10 @@ import { NODE_W, THOUGHT_H, hubWidth, hubHeight } from '@/lib/graph';
 //   shape  = kind      hexagon = topic hub · chamfered card = thought
 //   size   = nesting   a hub shrinks per hub standing above it
 //   stroke = origin    brass = authored here · periwinkle = carried in
-//   dashed = private   a provisional node, not yet shared with the group.
+//   dashed = UNASSIGNED. It used to mean 'private, not yet published'; the
+//                      per-node gate went away 2026-08-20 and the mark went with
+//                      it. Left in the primitive, spoken by nothing. Whatever
+//                      claims it next gets the whole vocabulary slot.
 //                      Marking the exception, not the rule: new thoughts
 //                      auto-publish (useMyMap.ts), so "live" is the common
 //                      state and a badge on it would be noise. Topic hubs
@@ -132,7 +135,7 @@ export function TopicNode({ data }: NodeProps & { data: SynNodeData }) {
         stroke={stroke}
         fill={fill}
         strokeWidth={isHome ? 2 : 1.5}
-        dashed={n.visibility !== 'published'}
+        dashed={false}
       />
       {/* Padding tracks the hexagon's own width so a deeply nested hub keeps
           the same optical margin as a full-size one. */}
@@ -193,7 +196,7 @@ export function ThoughtNode({ data }: NodeProps & { data: SynNodeData }) {
         ringColor="var(--join)"
         stroke={stroke}
         fill={fill}
-        dashed={n.visibility !== 'published'}
+        dashed={false}
       />
       <div className="absolute inset-0 flex flex-col justify-between px-3.5 py-3">
         <p

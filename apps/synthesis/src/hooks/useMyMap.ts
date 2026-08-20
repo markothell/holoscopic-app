@@ -103,18 +103,6 @@ export function useMyMap(instanceId: string, userId: string, ownerHandle: string
         // catalog actually has them (a coined pole pair only existed
         // locally until this response came back).
         if (touchesAxes && !seedMock) refreshFrames?.();
-        // New thoughts default to published (a deliberate product default —
-        // the backend still creates them private per §8, we publish right
-        // after so a thought lands in the community feed without a separate
-        // step). Topic hubs stay private scaffold. Unpublish stays available.
-        if (!seedMock && serverNode.kind === 'thought' && serverNode.visibility !== 'published') {
-          setNodes(prev => prev.map(n => (n.id === serverNode.id
-            ? { ...n, visibility: 'published', publishedAt: new Date().toISOString() }
-            : n)));
-          SynthesisService.publish(instanceId, serverNode.id, userId)
-            .then(({ node: pub }) => setNodes(prev => prev.map(n => (n.id === pub.id ? { ...pub } : n))))
-            .catch(err => console.debug('[synthesis] auto-publish failed', err));
-        }
       })
       .catch(err => {
         // Expected until routes/synthesis.js is live — the local copy stands.
@@ -145,8 +133,6 @@ export function useMyMap(instanceId: string, userId: string, ownerHandle: string
       edgeKind: home ? 'child' : 'root',
       origin: 'own',
       sourceNodeId: null, sourceEntryId: null, sourceOwnerHandle: null,
-      visibility: kind === 'thought' ? 'published' : 'private',
-      publishedAt: kind === 'thought' ? new Date().toISOString() : null,
       promotedAt: null,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
@@ -176,8 +162,6 @@ export function useMyMap(instanceId: string, userId: string, ownerHandle: string
       topicId: deriveTopicId(kind, [parent]),
       parentIds: [parentId], edgeKind: 'child', origin: 'own',
       sourceNodeId: null, sourceEntryId: null, sourceOwnerHandle: null,
-      visibility: kind === 'thought' ? 'published' : 'private',
-      publishedAt: kind === 'thought' ? new Date().toISOString() : null,
       promotedAt: null,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
@@ -213,8 +197,6 @@ export function useMyMap(instanceId: string, userId: string, ownerHandle: string
       topicId: kind === 'thought' ? deriveTopicId(kind, [pa]) : null, // first-selected parent's topic
       parentIds, edgeKind: 'marriage', origin: 'own',
       sourceNodeId: null, sourceEntryId: null, sourceOwnerHandle: null,
-      visibility: kind === 'thought' ? 'published' : 'private',
-      publishedAt: kind === 'thought' ? new Date().toISOString() : null,
       promotedAt: null,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
@@ -300,13 +282,22 @@ export function useMyMap(instanceId: string, userId: string, ownerHandle: string
     return true;
   }, [byId, nodes, instanceId, userId]);
 
-  const setPublished = useCallback((nodeId: string, published: boolean) => {
-    setNodes(prev => prev.map(n => (n.id === nodeId
-      ? { ...n, visibility: published ? 'published' : 'private', publishedAt: published ? new Date().toISOString() : null }
-      : n)));
-    const call = published ? SynthesisService.publish : SynthesisService.unpublish;
-    call(instanceId, nodeId, userId).catch(err => console.debug('[synthesis] publish state not synced', err));
-  }, [instanceId, userId]);
+  // Deleting ORPHANS the children rather than cascading (the server rule) —
+  // they stay on the map as their own root and the move gesture re-files
+  // them. Optimistic: the node leaves the map immediately.
+  const deleteNode = useCallback((nodeId: string) => {
+    const doomed = byId.get(nodeId);
+    if (!doomed) return;
+    if (doomed.isHome) { setError('The idea\'s own hub stays put'); return; }
+    setNodes(prev => prev.filter(n => n.id !== nodeId));
+    if (seedMock) return;
+    SynthesisService.deleteNode(instanceId, nodeId, userId).catch(err => {
+      // Put it back rather than leaving the map lying about what exists.
+      setNodes(prev => (prev.some(n => n.id === nodeId) ? prev : [...prev, doomed]));
+      setError('That could not be deleted');
+      console.debug('[synthesis] delete not synced', err);
+    });
+  }, [byId, instanceId, userId, seedMock]);
 
-  return { nodes, byId, error, clearError: () => setError(null), addRoot, addChild, marry, editNode, setAxes, setPublished, mergeNode, reparentNode };
+  return { nodes, byId, error, clearError: () => setError(null), addRoot, addChild, marry, editNode, setAxes, deleteNode, mergeNode, reparentNode };
 }

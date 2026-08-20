@@ -7,13 +7,14 @@ const SynEmbedding = require('../models/SynEmbedding');
 // private-leak guard, cosine ranking, instanceId scoping — verifiable against
 // an in-memory store + fake model with no live MongoDB and no network.
 //
-// PRIVACY (PLAN §8), enforced HERE and only here:
-//   • indexNode refuses anything that is not a PUBLISHED thought. Topic hubs
-//     (private scaffold) and private/borrowed drafts are never embedded.
-//   • indexReply only runs for replies on a published post.
-//   • retrieve() re-filters to instanceId AND visibility:'published' — so even
-//     a stale row (published → unpublished with a missed removal) can't leak.
-// Private content is therefore never indexed and never retrievable.
+// PRIVACY (PLAN §8, rewritten 2026-08-20). The per-node gate is gone: an idea
+// is the boundary, and everything in one is corpus for that one idea. So the
+// guard that matters here is the ONE that was always doing the real work —
+//   • every row is stamped with its idea's instanceId, and retrieve() is
+//     instanceId-scoped, so one idea's corpus can never answer another's.
+// Who may read an idea at all is decided upstream, before anything reaches
+// this file. The old `visibility` re-filter guarded a distinction that no
+// longer exists and was removed with it; do not reintroduce it as reassurance.
 
 // ── Store: default Mongoose-backed implementation ───────────────────────────
 const mongoStore = {
@@ -68,12 +69,19 @@ function cosine(a, b) {
 
 // ── Indexing ────────────────────────────────────────────────────────────────
 
-// Index (or refresh) a published thought. Returns null (a no-op) for anything
-// that must never enter the corpus: a private/unpublished node, a topic hub,
-// or an empty chunk. This is the primary private-leak guard.
+// Index (or refresh) a thought. Returns null (a no-op) for anything that does
+// not belong in the corpus: a topic hub, an empty chunk, or a BORROWED node —
+// a borrow mirrors someone else's thought, and its text is already indexed at
+// its source, so indexing it too would let one sentence answer twice. Once a
+// borrow is promoted (origin flips to 'own') it carries the owner's own words
+// and joins the corpus like anything else.
+//
+// The per-node visibility gate is gone (2026-08-20): an idea is the boundary,
+// and every row here is scoped to one. Who may read an idea is decided before
+// anything reaches this file.
 async function indexNode({ store = mongoStore, model, node, topicLabel = '' }) {
   if (!model || !model.embedConfigured) return null;
-  if (!node || node.kind !== 'thought' || node.visibility !== 'published') return null;
+  if (!node || node.kind !== 'thought' || node.origin === 'borrowed') return null;
   const text = nodeChunkText(node, topicLabel);
   if (!text) return null;
   const [vector] = await model.embed([text]);
@@ -87,14 +95,13 @@ async function indexNode({ store = mongoStore, model, node, topicLabel = '' }) {
     vector,
     dim: vector ? vector.length : 0,
     model: model.info && model.info.embed ? model.info.embed.modelId : '',
-    visibility: 'published',
   });
 }
 
-// Index (or refresh) a public reply Entry on a published post.
+// Index (or refresh) a public reply Entry on a post.
 async function indexReply({ store = mongoStore, model, entry, post }) {
   if (!model || !model.embedConfigured) return null;
-  if (!entry || !post || post.visibility !== 'published') return null;
+  if (!entry || !post) return null;
   const text = replyChunkText(entry);
   if (!text) {
     // A reply with no prose (pure stance) carries no retrievable language —
@@ -113,16 +120,15 @@ async function indexReply({ store = mongoStore, model, entry, post }) {
     vector,
     dim: vector ? vector.length : 0,
     model: model.info && model.info.embed ? model.info.embed.modelId : '',
-    visibility: 'published',
   });
 }
 
 // Refresh a node's corpus presence to match its current state: index it if it
-// is a published thought, otherwise remove any row (covers unpublish and edits
-// that hide it). Idempotent.
+// is an own thought, otherwise remove any row (covers a hub, and a node that
+// is still a borrow). Idempotent.
 async function refreshNode({ store = mongoStore, model, node, topicLabel = '' }) {
   if (!node) return;
-  if (node.kind === 'thought' && node.visibility === 'published') {
+  if (node.kind === 'thought' && node.origin !== 'borrowed') {
     await indexNode({ store, model, node, topicLabel });
   } else {
     await store.remove({ instanceId: node.instanceId, kind: 'node', refId: node.id });
@@ -134,9 +140,8 @@ async function removeNode({ store = mongoStore, instanceId, nodeId }) {
 }
 
 // ── Retrieval ───────────────────────────────────────────────────────────────
-// Top-k cosine over the community's published corpus, instanceId-scoped. Never
-// returns private content: the store only holds published rows, and we filter
-// on visibility again defensively. Returns hits enriched for citation assembly.
+// Top-k cosine over one idea's corpus, instanceId-scoped. That scoping is the
+// whole guard — see the header. Returns hits enriched for citation assembly.
 async function retrieve({ store = mongoStore, model, instanceId, queryText, k = 6 }) {
   if (!model || !model.embedConfigured) throw new Error('LLM not configured');
   if (!instanceId) throw new Error('instanceId is required');
@@ -144,7 +149,7 @@ async function retrieve({ store = mongoStore, model, instanceId, queryText, k = 
   if (!q) return [];
 
   const rows = (await store.list(instanceId)).filter(
-    r => r.instanceId === instanceId && r.visibility === 'published' && Array.isArray(r.vector) && r.vector.length,
+    r => r.instanceId === instanceId && Array.isArray(r.vector) && r.vector.length,
   );
   if (rows.length === 0) return [];
 

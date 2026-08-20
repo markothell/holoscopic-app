@@ -9,7 +9,7 @@ import AxisPicker from './AxisPicker';
 import ProvenanceBreadcrumb from '@/components/graph/ProvenanceBreadcrumb';
 
 // The action sheet for an existing node: edit its content, set its axes
-// (thought only), publish/unpublish, add a child, or arm marry mode on it.
+// (thought only), delete it, add a child, or arm marry mode on it.
 // Topics and thoughts share this shell but show kind-appropriate fields.
 // Reached directly for topic hubs (they have no post view) and, for
 // thoughts, only as the "Edit" secondary action inside PostOverlay
@@ -23,7 +23,7 @@ export default function NodeSheet({
   onEdit,
   onSetAxes,
   onCoinFrame,
-  onPublishToggle,
+  onDelete,
   onAddChild,
   onStartMarry,
   onStartMove,
@@ -39,7 +39,7 @@ export default function NodeSheet({
   onEdit: (content: Partial<NodeContent>) => void;
   onSetAxes: (ids: string[]) => void;
   onCoinFrame: (poleA: string, poleB: string) => Promise<string> | string;
-  onPublishToggle: () => void;
+  onDelete: () => void;
   onAddChild: () => void;
   onStartMarry: () => void;
   /** D19: arm move mode — the map's next tap picks the new parent. */
@@ -51,12 +51,14 @@ export default function NodeSheet({
   const [topic, setTopic] = useState('');
   const [thought, setThought] = useState('');
   const [context, setContext] = useState('');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     if (!node) return;
     setTopic(node.content.topic);
     setThought(node.content.thought);
     setContext(node.content.context);
+    setConfirmingDelete(false);
   }, [node]);
 
   if (!node) return null;
@@ -132,9 +134,6 @@ export default function NodeSheet({
         )}
 
         <div className="mt-5 flex flex-col gap-2">
-          <Button variant={node.visibility === 'published' ? 'ghost' : 'live'} onClick={onPublishToggle}>
-            {node.visibility === 'published' ? 'Unpublish' : 'Publish'}
-          </Button>
           <div className="flex gap-2">
             {/* One gesture, either kind: the create sheet asks for a
                 subtopic hub or a thought (PLAN §2 — unlimited depth). */}
@@ -170,6 +169,23 @@ export default function NodeSheet({
             ) : (
               <Button variant="ghost" onClick={onStartMove}>Move — file it elsewhere</Button>
             )
+          )}
+
+          {/* Delete leaves any children on the map as their own root — the
+              move gesture above re-files them. So this asks once and then
+              gets out of the way; nothing it removes was anyone else's. */}
+          {!node.isHome && (
+            <button
+              type="button"
+              onClick={() => { if (confirmingDelete) onDelete(); else setConfirmingDelete(true); }}
+              onBlur={() => setConfirmingDelete(false)}
+              className="mt-1 self-start text-xs underline underline-offset-4"
+              style={{ color: confirmingDelete ? 'var(--live)' : 'var(--mist-faint)' }}
+            >
+              {confirmingDelete
+                ? 'Tap again to delete — anything below it stays on your map'
+                : 'Delete'}
+            </button>
           )}
         </div>
       </div>

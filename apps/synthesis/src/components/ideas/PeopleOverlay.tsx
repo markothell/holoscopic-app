@@ -81,7 +81,7 @@ function CollaboratorMap({
       <header>
         <p className="display text-2xl" style={{ color: 'var(--own)' }}>{collaborator.handle}</p>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-          <Stat n={collaborator.publishedCount} one="thought" many="thoughts" />
+          <Stat n={collaborator.thoughtCount} one="thought" many="thoughts" />
           <span className="eyebrow !text-[0.6rem]" style={{ color: 'var(--line-strong)' }}>·</span>
           <Stat n={collaborator.replyCount} one="reply" many="replies" />
         </div>
@@ -220,7 +220,7 @@ export default function PeopleOverlay({
                 )}
               </span>
               <span className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                <Stat n={p.publishedCount} one="thought" many="thoughts" />
+                <Stat n={p.thoughtCount} one="thought" many="thoughts" />
                 <span className="eyebrow !text-[0.6rem]" style={{ color: 'var(--line-strong)' }}>·</span>
                 <Stat n={p.replyCount} one="reply" many="replies" />
               </span>

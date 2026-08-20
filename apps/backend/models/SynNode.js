@@ -96,22 +96,22 @@ const synthesisNodeSchema = new mongoose.Schema({
   sourceEntryId:     { type: String, default: null }, // the reply Entry this node was born from
   sourceOwnerHandle: { type: String, default: null }, // denormalized "from elsewhere"
 
-  // ---- Visibility (private-first; the one privacy contract) ----
-  visibility:  { type: String, enum: ['private', 'published'], default: 'private', index: true },
-  publishedAt: { type: Date, default: null },
+  // There is NO per-node visibility field (removed 2026-08-20). The one
+  // boundary is the IDEA: everyone who can read an idea reads everything in
+  // it, and a node is a post from the moment it exists. Rows written before
+  // that keep `visibility` / `publishedAt` subdocument fields in MongoDB,
+  // undeclared here and read by nothing — the same treatment `audio` got.
   promotedAt:  { type: Date, default: null }, // when origin went borrowed -> own (M2)
 }, {
   timestamps: true,
   id: false,
 });
 
-// My map (owner scan) and the feed / LLM corpus (published scan).
+// My map (owner scan).
 synthesisNodeSchema.index({ instanceId: 1, ownerId: 1 });
-synthesisNodeSchema.index({ instanceId: 1, visibility: 1 });
-// utils/synNodes.js:97 and utils/synUnion.js:153 — the published feed, and the
-// corpus read on every synthesis generation. Sorted by publishedAt, which the
-// index above does not cover.
-synthesisNodeSchema.index({ instanceId: 1, visibility: 1, publishedAt: -1 });
+// The idea's feed and the corpus read on every synthesis generation — every
+// thought in one idea, newest first (utils/synNodes.js#findThoughts).
+synthesisNodeSchema.index({ instanceId: 1, kind: 1, createdAt: -1 });
 // Thoughts attached to a topic hub — the "topic is a hub" relationship.
 synthesisNodeSchema.index({ instanceId: 1, topicId: 1 });
 // DAG edge walks (cycle guard, children-of) — multikey over parent ids.

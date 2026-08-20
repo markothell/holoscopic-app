@@ -17,7 +17,7 @@ const { getSynthesisModel } = require('../llm/chatModel');
 // Synthesis — M0 REST surface: community/membership plumbing (create/join a
 // community, the ≤50-member gate, pseudonymous handles) plus a member's own
 // private DAG (create root/child, marry, reparent, edit content, set axes,
-// publish/unpublish). Thin wrappers over utils/synNodes.js and
+// delete). Thin wrappers over utils/synNodes.js and
 // utils/synIdeas.js, the single write funnels — this file adds no
 // funnel logic beyond request shaping, ownership checks, and error-status
 // mapping. Mounted behind resolveInstance + enforceVerifiedUser in
@@ -36,10 +36,10 @@ const { getSynthesisModel } = require('../llm/chatModel');
 //
 // M1 (built here): the networking loop — respond/borrow (the two-record
 // write, D2), the public reply thread on a post, free reply upvotes (D9), and
-// the community feed of published thoughts (D10), plus the sockets/synthesis.js
+// the idea's feed of thoughts (D10), plus the sockets/synthesis.js
 // broadcast room. Private-first stays the privacy contract: owner-scoped
 // mutation paths remain owner-scoped, and the only cross-member READ paths
-// (/feed, /nodes/:id/post) return published nodes exclusively.
+// (/feed, /nodes/:id/post) are scoped to the idea and gated by membership.
 //
 // M2 (built here): promote (borrowed -> own) is wired into the EXISTING
 // content-edit path — PATCH /nodes/:id with a `content` body is the single
@@ -128,10 +128,10 @@ const NOT_FOUND_ERRORS = new Set(['Node not found', 'Spectrum not found', 'Idea 
 // 409: the caller is out of slots (D14), or is acting on a settled statement.
 const CONFLICT_ERRORS = new Set(['This idea is full', 'That handle is taken on this idea']);
 const CONFLICT_PATTERNS = [/holding all \d+ of your statement slots/, /statement was withdrawn/];
-// M1 private-first guards: the target isn't a published post (§8).
+// M1 shape guard: you can respond to a thought, not to a hub.
 const FORBIDDEN_ERRORS = new Set([
-  'You can only respond to a published thought',
-  'Only a published thought can be responded to',
+  'Only a thought can be responded to',
+  "The idea's own hub stays put",
 ]);
 
 function fail(res, error) {
@@ -345,17 +345,16 @@ router.get('/ideas/:code/collaborators', async (req, res) => {
     if (!mine) return res.status(403).json({ error: 'Join this idea to see who is working on it' });
 
     const roster = await ideaFunnel.listCollaborators({ instanceId: instance.id });
-    // Contribution counts per collaborator. Published-only for thoughts — an
-    // unpublished draft is private (the one privacy contract) and must not be
-    // counted where others can see it.
+    // Contribution counts per collaborator. Every thought counts — there is no
+    // draft state to exclude.
     const collaborators = await Promise.all(roster.map(async m => {
-      const [published, replies] = await Promise.all([
+      const [thoughts, replies] = await Promise.all([
         SynNode.countDocuments({
-          instanceId: instance.id, ownerId: m.userId, kind: 'thought', visibility: 'published',
+          instanceId: instance.id, ownerId: m.userId, kind: 'thought',
         }),
         Entry.countDocuments({ instanceId: instance.id, userId: m.userId }),
       ]);
-      return { ...m, publishedCount: published, replyCount: replies };
+      return { ...m, thoughtCount: thoughts, replyCount: replies };
     }));
     res.json({ collaborators });
   } catch (error) {
@@ -385,42 +384,17 @@ router.get('/ideas/:code/collaborators/:handle/map', async (req, res) => {
     });
     if (!theirs) return res.status(404).json({ error: 'No such collaborator' });
 
-    const nodes = await SynNode.find({
-      instanceId: instance.id,
-      ownerId: theirs.userId,
-      visibility: 'published',
-    }).sort({ publishedAt: -1 });
-
-    // D18: the map view needs the SKELETON the published thoughts hang on —
-    // the topic hubs they reference — or every thought renders as a rootless
-    // scatter. Hubs are private scaffold (never published), so this is a
-    // deliberate, narrow widening of exactly what the list view always
-    // intended to show ("grouped the way their own map groups it"): the hub
-    // LABELS reachable from a published thought's ancestry, nothing else. A
-    // hub with no published descendant stays invisible, and draft THOUGHTS
-    // are untouched by this — the one privacy contract still holds for
-    // content.
-    const byIdAll = new Map();
-    (await SynNode.find({ instanceId: instance.id, ownerId: theirs.userId }))
-      .forEach(n => byIdAll.set(n.id, n));
-    const skeleton = new Map();
-    for (const t of nodes) {
-      let walk = t.parentIds.slice();
-      const guard = new Set();
-      while (walk.length) {
-        const id = walk.pop();
-        if (guard.has(id)) continue;
-        guard.add(id);
-        const p = byIdAll.get(id);
-        if (!p) continue;
-        if (p.kind === 'topic' && p.visibility !== 'published') skeleton.set(p.id, p);
-        walk.push(...p.parentIds);
-      }
-    }
+    // Their whole map. The elaborate hub-skeleton reconstruction that used to
+    // live here existed only to rebuild structure around published thoughts
+    // while hubs stayed private; with no per-node gate the map is simply all
+    // of their nodes, and it hangs together on its own.
+    const nodes = await SynNode
+      .find({ instanceId: instance.id, ownerId: theirs.userId })
+      .sort({ createdAt: -1 });
 
     res.json({
       collaborator: ideaFunnel.toClientMembership(theirs),
-      nodes: [...nodes, ...skeleton.values()].map(nodeFunnel.toClient),
+      nodes: nodes.map(nodeFunnel.toClient),
     });
   } catch (error) {
     fail(res, error);
@@ -573,36 +547,28 @@ router.patch('/nodes/:id/parent', async (req, res) => {
   }
 });
 
-router.post('/nodes/:id/publish', async (req, res) => {
+// Delete one of my own nodes. Children are ORPHANED, not cascaded — they stay
+// on the map as their own root and the move gesture re-files them (see
+// utils/synNodes.js#deleteNode). The idea's home hub refuses.
+router.delete('/nodes/:id', async (req, res) => {
   try {
     const node = await loadOwnedNode(req, res);
     if (!node) return;
-    const updated = await nodeFunnel.publish({ nodeId: node.id });
-    res.json({ node: nodeFunnel.toClient(updated) });
+    await nodeFunnel.deleteNode({ nodeId: node.id });
+    res.json({ deleted: node.id });
   } catch (error) {
     fail(res, error);
   }
 });
 
-router.post('/nodes/:id/unpublish', async (req, res) => {
-  try {
-    const node = await loadOwnedNode(req, res);
-    if (!node) return;
-    const updated = await nodeFunnel.unpublish({ nodeId: node.id });
-    res.json({ node: nodeFunnel.toClient(updated) });
-  } catch (error) {
-    fail(res, error);
-  }
-});
-
-// ── M1: publish → borrow → the networking loop ─────────────────────────
-// Attribution is always by handle; replies are public (toClient, never
-// toRedacted — D3/D6). Broadcasts (node_published on publish above,
+// ── M1: read → borrow → the networking loop ────────────────────────────
+// Attribution is always named; replies are public (toClient, never
+// toRedacted — D3/D6). Broadcasts (node_created on create,
 // reply_upserted here) are emitted from the funnel, not these routes.
 
-// The community feed: published thoughts across the community, recency-first,
+// The idea's feed: every thought in it, recency-first,
 // carrying topic + author fields for the frontend's switchable lenses (D10).
-// Never leaks private nodes — the funnel query is visibility:'published' only.
+// Idea-scoped; the caller has already been checked for membership.
 router.get('/feed', async (req, res) => {
   try {
     const membership = await requireMember(req, res);
@@ -614,17 +580,15 @@ router.get('/feed', async (req, res) => {
   }
 });
 
-// A published post + its public reply thread (the comment section / reply map,
-// D6). Read-only, member-visible; a private draft is not a post to anyone but
-// its owner, so this 404s unless published. Replies are attributed by handle.
+// A post + its public reply thread (the comment section / reply map,
+// D6). Read-only and member-visible: every node in an idea is a post to
+// everyone who can read the idea.
 router.get('/nodes/:id/post', async (req, res) => {
   try {
     const membership = await requireMember(req, res);
     if (!membership) return;
     const node = await SynNode.findOne({ id: req.params.id, instanceId: req.instanceId });
-    if (!node || node.visibility !== 'published') {
-      return res.status(404).json({ error: 'Node not found' });
-    }
+    if (!node) return res.status(404).json({ error: 'Node not found' });
     const replies = await entryUtils.listByActivity(node.id);
     res.json({
       post: nodeFunnel.toClient(node),
@@ -635,7 +599,7 @@ router.get('/nodes/:id/post', async (req, res) => {
   }
 });
 
-// Respond to a published thought — the two-record write (D2): a public reply
+// Respond to a thought — the two-record write (D2): a public reply
 // Entry on the post AND a borrowed node on my own map (structure-mirrored, D8).
 // Re-responding upserts both (no duplicate reply, no duplicate borrow).
 router.post('/nodes/:id/respond', async (req, res) => {
@@ -680,11 +644,11 @@ router.post('/nodes/:id/replies/:entryId/upvote', async (req, res) => {
 // ── S1: the union — "The Group" ──────────────────────────
 // Replaces the M3 "Ask the Group" Q&A (question box, per-user SynThread)
 // with a single cached, WHOLE-COMMUNITY artifact: two depths (brief/full),
-// each drawn from the entire published corpus + per-post positional
+// each drawn from the idea's entire corpus + per-post positional
 // summaries (utils/synUnion.js), generated only on the
 // Synthesize/Expand button and reused across every viewer until the corpus
 // changes. Private nodes are never indexed or summarized (selectCorpus /
-// computePositional are published-only). If the LLM isn't configured the
+// computePositional are idea-scoped). If the LLM isn't configured the
 // generate endpoint fails cleanly with 503 — it never crashes the server or
 // blocks route loading.
 //
@@ -701,7 +665,7 @@ router.post('/nodes/:id/replies/:entryId/upvote', async (req, res) => {
 //   Citations are assembled from the selection set (never parsed from model
 //   output) and sent BEFORE the text so chips can render immediately. When
 //   the corpus is empty, `meta.citations` is [] and the single token is the
-//   canned "nothing published yet" text (the model is not called).
+//   canned "nothing here yet" text (the model is not called).
 
 router.get('/synthesis', async (req, res) => {
   try {

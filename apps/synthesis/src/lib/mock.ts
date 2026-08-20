@@ -73,8 +73,6 @@ function node(partial: Partial<SynNode> & Pick<SynNode, 'id' | 'kind' | 'content
     sourceNodeId: null,
     sourceEntryId: null,
     sourceOwnerHandle: null,
-    visibility: 'private',
-    publishedAt: null,
     promotedAt: null,
     createdAt: now(),
     updatedAt: now(),
@@ -112,8 +110,6 @@ export const MOCK_NODES: SynNode[] = [
     edgeKind: 'child',
     topicId: 'n_hub_craft',
     axisFrameIds: ['fr_depth'],
-    visibility: 'published',
-    publishedAt: now(),
   }),
   node({
     id: 'n_tools',
@@ -127,7 +123,6 @@ export const MOCK_NODES: SynNode[] = [
     edgeKind: 'child',
     topicId: 'n_hub_craft',
     axisFrameIds: ['fr_depth', 'fr_scope'],
-    visibility: 'private',
   }),
   node({
     id: 'n_borrowed_ritual',
@@ -145,7 +140,6 @@ export const MOCK_NODES: SynNode[] = [
     sourceEntryId: 'entry_remote_1',
     sourceOwnerHandle: 'briar',
     axisFrameIds: ['fr_scope'],
-    visibility: 'private',
   }),
 ];
 
@@ -164,8 +158,6 @@ export const MOCK_POST: SynNode = node({
   parentIds: [],
   edgeKind: 'root',
   axisFrameIds: ['fr_depth', 'fr_scope'],
-  visibility: 'published',
-  publishedAt: now(),
 });
 
 export const MOCK_REPLIES: SynthesisReply[] = [
@@ -195,17 +187,16 @@ export const MOCK_FEED: SynNode[] = [
   node({
     id: 'n_feed_2', kind: 'thought', ownerId: 'member-oat', ownerHandle: 'oat',
     content: { topic: '', thought: 'Consensus is what\'s left after everyone stops arguing, not what\'s true.', context: '' },
-    topicId: null, axisFrameIds: ['fr_scope'], visibility: 'published', publishedAt: now(), topicLabel: '',
+    topicId: null, axisFrameIds: ['fr_scope'], topicLabel: '',
   }),
   node({
     id: 'n_feed_3', kind: 'thought', ownerId: 'member-wren', ownerHandle: 'wren',
     content: { topic: '', thought: 'The best critique arrives as a question, not a verdict.', context: '' },
-    topicId: null, axisFrameIds: ['fr_depth'], visibility: 'published', publishedAt: now(), topicLabel: '',
+    topicId: null, axisFrameIds: ['fr_depth'], topicLabel: '',
   }),
   node({
     id: 'n_slow', kind: 'thought', ownerId: MOCK_USER_ID, ownerHandle: MOCK_USER_HANDLE,
-    content: MOCK_NODES.find(n => n.id === 'n_slow')!.content, topicId: 'n_hub_craft', axisFrameIds: ['fr_depth'],
-    visibility: 'published', publishedAt: now(), topicLabel: 'Craft',
+    content: MOCK_NODES.find(n => n.id === 'n_slow')!.content, topicId: 'n_hub_craft', axisFrameIds: ['fr_depth'], topicLabel: 'Craft',
   }),
 ];
 

@@ -14,10 +14,10 @@ function memIndexStore(rows) {
 }
 
 // In-memory positional store (utils/synUnion.js's positionalMongoStore
-// shape): published thoughts + their positioned replies + frames.
+// shape): the idea's thoughts + their positioned replies + frames.
 function memPositionalStore({ posts = [], repliesByPost = {}, frames = [] }) {
   return {
-    async findPublishedThoughts(instanceId) {
+    async findThoughts(instanceId) {
       return posts.filter(p => p.instanceId === instanceId);
     },
     async findPositionedReplies(nodeId) {
@@ -64,15 +64,15 @@ function reply(x, y) {
 
 // ── selectCorpus ─────────────────────────────────────────────────────────
 
-test('selectCorpus: returns only published, instance-scoped rows', async () => {
+test('selectCorpus: every row of THIS idea, and nothing from another', async () => {
   const store = memIndexStore([
-    { instanceId: COMM, kind: 'node', refId: 'n1', nodeId: 'n1', ownerHandle: 'Ada', text: 'published thought', visibility: 'published' },
-    { instanceId: COMM, kind: 'node', refId: 'n2', nodeId: 'n2', ownerHandle: 'Bo', text: 'stale unpublished row', visibility: 'private' },
-    { instanceId: 'other-comm', kind: 'node', refId: 'n3', nodeId: 'n3', ownerHandle: 'Cy', text: 'other community', visibility: 'published' },
+    { instanceId: COMM, kind: 'node', refId: 'n1', nodeId: 'n1', ownerHandle: 'Ada', text: 'a thought' },
+    { instanceId: COMM, kind: 'node', refId: 'n2', nodeId: 'n2', ownerHandle: 'Bo', text: 'another thought, written a moment ago' },
+    { instanceId: 'other-comm', kind: 'node', refId: 'n3', nodeId: 'n3', ownerHandle: 'Cy', text: 'a different idea entirely' },
   ]);
   const hits = await synthesis.selectCorpus({ store, instanceId: COMM });
-  assert.equal(hits.length, 1);
-  assert.equal(hits[0].refId, 'n1');
+  assert.equal(hits.length, 2, 'the whole idea is the corpus — there is no draft state to exclude');
+  assert.deepEqual(hits.map(h => h.refId).sort(), ['n1', 'n2']);
 });
 
 test('selectCorpus: empty corpus returns []', async () => {
@@ -199,7 +199,7 @@ test('prepareSynthesis: EMPTY GUARD — nothing published, no model call needed 
 
 test('prepareSynthesis: combines text chunks and positional summaries into one CONTEXT, cites both', async () => {
   const textStore = memIndexStore([
-    { instanceId: COMM, kind: 'node', refId: 'n1', nodeId: 'n1', ownerHandle: 'Ada', text: 'Quorum should scale with membership.', visibility: 'published' },
+    { instanceId: COMM, kind: 'node', refId: 'n1', nodeId: 'n1', ownerHandle: 'Ada', text: 'Quorum should scale with membership.' },
   ]);
   const f = [frame('fx', 'considered', 'instinctive')];
   const posStore = memPositionalStore({

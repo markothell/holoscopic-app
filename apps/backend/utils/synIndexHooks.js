@@ -23,11 +23,10 @@ async function resolveTopicLabel(node) {
 }
 
 module.exports = {
-  // A node was published, unpublished, edited, or promoted — reconcile its
-  // corpus presence (refreshNode indexes published thoughts, removes anything
-  // else, so private content is never indexed) and mark the synthesis cache
-  // stale (a positional summary can also change on edit/promote, even when
-  // the embedding index doesn't need to move).
+  // A node was created, edited, or promoted — reconcile its corpus presence
+  // (refreshNode indexes own thoughts and removes anything else) and mark the
+  // synthesis cache stale (a positional summary can also change on edit or
+  // promote, even when the embedding index doesn't need to move).
   async onNodeChanged(node) {
     const model = getChatModel();
     if (model.embedConfigured) {
@@ -37,7 +36,13 @@ module.exports = {
     await synthesis.markStale(node.instanceId);
   },
 
-  // A public reply landed on a published post — embed its context prose and
+  // A node was deleted — drop its corpus row and mark the cache stale.
+  async onNodeRemoved(node) {
+    await index.removeNode({ instanceId: node.instanceId, nodeId: node.id });
+    await synthesis.markStale(node.instanceId);
+  },
+
+  // A public reply landed on a post — embed its context prose and
   // mark the synthesis cache stale (a new reply changes both the text corpus
   // and the post's positional summary).
   async onReply(entry, post) {

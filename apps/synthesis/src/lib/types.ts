@@ -4,7 +4,6 @@
 export type NodeKind = 'topic' | 'thought';
 export type EdgeKind = 'root' | 'child' | 'marriage';
 export type Origin = 'own' | 'borrowed';
-export type Visibility = 'private' | 'published';
 
 // A thought is text, and only text (D20, reversed 2026-08-17): the claim, and
 // the prose behind it.
@@ -29,8 +28,6 @@ export interface SynNode {
   sourceNodeId: string | null;
   sourceEntryId: string | null;
   sourceOwnerHandle: string | null;
-  visibility: Visibility;
-  publishedAt: string | null;
   promotedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -94,7 +91,7 @@ export interface MyIdea extends Idea {
 
 // A roster row on the social page — who is working on this idea.
 export interface Collaborator extends Membership {
-  publishedCount: number; // published thoughts (drafts stay private)
+  thoughtCount: number; // every thought they have written in this idea
   replyCount: number;
 }
 

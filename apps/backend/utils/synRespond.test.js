@@ -5,7 +5,7 @@ const funnel = require('./synNodes');
 
 // In-memory node store — the same data-access surface the funnel uses, plus
 // the M1 networking reads (findOwnerTopicHubs / findBorrowedNode /
-// findPublishedThoughts). Exercises the REAL respond()/feed()/upvoteReply()
+// findThoughts). Exercises the REAL respond()/feed()/upvoteReply()
 // against no live MongoDB.
 function memStore() {
   const nodes = new Map();
@@ -30,10 +30,11 @@ function memStore() {
       return [...nodes.values()].find(n =>
         n.instanceId === instanceId && n.ownerId === ownerId && n.sourceNodeId === sourceNodeId) || null;
     },
-    async findPublishedThoughts(instanceId) {
+    async removeNode(id) { nodes.delete(id); },
+    async findThoughts(instanceId) {
       return [...nodes.values()]
-        .filter(n => n.instanceId === instanceId && n.kind === 'thought' && n.visibility === 'published')
-        .sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+        .filter(n => n.instanceId === instanceId && n.kind === 'thought')
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     },
   };
 }
@@ -83,14 +84,14 @@ const COMM = 'comm1';
 const alice = { ownerId: 'alice', ownerHandle: 'Alice' };
 const bob = { ownerId: 'bob', ownerHandle: 'Bob' };
 
-// Alice: a "Governance" topic hub with one published thought under it.
+// Alice: a "Governance" topic hub with one thought under it. A node IS a post
+// the moment it exists — there is no publish step any more.
 async function publishedPost(store, { topic = 'Governance', thought = 'Quorum should scale.', context = 'Because ...', axisFrameIds = ['fA', 'fB'] } = {}) {
   const hub = await funnel.createRoot({ store, instanceId: COMM, ...alice, kind: 'topic', content: { topic } });
   const post = await funnel.createChild({
     store, instanceId: COMM, ...alice, kind: 'thought',
     content: { thought, context }, axisFrameIds, parentId: hub.id,
   });
-  await funnel.publish({ store, nodeId: post.id });
   return { hub, post: await store.getNode(post.id) };
 }
 
@@ -122,7 +123,6 @@ test('respond: two records — a public reply Entry AND a structure-mirrored bor
   assert.equal(borrowed.sourceOwnerHandle, 'Alice');
   assert.equal(borrowed.content.thought, 'Quorum should scale.', 'title mirrors the source thought');
   assert.deepEqual(borrowed.axisFrameIds, ['fA', 'fB'], 'mirrors the source axes');
-  assert.equal(borrowed.visibility, 'private', 'a borrowed node starts private on my map');
 
   // Structure-mirroring (D8): filed under a Bob-owned "Governance" hub.
   const bobHubs = await store.findOwnerTopicHubs(COMM, 'bob');
@@ -156,7 +156,6 @@ test('respond: a source thought with NO topic hub borrows as a root', async () =
   const store = memStore();
   const entries = memEntries();
   const post = await funnel.createRoot({ store, instanceId: COMM, ...alice, kind: 'thought', content: { thought: 'Rootless claim' } });
-  await funnel.publish({ store, nodeId: post.id });
 
   const { borrowed } = await funnel.respond({
     store, entries, instanceId: COMM,
@@ -218,32 +217,33 @@ test('re-respond after promotion: the reply upserts but a PROMOTED node keeps it
   assert.equal(after.content.thought, 'My own reworked claim', 'promoted content is not clobbered');
 });
 
-test('respond: PUBLISHED-ONLY guard — cannot respond to a private draft (private-first, §8)', async () => {
+// The inverse of the guard this replaced. There is no draft state: a thought
+// is answerable to everyone in the idea from the moment it is written, and
+// that is the whole point of removing the per-node gate (2026-08-20).
+test('respond: a brand-new thought is answerable immediately — no publish step', async () => {
   const store = memStore();
   const entries = memEntries();
   const hub = await funnel.createRoot({ store, instanceId: COMM, ...alice, kind: 'topic', content: { topic: 'Governance' } });
-  const draft = await funnel.createChild({ store, instanceId: COMM, ...alice, kind: 'thought', content: { thought: 'draft' }, parentId: hub.id });
+  const fresh = await funnel.createChild({ store, instanceId: COMM, ...alice, kind: 'thought', content: { thought: 'just written' }, parentId: hub.id });
 
-  await assert.rejects(
-    () => funnel.respond({ store, entries, instanceId: COMM, responderId: bob.ownerId, responderHandle: bob.ownerHandle,
-      sourceNodeId: draft.id, position: { x: 0.5, y: 0.5 } }),
-    /published thought/,
-  );
-  // No leak: nothing was written on either map.
-  assert.equal((await entries.listByActivity(draft.id)).length, 0, 'no reply written');
-  assert.equal((await store.findOwnerTopicHubs(COMM, 'bob')).length, 0, 'no borrowed structure written');
+  const { reply, borrowed } = await funnel.respond({
+    store, entries, instanceId: COMM, responderId: bob.ownerId, responderHandle: bob.ownerHandle,
+    sourceNodeId: fresh.id, position: { x: 0.5, y: 0.5 },
+  });
+  assert.ok(reply, 'the reply Entry was written');
+  assert.equal(borrowed.sourceNodeId, fresh.id, 'and the borrow links back to it');
+  assert.equal((await entries.listByActivity(fresh.id)).length, 1);
 });
 
 test('respond: a topic hub is not a reply target; an unknown / cross-community source is not found', async () => {
   const store = memStore();
   const entries = memEntries();
   const hub = await funnel.createRoot({ store, instanceId: COMM, ...alice, kind: 'topic', content: { topic: 'Governance' } });
-  await funnel.publish({ store, nodeId: hub.id }); // even a published hub isn't a post
-
+  // A hub is structure, never a reply target — the one shape rule that stayed.
   await assert.rejects(
     () => funnel.respond({ store, entries, instanceId: COMM, responderId: bob.ownerId, responderHandle: bob.ownerHandle,
       sourceNodeId: hub.id, position: { x: 0.5, y: 0.5 } }),
-    /Only a published thought/,
+    /Only a thought can be responded to/,
   );
   await assert.rejects(
     () => funnel.respond({ store, entries, instanceId: COMM, responderId: bob.ownerId, responderHandle: bob.ownerHandle,
@@ -308,16 +308,19 @@ test('upvoteReply: toggles a free upvote; self-upvote blocked', async () => {
   );
 });
 
-test('feed: returns published thoughts only, with topic + author fields; never private nodes', async () => {
+test('feed: every thought in the idea, with topic + author fields; hubs are not posts', async () => {
   const store = memStore();
-  const { post, hub } = await publishedPost(store, { topic: 'Governance', thought: 'Published one' });
-  // A private draft and a published TOPIC hub must not appear as feed posts.
-  await funnel.createChild({ store, instanceId: COMM, ...alice, kind: 'thought', content: { thought: 'secret draft' }, parentId: hub.id });
+  const { post, hub } = await publishedPost(store, { topic: 'Governance', thought: 'The first one' });
+  // A second thought — with no gate, it is in the feed as soon as it exists.
+  const second = await funnel.createChild({ store, instanceId: COMM, ...alice, kind: 'thought', content: { thought: 'written a moment later' }, parentId: hub.id });
 
   const items = await funnel.feed({ store, instanceId: COMM });
-  assert.equal(items.length, 1, 'only the one published thought');
-  assert.equal(items[0].id, post.id);
-  assert.equal(items[0].ownerHandle, 'Alice', 'author field for the by-author lens');
-  assert.equal(items[0].topicLabel, 'Governance', 'topic label for the by-topic lens');
-  assert.equal(items[0].visibility, 'published');
+  assert.equal(items.length, 2, 'both thoughts, no publish step between them');
+  const ids = items.map(i => i.id);
+  assert.ok(ids.includes(post.id) && ids.includes(second.id));
+  assert.ok(!ids.includes(hub.id), 'a topic hub is structure, never a feed post');
+  const first = items.find(i => i.id === post.id);
+  assert.equal(first.ownerHandle, 'Alice', 'author field for the by-author lens');
+  assert.equal(first.topicLabel, 'Governance', 'topic label for the by-topic lens');
+  assert.equal(first.visibility, undefined, 'the retired per-node gate is off the wire');
 });

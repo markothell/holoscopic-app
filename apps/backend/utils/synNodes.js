@@ -8,9 +8,9 @@ const entriesUtil = require('./entries');
 // functions — nothing else writes SynNode / SynFrame.
 //
 // M0 scope (private map only): create root, create child, marry (synthesis
-// node with two parents), reparent, publish/unpublish, and frame dedupe. The
+// node with two parents), reparent, delete, and frame dedupe. The
 // CYCLE GUARD and the same-owner parentIds invariant are enforced here and
-// only here. Networking (publish feed, respond/borrow) is M1; promote is M2
+// only here. Networking (the feed, respond/borrow) is M1; promote is M2
 // (wired into editContent, see promoteIfBorrowed below); the LLM is M3+.
 //
 // ── Node model (settled 2026-07-24) ────────────────────────────────────────
@@ -41,8 +41,8 @@ function emitToIdea(instanceId, event, payload) {
 }
 
 // ── LLM embedding-index refresh hooks (M3) ──────────────────────────────────
-// The funnel notifies the index when the PUBLISHED corpus changes — on publish,
-// on a content edit / promote of a published node, and on a public reply. The
+// The funnel notifies the index when the corpus changes — on create, on a
+// content edit / promote, on delete, and on a public reply. The
 // hook module is injected (setIndex, from websocket-server.js) so the funnel
 // stays decoupled and its unit tests run with no LLM wired. Calls are
 // fire-and-forget and fully swallowed: a slow or unconfigured embeddings API
@@ -89,19 +89,23 @@ const mongoStore = {
   async findBorrowedNode({ instanceId, ownerId, sourceNodeId }) {
     return SynNode.findOne({ instanceId, ownerId, sourceNodeId });
   },
-  // The community feed / LLM corpus: published thoughts (the posts), recency
-  // first. Never returns private/unpublished nodes.
-  async findPublishedThoughts(instanceId) {
+  // The idea's feed / LLM corpus: every thought in it, newest first. There is
+  // no per-node gate any more — the document's own boundary is the only one
+  // (see the header), so a thought is corpus from the moment it exists.
+  async removeNode(id) {
+    return SynNode.deleteOne({ id });
+  },
+  async findThoughts(instanceId) {
     return SynNode
-      .find({ instanceId, kind: 'thought', visibility: 'published' })
-      .sort({ publishedAt: -1 });
+      .find({ instanceId, kind: 'thought' })
+      .sort({ createdAt: -1 });
   },
 };
 
 // ── Serializer ──────────────────────────────────────────────────────────────
-// Wire shape for the client. Never redacted — the community is pseudonymous
-// and every node is attributed to its owner's handle (D3). Private nodes are
-// gated by the caller (owner-only read paths), not by this serializer.
+// Wire shape for the client. Never redacted — every node is attributed to its
+// owner's display name, and who may read an idea at all is decided before this
+// serializer ever runs.
 function toClient(node) {
   return {
     id: node.id,
@@ -123,8 +127,6 @@ function toClient(node) {
     sourceNodeId: node.sourceNodeId || null,
     sourceEntryId: node.sourceEntryId || null,
     sourceOwnerHandle: node.sourceOwnerHandle || null,
-    visibility: node.visibility,
-    publishedAt: node.publishedAt || null,
     promotedAt: node.promotedAt || null,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
@@ -259,11 +261,16 @@ async function createNode({
     sourceNodeId,
     sourceEntryId,
     sourceOwnerHandle,
-    visibility: 'private',
-    publishedAt: null,
     promotedAt: null,
   };
-  return store.insertNode(fields);
+  const saved = await store.insertNode(fields);
+  // A node IS the post now. Creating one is what publishing used to be: the
+  // idea's readers see it live, and it joins the corpus. Borrowed nodes are
+  // deliberately left out of the corpus by utils/synIndex.js — their text is
+  // someone else's, already indexed at its source.
+  emitToIdea(instanceId, 'node_created', { node: toClient(saved) });
+  fireIndex('onNodeChanged', saved);
+  return saved;
 }
 
 // A root: a top-level facet of the member's map (no parents).
@@ -389,6 +396,28 @@ function promoteIfBorrowed(node) {
   }
 }
 
+// ── Delete ──────────────────────────────────────────────────────────────────
+// Removing a node ORPHANS its children rather than cascading. That is the
+// deliberate choice: a cascade would silently take a whole branch with a hub
+// somebody only meant to rename away, and the map already draws an orphan as
+// its own root tree (apps/synthesis lib/graph.ts filters parents by presence),
+// so the children stay visible and the existing move gesture re-files them.
+// Nothing is lost and nothing has to be confirmed.
+//
+// The home hub is the map's centre and the one node that cannot go — deleting
+// it would leave every root parentless and the idea without its title node.
+// Ownership is the caller's concern, as everywhere else in this funnel.
+async function deleteNode({ store = mongoStore, nodeId }) {
+  const node = await store.getNode(nodeId);
+  if (!node) throw new Error('Node not found');
+  if (node.isHome) throw new Error('The idea\'s own hub stays put');
+  await store.removeNode(node.id);
+  emitToIdea(node.instanceId, 'node_deleted', { nodeId: node.id });
+  // Drop it from the corpus. A hub was never in it; the hook no-ops.
+  fireIndex('onNodeRemoved', node);
+  return node;
+}
+
 // axisFrameIds only make sense on a thought (a topic hub has none) — this is
 // a full replace (0-2 ids), matching how a picker re-submits the whole set.
 async function setAxes({ store = mongoStore, nodeId, axisFrameIds }) {
@@ -397,35 +426,6 @@ async function setAxes({ store = mongoStore, nodeId, axisFrameIds }) {
   if (node.kind !== 'thought') throw new Error('Only thoughts carry axes');
   node.axisFrameIds = normAxisFrameIds(node.kind, axisFrameIds);
   return store.saveNode(node);
-}
-
-// ── Publish / unpublish (the visibility gate; content, not identity) ─────────
-async function publish({ store = mongoStore, nodeId }) {
-  const node = await store.getNode(nodeId);
-  if (!node) throw new Error('Node not found');
-  if (node.visibility !== 'published') {
-    node.visibility = 'published';
-    node.publishedAt = new Date();
-    await store.saveNode(node);
-    // The post entered the feed — the reader-side of the loop wakes here.
-    emitToIdea(node.instanceId, 'node_published', { node: toClient(node) });
-    // A published thought joins the LLM corpus (M3).
-    fireIndex('onNodeChanged', node);
-  }
-  return node;
-}
-
-async function unpublish({ store = mongoStore, nodeId }) {
-  const node = await store.getNode(nodeId);
-  if (!node) throw new Error('Node not found');
-  if (node.visibility !== 'private') {
-    node.visibility = 'private';
-    node.publishedAt = null;
-    await store.saveNode(node);
-    // Left the feed — drop it from the LLM corpus (M3).
-    fireIndex('onNodeChanged', node);
-  }
-  return node;
 }
 
 // ── Frames — the community's reusable axis vocabulary, deduped per community.
@@ -474,8 +474,8 @@ async function resolveFrame({ store = mongoStore, instanceId, parentInstanceId =
   });
 }
 
-// ── M1: the networking loop — publish → borrow → (promote is M2) ────────────
-// Responding to a published thought is the heart of Synthesis. It is a TWO-RECORD
+// ── M1: the networking loop — read → borrow → (promote is M2) ──────────────
+// Responding to another member's thought is the heart of Synthesis. A TWO-RECORD
 // write (D2), kept in one call so the two halves can't drift apart:
 //   1. a PUBLIC reply Entry on the post (via utils/entries.js — the only entry
 //      writer), and
@@ -483,7 +483,6 @@ async function resolveFrame({ store = mongoStore, instanceId, parentInstanceId =
 //      under the source's topic (D8).
 // The post's own nodes are never touched — an author's blog is read-only to
 // others (§3). Failure modes guarded here, named:
-//   • responding to a PRIVATE/unpublished thought (private-first, §8) → reject.
 //   • responding to a topic hub (only thoughts are posts) → reject.
 //   • a stance outside [0,1] (the coordinate contract) → reject.
 //   • cross-community leak (source in another instance) → treated as not found.
@@ -501,7 +500,7 @@ function normPosition(position) {
   return { x: position.x, y: position.y };
 }
 
-// Duck-typed activity: the published thought IS the activity (OaS pattern, no
+// Duck-typed activity: the thought itself IS the activity (OaS pattern, no
 // Activity doc). maxEntries !== 0 keeps self-upvotes blocked; votesPerUser null
 // = unlimited free upvotes (D9, no economy).
 function replyActivityFor(source) {
@@ -565,7 +564,7 @@ async function borrowNode({ store, source, reply, responderId, responderHandle, 
   });
 }
 
-// Respond to a published thought — the two-record write (D2). Returns both
+// Respond to a thought — the two-record write (D2). Returns both
 // records; `borrowed` is null for a self-response.
 async function respond({
   store = mongoStore, entries = entriesUtil,
@@ -579,8 +578,7 @@ async function respond({
 
   const source = await store.getNode(sourceNodeId);
   if (!source || source.instanceId !== instanceId) throw new Error('Node not found');
-  if (source.visibility !== 'published') throw new Error('You can only respond to a published thought');
-  if (source.kind !== 'thought') throw new Error('Only a published thought can be responded to');
+  if (source.kind !== 'thought') throw new Error('Only a thought can be responded to');
 
   // 1) The public reply Entry — one re-editable reply per member per post via
   // the (activityId,userId,slot,questionId) upsert key.
@@ -609,18 +607,18 @@ async function respond({
 async function upvoteReply({ store = mongoStore, entries = entriesUtil, instanceId, sourceNodeId, entryId, userId }) {
   const source = await store.getNode(sourceNodeId);
   if (!source || source.instanceId !== instanceId) throw new Error('Node not found');
-  if (source.visibility !== 'published') throw new Error('You can only respond to a published thought');
+
   const entry = await entries.voteEntry({ activity: replyActivityFor(source), entryId, userId });
   emitToIdea(instanceId, 'reply_upserted', { postId: source.id, reply: entries.toClient(entry) });
   return entry;
 }
 
-// The community feed (D10): published thoughts across the community, recency
-// first, enriched with each author's topic-hub label so the frontend's
-// switchable lenses (recency / topic / author) have their fields. Never leaks
-// private nodes — the query is visibility:'published' only.
+// The idea's feed (D10): every thought in it, recency first, enriched with
+// each author's topic-hub label so the frontend's switchable lenses (recency /
+// topic / author) have their fields. Scoped to the idea, which is the only
+// boundary there is — the caller has already decided you may read it.
 async function feed({ store = mongoStore, instanceId }) {
-  const posts = await store.findPublishedThoughts(instanceId);
+  const posts = await store.findThoughts(instanceId);
   const hubCache = new Map();
   const items = [];
   for (const p of posts) {
@@ -646,8 +644,7 @@ module.exports = {
   reparent,
   editContent,
   setAxes,
-  publish,
-  unpublish,
+  deleteNode,
   resolveFrame,
   // M1 networking loop
   respond,
