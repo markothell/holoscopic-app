@@ -41,6 +41,28 @@ const MAX_STEPS = 200;
 // the group never finished sorting it (D30).
 const DONE_PHASES = ['revealed', 'skipped'];
 
+// Before the queue (2026-08-20). A seed an activity declares `nominateFirst`
+// for is born 'nominated': shared with the circle and readable, but NOT in the
+// queue and never opened by a free slot. Somebody other than its author
+// supporting it is what accepts it into the queue as 'pending' — nominated
+// first, accepted second. Only then does the ordinary machine see it.
+//
+// Threshold and gather do not declare the flag, so their seeds are born
+// 'pending' exactly as before and nothing about them changes.
+const PRE_QUEUE_PHASES = ['nominated'];
+
+function isPreQueue(seed) {
+  return PRE_QUEUE_PHASES.includes(seed.phase);
+}
+
+// A seed that has not started its cycle: waiting in the queue, or not yet
+// accepted into it. Everywhere the machine used to ask `phase === 'pending'`
+// to mean "hasn't run", it has to ask this instead, or a nominated seed reads
+// as a LIVE cycle and occupies a maxLive slot without ever having opened.
+function notStarted(seed) {
+  return seed.phase === 'pending' || isPreQueue(seed);
+}
+
 function generateId() {
   return crypto.randomUUID().substring(0, 8);
 }
@@ -87,14 +109,14 @@ function maxLive(circle) {
 // once its cycle opened and until it reveals. liveSeedId mirrors the first of
 // these for single-live readers.
 function liveSeeds(circle) {
-  return circle.seeds.filter(s => s.phase !== 'pending' && !DONE_PHASES.includes(s.phase));
+  return circle.seeds.filter(s => !notStarted(s) && !DONE_PHASES.includes(s.phase));
 }
 
 function activeSeed(circle) {
   if (circle.phase !== 'cycle') return null;
   if (circle.liveSeedId) {
     const s = circle.seeds.find(x => x.id === circle.liveSeedId);
-    if (s && s.phase !== 'pending' && !DONE_PHASES.includes(s.phase)) return s;
+    if (s && !notStarted(s) && !DONE_PHASES.includes(s.phase)) return s;
   }
   return liveSeeds(circle)[0] || null;
 }
@@ -313,7 +335,7 @@ async function addSeed({ store = mongoStore, circleId, userId, payload, seedId =
   if (seedId) {
     const mine = seedById(circle, seedId);
     if (mine.authorId !== userId) throw new Error('Only the author can change this topic');
-    if (mine.phase !== 'pending') throw new Error('This topic has already been run');
+    if (!notStarted(mine)) throw new Error('This topic has already been run');
     // An edit keeps the seed's activity — its own module re-validates.
     mine.payload = await modFor(circle, mine).normalizeSeed(payload, { circle, userId });
   } else {
@@ -332,7 +354,10 @@ async function addSeed({ store = mongoStore, circleId, userId, payload, seedId =
       order: circle.seeds.length,
       activity: key,
       payload: normalized,
-      phase: 'pending',
+      // 'nominated' for an activity that asks to be accepted before it queues
+      // (see PRE_QUEUE_PHASES). Everything else is born in the queue, as it
+      // always was.
+      phase: mod.nominateFirst ? 'nominated' : 'pending',
       // Posting a topic is supporting it. Otherwise the first thing every
       // author does is support their own, and the count means the same thing
       // with an extra step in front of it.
@@ -386,15 +411,25 @@ async function supportSeed({ store = mongoStore, circleId, seedId, userId }) {
   assertMember(circle, userId);
 
   const seed = seedById(circle, seedId);
-  if (seed.phase !== 'pending') throw new Error('This topic is no longer waiting');
+  if (!notStarted(seed)) throw new Error('This topic is no longer waiting');
 
   const supporters = seed.supporterIds || [];
   const at = supporters.indexOf(userId);
   if (at >= 0) supporters.splice(at, 1); else supporters.push(userId);
   seed.supporterIds = supporters;
 
+  // ACCEPTANCE (2026-08-20). A nominated seed is one person's offer; the queue
+  // is what the group decided to spend time on. Anyone other than the author
+  // saying yes is the whole difference, so that support is what moves it into
+  // the queue. The author's own support (stamped at post time) never counts —
+  // otherwise every nomination would accept itself on arrival.
+  const accepted = isPreQueue(seed) && at < 0 && userId !== seed.authorId;
+  if (accepted) seed.phase = 'pending';
+
   await store.saveCircle(circle);
-  return { circle, supported: at < 0 };
+  // Accepting into an idle circle can start the cycle in the same move.
+  if (accepted) return { circle: await evaluate({ store, circle }), supported: true, accepted };
+  return { circle, supported: at < 0, accepted: false };
 }
 
 /**
@@ -635,7 +670,7 @@ async function step({ store, circle, now, pending, seed, start, via, byUserId })
     return beginCycle({ circle, seed, now, pending, via, byUserId, store });
   }
 
-  if (!seed || seed.phase === 'pending' || DONE_PHASES.includes(seed.phase)) return;
+  if (!seed || notStarted(seed) || DONE_PHASES.includes(seed.phase)) return;
 
   const mod = modFor(circle, seed);
   const idx = mod.phases.indexOf(seed.phase);
@@ -969,6 +1004,7 @@ module.exports = {
   sweepCircles,
   participation,
   snapshot,
+  notStarted,
   toClient,
   toClientSeed,
   activeSeed,
@@ -982,4 +1018,5 @@ module.exports = {
   mongoStore,
   MAX_STEPS,
   DONE_PHASES,
+  PRE_QUEUE_PHASES,
 };

@@ -536,6 +536,12 @@ function loadAPIRoutes() {
       // no io needs to be threaded through here.
       const synthesisRoutes = require('./routes/synthesis');
       app.use('/api/synthesis', enforceVerifiedUser, synthesisRoutes);
+      // Synthesis as a CIRCLE ACTIVITY (2026-08-20). Required for its side
+      // effect, exactly like routes/threshold above: this is what registers
+      // the 'synthesis' module with utils/circleActivities.js, and it has to
+      // happen before startJobs() so the round ticker can never reach a
+      // circle holding a synthesis seed whose module is missing.
+      require('./utils/synthesisActivity');
       // Threshold — account holders, no holon economy (apps/threshold/PLAN.md
       // D6/D7). Requiring this router is ALSO what registers the 'threshold'
       // activity module with utils/circleActivities.js, and it happens here,
