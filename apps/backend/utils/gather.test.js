@@ -165,6 +165,31 @@ test('normalizeSeed: the shapes and their axes rules', () => {
   assert.throws(() => gather.normalizeSeed({ prompt: 'p', respondHours: 'soon' }), /not a number/);
 });
 
+test('normalizeSeed: the S1/S3 creator options and their defaults', () => {
+  // telling — story-bearing shapes only, voice unless the creator says text.
+  assert.equal(gather.normalizeSeed({ prompt: 'p' }).telling, 'voice');
+  assert.equal(gather.normalizeSeed({ prompt: 'p', telling: 'text' }).telling, 'text');
+  assert.equal(gather.normalizeSeed({ prompt: 'p', telling: 'nonsense' }).telling, 'voice');
+  const sp = gather.normalizeSeed({
+    prompt: 'p', shape: 'story-placement', telling: 'text', axes: [{ poleA: 'a', poleB: 'b' }],
+  });
+  assert.equal(sp.telling, 'text');
+  assert.equal(sp.placing, 'free');
+
+  // placing — axis shapes only, free unless the creator picks quadrants.
+  const quad = gather.normalizeSeed({
+    prompt: 'p', shape: 'placement', placing: 'quadrants',
+    axes: [{ poleA: 'a', poleB: 'b' }, { poleA: 'c', poleB: 'd' }],
+  });
+  assert.equal(quad.placing, 'quadrants');
+  assert.equal(quad.telling, undefined);
+
+  // Neither leaks onto a words ask.
+  const w = gather.normalizeSeed({ prompt: 'p', shape: 'words', words: ['a'] });
+  assert.equal(w.telling, undefined);
+  assert.equal(w.placing, undefined);
+});
+
 // --- the loop ---------------------------------------------------------------
 
 test('a story ask closes when everyone has responded, and the reveal attributes', async () => {

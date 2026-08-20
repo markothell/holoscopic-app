@@ -216,6 +216,18 @@ function normalizeSeed(payload) {
 
   const base = { prompt, context, shape, axes, reveal, reactions, editAfterClose, respondHours };
 
+  // S1 — which act the respond surface leads with, on story-bearing shapes:
+  // voice-first is the circle default; 'text' flips to the compose sheet for
+  // short-reply asks. S3 — which input a two-axis ask offers: place anywhere,
+  // or Synthesis's four named quadrants. Both are creator choices in the
+  // builder; the machine and the storage are identical either way.
+  if (shape === 'story' || shape === 'story-placement') {
+    base.telling = p.telling === 'text' ? 'text' : 'voice';
+  }
+  if (wantsAxes) {
+    base.placing = p.placing === 'quadrants' ? 'quadrants' : 'free';
+  }
+
   // The words shape: the creator's seed list plus the two caps (pick ≤k,
   // coin ≤j). The list here is the canonical source — Vocabulary rows are
   // materialized from it once the seed goes live (ensureVocabulary), and a
