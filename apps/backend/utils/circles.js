@@ -428,7 +428,12 @@ async function supportSeed({ store = mongoStore, circleId, seedId, userId }) {
 
   await store.saveCircle(circle);
   // Accepting into an idle circle can start the cycle in the same move.
-  if (accepted) return { circle: await evaluate({ store, circle }), supported: true, accepted };
+  // evaluate() returns { circle, changed } — unwrap it, or every caller gets
+  // the wrapper where it expected a circle.
+  if (accepted) {
+    const { circle: after } = await evaluate({ store, circle });
+    return { circle: after, supported: true, accepted };
+  }
   return { circle, supported: at < 0, accepted: false };
 }
 

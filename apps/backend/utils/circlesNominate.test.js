@@ -105,6 +105,11 @@ test('acceptance is somebody ELSE saying yes; the author cannot accept their own
   // Anyone else does.
   const r2 = await circles.supportSeed({ store, circleId: circle.id, seedId, userId: 'u2' });
   assert.equal(r2.accepted, true, 'a second person is the whole difference');
+  // The accepting branch runs evaluate(), which returns { circle, changed }.
+  // Handing that wrapper back as `circle` type-checks nowhere and 400s at the
+  // route, which is exactly how it was found — in a browser, not here.
+  assert.ok(Array.isArray(r2.circle.seeds), 'the returned circle is a circle');
+  assert.equal(r2.circle.id, circle.id);
 
   const after = await store.findCircleById(circle.id);
   // Accepting into an idle circle starts it in the same move.
