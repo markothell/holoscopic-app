@@ -5,9 +5,10 @@ const circles = require('./circles');
 const activities = require('./circleActivities');
 
 // THREE LISTS (MO, 2026-08-20): nominations, the queue, and what is live.
-// Every ask is nominated first and needs `config.approvalsToStart` supporters
-// — author + 2 by default, capped at the member count — before it joins the
-// queue. This is the machine's rule for every activity, not an opt-in.
+// Every ask is nominated first and needs a THIRD OF THE CIRCLE behind it —
+// floor 2, capped at the roster — before it joins the queue. The author counts
+// as one, so nine members need the author plus two. This is the machine's rule
+// for every activity, not an opt-in.
 //
 // Drives the real machine over the same in-memory store shape as
 // circles.test.js.
@@ -39,7 +40,7 @@ function memStore() {
   };
 }
 
-async function circleWith(store, { activity, members = ['u2', 'u3'] }) {
+async function circleWith(store, { activity, members = ['u2', 'u3'], config = {} }) {
   const circle = await circles.createCircle({
     store,
     instanceId: 'inst1',
@@ -51,7 +52,7 @@ async function circleWith(store, { activity, members = ['u2', 'u3'] }) {
     creatorEmail: 'one@example.com',
     mode: 'circle',
     requireInvitation: false,
-    config: {},
+    config,
   });
   for (const u of members) {
     await circles.joinCircle({ store, circleId: circle.id, userId: u, username: u, email: `${u}@x.com` });
@@ -101,11 +102,14 @@ test('a posted ask is a nomination: outside the queue, and an idle circle stays 
   assert.equal(after.phase, 'idle', 'a free slot does not open a nomination');
 });
 
-test('approval is a COUNT — author + 2 — and one other person is not enough', async () => {
+test('approval is a COUNT — a third of the circle — and one other person is not enough', async () => {
   const store = memStore();
-  // Five members, so the default threshold of 3 sits below the roster and
-  // "not enough yet" is a state the test can actually observe.
-  const circle = await circleWith(store, { activity: 'stub', members: ['u2', 'u3', 'u4', 'u5'] });
+  // NINE members, so a third is 3 and "not enough yet" is observable. In a
+  // small circle the floor of 2 means one other person IS enough, which the
+  // next test covers.
+  const circle = await circleWith(store, {
+    activity: 'stub', members: ['u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8', 'u9'],
+  });
   await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'What holds us' } });
   const seedId = (await store.findCircleById(circle.id)).seeds[0].id;
 
@@ -121,7 +125,7 @@ test('approval is a COUNT — author + 2 — and one other person is not enough'
 
   // The third crosses it.
   const r3 = await circles.supportSeed({ store, circleId: circle.id, seedId, userId: 'u3' });
-  assert.equal(r3.approved, true, 'author + 2');
+  assert.equal(r3.approved, true, 'author + 2 of nine — a third');
   // evaluate() returns { circle, changed }; handing that wrapper back as
   // `circle` 400s at the route, which is how it was found — in a browser.
   assert.ok(Array.isArray(r3.circle.seeds), 'the returned circle is a circle');
@@ -131,16 +135,42 @@ test('approval is a COUNT — author + 2 — and one other person is not enough'
   assert.equal(after.phase, 'cycle');
 });
 
-test('the threshold is capped at the roster, or a small circle could never start', async () => {
+// The two guards on the derived threshold, which are where it goes wrong.
+test('a third has a FLOOR of two, so the author can never approve their own', async () => {
   const store = memStore();
-  // Two members. author + 2 is impossible, so without the cap nothing this
-  // circle ever posts could run.
+  // Three members: a third rounds to 1, which would be the author alone —
+  // exactly the unilateral start this rule exists to stop. The floor holds it
+  // at 2, so one other person is needed and no more.
+  const circle = await circleWith(store, { activity: 'stub', members: ['u2', 'u3'] });
+  await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'Mine alone' } });
+  const seedId = (await store.findCircleById(circle.id)).seeds[0].id;
+
+  assert.equal((await store.findCircleById(circle.id)).seeds[0].phase, 'nominated',
+    'posting it did not approve it');
+  const r = await circles.supportSeed({ store, circleId: circle.id, seedId, userId: 'u2' });
+  assert.equal(r.approved, true, 'author + 1 in a small circle, never author alone');
+});
+
+test('and a CEILING of the roster, or a two-person circle could never start', async () => {
+  const store = memStore();
   const circle = await circleWith(store, { activity: 'stub', members: ['u2'] });
   await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'Just us' } });
   const seedId = (await store.findCircleById(circle.id)).seeds[0].id;
 
   const r = await circles.supportSeed({ store, circleId: circle.id, seedId, userId: 'u2' });
   assert.equal(r.approved, true, 'both of them is the whole circle');
+});
+
+test('a flat config number overrides the derived third', async () => {
+  const store = memStore();
+  const circle = await circleWith(store, {
+    activity: 'stub', members: ['u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8', 'u9'], config: { approvalsToStart: 2 },
+  });
+  await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'Loose circle' } });
+  const seedId = (await store.findCircleById(circle.id)).seeds[0].id;
+
+  const r = await circles.supportSeed({ store, circleId: circle.id, seedId, userId: 'u2' });
+  assert.equal(r.approved, true, 'nine members, but this circle asked for two');
 });
 
 test('a facilitator promotion approves a nomination — the quiet-circle escape hatch', async () => {

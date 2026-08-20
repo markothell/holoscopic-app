@@ -123,7 +123,22 @@ async function main() {
       payload: { topic: `Topic ${i + 1}`, poleA: 'Liberating', poleB: 'Constricting' },
     });
   }
-  ok('the first topic posted started the first cycle');
+
+  // NOMINATED, not queued (2026-08-20). Posting no longer starts anything —
+  // an ask needs a third of the circle behind it, floor 2, and here that is
+  // two of three. Checked against the database because the schema is the half
+  // the unit tests cannot see: 'nominated' is a value seeds[].phase has to
+  // accept, and it is a plain String field with no enum precisely so it can.
+  fresh = await Circle.findOne({ id: circle.id });
+  assert.equal(fresh.phase, 'idle', 'three nominations did not start anything');
+  assert.equal(fresh.seeds[0].phase, 'nominated', "phase 'nominated' was rejected by the schema");
+  assert.equal(circles.queue(fresh).length, 0, 'the queue is the APPROVED list, and it is empty');
+  assert.equal(circles.toClient(fresh, { userId: USERS[0] }).nominations.length, 3, 'all three are nominations');
+  ok('a posted topic is a nomination, and it persisted as one');
+
+  // One other member backs Topic 1 — two of three is the threshold, so it is
+  // approved, queued and opened in that one move.
+  await circles.supportSeed({ store, circleId: circle.id, seedId: fresh.seeds[0].id, userId: USERS[1] });
 
   // Re-read from the database throughout. The in-memory document proves nothing.
   fresh = await Circle.findOne({ id: circle.id });
@@ -134,15 +149,18 @@ async function main() {
   assert.equal(fresh.seeds[0].payload.topic, 'Topic 1', 'Mixed payload survived the round trip');
   assert.deepEqual([...fresh.seeds[1].supporterIds], [USERS[1]], 'posting is supporting, and it persisted');
   assert.ok(fresh.transitions.some(t => t.via === 'queue'), "transitions.via 'queue' was rejected by the schema");
-  ok('circle + Mixed seed payload + the queue fields persisted');
+  ok('backing it to the threshold approved, queued and opened it');
 
-  // Support and promote, through the database.
+  // Support and promote, through the database. Both of the others back Topic 3,
+  // which approves it; Topic 2 is promoted out of nomination by the facilitator.
   await circles.supportSeed({ store, circleId: circle.id, seedId: fresh.seeds[2].id, userId: USERS[0] });
   await circles.supportSeed({ store, circleId: circle.id, seedId: fresh.seeds[2].id, userId: USERS[1] });
   fresh = await Circle.findOne({ id: circle.id });
   assert.equal(fresh.seeds[2].supporterIds.length, 3);
-  assert.deepEqual(circles.queue(fresh).map(s => s.payload.topic), ['Topic 3', 'Topic 2']);
+  assert.deepEqual(circles.queue(fresh).map(s => s.payload.topic), ['Topic 3'],
+    'Topic 2 is still only a nomination, so it is not in the queue');
 
+  // A promotion approves a nomination outright — the quiet-circle escape hatch.
   await circles.promoteSeed({ store, circleId: circle.id, seedId: fresh.seeds[1].id, userId: USERS[0] });
   fresh = await Circle.findOne({ id: circle.id });
   assert.ok(fresh.seeds[1].promotedAt instanceof Date, 'promotedAt persisted as a Date');

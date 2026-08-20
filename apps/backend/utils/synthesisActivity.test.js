@@ -42,10 +42,14 @@ test('normalizeSeed: you can only share a document you are in', async () => {
   );
 });
 
-test('the module declares nominateFirst — shared before it is queued', async () => {
+test('one phase, and nomination is the machine\'s rule rather than this module\'s', async () => {
   const mod = createModule({ store: memStore() });
-  assert.equal(mod.nominateFirst, true);
-  assert.deepEqual(mod.phases, ['exploring']);
+  assert.deepEqual(mod.phases, ['exploring'], 'a thought space is open, and then it is not');
+  // `nominateFirst` was briefly a capability a module opted into. MO made
+  // nomination universal on 2026-08-20 — every ask in a circle-mode circle is
+  // nominated and needs a third of the circle behind it — so there is nothing
+  // here to declare. utils/circlesNominate.test.js owns that behaviour now.
+  assert.equal(mod.nominateFirst, undefined, 'the opt-in is gone, not merely unset here');
 });
 
 test('isMemberDone is never true, so a synthesis cycle never closes itself', async () => {

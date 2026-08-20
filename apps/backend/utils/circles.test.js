@@ -683,10 +683,11 @@ test('a member who joins in week six takes full part in the live cycle', async (
   await circles.evaluate({ store, circle });
   assert.equal(live.phase, 'rank');
 
-  // And they can support and post like anybody else.
-  await approved(store, circle, 'u6', 'mine');
+  // And they can nominate and be backed like anybody else. Left as a plain
+  // nomination: approving it here would spend the support this asserts.
+  await post(store, circle, 'u6', 'mine');
   await circles.supportSeed({ store, circleId: circle.id, seedId: seedFor(circle, 'mine').id, userId: 'u1' });
-  assert.equal(seedFor(circle, 'mine').supporterIds.length, 2);
+  assert.equal(seedFor(circle, 'mine').supporterIds.length, 2, 'the newcomer posted it, u1 backed it');
 
   // Every past reveal is still there to read.
   assert.equal(circle.seeds.filter(s => s.phase === 'revealed').length, 1);

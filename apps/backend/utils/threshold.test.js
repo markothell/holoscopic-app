@@ -120,15 +120,29 @@ async function runningCircle(store, { members = 3, seeds = 1, config = {} } = {}
     await circles.joinCircle({ store, circleId: circle.id, userId: `u${i}`, username: `U${i}` });
   }
   await circles.startCircle({ store, circleId: circle.id, userId: 'u1' });
-  // The first topic posted into an idle circle starts running immediately; the
-  // rest queue behind it. There is no seeding round to wait out (D27).
+  // Every topic is NOMINATED first (2026-08-20) and needs a third of the
+  // circle behind it — floor 2, capped at the roster — before it reaches the
+  // queue. Posting no longer starts anything, so these tests, which are about
+  // the threshold ACTIVITY rather than about approval, back each topic to the
+  // threshold and carry on. Approval itself is circlesNominate.test.js.
   for (let i = 1; i <= seeds; i++) {
-    await circles.addSeed({
-      store, circleId: circle.id, userId: `u${i}`,
-      payload: { ...SEED, topic: `${SEED.topic} ${i}` },
-    });
+    await approve(store, circle, `u${i}`, { ...SEED, topic: `${SEED.topic} ${i}` });
   }
   return circle;
+}
+
+/** Post a topic and get the circle to back it, so its cycle actually opens. */
+async function approve(store, circle, userId, payload) {
+  await circles.addSeed({ store, circleId: circle.id, userId, payload });
+  const fresh = await store.findCircleById(circle.id);
+  const seed = fresh.seeds[fresh.seeds.length - 1];
+  for (const m of fresh.members) {
+    if (m.userId === userId) continue;
+    await circles.supportSeed({ store, circleId: circle.id, seedId: seed.id, userId: m.userId });
+    const now = (await store.findCircleById(circle.id)).seeds.find(x => x.id === seed.id);
+    if (now.phase !== 'nominated') break;
+  }
+  return store.findCircleById(circle.id);
 }
 
 // ---------------------------------------------------------------------------
@@ -563,10 +577,7 @@ test('the map: participation follows the redaction ladder (D9/D17)', async () =>
     store, circleId: circle.id, seedId: second.id, userId: 'u1', username: 'U1',
     pole: 'B', text: 'early on the live one',
   });
-  await circles.addSeed({
-    store, circleId: circle.id, userId: 'u1',
-    payload: { ...SEED, topic: 'Queued topic' },
-  });
+  await approve(store, circle, 'u1', { ...SEED, topic: 'Queued topic' });
   const third = circle.seeds[2];
   await threshold.submitShare({
     store, circleId: circle.id, seedId: third.id, userId: 'u1', username: 'U1',
@@ -858,9 +869,9 @@ test('a real 3-person circle: seed, share, rank, reveal, three cycles, complete'
   await circles.joinCircle({ store, circleId: circle.id, userId: 'u3', username: 'Three', email: 'three@example.com' });
   await circles.startCircle({ store, circleId: circle.id, userId: 'u1' });
 
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { ...SEED, topic: 'Authority' } });
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u2', payload: { ...SEED, topic: 'Money', poleA: 'Freeing', poleB: 'Binding' } });
-  await circles.addSeed({ store, circleId: circle.id, userId: 'u3', payload: { ...SEED, topic: 'Family', poleA: 'Holding', poleB: 'Holding back' } });
+  await approve(store, circle, 'u1', { ...SEED, topic: 'Authority' });
+  await approve(store, circle, 'u2', { ...SEED, topic: 'Money', poleA: 'Freeing', poleB: 'Binding' });
+  await approve(store, circle, 'u3', { ...SEED, topic: 'Family', poleA: 'Holding', poleB: 'Holding back' });
 
   assert.equal(circle.phase, 'cycle', 'the FIRST topic started the first cycle');
   assert.equal(circle.liveSeedId, circle.seeds[0].id);
@@ -1104,14 +1115,15 @@ test('the queue: support decides what runs next, and a late joiner takes full pa
 
   // u3 arrives in week six, posts a topic, and u2 backs it over u1's older one.
   await circles.joinCircle({ store, circleId: circle.id, userId: 'u3', username: 'Three' });
-  await circles.addSeed({
-    store, circleId: circle.id, userId: 'u1', payload: { ...SEED, topic: 'Older' },
-  });
-  await circles.addSeed({
-    store, circleId: circle.id, userId: 'u3', payload: { ...SEED, topic: 'Newcomer' },
-  });
+  // Both are backed to the threshold, so both are in the queue and level;
+  // what decides the order is the support they pick up ABOVE it.
+  await approve(store, circle, 'u1', { ...SEED, topic: 'Older' });
+  await approve(store, circle, 'u3', { ...SEED, topic: 'Newcomer' });
   const newcomer = circle.seeds.find(s => s.payload.topic === 'Newcomer');
-  await circles.supportSeed({ store, circleId: circle.id, seedId: newcomer.id, userId: 'u2' });
+  for (const u of ['u1', 'u2']) {
+    if (newcomer.supporterIds.includes(u)) continue;
+    await circles.supportSeed({ store, circleId: circle.id, seedId: newcomer.id, userId: u });
+  }
 
   assert.deepEqual(circles.queue(circle).map(s => s.payload.topic), ['Newcomer', 'Older']);
 

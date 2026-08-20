@@ -64,16 +64,30 @@ const DONE_PHASES = ['revealed', 'skipped'];
 // written straight to 'pending' by createCircle rather than through addSeed.
 const PRE_QUEUE_PHASES = ['nominated'];
 
-// The author counts as a supporter (posting a topic supports it), so the
-// default of 3 is the author plus two other people.
+// How many supporters an ask needs before the circle starts it.
 //
-// Capped at the member count: a three-person circle would otherwise need
-// unanimity, and a two-person circle could never start anything at all.
+// A THIRD OF THE CIRCLE by default (MO, 2026-08-20), rather than a flat count:
+// a flat three was unanimity in a three-person circle and noise in a thirty-
+// person one. The author counts as a supporter — posting a topic supports it —
+// so nine members need the author plus two, and three members need the author
+// plus one.
+//
+// Two guards, and both are load-bearing:
+//   • a floor of 2, or a small circle rounds down to 1 and the author approves
+//     their own ask, which is the unilateral start this rule exists to stop;
+//   • a ceiling of the member count, or a two-person circle could never start
+//     anything at all. A SOLO circle lands on 1 and self-approves, which is
+//     right: there is nobody else to ask.
+//
+// `config.approvalsToStart` overrides with a flat number when a circle wants
+// one; null means derive it, which is the default.
 function approvalsToStart(circle) {
-  const want = circle.config && circle.config.approvalsToStart != null
-    ? Number(circle.config.approvalsToStart)
-    : 3;
-  return Math.max(1, Math.min(want || 3, circle.members.length || 1));
+  const size = circle.members.length || 1;
+  const configured = circle.config ? circle.config.approvalsToStart : null;
+  const want = configured != null && Number(configured) > 0
+    ? Number(configured)
+    : Math.max(2, Math.ceil(size / 3));
+  return Math.max(1, Math.min(want, size));
 }
 
 function isPreQueue(seed) {
@@ -379,10 +393,15 @@ async function addSeed({ store = mongoStore, circleId, userId, payload, seedId =
       order: circle.seeds.length,
       activity: key,
       payload: normalized,
-      // Every ask starts as a nomination (see PRE_QUEUE_PHASES). A single-mode
-      // circle never reaches this line — it refuses a second seed above, and
-      // its first is written by createCircle.
-      phase: 'nominated',
+      // Every ask starts as a nomination (see PRE_QUEUE_PHASES) — unless the
+      // author's own support already meets the threshold, which happens in a
+      // SOLO circle, where a third of one is one and there is nobody else to
+      // ask. Without this such a circle can never start anything: approval is
+      // only ever re-checked on a support, and no support is coming.
+      //
+      // A single-mode circle never reaches this line at all — it refuses a
+      // second seed above, and its first is written by createCircle.
+      phase: approvalsToStart(circle) <= 1 ? 'pending' : 'nominated',
       // Posting a topic is supporting it. Otherwise the first thing every
       // author does is support their own, and the count means the same thing
       // with an extra step in front of it.

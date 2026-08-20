@@ -157,11 +157,13 @@ async function assertRejects(fn, label) {
     check('the circle now grants its members access to that document',
       await grants(idea.id, backer));
 
-    const { accepted } = await circlesFunnel.supportSeed({
+    // Two members, so a third of the circle floors at 2 — the backer is the
+    // whole threshold here.
+    const { approved } = await circlesFunnel.supportSeed({
       circleId: live.id, seedId: seed.id, userId: backer,
     });
     const after = await circlesFunnel.mongoStore.findCircleById(live.id);
-    check('a second person backing it accepts it into the queue', accepted === true);
+    check('backing it to the threshold approves it into the queue', approved === true);
     check('and it opens, since nothing else was running', after.seeds[0].phase === 'exploring');
 
     await assertRejects(
