@@ -491,6 +491,20 @@ router.get('/nodes', async (req, res) => {
   try {
     const membership = await requireMember(req, res, { write: false });
     if (!membership) return;
+    // Everyone who can open a document gets the idea's title hub as the centre
+    // of their own map, INCLUDING someone whose access came from a circle and
+    // who has written nothing. Without this they arrive at a blank field with
+    // nowhere to hang a first thought — the seeding used to ride on joining,
+    // and access no longer requires joining. Idempotent, so this is a no-op
+    // for everyone else, and a home hub is scaffold rather than a
+    // contribution: utils/synthesisActivity.js excludes it when it counts who
+    // has taken part, so looking never makes you a contributor.
+    await nodeFunnel.seedHomeHub({
+      instanceId: req.instanceId,
+      ownerId: membership.userId,
+      ownerHandle: membership.handle,
+      title: req.instance ? req.instance.name : 'Untitled idea',
+    });
     const nodes = await SynNode
       .find({ instanceId: req.instanceId, ownerId: membership.userId })
       .sort({ createdAt: 1 });

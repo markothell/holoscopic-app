@@ -64,9 +64,14 @@ const mongoStore = {
   // Who has actually put something into this idea. Authoring a node or
   // leaving a reply both count; nothing else does, because nothing else is a
   // contribution you could point at afterwards.
+  //
+  // The home hub is excluded, and that exclusion is load-bearing: every reader
+  // gets one seeded the first time they open the document (routes/synthesis.js
+  // GET /nodes), so counting it would make merely LOOKING pull a document into
+  // the middle of the circle map.
   async contributorIds(ideaId) {
     const [authors, repliers] = await Promise.all([
-      require('../models/SynNode').distinct('ownerId', { instanceId: ideaId }),
+      require('../models/SynNode').distinct('ownerId', { instanceId: ideaId, isHome: { $ne: true } }),
       require('../models/Entry').distinct('userId', { instanceId: ideaId }),
     ]);
     return [...new Set([...authors, ...repliers])];
