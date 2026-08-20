@@ -489,6 +489,7 @@ function GraphInner({
           onOpenSource={openSource}
           onAddChild={() => addBelow(popupNode.id)}
           onStartMarry={() => startMarryFrom(popupNode.id)}
+          onStartMove={() => startMoveFrom(popupNode.id)}
         />
       )}
 

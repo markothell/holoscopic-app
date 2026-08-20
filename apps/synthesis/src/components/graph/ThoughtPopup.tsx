@@ -12,10 +12,13 @@ import ProvenanceBreadcrumb from './ProvenanceBreadcrumb';
 // read-first full post view (PostOverlay), not the edit sheet — editing
 // moved inside that view as a secondary, own-nodes-only action.
 //
-// The two growth gestures live here too. Tapping a thought is how you reach
-// a thought, and growing *from* one is a map move, not a reading move — so
-// it can't sit four screens deep behind Open thought → Edit → Add child.
-// Topic hubs get the same pair straight off their sheet (NodeSheet).
+// The MAP gestures live here too. Tapping a thought is how you reach a
+// thought, and growing or re-filing *from* one is a map move, not a reading
+// move — so none of it can sit four screens deep behind Open thought → Edit →
+// Add child. Move was doing exactly that until 2026-08-20 (MO: "I can't
+// relocate thoughts"), reachable only through the post view's Edit action,
+// which is a reading surface. Topic hubs get the same set straight off their
+// sheet (NodeSheet).
 export default function ThoughtPopup({
   node,
   onClose,
@@ -23,6 +26,7 @@ export default function ThoughtPopup({
   onOpenSource,
   onAddChild,
   onStartMarry,
+  onStartMove,
 }: {
   node: SynNode;
   onClose: () => void;
@@ -30,6 +34,8 @@ export default function ThoughtPopup({
   onOpenSource: (sourceNodeId: string) => void;
   onAddChild: () => void;
   onStartMarry: () => void;
+  /** Arms move mode — the map's next tap picks the new parent (D19). */
+  onStartMove: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const context = node.content.context;
@@ -76,6 +82,14 @@ export default function ThoughtPopup({
             <Button variant="own" className="!px-4 !py-3 !text-sm" onClick={onAddChild}>+ Add below</Button>
             <Button variant="join" className="!px-4 !py-3 !text-sm" onClick={onStartMarry}>◆ Marry</Button>
           </div>
+          {/* The home hub is the map's fixed centre and moves nowhere (D19);
+              a borrowed node is someone else's thought sitting on your map,
+              and re-filing it is yours to do like anything else here. */}
+          {!node.isHome && (
+            <Button variant="ghost" className="!px-4 !py-3 !text-sm" onClick={onStartMove}>
+              Move — file it elsewhere
+            </Button>
+          )}
         </div>
       </div>
     </div>
