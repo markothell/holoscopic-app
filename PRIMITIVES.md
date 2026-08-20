@@ -516,6 +516,44 @@ covering the primitive `shares` collection. Full backend suite green. Remaining:
 - **PR-11 is moot** — no anonymity inside circles, so no minimum-n machinery; the only
   remaining small case is the empty/one-response reveal state, a copy problem.
 
+### v0 surface decisions (MO, 2026-08-20; S-numbered, picked off the Gather Surfaces board)
+
+The frontend design picks, decided on the demo artifact's 20-item decision board. The frame
+itself was MO's spec: circle home gets a **+ button → picker screen** (primitives and
+templates on separate tabs), then the creator walks **four connected dots** — shape, prompt,
+reveal, launch — each its own view, fill marks the present step.
+
+- **S1 — Story respond is voice-first** (the ring records; writing is the fallback), with a
+  creator option on the prompt step — `telling: voice | text` — that flips the surface to the
+  text-first compose for short-reply asks. Payload field only; no model/index change.
+- **S2 — One axis responds at five stops** (client quantizes; storage stays [0,1]).
+- **S3 — Two axes ship BOTH input styles as a creator option** — `placing: free | quadrants`.
+- **S4 — Story + placement: tell first**; the axis unlocks after the telling.
+- **S5 — Words is the chip field** with pick/coin counters below (tray dropped).
+- **S6 — Story reveal is the R1 circle wall; the ring's center holds prompt + count.**
+- **S7/S8 — Placement reveals keep the circle frame**: the chart (one-axis stack / 2×2 dot
+  map) renders small in the ring's center, tap to expand; tap a member, their dot lights.
+  **R3 drops the dashed spread ellipse — cluster size carries the group's take** (bigger node
+  = more people there, the circle map's participation-sizing move).
+- **S9 — Story + line reveals as the R4 spectrum wall.** **S10 — story + grid: R3 as index**,
+  tap a dot to open its story, list below.
+- **S11 — Words reveals as R1 with the portrait as the ring's center**; tap a word, its
+  pickers light.
+- **S12 — A finished gather on the circle-home map is differentiated by a quiet outer ring
+  stroke** on the node (no per-shape thumbnails; MO's call, exact treatment at build).
+- **S13 — An empty or near-empty reveal shows what exists, no special copy** (input stays
+  open per B4, so the respond invitation remains).
+- **S14 — Reactions surface wherever the story is readable** (the popup, R4's strip rows);
+  ring marks and dots stay clean (proposed resolution, MO to veto at build).
+- **S15 — Bare placement dots are not reactable** — nothing was shared. **S16 — words are not
+  reactable; the portrait is the feedback.** **S17 — the reaction mark is a small ring**,
+  filled once yours is given.
+- **S18 — The reactions toggle exists only for story-bearing shapes, default on.** After
+  S15/S16, placement-only and words asks have nothing reactable, so the reveal step hides the
+  toggle there rather than offering a dead switch.
+- **S19 — Timer copy is a countdown** (“Closes in 2 days”). **S20 — Reveal-now is a quiet
+  link under the state line, with a confirm step** — it is irreversible.
+
 ### Gotchas from B4 + B5 — resolved 2026-08-17 by the simplest rule each
 
 1. **Stored vs live aggregate — handled by compute-on-read.** B5's text-only rule removes
