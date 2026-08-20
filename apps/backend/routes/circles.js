@@ -197,6 +197,9 @@ router.get('/:id/seeds/:seedId/responses', async (req, res) => {
     circles.assertMember(circle, userId);
     const seed = circle.seeds.find(s => s.id === req.params.seedId);
     if (!seed) return res.status(404).json({ error: 'Topic not found in this circle' });
+    // A queued seed (pending OR nominated) is still editable, and gather's
+    // extras would materialize its vocabulary early — nothing to read yet.
+    if (circles.notStarted(seed)) return res.status(404).json({ error: 'This activity has not started' });
     const mod = circles.modFor(circle, seed);
     if (!mod.snapshotExtras) return res.status(404).json({ error: 'This activity has no responses surface' });
     const extras = await mod.snapshotExtras({ circle, seed, viewerId: userId });

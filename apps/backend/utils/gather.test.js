@@ -464,6 +464,20 @@ test('participation follows the reveal setting', async () => {
   assert.deepEqual(openRow, { tellerIds: ['u2'], tellerCount: 1, iTold: false });
 });
 
+test('a seed that has not started refuses responses, whatever its pre-queue phase is called', async () => {
+  // Locks the notStarted() conversion in place: a 'nominated' seed (the
+  // pre-queue phase modules opt into with nominateFirst) must be refused the
+  // same as 'pending' — a phase-name check would let it slip past.
+  const circle = await circleWith(2);
+  const seed = await ask(circle, { prompt: 'p', shape: 'story' }, 'u2');
+  for (const phase of ['pending', 'nominated']) {
+    seed.phase = phase;
+    await assert.rejects(respond(circle, seed, 'u1', { text: 'too early' }), /has not started/);
+    const row = await activities.get('gather').participation({ seed, viewerId: 'u1' });
+    assert.equal(row, null);
+  }
+});
+
 // --- audio side effects: mirror + transcription (injected, fire-and-forget) --
 
 test('a new recording fires the mirror and transcriber once, and neither can fail the write', async () => {

@@ -460,7 +460,9 @@ async function submitResponse({
   const seed = circle.seeds.find(s => s.id === seedId);
   if (!seed) throw new Error('Topic not found in this circle');
   assertGatherSeed(circle, seed);
-  if (seed.phase === 'pending') throw new Error('This activity has not started');
+  // notStarted, not a phase-name check: 'nominated' (PRE_QUEUE_PHASES) must
+  // refuse responses too if gather ever declares nominateFirst.
+  if (circles.notStarted(seed)) throw new Error('This activity has not started');
 
   const done = seedDone(seed);
   const cfg = seed.payload;
@@ -808,7 +810,7 @@ function createModule({ store = mongoStore } = {}) {
     // tellers are named from the first response. Sealed: own flag only until
     // the close — even a count would say who has moved (Threshold's rule).
     async participation({ seed, viewerId }) {
-      if (seed.phase === 'pending') return null;
+      if (circles.notStarted(seed)) return null;
       const rows = await store.listResponses(seed.id);
       const iTold = rows.some(r => r.userId === viewerId);
       if (seed.payload.reveal === 'open' || seedDone(seed)) {
