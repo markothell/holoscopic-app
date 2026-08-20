@@ -88,46 +88,102 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
         <JoinCard circle={circle} userId={userId} onJoined={load} />
       )}
 
-      {circle.phase === 'cycle' && seed && circle.isMember && (() => {
-        const iTold = (circle.shares ?? []).some(s => s.isMine);
-        const waiting = circle.waitingShareIds?.length ?? 0;
-        const topicHref = `/c/${circle.urlName}/topic/${seed.id}`;
-        return (
-          <div className="mt-8">
-            <Card>
-              <Band>Running now</Band>
-              <h2 className="text-2xl leading-snug">{seed.payload.topic}</h2>
-              <p className="mt-1 text-sm text-ink-soft">
-                {seed.payload.poleA} · {seed.payload.poleB}
-              </p>
-              {seed.phase === 'share' && (
-                <>
+      {circle.isMember && (
+        <div className="mt-4">
+          <Link
+            href={`/c/${circle.urlName}/new`}
+            className="text-sm text-ink-faint underline underline-offset-4 hover:text-ink"
+          >
+            + Start an activity
+          </Link>
+        </div>
+      )}
+
+      {/* Every live cycle gets a card — a circle runs up to maxLive at once
+          (B1; 1 unless the circle opted into more), so this is a list of
+          one-or-more, never a single slot. Each activity reads its own
+          extras from seedExtras; the flat-merged top level is only the
+          FIRST live seed's. */}
+      {circle.phase === 'cycle' && circle.isMember && (circle.liveSeedIds ?? (seed ? [seed.id] : []))
+        .map(id => circle.seeds.find(s => s.id === id))
+        .filter((s): s is NonNullable<typeof s> => Boolean(s))
+        .map(live => {
+          const extras = (circle.seedExtras?.[live.id] ?? {}) as {
+            shares?: { isMine: boolean }[];
+            waitingShareIds?: string[];
+            responses?: unknown[];
+            myResponse?: unknown;
+          };
+          if (live.activity === 'gather') {
+            const mineIn = Boolean(extras.myResponse);
+            const openWall = live.payload.reveal === 'open';
+            const answered = (extras.responses ?? []).length;
+            return (
+              <div key={live.id} className="mt-8">
+                <Card>
+                  <Band>Running now</Band>
+                  <h2 className="text-2xl leading-snug">{live.payload.prompt}</h2>
+                  {live.payload.context && (
+                    <p className="mt-1 text-sm text-ink-soft">{live.payload.context}</p>
+                  )}
                   <p className="mt-3 text-sm text-ink-soft">
-                    {iTold
-                      ? 'Your story is in. You can change it while this round is open.'
-                      : 'Tell a time it was one of those two things.'}
+                    {mineIn
+                      ? openWall
+                        ? `Yours is in — ${answered} of ${circle.memberCount} have answered.`
+                        : 'Yours is in. Waiting on results.'
+                      : openWall
+                        ? `${answered} of ${circle.memberCount} have answered.`
+                        : 'Sealed until everyone has answered.'}
                   </p>
                   <div className="mt-4">
-                    <Action href={topicHref}>{iTold ? 'Change your story' : 'Tell your story'}</Action>
+                    <Action href={`/c/${circle.urlName}/activity/${live.id}`}>
+                      {mineIn ? 'See where it stands' : 'Add yours'}
+                    </Action>
                   </div>
-                </>
-              )}
-              {seed.phase === 'rank' && (
-                <>
-                  <p className="mt-3 text-sm text-ink-soft">
-                    {waiting > 0
-                      ? `${waiting} ${waiting === 1 ? 'story is' : 'stories are'} waiting on you.`
-                      : 'Your sorting is in.'}
-                  </p>
-                  <div className="mt-4">
-                    <Action href={topicHref}>{waiting > 0 ? 'Read and sort' : 'See your sorting'}</Action>
-                  </div>
-                </>
-              )}
-            </Card>
-          </div>
-        );
-      })()}
+                </Card>
+              </div>
+            );
+          }
+          const shares = extras.shares ?? circle.shares ?? [];
+          const iTold = shares.some(s => s.isMine);
+          const waiting = (extras.waitingShareIds ?? circle.waitingShareIds)?.length ?? 0;
+          const topicHref = `/c/${circle.urlName}/topic/${live.id}`;
+          return (
+            <div key={live.id} className="mt-8">
+              <Card>
+                <Band>Running now</Band>
+                <h2 className="text-2xl leading-snug">{live.payload.topic}</h2>
+                <p className="mt-1 text-sm text-ink-soft">
+                  {live.payload.poleA} · {live.payload.poleB}
+                </p>
+                {live.phase === 'share' && (
+                  <>
+                    <p className="mt-3 text-sm text-ink-soft">
+                      {iTold
+                        ? 'Your story is in. You can change it while this round is open.'
+                        : 'Tell a time it was one of those two things.'}
+                    </p>
+                    <div className="mt-4">
+                      <Action href={topicHref}>{iTold ? 'Change your story' : 'Tell your story'}</Action>
+                    </div>
+                  </>
+                )}
+                {live.phase === 'rank' && (
+                  <>
+                    <p className="mt-3 text-sm text-ink-soft">
+                      {waiting > 0
+                        ? `${waiting} ${waiting === 1 ? 'story is' : 'stories are'} waiting on you.`
+                        : 'Your sorting is in.'}
+                    </p>
+                    <div className="mt-4">
+                      <Action href={topicHref}>{waiting > 0 ? 'Read and sort' : 'See your sorting'}</Action>
+                    </div>
+                  </>
+                )}
+              </Card>
+            </div>
+          );
+        })}
 
       {!circle.isMember && (
         <p className="mt-8 text-sm text-ink-faint">
@@ -144,14 +200,19 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
             {record.map(s => (
               <li key={s.id}>
                 <Link
-                  href={`/c/${circle.urlName}/topic/${s.id}`}
+                  href={s.activity === 'gather'
+                    ? `/c/${circle.urlName}/activity/${s.id}`
+                    : `/c/${circle.urlName}/topic/${s.id}`}
                   className="-mx-3 block rounded-lg px-3 py-2 transition-colors hover:bg-ground-deep"
                 >
                   <span className="font-[family-name:var(--font-display)] text-lg">
                     {s.payload.topic}
                   </span>
                   <span className="mt-0.5 block text-xs text-ink-faint">
-                    {s.payload.poleA} · {s.payload.poleB}
+                    {s.activity === 'gather'
+                      ? ({ story: 'a wall of stories', placement: 'where everyone stands',
+                          'story-placement': 'stories on a line', words: 'a word portrait' }[s.payload.shape ?? 'story'] ?? 'an activity')
+                      : `${s.payload.poleA} · ${s.payload.poleB}`}
                   </span>
                 </Link>
               </li>

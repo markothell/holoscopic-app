@@ -222,10 +222,13 @@ export function CircleMap({ circle, userId }: {
   // the map used to invent for itself.
   const isSession = (seed: Seed) => seed.activity === 'synthesis';
   // A document opens in Synthesis, named by its code so the link lands on the
-  // document rather than on whichever map the reader had open last.
+  // document rather than on whichever map the reader had open last. A gather
+  // ask has its own surface; everything else is a Threshold topic.
   const hrefFor = (seed: Seed) => (isSession(seed)
     ? (seed.payload.ideaCode ? `${SYNTHESIS_URL}/?idea=${seed.payload.ideaCode}` : SYNTHESIS_URL)
-    : `${base}/topic/${seed.id}`);
+    : seed.activity === 'gather'
+      ? `${base}/activity/${seed.id}`
+      : `${base}/topic/${seed.id}`);
 
   // Drilling into a topic is an in-app move, so it goes through the router like
   // every other link in circles. A bare <a> here would be a full document load,

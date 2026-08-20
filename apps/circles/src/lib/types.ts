@@ -25,6 +25,92 @@ export interface SeedPayload {
   ideaCode?: string;
   /** The idea's title, snapshotted when it was shared. */
   title?: string;
+  /** activity 'gather' (utils/gather.js#normalizeSeed; `topic` mirrors it): */
+  prompt?: string;
+  context?: string;
+  shape?: GatherShape;
+  /** 1–2 pole pairs, placement shapes only. */
+  axes?: GatherAxis[];
+  /** 'open' = a live wall; 'sealed' = own-only until the close. */
+  reveal?: 'open' | 'sealed';
+  reactions?: boolean;
+  editAfterClose?: boolean;
+  respondHours?: number | null;
+  /** S1 — which act the respond surface leads with (story shapes). */
+  telling?: 'voice' | 'text';
+  /** S3 — place anywhere, or four named quadrants (two-axis shapes). */
+  placing?: 'free' | 'quadrants';
+  /** Words shape: the creator's seed list and the two caps. */
+  words?: string[];
+  pickMax?: number;
+  coinMax?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Gather — the builder's single-round activity (PRIMITIVES.md §9)
+// ---------------------------------------------------------------------------
+
+export type GatherShape = 'story' | 'placement' | 'story-placement' | 'words';
+
+export interface GatherAxis {
+  poleA: string;
+  poleB: string;
+}
+
+/** Mirrors utils/gather.js#toClientResponse. ALWAYS attributed — there is no
+ *  anonymity inside a circle, so unlike Share there is no redacted variant. */
+export interface GatherResponse {
+  id: string;
+  seedId: string;
+  title: string;
+  text: string;
+  audio: ShareAudio | null;
+  /** Null while skipped — the serializer only sends a transcript that exists
+   *  or is on its way. */
+  transcript: { status: 'pending' | 'ready' | 'failed'; text: string } | null;
+  /** The words-shape picks, labeled. Empty on every other shape. */
+  words: { id: string; label: string }[];
+  reactionCount: number;
+  iReacted: boolean;
+  isMine: boolean;
+  createdAt: string;
+  /** Both in [0,1]; y is 0.5 on a one-axis ask. Null on story/words shapes. */
+  position: { x: number; y: number } | null;
+  userId: string;
+  username: string;
+}
+
+/** One pickable word, from utils/gather.js#vocabularyFor. Sealed before the
+ *  close, `count` is null and other members' coinages are absent — even a
+ *  count would say who has moved. */
+export interface GatherVocabWord {
+  id: string;
+  label: string;
+  origin: 'seeded' | 'contributed';
+  mine: boolean;
+  count: number | null;
+}
+
+/** Computed on read, never trusted from a stored snapshot (§9 gotcha 1). */
+export interface GatherAggregate {
+  responses: number;
+  computedAt: string;
+  x?: { mean: number | null; spread: number | null; count: number };
+  y?: { mean: number | null; spread: number | null; count: number };
+  /** The portrait — only words somebody picked, count-sorted. */
+  words?: { id: string; label: string; count: number }[];
+}
+
+/** utils/gather.js#snapshotExtras — flat-merged onto the snapshot for the
+ *  first live seed, keyed under Circle.seedExtras for the rest, and served at
+ *  any phase by GET /circles/:id/seeds/:seedId/responses. */
+export interface GatherExtras {
+  responses: GatherResponse[];
+  myResponse: GatherResponse | null;
+  /** Null while a sealed ask is still open. */
+  aggregate: GatherAggregate | null;
+  /** Words shape only; null otherwise. */
+  vocabulary: GatherVocabWord[] | null;
 }
 
 /**
@@ -72,7 +158,7 @@ export interface Seed {
    *  other than the author supporting it accepts it into the queue as
    *  `pending`. `skipped` is terminal like `revealed`: the facilitator moved
    *  the group on and the topic kept every story it had (D30). */
-  phase: 'nominated' | 'pending' | 'share' | 'rank' | 'exploring' | 'revealed' | 'skipped';
+  phase: 'nominated' | 'pending' | 'share' | 'rank' | 'exploring' | 'respond' | 'revealed' | 'skipped';
   /** One support per member, toggled freely — the count is what orders the
    *  queue (D27). The roster never crosses the wire; who backed a topic is
    *  nobody's business, and only the count decides anything. */
@@ -113,7 +199,9 @@ export interface SeedParticipation {
 
 export interface Circle {
   id: string;
-  activity: 'threshold';
+  /** The circle's OWN module — the one a seed with activity null runs. A
+   *  circle holds mixed activities, so this is a default, not a description. */
+  activity: string;
   title: string;
   urlName: string;
   mode: 'single' | 'circle';
@@ -125,8 +213,15 @@ export interface Circle {
   /** The live seed's deadline. Null means that phase has no clock, which is a
    *  supported configuration (D16), not a missing value. */
   phaseDeadline: string | null;
-  /** Which cycle is live; null while idle. */
+  /** The FIRST live cycle; null while idle. Kept for single-live readers —
+   *  pinned equal to liveSeedIds[0] (circlesMulti.test.js). */
   liveSeedId: string | null;
+  /** Every live cycle. A circle runs up to maxLive at once (B1); the default
+   *  is 1 — every Threshold circle and everything written before the field —
+   *  and 3 is what a builder circle opts into at creation. Render this as a
+   *  list of one-or-more, never a fixed multi-slot layout. */
+  liveSeedIds: string[];
+  maxLive: number;
   seedCount: number;
   memberCount: number;
   members: Member[];
@@ -152,6 +247,16 @@ export interface Circle {
   participation?: SeedParticipation[];
   /** Present only on GET /circles/:urlName, and only while a seed is live. */
   shares?: Share[];
+  /** Extras for EVERY live seed, keyed by seed id, each from its own module
+   *  (gather's is GatherExtras; threshold's carries shares/myRanking). The
+   *  first live seed's extras are ALSO flat-merged onto this object — that is
+   *  what `shares`/`responses` at the top level are. */
+  seedExtras?: Record<string, GatherExtras | Record<string, unknown>>;
+  /** Gather flat-merge, first live seed only (see seedExtras). */
+  responses?: GatherResponse[];
+  myResponse?: GatherResponse | null;
+  aggregate?: GatherAggregate | null;
+  vocabulary?: GatherVocabWord[] | null;
   myRanking?: MyRanking | null;
   /** The stories still waiting on me — DERIVED server-side from `shares` minus
    *  `myRanking.placements`, never stored (D32). It is why a member who joined

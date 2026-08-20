@@ -14,7 +14,9 @@
 // brings its own.
 
 import { ApiError, createApiFetch } from '@hs/api';
-import type { Circle, MyRanking, Placement, Pole, Seed, SeedResult, Share, MyIdea } from '@/lib/types';
+import type {
+  Circle, GatherExtras, GatherResponse, MyRanking, Placement, Pole, Seed, SeedResult, Share, MyIdea,
+} from '@/lib/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 
@@ -116,6 +118,61 @@ export const circlesApi = {
   seedResult(seedId: string, userId?: string | null) {
     return apiFetch<{ result: SeedResult; shares: Share[]; seed: Seed }>(
       `/threshold/seeds/${seedId}/result`, { userId },
+    );
+  },
+
+  // --- Gather (the builder's single-round activity) — rides /api/circles,
+  // --- since gather is the platform's activity rather than any one app's.
+
+  /**
+   * Submit or update my response — one write carries everything (title, text,
+   * audio, position, words), upserted. Open after the reveal (B4), text-only
+   * once closed (B5). The server evaluates completion after the write, so the
+   * returned circle may already be revealed — render it, don't refetch.
+   */
+  respond(
+    circleId: string,
+    seedId: string,
+    userId: string,
+    body: {
+      title?: string; text?: string; audio?: unknown;
+      position?: { x: number; y?: number } | null;
+      /** Labels, not ids — unknown ones are coined against the member's budget. */
+      words?: string[] | null;
+    },
+  ) {
+    return apiFetch<{ share: GatherResponse; circle: Circle }>(
+      `/circles/${circleId}/seeds/${seedId}/respond`,
+      { method: 'POST', body, userId },
+    );
+  },
+
+  /** Toggle my reaction. Free, no self-react; live on an open wall, at the
+   *  reveal on a sealed one. */
+  react(circleId: string, seedId: string, shareId: string, userId: string) {
+    return apiFetch<{ share: GatherResponse }>(
+      `/circles/${circleId}/seeds/${seedId}/responses/${shareId}/react`,
+      { method: 'POST', userId },
+    );
+  },
+
+  /**
+   * One gather seed's content at any phase — the reveal's read and the respond
+   * surface's refresh. The snapshot only carries extras for LIVE seeds, so a
+   * revealed ask's wall comes through here. 404s until the seed opens.
+   */
+  seedResponses(circleId: string, seedId: string, userId: string) {
+    return apiFetch<{ seed: Seed } & GatherExtras>(
+      `/circles/${circleId}/seeds/${seedId}/responses`, { userId },
+    );
+  },
+
+  /** The facilitator's escape hatch — reveal now (creator or the seed's
+   *  author). Irreversible, so the surface confirms first (S20). */
+  advanceSeed(circleId: string, seedId: string, userId: string) {
+    return apiFetch<{ circle: Circle }>(
+      `/circles/${circleId}/seeds/${seedId}/advance`,
+      { method: 'POST', userId },
     );
   },
 };
