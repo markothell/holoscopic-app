@@ -127,7 +127,16 @@ async function circleWith(members = 3) {
 
 async function ask(circle, payload, userId = 'u1') {
   await circles.addSeed({ store, circleId: circle.id, userId, payload });
-  return circle.seeds[circle.seeds.length - 1];
+  // Every ask is nominated first now (B3 revised, MO 2026-08-20) and needs
+  // approvalsToStart supporters (author + 2, capped at the roster) before its
+  // cycle opens — so the circle backs it here, exactly enough to approve.
+  const seed = circle.seeds[circle.seeds.length - 1];
+  for (const m of circle.members) {
+    if (m.userId === userId) continue;
+    if (seed.phase !== 'nominated') break;
+    await circles.supportSeed({ store, circleId: circle.id, seedId: seed.id, userId: m.userId });
+  }
+  return circle.seeds.find(s => s.id === seed.id);
 }
 
 const respond = (circle, seed, userId, fields = {}) =>
@@ -718,11 +727,15 @@ test('a gather ask runs beside a threshold-style seed in one circle', async () =
   await circles.joinCircle({ store, circleId: circle.id, userId: 'u2', username: 'U2' });
   await circles.startCircle({ store, circleId: circle.id, userId: 'u1' });
 
+  // Both nominated first (B3 revised); the other member's backing approves
+  // each — a two-person circle caps approvalsToStart at 2.
   await circles.addSeed({ store, circleId: circle.id, userId: 'u1', payload: { topic: 'story time' } });
+  await circles.supportSeed({ store, circleId: circle.id, seedId: circle.seeds[0].id, userId: 'u2' });
   await circles.addSeed({
     store, circleId: circle.id, userId: 'u2', activity: 'gather',
     payload: { prompt: 'Quick ask', shape: 'story' },
   });
+  await circles.supportSeed({ store, circleId: circle.id, seedId: circle.seeds[1].id, userId: 'u1' });
 
   const askSeed = circle.seeds.find(s => s.activity === 'gather');
   assert.equal(askSeed.phase, 'respond');
