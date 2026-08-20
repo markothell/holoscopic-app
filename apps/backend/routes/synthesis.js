@@ -74,19 +74,70 @@ async function requireUser(req, res) {
   return userId;
 }
 
-// Loads the caller's membership in the resolved (community) instance. Nodes
-// can only be listed/created by a joined member, and the server-trusted
-// handle used as ownerHandle on every write comes from here — never from a
-// client-supplied display name, so a node's attribution can't be spoofed.
-async function requireMember(req, res) {
+// THE ONE ACCESS PREDICATE (2026-08-20). Every read and every write in this
+// file goes through here, and it is the only thing standing between one
+// group's document and another's — so it lives in exactly one function.
+//
+// You may work in an idea if EITHER:
+//   • you hold a SynMembership row in it — you drafted it, or joined by code;
+//   • or a circle you belong to holds a seed pointing at it. Sharing a
+//     document with a circle is what opens it to that circle, and nothing
+//     else has to happen for its members to read and add to it.
+//
+// The second clause is why SynMembership stopped meaning "who is allowed in"
+// and started meaning "who has contributed": access is derived, and a row is
+// written LAZILY, the first time you actually put something in. So the people
+// list is contributors, because contributors are the only rows that exist.
+//
+// Callers that only READ pass { write: false } and get no row minted for
+// looking. Everything that writes takes the row, because that write needs an
+// author, and returns it — the server-trusted display name on every node
+// comes from here and never from the client, so attribution can't be spoofed.
+const Circle = require('../models/Circle');
+
+async function circleGrantsAccess(instanceId, userId) {
+  const circle = await Circle.findOne({
+    'members.userId': userId,
+    seeds: { $elemMatch: { activity: 'synthesis', 'payload.ideaId': instanceId } },
+  }).select('id').lean();
+  return Boolean(circle);
+}
+
+// The /ideas/:code routes address an idea by its shareable code rather than by
+// the resolved x-instance-id, so they cannot use requireMember directly. This
+// is the SAME predicate against a named instance — read-only, and it must stay
+// in step with requireMember below.
+async function mayReadIdea(instanceId, userId) {
+  if (!userId) return false;
+  if (await SynMembership.findOne({ instanceId, userId })) return true;
+  return circleGrantsAccess(instanceId, userId);
+}
+
+async function requireMember(req, res, { write = true } = {}) {
   const userId = await requireUser(req, res);
   if (!userId) return null;
-  const membership = await SynMembership.findOne({ instanceId: req.instanceId, userId });
-  if (!membership) {
-    res.status(403).json({ error: 'Join this idea first' });
+
+  const existing = await SynMembership.findOne({ instanceId: req.instanceId, userId });
+  if (existing) return existing;
+
+  if (!(await circleGrantsAccess(req.instanceId, userId))) {
+    res.status(403).json({ error: 'This document has not been shared with you' });
     return null;
   }
-  return membership;
+  if (!write) {
+    // A reader who has contributed nothing. Real access, no row — a viewer is
+    // not a name on the contributor list.
+    return {
+      instanceId: req.instanceId,
+      userId,
+      handle: await displayNameFor(userId),
+      role: 'member',
+      isReader: true,
+    };
+  }
+  return ideaFunnel.joinViaCircle({
+    instanceId: req.instanceId, userId, displayName: await displayNameFor(userId),
+  });
 }
 
 // Loads a node this caller owns. 404s (not 403s) when the node exists but
@@ -312,8 +363,9 @@ router.get('/ideas/:code/collaborators', async (req, res) => {
     if (!instance) return res.status(404).json({ error: 'Idea not found' });
     const userId = await requireUser(req, res);
     if (!userId) return;
-    const mine = await SynMembership.findOne({ instanceId: instance.id, userId });
-    if (!mine) return res.status(403).json({ error: 'Join this idea to see who is working on it' });
+    if (!(await mayReadIdea(instance.id, userId))) {
+      return res.status(403).json({ error: 'This document has not been shared with you' });
+    }
 
     const roster = await ideaFunnel.listCollaborators({ instanceId: instance.id });
     // Contribution counts per collaborator. Every thought counts — there is no
@@ -346,8 +398,9 @@ router.get('/ideas/:code/collaborators/:userId/map', async (req, res) => {
     if (!instance) return res.status(404).json({ error: 'Idea not found' });
     const userId = await requireUser(req, res);
     if (!userId) return;
-    const mine = await SynMembership.findOne({ instanceId: instance.id, userId });
-    if (!mine) return res.status(403).json({ error: 'Join this idea to see how people are thinking' });
+    if (!(await mayReadIdea(instance.id, userId))) {
+      return res.status(403).json({ error: 'This document has not been shared with you' });
+    }
 
     // Addressed by userId, not by name: a display name is not unique any more.
     const theirs = await SynMembership.findOne({
@@ -373,31 +426,52 @@ router.get('/ideas/:code/collaborators/:userId/map', async (req, res) => {
   }
 });
 
-// The ideas I've drafted or joined — the app's home surface. Carries the
-// stats that list renders: how many collaborators, public or private, mine
-// (role 'admin') or one I joined, and whether the group reached Synthesis.
+// Every document I can open — the app's home surface. Two sources, because
+// there are two ways in (the requireMember predicate above): ideas I drafted
+// or joined, AND ideas shared with a circle I belong to. Without the second,
+// somebody whose circle was handed a document would follow the link and find
+// nothing there, since they have contributed and so have no membership row.
 router.get('/me/ideas', async (req, res) => {
   try {
     const userId = await requireUser(req, res);
     if (!userId) return;
     const memberships = await SynMembership.find({ userId }).sort({ joinedAt: -1 });
-    const instances = await Instance.find({ id: { $in: memberships.map(m => m.instanceId) } });
+    const byUser = new Map(memberships.map(m => [m.instanceId, m]));
+
+    // Ideas reachable through a circle, minus the ones already covered.
+    const myCircles = await Circle.find({ 'members.userId': userId })
+      .select('seeds.activity seeds.payload.ideaId').lean();
+    const viaCircle = new Set();
+    for (const c of myCircles) {
+      for (const seed of c.seeds || []) {
+        if (seed.activity === 'synthesis' && seed.payload && seed.payload.ideaId
+            && !byUser.has(seed.payload.ideaId)) {
+          viaCircle.add(seed.payload.ideaId);
+        }
+      }
+    }
+
+    const wantedIds = [...byUser.keys(), ...viaCircle];
+    const instances = await Instance.find({ id: { $in: wantedIds } });
     const byId = new Map(instances.map(i => [i.id, i]));
     const ideas = await Promise.all(
-      memberships
-        .filter(m => byId.has(m.instanceId))
-        .map(async m => {
-          const instance = byId.get(m.instanceId);
+      wantedIds
+        .filter(id => byId.has(id))
+        .map(async id => {
+          const m = byUser.get(id);
+          const instance = byId.get(id);
           const [collaboratorCount, lastNode] = await Promise.all([
             SynMembership.countDocuments({ instanceId: instance.id }),
             SynNode.findOne({ instanceId: instance.id }).sort({ updatedAt: -1 }).select('updatedAt'),
           ]);
           return {
             ...ideaFunnel.toClientIdea(instance),
-            membership: ideaFunnel.toClientMembership(m),
+            // null when a circle is what opened this to me and I have not put
+            // anything in yet — the row is written on my first contribution.
+            membership: m ? ideaFunnel.toClientMembership(m) : null,
             collaboratorCount,
             // 'admin' is the drafter — the one who started the idea.
-            draftedByMe: m.role === 'admin',
+            draftedByMe: Boolean(m && m.role === 'admin'),
             lastActivityAt: lastNode?.updatedAt ?? instance.createdAt,
           };
         }),
@@ -415,7 +489,7 @@ router.get('/me/ideas', async (req, res) => {
 
 router.get('/nodes', async (req, res) => {
   try {
-    const membership = await requireMember(req, res);
+    const membership = await requireMember(req, res, { write: false });
     if (!membership) return;
     const nodes = await SynNode
       .find({ instanceId: req.instanceId, ownerId: membership.userId })
@@ -543,7 +617,7 @@ router.delete('/nodes/:id', async (req, res) => {
 // Idea-scoped; the caller has already been checked for membership.
 router.get('/feed', async (req, res) => {
   try {
-    const membership = await requireMember(req, res);
+    const membership = await requireMember(req, res, { write: false });
     if (!membership) return;
     const feed = await nodeFunnel.feed({ instanceId: req.instanceId });
     res.json({ feed });
@@ -557,7 +631,7 @@ router.get('/feed', async (req, res) => {
 // everyone who can read the idea.
 router.get('/nodes/:id/post', async (req, res) => {
   try {
-    const membership = await requireMember(req, res);
+    const membership = await requireMember(req, res, { write: false });
     if (!membership) return;
     const node = await SynNode.findOne({ id: req.params.id, instanceId: req.instanceId });
     if (!node) return res.status(404).json({ error: 'Node not found' });
@@ -641,7 +715,7 @@ router.post('/nodes/:id/replies/:entryId/upvote', async (req, res) => {
 
 router.get('/synthesis', async (req, res) => {
   try {
-    const membership = await requireMember(req, res);
+    const membership = await requireMember(req, res, { write: false });
     if (!membership) return;
     const doc = await synthesis.getCache(req.instanceId);
     res.json(synthesis.toClientCache(doc));
@@ -741,7 +815,7 @@ router.post('/synthesis', async (req, res) => {
 // usage, the bar, and how many votes each statement still needs.
 router.get('/statements', async (req, res) => {
   try {
-    const membership = await requireMember(req, res);
+    const membership = await requireMember(req, res, { write: false });
     if (!membership) return;
     const board = await statementFunnel.leaderboard({
       instanceId: req.instanceId,
@@ -827,7 +901,7 @@ router.delete('/statements/:id', async (req, res) => {
 
 router.get('/frames', async (req, res) => {
   try {
-    const membership = await requireMember(req, res);
+    const membership = await requireMember(req, res, { write: false });
     if (!membership) return;
     const frames = await SynFrame.find({ instanceId: req.instanceId }).sort({ createdAt: 1 });
     res.json({ frames });

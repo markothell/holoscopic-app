@@ -83,7 +83,9 @@ export interface Idea {
 
 // One row of the app's home surface: an idea plus how I stand in it.
 export interface MyIdea extends Idea {
-  membership: Membership;
+  /** null when a CIRCLE is what opened this document to me and I have not put
+   *  anything in yet — the membership row is written on first contribution. */
+  membership: Membership | null;
   collaboratorCount: number;
   draftedByMe: boolean;   // I hold the 'admin' role — I started this idea
   lastActivityAt: string;

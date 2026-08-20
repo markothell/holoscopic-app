@@ -58,7 +58,9 @@ function IdeaRow({ idea, onOpen }: { idea: MyIdea; onOpen: (code: string) => voi
           {idea.visibility}
         </Stat>
         <Stat tone="var(--line-strong)">·</Stat>
-        <Stat>as {idea.membership.handle}</Stat>
+        {/* No membership row yet: a circle opened this to me and I have not
+            added anything. Say what it is rather than showing a blank name. */}
+        <Stat>{idea.membership ? `as ${idea.membership.handle}` : 'shared with your circle'}</Stat>
       </span>
     </button>
   );

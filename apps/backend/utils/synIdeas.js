@@ -224,6 +224,34 @@ async function joinIdea({ store = mongoStore, code, userId, displayName }) {
   return { instance, membership };
 }
 
+/**
+ * Mint the membership row for someone whose access came from a CIRCLE rather
+ * than from joining (2026-08-20). Called the first time they write, never for
+ * a read — a row here means "has contributed", which is what the people list
+ * shows and what the circle map counts.
+ *
+ * Idempotent, and it deliberately does NOT re-check access: the caller
+ * (routes/synthesis.js#requireMember) is the one predicate, and duplicating
+ * the check here would be two places to get it wrong. It does hold the member
+ * cap, because that is this file's rule and applies however you arrived.
+ */
+async function joinViaCircle({ store = mongoStore, instanceId, userId, displayName }) {
+  if (!instanceId || !userId) throw new Error('instanceId and userId are required');
+  const existing = await store.findMembership(instanceId, userId);
+  if (existing) return existing;
+
+  const count = await store.countMembers(instanceId);
+  if (count >= MEMBER_CAP) throw new Error('This idea is full');
+
+  return store.createMembership({
+    id: newId(),
+    instanceId,
+    userId,
+    handle: normDisplayName(displayName),
+    role: 'member',
+  });
+}
+
 // The collaborator roster for an idea — the social page's data (handle, role,
 // joined). Contribution counts are layered on in routes/synthesis.js, which
 // owns the SynNode/Entry reads; this funnel stays membership-only.
@@ -246,6 +274,7 @@ async function listPublicIdeas({ store = mongoStore, limit = 50, skip = 0 } = {}
 }
 
 module.exports = {
+  joinViaCircle,
   createIdea,
   joinIdea,
   listCollaborators,
