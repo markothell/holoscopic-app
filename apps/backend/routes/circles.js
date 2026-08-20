@@ -183,6 +183,29 @@ router.post('/:id/seeds/:seedId/respond', async (req, res) => {
   }
 });
 
+// One gather seed's content, at any phase — the reveal surface's read, and
+// the respond surface's refresh. The snapshot only carries extras for LIVE
+// seeds (a revealed seed has left that set), so a done seed's wall/portrait
+// is served here, threshold's /seeds/:seedId/result precedent. Visibility is
+// the module's own (sealed = own-only until the close), so this route adds
+// nothing but the member gate.
+router.get('/:id/seeds/:seedId/responses', async (req, res) => {
+  try {
+    const circle = await circleOr404(req, res);
+    if (!circle) return;
+    const userId = userIdOf(req);
+    circles.assertMember(circle, userId);
+    const seed = circle.seeds.find(s => s.id === req.params.seedId);
+    if (!seed) return res.status(404).json({ error: 'Topic not found in this circle' });
+    const mod = circles.modFor(circle, seed);
+    if (!mod.snapshotExtras) return res.status(404).json({ error: 'This activity has no responses surface' });
+    const extras = await mod.snapshotExtras({ circle, seed, viewerId: userId });
+    res.json({ seed: circles.toClientSeed(seed, { userId }), ...extras });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 // Toggle my reaction on a response.
 router.post('/:id/seeds/:seedId/responses/:shareId/react', async (req, res) => {
   try {
