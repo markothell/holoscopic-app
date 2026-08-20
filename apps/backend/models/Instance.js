@@ -105,11 +105,12 @@ const instanceConfigSchema = new mongoose.Schema({
     // account may join it; a private one is reachable by invite code alone.
     // The MEMBER_CAP applies either way.
     visibility: { type: String, enum: ['public', 'private'], default: 'private' },
-    // Synthesis D17: the circle that owns this idea as one of its sessions —
-    // stamped by utils/circleSessions.js, which then mirrors the circle's
-    // membership in. Null for a free-standing idea. Deliberately unindexed:
-    // the instances collection is tens of rows, and the query that reads it
-    // (listCircleSessionInstances) scans within that.
+    // RETIRED 2026-08-20, kept so old rows still validate. D17 had a circle
+    // own an idea by stamping its id here, and utils/circleSessions.js mirrored
+    // the roster in. Synthesis is a registered circle activity now and the
+    // relationship runs the other way: the CIRCLE holds a seed whose payload
+    // points at the idea (utils/synthesisActivity.js). Nothing reads this
+    // field. Production held no non-null value when it was retired.
     circleId: { type: String, default: null },
     // D12. The share of collaborators that must vote for one statement before
     // the group has reached Synthesis. Per-idea so it can be tuned without a

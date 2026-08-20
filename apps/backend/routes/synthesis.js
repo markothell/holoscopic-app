@@ -222,62 +222,20 @@ router.post('/ideas', requireEmailVerified, async (req, res) => {
   }
 });
 
-// ── The circle bridge (synthesis D17) ───────────────────────────────────────
+// ── The circle bridge ───────────────────────────────────────────────────────
 //
-// A circle owns synthesis sessions: an idea stamped with the circle's id,
-// membership mirrored from the circle's members (no separate join — the
-// session appears in every member's ideas list by itself). Addressed by
-// CIRCLE id like /ideas is by code — the resolved x-instance-id is not the
-// authority here, membership in the named circle is, and the Circle model is
-// this file's one deliberate reach across the activity boundary: it IS the
-// bridge point.
-
-const Circle = require('../models/Circle');
-const circleSessions = require('../utils/circleSessions');
-
-async function loadCircleForMember(req, res, userId) {
-  const circle = await Circle.findOne({ id: req.params.circleId });
-  if (!circle || !circle.members.some(m => m.userId === userId)) {
-    // 404 for absent and non-member alike — the circle rule (threshold D20).
-    res.status(404).json({ error: 'Circle not found' });
-    return null;
-  }
-  return circle;
-}
-
-router.get('/circles/:circleId/sessions', async (req, res) => {
-  try {
-    const userId = await requireUser(req, res);
-    if (!userId) return;
-    const circle = await loadCircleForMember(req, res, userId);
-    if (!circle) return;
-    res.json({ sessions: await circleSessions.listSessions({ circle, viewerId: userId }) });
-  } catch (error) {
-    fail(res, error);
-  }
-});
-
-router.post('/circles/:circleId/sessions', requireEmailVerified, async (req, res) => {
-  try {
-    const userId = await requireUser(req, res);
-    if (!userId) return;
-    const circle = await loadCircleForMember(req, res, userId);
-    if (!circle) return;
-    const { instance, membership } = await circleSessions.createSession({
-      circle, userId, title: req.body.title,
-    });
-    // The creator's map opens on the idea, like every idea create/join.
-    await nodeFunnel.seedHomeHub({
-      instanceId: instance.id,
-      ownerId: userId,
-      ownerHandle: membership.handle,
-      title: instance.name,
-    });
-    res.status(201).json({ session: ideaFunnel.toClientIdea(instance) });
-  } catch (error) {
-    fail(res, error);
-  }
-});
+// There is no bridge here any more (2026-08-20). D17's version lived in this
+// file: two `/circles/:circleId/sessions` routes over utils/circleSessions.js,
+// which made a session an Instance stamped `config.synthesis.circleId` and
+// mirrored the circle roster into it. Nothing generic could see it, so the
+// circle map had to fake a Seed to draw it at all.
+//
+// The direction is inverted now. A circle points at an idea through an
+// ORDINARY SEED — `POST /api/circles/:id/seeds` with `activity: 'synthesis'`
+// and `payload: { ideaId }` — and utils/synthesisActivity.js supplies what
+// that seed means. So sharing, queueing, support, participation, the mail and
+// the facilitator verbs are all the generic circle surface, and this file
+// keeps its one job: ideas, nodes, replies, statements and the Union.
 
 // Join an existing idea by its shareable code. The ≤50-collaborator gate and
 // per-idea handle uniqueness are enforced in utils/synIdeas.js. Joining seeds

@@ -14,7 +14,7 @@
 // brings its own.
 
 import { ApiError, createApiFetch } from '@hs/api';
-import type { Circle, MyRanking, Placement, Pole, Seed, SeedResult, Share, SynthesisSession } from '@/lib/types';
+import type { Circle, MyRanking, Placement, Pole, Seed, SeedResult, Share, MyIdea } from '@/lib/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 
@@ -39,6 +39,26 @@ export const circlesApi = {
    *  participation rows the circle-home map draws from. */
   getCircle(urlName: string, userId?: string | null) {
     return apiFetch<{ circle: Circle }>(`/circles/${urlName}`, { userId });
+  },
+
+  /**
+   * Put a seed to the circle. `activity` selects the module when it differs
+   * from the circle's own — 'synthesis' shares a document, which lands
+   * NOMINATED: readable and contributable, but outside the queue until
+   * somebody else backs it.
+   */
+  postSeed(circleId: string, userId: string, payload: Record<string, unknown>, activity?: string) {
+    return apiFetch<{ circle: Circle }>(`/circles/${circleId}/seeds`, {
+      method: 'POST', body: { payload, activity: activity ?? null }, userId,
+    });
+  },
+
+  /** Toggle my support. On a nominated seed, the first support from anyone
+   *  other than its author is what accepts it into the queue. */
+  supportSeed(circleId: string, seedId: string, userId: string) {
+    return apiFetch<{ circle: Circle }>(`/circles/${circleId}/seeds/${seedId}/support`, {
+      method: 'POST', userId,
+    });
   },
 
   /**
@@ -170,13 +190,11 @@ export const SYNTHESIS_URL = process.env.NEXT_PUBLIC_SYNTHESIS_URL || 'http://lo
 /** The circle's synthesis sessions (synthesis D17) — the bridge rides the
  *  synthesis router, addressed by circle id; membership in the circle is the
  *  gate, checked there. */
+// The circle no longer asks synthesis what it owns — a shared document IS a
+// seed on the circle, so it arrives in the snapshot. The one thing still worth
+// asking across the boundary is what documents I have to share.
 export const synthesisApi = {
-  sessions(circleId: string, userId: string) {
-    return apiFetch<{ sessions: SynthesisSession[] }>(`/synthesis/circles/${circleId}/sessions`, { userId });
-  },
-  createSession(circleId: string, title: string, userId: string) {
-    return apiFetch<{ session: SynthesisSession }>(`/synthesis/circles/${circleId}/sessions`, {
-      method: 'POST', body: { title }, userId,
-    });
+  myIdeas(userId: string) {
+    return apiFetch<{ ideas: MyIdea[] }>('/synthesis/me/ideas', { userId });
   },
 };

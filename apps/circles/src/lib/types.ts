@@ -8,12 +8,23 @@
 
 export type Pole = 'A' | 'B';
 
-/** A seed's payload, after utils/threshold.js#normalizeSeed. */
+/**
+ * OPAQUE to the circle layer — each activity module owns and validates its own
+ * shape (apps/backend/utils/circleActivities.js). The fields below are the
+ * union of what the surfaces in this app read: `topic` is the label every
+ * generic surface uses and every module fills in, the poles and clock are
+ * Threshold's, and the idea fields are a shared synthesis document's.
+ */
 export interface SeedPayload {
   topic: string;
   poleA: string;
   poleB: string;
   secondsPerNote: number;
+  /** activity 'synthesis': the idea this seed shares with the circle. */
+  ideaId?: string;
+  ideaCode?: string;
+  /** The idea's title, snapshotted when it was shared. */
+  title?: string;
 }
 
 /**
@@ -51,10 +62,17 @@ export interface Seed {
   /** Posted order. The tiebreak under support, not the order it will run in —
    *  read `Circle.queue` for that. */
   order: number;
+  /** Which activity module runs this seed. null = the circle's own. A circle
+   *  holds mixed activities, so this is what tells a Threshold topic from a
+   *  shared synthesis document. */
+  activity: string | null;
   payload: SeedPayload;
-  /** `skipped` is terminal like `revealed`: the facilitator moved the group on
-   *  and the topic kept every story it had (D30). */
-  phase: 'pending' | 'share' | 'rank' | 'revealed' | 'skipped';
+  /** `nominated` is BEFORE the queue: shared with the circle, readable and
+   *  contributable, but not something the group has taken on yet. Somebody
+   *  other than the author supporting it accepts it into the queue as
+   *  `pending`. `skipped` is terminal like `revealed`: the facilitator moved
+   *  the group on and the topic kept every story it had (D30). */
+  phase: 'nominated' | 'pending' | 'share' | 'rank' | 'exploring' | 'revealed' | 'skipped';
   /** One support per member, toggled freely — the count is what orders the
    *  queue (D27). The roster never crosses the wire; who backed a topic is
    *  nobody's business, and only the count decides anything. */
@@ -241,19 +259,12 @@ export interface ThresholdNotification {
 }
 
 /**
- * A synthesis session the circle owns (synthesis D17) — an idea whose
- * membership mirrors the circle's. Mirrors the rows
- * apps/backend/utils/circleSessions.js#listSessions serves. Contributors are
- * circle members who published or replied — synthesis is attributed by
- * design, so this roster is not a redaction concern.
+ * One of my synthesis documents, for the picker that shares one with a circle.
+ * Mirrors a row from GET /api/synthesis/me/ideas.
  */
-export interface SynthesisSession {
+export interface MyIdea {
   id: string;
-  title: string;
   code: string;
-  contributorIds: string[];
-  contributorCount: number;
-  iContribute: boolean;
-  synthesisReached: boolean;
-  createdAt: string;
+  title: string;
+  collaboratorCount: number;
 }

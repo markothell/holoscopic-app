@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import type { Circle, Member, Seed, SeedParticipation, SynthesisSession } from '@/lib/types';
+import type { Circle, Member, Seed, SeedParticipation } from '@/lib/types';
 import { SYNTHESIS_URL } from '@/services/api';
 
 // The circle home map: the circle drawn as a circle — the product's hero surface,
@@ -47,6 +47,10 @@ interface Spur {
   memberId: string;
   x1: number; y1: number;
   x2: number; y2: number;
+  /** Accepted into the queue and waiting its turn — drawn as a small ochre
+   *  circle at the open end. A bare edge is one person's, still unanswered;
+   *  the dot is the group having said yes to it. */
+  queued: boolean;
 }
 
 function memberAngle(i: number, n: number): number {
@@ -70,31 +74,50 @@ function layout(members: Member[], seeds: Seed[], participation: SeedParticipati
     const part = partBySeed.get(seed.id);
     const done = seed.phase === 'revealed' || seed.phase === 'skipped';
     const live = seed.id === liveSeedId;
-    if (!done && !live) continue; // queued topics live in the queue list, not on the map
-    if (!part) continue;
+    // Anything not yet started is on the map (2026-08-20), where it used to be
+    // hidden until it ran. A nominated document is readable and contributable
+    // the moment it is shared, so leaving it off would hide the thing people
+    // are meant to act on — and once that is true for a nomination, a queued
+    // topic sitting in the same list has the same claim. Together they read as
+    // what the group has been offered.
+    //
+    // PROVISIONAL. A large queue draws a lot of spurs, and how many to show is
+    // the ring grammar's question, not this line's.
+    const waiting = seed.phase === 'nominated' || seed.phase === 'pending';
+    if (!done && !live && !waiting) continue;
+    if (!part && !waiting) continue;
 
-    // A finished topic exactly one member told: their solo exploration, a
-    // short edge with no circle at its end, pointing away from the centre.
-    if (done && part.tellerIds && part.tellerIds.length === 1) {
-      const p = pos.get(part.tellerIds[0]);
+    // One person's, so far: their solo exploration, a short edge with no
+    // circle at its end, pointing away from the centre. A finished topic only
+    // one member told reads this way, and so does a freshly shared document —
+    // in both cases nobody has joined you yet, which is one fact and gets one
+    // mark. A shared document nobody has touched at all hangs off its author.
+    const tellers0 = part && part.tellerIds ? part.tellerIds : [];
+    const soloId = waiting && tellers0.length === 0
+      ? seed.authorId
+      : (tellers0.length === 1 ? tellers0[0] : null);
+    if ((done || waiting) && soloId) {
+      const p = pos.get(soloId);
       if (!p) continue;
-      const k = spursByMember.get(part.tellerIds[0]) ?? 0;
-      spursByMember.set(part.tellerIds[0], k + 1);
+      const k = spursByMember.get(soloId) ?? 0;
+      spursByMember.set(soloId, k + 1);
       // Fan multiple solos around the outward direction: 0, +0.42, −0.42, …
       const fan = (k % 2 === 0 ? 1 : -1) * Math.ceil(k / 2) * 0.42;
       const dir = p.a + fan;
       spurs.push({
         seed,
-        memberId: part.tellerIds[0],
+        memberId: soloId,
         x1: p.x + (memberR + 3) * Math.cos(dir),
         y1: p.y + (memberR + 3) * Math.sin(dir),
         x2: p.x + (memberR + 21) * Math.cos(dir),
         y2: p.y + (memberR + 21) * Math.sin(dir),
+        queued: seed.phase === 'pending',
       });
       continue;
     }
 
-    if (done && part.tellerIds && part.tellerIds.length === 0) continue; // nothing was told
+    if (done && tellers0.length === 0) continue; // nothing was told
+    if (!part) continue;
 
     const count = part.tellerCount;
     const share = count == null ? 0 : Math.min(1, count / Math.max(n, 1));
@@ -182,46 +205,22 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function CircleMap({ circle, userId, sessions }: {
+export function CircleMap({ circle, userId }: {
   circle: Circle;
   userId: string | null;
-  sessions?: SynthesisSession[];
 }) {
   const { members, seeds, participation, liveSeedId } = circle;
   const base = `/c/${circle.urlName}`;
 
-  // Synthesis sessions ride the same layout as topics (synthesis D17): a
-  // session is an exploration, its contributors are its tellers, and the
-  // standing grammar does the rest — one contributor reads as their solo
-  // spur, more pull it into the middle, sized by how much of the circle is
-  // in. An untouched session has nothing explored yet and stays off the map;
-  // the band under the map still lists it. Seed ids are 8 hex chars, so the
-  // syn- prefix cannot collide.
-  const merged = useMemo(() => {
-    const sessionSeeds: Seed[] = (sessions ?? []).map(s => ({
-      id: `syn-${s.id}`, authorId: '', order: 0,
-      payload: { topic: s.title, poleA: '', poleB: '', secondsPerNote: 0 },
-      phase: 'revealed' as const, supporterCount: 0, iSupport: false,
-      promotedAt: null, openedAt: null, phaseDeadline: null, revealedAt: null, result: null,
-    }));
-    const sessionParts: SeedParticipation[] = (sessions ?? []).map(s => ({
-      seedId: `syn-${s.id}`,
-      tellerIds: s.contributorIds,
-      tellerCount: s.contributorCount,
-      iTold: s.iContribute,
-    }));
-    return {
-      seeds: [...seeds, ...sessionSeeds],
-      participation: [...(participation ?? []), ...sessionParts],
-    };
-  }, [seeds, participation, sessions]);
-
   const geo = useMemo(
-    () => layout(members, merged.seeds, merged.participation, liveSeedId, userId),
-    [members, merged, liveSeedId, userId],
+    () => layout(members, seeds, participation ?? [], liveSeedId, userId),
+    [members, seeds, participation, liveSeedId, userId],
   );
 
-  const isSession = (seed: Seed) => seed.id.startsWith('syn-');
+  // A shared synthesis document is an ordinary seed now (2026-08-20), so this
+  // asks the honest question instead of sniffing a 'syn-' id prefix off a seed
+  // the map used to invent for itself.
+  const isSession = (seed: Seed) => seed.activity === 'synthesis';
   const hrefFor = (seed: Seed) => (isSession(seed) ? SYNTHESIS_URL : `${base}/topic/${seed.id}`);
 
   // Drilling into a topic is an in-app move, so it goes through the router like
@@ -305,6 +304,10 @@ export function CircleMap({ circle, userId, sessions }: {
               x1={spur.x1} y1={spur.y1} x2={spur.x2} y2={spur.y2}
               stroke="var(--ochre)" strokeWidth="2.5" strokeLinecap="round"
             />
+            {/* Queued: the group said yes and it is waiting its turn. */}
+            {spur.queued && (
+              <circle cx={spur.x2} cy={spur.y2} r={3.5} fill="var(--ochre)" />
+            )}
             <line
               x1={spur.x1} y1={spur.y1} x2={spur.x2} y2={spur.y2}
               stroke="transparent" strokeWidth="14"

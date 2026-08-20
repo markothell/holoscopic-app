@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { circlesApi, synthesisApi, ApiError, SYNTHESIS_URL } from '@/services/api';
-import type { Circle, SynthesisSession } from '@/lib/types';
+import type { Circle, MyIdea } from '@/lib/types';
 import { Page, Band, Card, Action, Muted } from '@/components/Shell';
 import { CircleMap } from '@/components/CircleMap';
 
@@ -24,7 +24,6 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
 
   const [circle, setCircle] = useState<Circle | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sessions, setSessions] = useState<SynthesisSession[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -43,18 +42,6 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, [status, load]);
-
-  // The circle's synthesis sessions (synthesis D17) — fetched beside the
-  // snapshot, drawn on the map, listed in their own band. Members only; the
-  // route 404s anyone else.
-  useEffect(() => {
-    if (!userId || !circle?.isMember) return;
-    let cancelled = false;
-    synthesisApi.sessions(circle.id, userId)
-      .then(({ sessions }) => { if (!cancelled) setSessions(sessions); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [userId, circle?.id, circle?.isMember]);
 
   if (status === 'loading') return <Page><Muted>…</Muted></Page>;
 
@@ -96,7 +83,7 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
       {error && circle && <p className="mb-4 text-sm text-ochre">{error}</p>}
 
       {circle.isMember && circle.participation ? (
-        <CircleMap circle={circle} userId={userId} sessions={sessions} />
+        <CircleMap circle={circle} userId={userId} />
       ) : (
         <JoinCard circle={circle} userId={userId} onJoined={load} />
       )}
@@ -173,42 +160,71 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
         </section>
       )}
       {circle.isMember && (
-        <SynthesesBand
-          circle={circle}
-          userId={userId}
-          sessions={sessions}
-          onCreated={s => setSessions(prev => [s, ...prev])}
-        />
+        <SynthesesBand circle={circle} userId={userId} onShared={load} />
       )}
     </Page>
   );
 }
 
 /**
- * The circle's synthesis sessions (synthesis D17): as many as the group
- * wants, each an ongoing mapping every member is already in — membership
- * mirrors the circle, so opening one needs no join and no code. The map above
- * draws each session by its participation; this band is where they are named,
- * started and entered.
+ * Documents shared with this circle. A synthesis is an ongoing mapping —
+ * everyone grows their own thought map and what people respond to weaves
+ * together — and it starts life as ONE person's, private, in the synthesis
+ * app. Sharing it here is what lets the circle read and add to it.
+ *
+ * Shared is not the same as taken on: a shared document sits outside the
+ * queue until somebody other than its author backs it, which is what the
+ * support control below does. Until then it is an offer.
+ *
+ * These are ordinary seeds now (2026-08-20) — they arrive in the circle
+ * snapshot like any topic, so there is no second fetch and nothing to keep
+ * in sync.
  */
-function SynthesesBand({ circle, userId, sessions, onCreated }: {
+function SynthesesBand({ circle, userId, onShared }: {
   circle: Circle;
   userId: string;
-  sessions: SynthesisSession[];
-  onCreated: (s: SynthesisSession) => void;
+  onShared: () => Promise<void>;
 }) {
-  const [title, setTitle] = useState('');
+  const [mine, setMine] = useState<MyIdea[] | null>(null);
+  const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const create = async () => {
-    if (!title.trim()) return;
+  const shared = circle.seeds.filter(s => s.activity === 'synthesis');
+  const sharedIds = new Set(shared.map(s => s.payload.ideaId).filter(Boolean));
+
+  const openPicker = async () => {
+    setPicking(true);
+    setError(null);
+    if (mine) return;
+    try {
+      const { ideas } = await synthesisApi.myIdeas(userId);
+      setMine(ideas);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Could not reach your documents');
+      setMine([]);
+    }
+  };
+
+  const share = async (idea: MyIdea) => {
     setBusy(true);
     setError(null);
     try {
-      const { session } = await synthesisApi.createSession(circle.id, title.trim(), userId);
-      setTitle('');
-      onCreated(session);
+      await circlesApi.postSeed(circle.id, userId, { ideaId: idea.id }, 'synthesis');
+      setPicking(false);
+      await onShared();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'That did not work');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const back = async (seedId: string) => {
+    setBusy(true);
+    try {
+      await circlesApi.supportSeed(circle.id, seedId, userId);
+      await onShared();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'That did not work');
     } finally {
@@ -219,47 +235,86 @@ function SynthesesBand({ circle, userId, sessions, onCreated }: {
   return (
     <section className="mt-10">
       <Band>Syntheses</Band>
-      {sessions.length === 0 && (
+      {shared.length === 0 && (
         <Muted>
           A synthesis is an ongoing mapping the whole circle is in — everyone grows their own
-          thought map, and what people respond to weaves together. Name one to begin.
+          thought map, and what people respond to weaves together. Write one in Synthesis, then
+          share it here when it is ready for company.
         </Muted>
       )}
-      {sessions.length > 0 && (
+      {shared.length > 0 && (
         <ul className="space-y-3">
-          {sessions.map(s => (
-            <li key={s.id}>
+          {shared.map(seed => (
+            <li key={seed.id} className="flex items-start justify-between gap-3">
               <a
                 href={SYNTHESIS_URL}
-                className="-mx-3 block rounded-lg px-3 py-2 transition-colors hover:bg-ground-deep"
+                className="-mx-3 block flex-1 rounded-lg px-3 py-2 transition-colors hover:bg-ground-deep"
               >
-                <span className="font-[family-name:var(--font-display)] text-lg">{s.title}</span>
+                <span className="font-[family-name:var(--font-display)] text-lg">
+                  {seed.payload.title || seed.payload.topic}
+                </span>
                 <span className="mt-0.5 block text-xs text-ink-faint">
-                  {s.contributorCount === 0
-                    ? 'waiting for its first thought'
-                    : `${s.contributorCount} of ${circle.memberCount} mapping`}
-                  {s.synthesisReached && ' · reached synthesis'}
+                  {seed.phase === 'nominated'
+                    ? 'shared — open to read and add to'
+                    : seed.phase === 'pending'
+                      ? `taken up · ${seed.supporterCount} backing`
+                      : seed.phase === 'exploring'
+                        ? 'the circle is on it'
+                        : 'closed for now'}
                 </span>
               </a>
+              {seed.phase === 'nominated' && seed.authorId !== userId && (
+                <Action onClick={() => void back(seed.id)} disabled={busy}>
+                  Take it up
+                </Action>
+              )}
             </li>
           ))}
         </ul>
       )}
-      <form
-        onSubmit={e => { e.preventDefault(); void create(); }}
-        className="mt-4 flex max-w-md gap-2"
-      >
-        <input
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          placeholder="Name a synthesis to begin"
-          maxLength={80}
-          className="min-w-0 flex-1 rounded-lg border border-[var(--rule)] bg-card p-2.5 text-sm outline-none focus:border-[var(--rule-strong)]"
-        />
-        <Action type="submit" disabled={busy || !title.trim()}>
-          {busy ? 'Beginning…' : 'Begin'}
-        </Action>
-      </form>
+
+      {!picking && (
+        <button
+          type="button"
+          onClick={() => void openPicker()}
+          className="mt-4 text-sm underline underline-offset-4 text-ink-faint hover:text-ink"
+        >
+          + Share a document
+        </button>
+      )}
+      {picking && (
+        <div className="mt-4 max-w-md">
+          {mine === null && <Muted>Looking…</Muted>}
+          {mine && mine.length === 0 && (
+            <Muted>
+              Nothing to share yet. Documents you write in Synthesis show up here.
+            </Muted>
+          )}
+          {mine && mine.length > 0 && (
+            <ul className="space-y-1.5">
+              {mine.filter(i => !sharedIds.has(i.id)).map(idea => (
+                <li key={idea.id}>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void share(idea)}
+                    className="-mx-3 block w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-ground-deep disabled:opacity-50"
+                  >
+                    <span className="text-sm">{idea.title}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button
+            type="button"
+            onClick={() => setPicking(false)}
+            className="mt-3 text-xs underline underline-offset-4 text-ink-faint"
+          >
+            Never mind
+          </button>
+        </div>
+      )}
       {error && <p className="mt-2 text-sm text-pole-b">{error}</p>}
     </section>
   );
