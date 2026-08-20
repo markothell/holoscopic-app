@@ -204,6 +204,15 @@ Both clusters used to host a database called `holoscopic-db`, so the only thing 
 
 **Don't fix failing tests in another app's area.** A red test in a file you did not touch is usually an agent mid-change. Report it; do not "helpfully" repair it and collide with their next write.
 
+**`git fetch` before you claim anything is merged.** With several agents pushing, a local ref is a
+guess, not a fact. `main` in your working copy can be a dozen commits behind `origin/main` while
+you confidently report a branch as unmerged — this has happened, and it turned finished, deployed
+work into a phantom "unmerged branch" in a design conversation. `origin/main` is the only truth
+about what is on production. Fetch first, read `origin/main`, and say which ref you read.
+
+**Delete a branch the moment it merges.** A merged branch that still exists reads as work in
+flight to every agent and every human who lists branches later.
+
 **Report what you swept.** If a commit of yours ended up containing someone else's files anyway, say so plainly in the response rather than letting it pass silently.
 
 ## When to Escalate to the User
