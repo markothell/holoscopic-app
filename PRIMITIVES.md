@@ -470,8 +470,15 @@ submission), `utils/gatherTranscribe.js` as the third ~30-line sibling over the
 `transcribe.js` core, the Deepgram callback at `/api/circles/hooks/deepgram` (own HMAC,
 outside `enforceVerifiedUser`), the mirror reusing `mirrorShare` since the primitive Share
 deliberately mirrors ThresholdShare's audio shape, and the nightly `backup-blobs.js` sweep
-covering the primitive `shares` collection. Full backend suite green. Remaining: the
-`apps/circles` frontend (picker, respond, reveal).
+covering the primitive `shares` collection. Full backend suite green. **The frontend landed
+2026-08-20 to the S1–S20 picks** (below): `/c/[urlName]/new` (picker tabs + four-dot creator,
+one postSeed), `/c/[urlName]/activity/[seedId]` (respond + reveal, one surface since B4 keeps
+input open), `components/gather.tsx` (the reveal ring, R2/R3 charts, portrait, response
+card), the home page rendering every live seed and the map routing gather seeds to their
+surface. Verified end-to-end over HTTP against the dev backend (sealed visibility, coinage
+hiding, portrait counts, manual reveal, late response, open-wall reactions); typecheck and
+production build green. Still owed: an eyes-on browser pass of the new surfaces, and the
+inherited M3b caveat — a real iPhone recording.
 
 ### The creator process
 

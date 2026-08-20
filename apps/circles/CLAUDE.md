@@ -58,8 +58,11 @@ eventually the synthesis surfaces moving in as a package.
 |---|---|
 | `src/components/CircleMap.tsx` | The hero: members on a ring, shared explorations sized by participation, ochre solo spurs, the faint toono crown. Ported from threshold's prototype |
 | `src/components/{Shell,Wordmark}.tsx` | Chrome in the Toono language; the wordmark is plain lowercase Seravek (final treatment pending the branding session) |
-| `src/services/api.ts` | All HTTP. Generic circle ops ride `/api/circles`; activity verbs stay on `/api/threshold` |
-| `src/lib/{auth,types}.ts` | Auth stack copy #5 (M2's `@hs/auth` dedupes them) and the wire types, mirrored from threshold |
+| `src/services/api.ts` | All HTTP. Generic circle ops AND gather verbs (respond/react/responses/advance) ride `/api/circles`; Threshold's own verbs stay on `/api/threshold` |
+| `src/lib/{auth,types}.ts` | Auth stack copy #5 (M2's `@hs/auth` dedupes them) and the wire types, mirrored from the backend serializers |
+| `src/app/c/[urlName]/new/page.tsx` | The activity builder's creator flow (PRIMITIVES.md §9 S-decisions, 2026-08-20): + on circle home → primitives/templates tabs → four connected dots (shape, prompt, reveal, launch), staged locally and sent as ONE postSeed with `activity: 'gather'` |
+| `src/app/c/[urlName]/activity/[seedId]/page.tsx` | One gather ask, respond + reveal in a single surface (B4 keeps input open past the reveal). Voice-first or text-first story (S1), five stops (S2), free/quadrant grids (S3), tell-then-place (S4), the words chip field with the coin budget (S5), the state line + facilitator's confirm-gated Reveal-now (S19/S20) |
+| `src/components/gather.tsx` | The reveal pieces: `ResponseRing` (each response at its teller's seat, the shape's visual in the center — prompt+count / mini chart / portrait, S6–S8, S11), `StackChart` (R2), `DotMap` (R3, cluster-sized nodes, no spread ellipse), `Portrait`, `ResponseCard` with the small-ring reaction mark (S14/S17) |
 
 ## Gotchas
 
