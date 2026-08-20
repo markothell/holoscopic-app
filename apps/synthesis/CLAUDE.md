@@ -89,6 +89,22 @@ friction with nothing on the other side of it.
 
 **A collaborator's map is addressed by `userId`**, not by name — `/ideas/:code/collaborators/:userId/map`.
 
+## Who may open a document
+
+One predicate, in `routes/synthesis.js#requireMember`, and every read and write goes through it:
+you hold a `SynMembership` row, **or** a circle you belong to holds a seed pointing at this idea.
+Sharing a document with a circle IS the grant — `utils/synthesisActivity.js`, and see
+`apps/circles/CLAUDE.md`.
+
+So **`SynMembership` means "has contributed", not "is allowed in"**. The row is written lazily on
+your first write; read-only callers pass `{ write: false }` and mint nothing, because a reader is
+not a name on the contributor list. That is why the people overlay lists contributors — they are
+the only rows that exist.
+
+The `/ideas/:code` routes address an instance they were handed rather than the resolved one, so
+they use `mayReadIdea`, the same two clauses. Keep the two in step.
+`scripts/check-synthesis-access.js` exercises this against a real database.
+
 ## Write funnels
 
 Never write these collections directly:

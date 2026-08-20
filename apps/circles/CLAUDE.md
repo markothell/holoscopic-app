@@ -35,14 +35,22 @@ second consumer): the one-call snapshot, my-circles and join are activity-agnost
 per-activity content comes from two module hooks — `snapshotExtras` (shares/myRanking/waiting,
 redacted by the activity) and `participation` (the map's rows). Both front doors serve the
 identical payload from `circles.snapshot`, verified in a browser on both apps. Activity verbs
-(telling, sorting, the reveal) stay on `/api/threshold`. **The Synthesis bridge is in** (synthesis D17): the circle home carries a Syntheses band —
-any member names a session to begin it; the session is an idea stamped with the circle's id,
-its membership mirrored from the circle (idempotent, healed on every read — a week-six joiner
-is simply in), so it appears in every member's synthesis ideas list with no join and no code.
-Sessions ride the circle map's standing grammar: contributors are tellers, one reads as a solo
-spur, more pull it inward. Bridge routes live on /api/synthesis (addressed by circle id);
-`NEXT_PUBLIC_SYNTHESIS_URL` is where session links point (default localhost:4004). Still to
-come per P18: the shared player, and eventually the synthesis surfaces moving in as a package.
+(telling, sorting, the reveal) stay on `/api/threshold`. **Synthesis is a circle ACTIVITY** (2026-08-20, replacing D17's bridge). A member writes a
+document privately in Synthesis and *shares* it with the circle: that writes an ordinary seed
+with `activity: 'synthesis'` and `payload: { ideaId }`, so the queue, `participation()`, the mail
+and the facilitator verbs all pick it up with no special casing. `utils/synthesisActivity.js` on
+the backend supplies what the seed means. The Syntheses band renders from `circle.seeds` — no
+second fetch — and carries the picker that shares one.
+
+**A shared document is not a queued one.** A synthesis seed is born `nominated`: readable and
+contributable by the whole circle, but outside the queue. Anyone other than its author supporting
+it accepts it in as `pending`. Sharing grants access; the queue only orders attention.
+
+On the map: a waiting seed draws as an ochre spur at its author's seat, and a spur whose seed has
+been accepted grows a small ochre circle at the open end — bare edge means one person's, dot means
+the group said yes. Contributors pull it inward exactly as before. `NEXT_PUBLIC_SYNTHESIS_URL` is
+where document links point (default localhost:4004). Still to come per P18: the shared player, and
+eventually the synthesis surfaces moving in as a package.
 
 ## Architecture
 
