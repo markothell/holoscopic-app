@@ -14,7 +14,9 @@ import type { Idea, Membership, MyIdea } from '@/lib/types';
 // this hook deliberately does NOT auto-pick, even a remembered last code, so a
 // signed-in account lands on its ideas list rather than being dropped onto
 // whichever map was open last. `rememberCode`/`lastCode` back the localStorage
-// key purely so the list can pre-highlight the most recent one.
+// key purely so the list can pre-highlight the most recent one. The single
+// exception is `?idea=<code>`, which a link from a circle carries — there the
+// URL named the document, so opening it is what the link promised.
 //
 // Never throws into the render tree: a failed lookup just leaves `ideas` empty
 // and the caller falls back to the draft/join forms, so the app still renders.
@@ -59,7 +61,21 @@ export function useIdeas(userId: string | null) {
     setChecked(false);
     SynthesisService.myIdeas(userId)
       .then(({ ideas: list }) => {
-        if (!cancelled) setIdeas(list);
+        if (cancelled) return;
+        setIdeas(list);
+        // ?idea=<code> opens that document directly. This is how a link from a
+        // circle arrives — somebody is told a document was shared with their
+        // circle, and landing them on whichever map they had open last would
+        // make the link a lie. It is the ONE case that auto-picks, because
+        // here the URL said which one; the bare app still lands on the list.
+        const wanted = new URLSearchParams(window.location.search).get('idea');
+        if (!wanted) return;
+        const picked = list.find(i => i.code.toLowerCase() === wanted.toLowerCase());
+        if (!picked) return;
+        const { membership: m, ...rest } = picked;
+        setIdea(rest);
+        setMembership(m);
+        rememberCode(rest.code);
       })
       .catch(err => {
         if (!cancelled) console.debug('[synthesis] idea lookup failed', err);

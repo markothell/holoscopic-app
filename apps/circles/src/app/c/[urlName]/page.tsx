@@ -246,8 +246,10 @@ function SynthesesBand({ circle, userId, onShared }: {
         <ul className="space-y-3">
           {shared.map(seed => (
             <li key={seed.id} className="flex items-start justify-between gap-3">
+              {/* ?idea= opens THIS document rather than whichever map the
+                  reader had open last — without it the link is a lie. */}
               <a
-                href={SYNTHESIS_URL}
+                href={seed.payload.ideaCode ? `${SYNTHESIS_URL}/?idea=${seed.payload.ideaCode}` : SYNTHESIS_URL}
                 className="-mx-3 block flex-1 rounded-lg px-3 py-2 transition-colors hover:bg-ground-deep"
               >
                 <span className="font-[family-name:var(--font-display)] text-lg">

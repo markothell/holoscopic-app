@@ -221,7 +221,11 @@ export function CircleMap({ circle, userId }: {
   // asks the honest question instead of sniffing a 'syn-' id prefix off a seed
   // the map used to invent for itself.
   const isSession = (seed: Seed) => seed.activity === 'synthesis';
-  const hrefFor = (seed: Seed) => (isSession(seed) ? SYNTHESIS_URL : `${base}/topic/${seed.id}`);
+  // A document opens in Synthesis, named by its code so the link lands on the
+  // document rather than on whichever map the reader had open last.
+  const hrefFor = (seed: Seed) => (isSession(seed)
+    ? (seed.payload.ideaCode ? `${SYNTHESIS_URL}/?idea=${seed.payload.ideaCode}` : SYNTHESIS_URL)
+    : `${base}/topic/${seed.id}`);
 
   // Drilling into a topic is an in-app move, so it goes through the router like
   // every other link in circles. A bare <a> here would be a full document load,
