@@ -6,7 +6,7 @@ const ideas = require('./synIdeas');
 // In-memory store implementing the funnel's data-access surface — same
 // pattern as utils/synNodes.test.js's memStore. Lets us exercise the
 // REAL funnel functions (lazy parent creation, code generation, the ≤50-
-// member gate, handle uniqueness) with no live MongoDB.
+// member gate, code uniqueness) with no live MongoDB.
 function memStore() {
   const instances = new Map(); // slug -> doc
   const memberships = [];
@@ -24,9 +24,6 @@ function memStore() {
     },
     async findMembership(instanceId, userId) {
       return memberships.find(m => m.instanceId === instanceId && m.userId === userId) || null;
-    },
-    async findMembershipByHandle(instanceId, handleLower) {
-      return memberships.find(m => m.instanceId === instanceId && m.handleLower === handleLower) || null;
     },
     async createMembership(fields) {
       const doc = { ...fields, createdAt: new Date(), updatedAt: new Date() };
@@ -51,7 +48,7 @@ function memStore() {
 test('createIdea: creates a child instance parented to the lazily-created synthesis parent', async () => {
   const store = memStore();
   const { instance, membership } = await ideas.createIdea({
-    store, userId: 'alice', handle: 'Ally', title: 'Book Club',
+    store, userId: 'alice', displayName: 'Ally', title: 'Book Club',
   });
   assert.equal(instance.name, 'Book Club');
   assert.match(instance.slug, /^idea-/);
@@ -63,14 +60,13 @@ test('createIdea: creates a child instance parented to the lazily-created synthe
   assert.equal(parent.gameNumber, null, 'parent excluded from edition dashboards/getDefault()');
 
   assert.equal(membership.role, 'admin', 'creator is admin');
-  assert.equal(membership.handle, 'Ally');
-  assert.equal(membership.handleLower, 'ally');
+  assert.equal(membership.handle, 'Ally', 'the display name is snapshotted onto the membership');
 });
 
 test('createIdea: reuses the existing synthesis parent on a second community', async () => {
   const store = memStore();
-  await ideas.createIdea({ store, userId: 'alice', handle: 'Al', title: 'One' });
-  await ideas.createIdea({ store, userId: 'bob', handle: 'Bo', title: 'Two' });
+  await ideas.createIdea({ store, userId: 'alice', displayName: 'Al', title: 'One' });
+  await ideas.createIdea({ store, userId: 'bob', displayName: 'Bo', title: 'Two' });
   // synthesis parent + 2 communities, not 2 separate parents.
   assert.equal(store._instances.size, 3);
 });
@@ -80,18 +76,18 @@ test('createIdea: reuses the existing synthesis parent on a second community', a
 test('createIdea: requires a title', async () => {
   const store = memStore();
   await assert.rejects(
-    () => ideas.createIdea({ store, userId: 'alice', handle: 'Al' }),
+    () => ideas.createIdea({ store, userId: 'alice', displayName: 'Al' }),
     /title is required/,
   );
   await assert.rejects(
-    () => ideas.createIdea({ store, userId: 'alice', handle: 'Al', title: '   ' }),
+    () => ideas.createIdea({ store, userId: 'alice', displayName: 'Al', title: '   ' }),
     /title is required/,
   );
 });
 
 test('createIdea: defaults to private, and records the Synthesis bar + slot budget', async () => {
   const store = memStore();
-  const { instance } = await ideas.createIdea({ store, userId: 'alice', handle: 'Al', title: 'One' });
+  const { instance } = await ideas.createIdea({ store, userId: 'alice', displayName: 'Al', title: 'One' });
   const client = ideas.toClientIdea(instance);
   assert.equal(client.title, 'One');
   assert.equal(client.visibility, 'private');
@@ -104,11 +100,11 @@ test('createIdea: defaults to private, and records the Synthesis bar + slot budg
 test('createIdea: a public idea is marked public and rejects any other visibility', async () => {
   const store = memStore();
   const { instance } = await ideas.createIdea({
-    store, userId: 'alice', handle: 'Al', title: 'Open one', visibility: 'public',
+    store, userId: 'alice', displayName: 'Al', title: 'Open one', visibility: 'public',
   });
   assert.equal(ideas.toClientIdea(instance).visibility, 'public');
   await assert.rejects(
-    () => ideas.createIdea({ store, userId: 'alice', handle: 'Al', title: 'X', visibility: 'secret' }),
+    () => ideas.createIdea({ store, userId: 'alice', displayName: 'Al', title: 'X', visibility: 'secret' }),
     /visibility must be public or private/,
   );
 });
@@ -117,8 +113,8 @@ test('createIdea: a public idea is marked public and rejects any other visibilit
 // a private one leaking into it would defeat the visibility setting entirely.
 test('listPublicIdeas: lists public ideas with their collaborator counts, never private ones', async () => {
   const store = memStore();
-  await ideas.createIdea({ store, userId: 'alice', handle: 'Al', title: 'Open', visibility: 'public' });
-  await ideas.createIdea({ store, userId: 'bob', handle: 'Bo', title: 'Closed', visibility: 'private' });
+  await ideas.createIdea({ store, userId: 'alice', displayName: 'Al', title: 'Open', visibility: 'public' });
+  await ideas.createIdea({ store, userId: 'bob', displayName: 'Bo', title: 'Closed', visibility: 'private' });
 
   const listed = await ideas.listPublicIdeas({ store });
   assert.equal(listed.length, 1);
@@ -128,67 +124,40 @@ test('listPublicIdeas: lists public ideas with their collaborator counts, never 
 
 test('listCollaborators: returns the roster in join order', async () => {
   const store = memStore();
-  const { instance } = await ideas.createIdea({ store, userId: 'host', handle: 'Host', title: 'Idea' });
+  const { instance } = await ideas.createIdea({ store, userId: 'host', displayName: 'Host', title: 'Idea' });
   const code = ideas.codeFor(instance.slug);
-  await ideas.joinIdea({ store, code, userId: 'bob', handle: 'Bo' });
+  await ideas.joinIdea({ store, code, userId: 'bob', displayName: 'Bo' });
 
   const roster = await ideas.listCollaborators({ store, instanceId: instance.id });
   assert.deepEqual(roster.map(m => m.handle), ['Host', 'Bo']);
   assert.deepEqual(roster.map(m => m.role), ['admin', 'member']);
 });
 
-test('createIdea: rejects a missing or too-short handle', async () => {
-  const store = memStore();
-  await assert.rejects(
-    () => ideas.createIdea({ store, userId: 'alice', handle: '', title: 'T' }),
-    /handle is required/,
-  );
-  await assert.rejects(
-    () => ideas.createIdea({ store, userId: 'alice', handle: 'X', title: 'T' }),
-    /at least 2 characters/,
-  );
-});
-
 test('joinIdea: the <=50-member gate (plan §8)', async () => {
   const store = memStore();
-  const { instance } = await ideas.createIdea({ store, userId: 'host', handle: 'Host', title: 'Host idea' });
+  const { instance } = await ideas.createIdea({ store, userId: 'host', displayName: 'Host', title: 'Host idea' });
   const code = ideas.codeFor(instance.slug);
 
   // Host already counts as 1; fill to the cap.
   for (let i = 0; i < ideas.MEMBER_CAP - 1; i++) {
-    await ideas.joinIdea({ store, code, userId: `u${i}`, handle: `H${i}` });
+    await ideas.joinIdea({ store, code, userId: `u${i}`, displayName: `H${i}` });
   }
   assert.equal(await store.countMembers(instance.id), ideas.MEMBER_CAP);
 
   await assert.rejects(
-    () => ideas.joinIdea({ store, code, userId: 'overflow', handle: 'Overflow' }),
+    () => ideas.joinIdea({ store, code, userId: 'overflow', displayName: 'Overflow' }),
     /full/,
   );
-});
-
-test('joinIdea: rejects a taken handle, case-insensitively', async () => {
-  const store = memStore();
-  const { instance } = await ideas.createIdea({ store, userId: 'host', handle: 'Host', title: 'Host idea' });
-  const code = ideas.codeFor(instance.slug);
-
-  await ideas.joinIdea({ store, code, userId: 'bob', handle: 'Nomad' });
-  await assert.rejects(
-    () => ideas.joinIdea({ store, code, userId: 'carol', handle: 'nomad' }),
-    /taken/,
-  );
-  // A distinct handle is fine.
-  const { membership } = await ideas.joinIdea({ store, code, userId: 'carol', handle: 'Voyager' });
-  assert.equal(membership.handle, 'Voyager');
 });
 
 test('joinIdea: rejoining an existing member is a no-op — handle does not change', async () => {
   const store = memStore();
   const { instance, membership: created } = await ideas.createIdea({
-    store, userId: 'host', handle: 'Host', title: 'Host idea',
+    store, userId: 'host', displayName: 'Host', title: 'Host idea',
   });
   const code = ideas.codeFor(instance.slug);
   const { membership: rejoined } = await ideas.joinIdea({
-    store, code, userId: 'host', handle: 'ignored-on-rejoin',
+    store, code, userId: 'host', displayName: 'ignored-on-rejoin',
   });
   assert.equal(rejoined.id, created.id);
   assert.equal(rejoined.handle, 'Host', 'handle is frozen once joined');
@@ -197,17 +166,8 @@ test('joinIdea: rejoining an existing member is a no-op — handle does not chan
 test('joinIdea: rejects an unknown code', async () => {
   const store = memStore();
   await assert.rejects(
-    () => ideas.joinIdea({ store, code: 'ZZZZZ', userId: 'x', handle: 'X' }),
+    () => ideas.joinIdea({ store, code: 'ZZZZZ', userId: 'x', displayName: 'X' }),
     /not found/,
   );
 });
 
-test('joinIdea: rejects a missing/short handle for a NEW member (not the rejoin path)', async () => {
-  const store = memStore();
-  const { instance } = await ideas.createIdea({ store, userId: 'host', handle: 'Host', title: 'Host idea' });
-  const code = ideas.codeFor(instance.slug);
-  await assert.rejects(
-    () => ideas.joinIdea({ store, code, userId: 'bob', handle: '' }),
-    /handle is required/,
-  );
-});

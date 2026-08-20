@@ -1,9 +1,10 @@
 # Synthesis — Master Plan (draft v0.3)
 
 > **Settled (2026-07-24):** v1 has **no holon economy** (free to publish/reply;
-> revisit only for LLM-query budgeting). The community is **pseudonymous and
-> trusted** — everything published is attributed to its author's handle; **no
-> anonymization**, no privacy redaction. **Drafts stay private until published**:
+> revisit only for LLM-query budgeting). The group is **named and trusted** —
+> everything is attributed to its author's account name; **no anonymization**,
+> no privacy redaction. *(Amended 2026-08-20: the pseudonymous handle and the
+> draft/publish gate both went; see §8.)* Formerly, drafts stayed private:
 > an author builds on their own map first, and only published nodes become
 > group-visible, reply-able, and part of the LLM corpus. **Marry = a new
 > join node** with two parents (the map is a DAG, not a tree).
@@ -173,7 +174,7 @@ in the feed stays a reversible M1+ option), but the canonical post is the though
 ```
 id                8-char, custom (never _id)
 instanceId        community, required, indexed
-ownerId, ownerHandle                    // pseudonymous author of THIS node
+ownerId, ownerHandle                    // author of THIS node; handle = account name
 kind: 'topic' | 'thought'               // distinct kinds (was: layers-on-one-node)
 content: {                              // kind-appropriate fields:
   topic,                                //   'topic': the hub label
@@ -225,7 +226,7 @@ activity, no `Activity` doc — OaS pattern), `position` = quadrant stance, `tex
 All writes through `utils/entries.js`; the `(activityId,userId,slotNumber,
 questionId)` upsert key = one re-editable reply per member per post. Author's
 reply map = `Entry.find({ activityId: postId })` → the resolve aggregate view.
-Never redacted (`toClient`, not `toRedacted`) — the group is pseudonymous.
+Never redacted (`toClient`, not `toRedacted`) — the group is named and trusted.
 **Replies are public** (D6): the reply map is a comment section, visible to
 everyone in the community viewing the post, not just its author.
 
@@ -376,14 +377,21 @@ platform 4002 · game 4003 · synthesis 4004).
 - Community = child `Instance` (`parentInstanceId` → `synthesis`, slug
   `idea-<code>`), created lazily like OaS rooms; hidden from public instance lists.
 - **≤50 gate** enforced on join in `synNodes.js` / membership route.
-- **Pseudonymous identity**: within a community you are your handle. `User` is
-  global; the handle is what every node, reply, and citation attributes to.
-- **Private-first**: nodes default `visibility: private`; nothing is community-
-  or LLM-visible until published. This is the one privacy contract and must be
-  enforced server-side on every read path and in the embedding job. It is about
-  *drafts*, not identity — once published there is no redaction.
-- **Attribution is always named** by handle (unlike interView's server-side
-  author redaction). No anonymization toggle; `toClient`, never `toRedacted`.
+- **The IDEA is the boundary** (2026-08-20, replacing private-first). Everyone
+  who can read an idea reads everything in it: no per-node `visibility`, no
+  draft state, no publish step. Enforced by `instanceId` scoping plus a
+  membership check on every read path — the check that was always doing the
+  real work. `SynNode.visibility` / `publishedAt` are retired from the schema;
+  legacy rows keep them undeclared and unread.
+- **Attribution is always named**, by the member's Holoscopic account name
+  (unlike interView's server-side author redaction). No anonymization toggle;
+  `toClient`, never `toRedacted`.
+- **D3 (pseudonymous per-idea handles) is REVERSED, 2026-08-20.** There is no
+  handle to pick. `SynMembership.handle` is a denormalized snapshot of the
+  account name, taken server-side, and it is not unique — two members may share
+  one. D3 assumed standalone demo games; circles are the centre now, and a
+  second name for someone your circle already knows was friction with nothing
+  on the other side of it. A collaborator's map is addressed by `userId`.
 - **Replies are public** (D6): the reply map on a post is a comment section
   visible to the whole community — not gated to the post author.
 
@@ -411,11 +419,12 @@ platform 4002 · game 4003 · synthesis 4004).
 **Settled (2026-07-24):**
 - **D1 — Economy → none for v1.** No stake ledger on nodes; publishing and
   replying are free. Holons reconsidered only as an LLM-query throttle later.
-- **D3 — Attribution → always named by handle; no anonymization.** The
-  community is pseudonymous and trusted; every published node, reply, and
-  citation shows its author's handle. No anon toggle, no privacy redaction, no
-  `Entry` schema change. (Drafts still stay private until published — that's a
-  visibility gate on *content*, not on *identity*.)
+- **D3 — Attribution → always named; no anonymization.** Every node, reply and
+  citation shows its author. No anon toggle, no privacy redaction, no `Entry`
+  schema change. **REVISED 2026-08-20 on both halves:** the name is the
+  member's *Holoscopic account name*, not a per-idea pseudonym (see §8), and
+  the parenthetical about drafts staying private until published no longer
+  describes anything — the idea is the boundary and there is no publish step.
 - **D4 — Marriage → a join node, like-with-like only.** `marry(a,b)` mints a
   new node with `parentIds:[a,b]`, `edgeKind:'marriage'`; no cross-kind marriage.
   **Thought⨯Thought → a synthesis thought** that inherits its topic — if the two

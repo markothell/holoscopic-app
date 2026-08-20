@@ -13,15 +13,17 @@ import type { Collaborator, FrameSpec, Idea, Membership, MyIdea, NodeContent, No
 // idea membership) in place.
 
 export const SynthesisService = {
-  createIdea(input: { title: string; handle: string; visibility?: 'public' | 'private' }, userId: string) {
+  // No handle: your display name comes off your Holoscopic account, server-side
+  // (pseudonymity dropped 2026-08-20, reversing PLAN D3).
+  createIdea(input: { title: string; visibility?: 'public' | 'private' }, userId: string) {
     return apiFetch<{ idea: Idea; membership: Membership }>('/synthesis/ideas', {
       method: 'POST', body: input, userId,
     });
   },
 
-  joinIdea(code: string, handle: string, userId: string) {
+  joinIdea(code: string, userId: string) {
     return apiFetch<{ idea: Idea; membership: Membership }>(`/synthesis/ideas/${code}/join`, {
-      method: 'POST', body: { handle }, userId,
+      method: 'POST', body: {}, userId,
     });
   },
 
@@ -50,9 +52,10 @@ export const SynthesisService = {
 
   // One collaborator's thinking inside this idea, as their map — the way into
   // someone's work from the social page.
-  collaboratorMap(code: string, handle: string, userId: string) {
+  // Addressed by userId — a display name is not unique any more.
+  collaboratorMap(code: string, collaboratorUserId: string, userId: string) {
     return apiFetch<{ collaborator: Membership; nodes: SynNode[] }>(
-      `/synthesis/ideas/${code}/collaborators/${encodeURIComponent(handle)}/map`,
+      `/synthesis/ideas/${code}/collaborators/${encodeURIComponent(collaboratorUserId)}/map`,
       { userId },
     );
   },

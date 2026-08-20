@@ -5,6 +5,7 @@ const Instance = require('../models/Instance');
 const SynNode = require('../models/SynNode');
 const SynFrame = require('../models/SynFrame');
 const SynMembership = require('../models/SynMembership');
+const User = require('../models/User');
 const Entry = require('../models/Entry');
 const nodeFunnel = require('../utils/synNodes');
 const entryUtils = require('../utils/entries');
@@ -50,6 +51,18 @@ const { getSynthesisModel } = require('../llm/chatModel');
 
 function userIdFrom(req) {
   return req.headers['x-user-id'] || null;
+}
+
+// The member's display name, read off the Holoscopic account. Pseudonymity was
+// dropped 2026-08-20 (see models/SynMembership.js): a client no longer chooses
+// a per-idea handle, so this is the only source, and it is server-trusted like
+// everything else attribution depends on.
+async function displayNameFor(userId) {
+  const user = await User.findOne({ id: userId }).lean();
+  const name = user && (user.name || '').trim();
+  if (name) return name.slice(0, 40);
+  const local = user && user.email ? String(user.email).split('@')[0] : '';
+  return (local || 'Member').slice(0, 40);
 }
 
 async function requireUser(req, res) {
@@ -126,7 +139,7 @@ const BAD_REQUEST_ERRORS = new Set([
 
 const NOT_FOUND_ERRORS = new Set(['Node not found', 'Spectrum not found', 'Idea not found', 'Entry not found', 'Statement not found']);
 // 409: the caller is out of slots (D14), or is acting on a settled statement.
-const CONFLICT_ERRORS = new Set(['This idea is full', 'That handle is taken on this idea']);
+const CONFLICT_ERRORS = new Set(['This idea is full']);
 const CONFLICT_PATTERNS = [/holding all \d+ of your statement slots/, /statement was withdrawn/];
 // M1 shape guard: you can respond to a thought, not to a hub.
 const FORBIDDEN_ERRORS = new Set([
@@ -190,7 +203,7 @@ router.post('/ideas', requireEmailVerified, async (req, res) => {
     if (!userId) return;
     const { instance, membership } = await ideaFunnel.createIdea({
       userId,
-      handle: req.body.handle,
+      displayName: await displayNameFor(userId),
       title: req.body.title,
       visibility: req.body.visibility,
     });
@@ -275,7 +288,7 @@ router.post('/ideas/:code/join', requireEmailVerified, async (req, res) => {
     const userId = await requireUser(req, res);
     if (!userId) return;
     const { instance, membership } = await ideaFunnel.joinIdea({
-      code: req.params.code, userId, handle: req.body.handle,
+      code: req.params.code, userId, displayName: await displayNameFor(userId),
     });
     await nodeFunnel.seedHomeHub({
       instanceId: instance.id,
@@ -369,7 +382,7 @@ router.get('/ideas/:code/collaborators', async (req, res) => {
 // readable, and the private-first contract holds exactly as it does on /feed:
 // drafts never leave their author's own map. The filter is here, server-side,
 // and the caller cannot widen it.
-router.get('/ideas/:code/collaborators/:handle/map', async (req, res) => {
+router.get('/ideas/:code/collaborators/:userId/map', async (req, res) => {
   try {
     const instance = await Instance.findOne({ slug: `idea-${String(req.params.code).toLowerCase()}` });
     if (!instance) return res.status(404).json({ error: 'Idea not found' });
@@ -378,9 +391,10 @@ router.get('/ideas/:code/collaborators/:handle/map', async (req, res) => {
     const mine = await SynMembership.findOne({ instanceId: instance.id, userId });
     if (!mine) return res.status(403).json({ error: 'Join this idea to see how people are thinking' });
 
+    // Addressed by userId, not by name: a display name is not unique any more.
     const theirs = await SynMembership.findOne({
       instanceId: instance.id,
-      handleLower: String(req.params.handle).toLowerCase(),
+      userId: String(req.params.userId),
     });
     if (!theirs) return res.status(404).json({ error: 'No such collaborator' });
 

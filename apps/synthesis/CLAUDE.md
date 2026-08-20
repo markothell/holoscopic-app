@@ -4,11 +4,11 @@ A networked pseudonymous group blog, at `synthesis.holoscopic.io`. Local dev por
 
 Design source of truth is `PLAN.md` (§-numbered, with settled decisions D1–D20 in §10) and `UNION.md` (the whole-corpus LLM spec that replaces the M3 Q&A chat). Both are current — read the relevant § before changing behavior they describe.
 
-**The word "synthesis" is overloaded, so each sense has its own noun.** *Synthesis* = the app. An *idea* = the container (a child `Instance`, slug `idea-<code>`). The *Union* (∪) = the LLM's read of everything the group has published. A *statement* = something a member puts to the group to vote on. *Reaching Synthesis* = the state a group enters when a statement clears the ⅔ bar. The Mongoose model files carry long header comments explaining *why* each field exists; read those before touching a schema.
+**The word "synthesis" is overloaded, so each sense has its own noun.** *Synthesis* = the app. An *idea* = the container (a child `Instance`, slug `idea-<code>`) — **the document, and the one privacy boundary there is**. The *Union* (∪) = the LLM's read of everything in the idea. A *statement* = something a member puts to the group to vote on. *Reaching Synthesis* = the state a group enters when a statement clears the ⅔ bar. The Mongoose model files carry long header comments explaining *why* each field exists; read those before touching a schema.
 
 ## The game
 
-Each member privately grows a DAG of nodes on their own map. Publishing a thought makes it a community-visible post. Other members respond on the post's axes, which writes **two records** (D2): a public reply `Entry` on the post, and a *borrowed* node on the responder's own map. Adding your own thought or context to a borrowed node **promotes** it to `origin: 'own'` (M2). A whole-community LLM synthesis reads the published corpus.
+Each member grows a DAG of nodes on their own map, and everyone in the idea sees all of it. A thought IS a post the moment it is written. Other members respond on the post's axes, which writes **two records** (D2): a public reply `Entry` on the post, and a *borrowed* node on the responder's own map. Adding your own thought or context to a borrowed node **promotes** it to `origin: 'own'` (M2). A whole-idea LLM synthesis reads the corpus.
 
 Two node kinds only: `topic` (a hub label many thoughts attach to) and `thought` (a one-sentence claim + prose context, owning 1–2 axes). Context is a click-to-reveal popup, not a third shape.
 
@@ -41,9 +41,9 @@ surface.
 | `src/components/overlays/` | `OverlayShell` + Feed / Post / Union overlays |
 | `src/components/statements/` | `StatementsOverlay` + `SynthesisMeter` — the board, and the ⅔ bar |
 | `apps/backend/routes/synthesis.js` | REST surface, mounted at `/api/synthesis` behind `resolveInstance` + `enforceVerifiedUser` |
-| `apps/backend/utils/synNodes.js` | **The node write funnel** — DAG edges, marry, publish, respond/borrow, upvote, feed |
+| `apps/backend/utils/synNodes.js` | **The node write funnel** — DAG edges, marry, delete, respond/borrow, upvote, feed |
 | `apps/backend/utils/synIdeas.js` | Community create/join + the ≤50-member gate |
-| `apps/backend/utils/synIndex.js` | Embedding index over the published corpus |
+| `apps/backend/utils/synIndex.js` | Embedding index over the idea's corpus |
 | `apps/backend/utils/synUnion.js` | Corpus selection, positional summaries, prompts, cache |
 | `apps/backend/utils/synStatements.js` | **The statement write funnel** — slots (D14), votes, the ⅔ bar, withdraw |
 | `apps/backend/utils/synIndexHooks.js` | Production wiring injected via `setIndex()`; fires on every corpus change |
@@ -60,9 +60,34 @@ Sending the parent id where a community id belongs returns empty results rather 
 
 ## The one privacy contract
 
-Nodes default to `visibility: 'private'`. Nothing is community- or LLM-visible until published, and this is enforced **server-side on every read path** and in the embedding index — never client-side. `SynEmbedding` denormalizes `visibility` so retrieval can re-filter defensively.
+**The boundary is the IDEA, not the node** (2026-08-20). Everyone who can read an idea reads
+everything in it; there is no per-node gate, no draft state, and no publish step. Writing a
+thought is what publishing used to be. Every read path is scoped by `instanceId` and gated by
+membership, and that scoping is the check that was always doing the real work.
 
-This is about *drafts, not identity*. Once published there is no redaction: attribution is always by handle (D3). Use `toClient`, never `toRedacted` — the interView author-stripping pattern does not apply here.
+`SynNode.visibility` / `publishedAt` and `SynEmbedding.visibility` are gone from the schemas.
+Rows written before the change keep those fields in MongoDB, undeclared and read by nothing —
+the same treatment `audio` got. **Do not reintroduce a per-node gate as reassurance.**
+
+The corpus grows a different guard in its place: `utils/synIndex.js` refuses a **borrowed** node,
+because its text is someone else's and already indexed at its source. Promote it and it joins.
+
+Attribution is never redacted. Use `toClient`, never `toRedacted` — the interView author-stripping
+pattern does not apply here.
+
+## Identity is your account, not a pseudonym
+
+**Pseudonymity was dropped 2026-08-20, reversing D3.** There is no per-idea handle to choose:
+`SynMembership.handle` is a plain denormalized snapshot of your Holoscopic account name, taken
+server-side at write time (`displayNameFor` in `routes/synthesis.js`). It is **not unique** — two
+members may share a display name, and nothing keys off it. `handleLower` and its unique index are
+gone, and so is the numeric-suffix dedupe loop `utils/circleSessions.js` used to run.
+
+D3 was written when ideas were standalone demo games. Circles are the centre now: an idea inside a
+circle is a group of people who already know each other, and a second name for the same person was
+friction with nothing on the other side of it.
+
+**A collaborator's map is addressed by `userId`**, not by name — `/ideas/:code/collaborators/:userId/map`.
 
 ## Write funnels
 
@@ -77,7 +102,7 @@ Never write these collections directly:
 | `SynUnion` | `utils/synUnion.js` |
 | `SynStatement` | `utils/synStatements.js` — slots, votes, the ⅔ bar |
 
-Replies **duck-type a published node as their activity**: a reply Entry has `activityId = <published node id>`. There is no `Activity` document for a post. Zero `Entry` schema change was needed and none should be added.
+Replies **duck-type a node as their activity**: a reply Entry has `activityId = <node id>`. There is no `Activity` document for a post. Zero `Entry` schema change was needed and none should be added.
 
 ## Testing
 
@@ -87,7 +112,7 @@ Replies **duck-type a published node as their activity**: a reply Entry has `act
 
 Synthesis has its **own** hand-styled system, like On a Spectrum — not a patchwork of shared components. Borrow the resolve *logic* from `@hs/activities` (the `{x,y} ∈ [0,1]` model, `QUADRANT_POSITIONS`, pole-A orientation); write the *presentation* Synthesis-native. Mobile-first `max-w-md` columns, graph as the one full-bleed surface.
 
-The map's shape language is **cut facets on a dark field** — every node is a symmetrically chamfered plane, never a rounded box, and never an asymmetric one. One device per fact: **shape = kind** (hexagon hub / chamfered card thought), **size = nesting** (a hub shrinks per hub above it), **stroke = origin**, **dashed = provisional** (private — the *exception*, since new thoughts auto-publish, so a badge on "live" would be noise; hubs are private scaffold and so read dashed), **ring = notable** (an offset outline of the node's own shape — the home hub and a join node, nothing else). That is the whole vocabulary; resist adding to it. A mark a reader can't act on is noise however small — a thought's context gets no badge, because tapping the thought reveals it either way. Parent→child edges are deliberately quiet (`--line-strong`); only a marriage gets colour, because tidy-tree geometry (`lib/graph.ts`) already says who the parent is.
+The map's shape language is **cut facets on a dark field** — every node is a symmetrically chamfered plane, never a rounded box, and never an asymmetric one. One device per fact: **shape = kind** (hexagon hub / chamfered card thought), **size = nesting** (a hub shrinks per hub above it), **stroke = origin**, **ring = notable** (an offset outline of the node's own shape — the home hub and a join node, nothing else). That is the whole vocabulary; resist adding to it. A mark a reader can't act on is noise however small — a thought's context gets no badge, because tapping the thought reveals it either way. Parent→child edges are deliberately quiet (`--line-strong`); only a marriage gets colour, because tidy-tree geometry (`lib/graph.ts`) already says who the parent is.
 
 **Node outlines are SVG paths, never CSS borders**, and node boxes are deterministic (`NODE_W` / `THOUGHT_H` / `hubHeight` in `lib/graph.ts`) so those paths can be drawn at exact coordinates. A `clip-path`ed element clips its own `border` and `box-shadow` away — that's what rendered hubs as unoutlined blobs in the first pass — and only a real stroke can carry a dash around a hexagon. Shadows are `filter: drop-shadow`.
 
@@ -95,6 +120,12 @@ The map's shape language is **cut facets on a dark field** — every node is a s
 
 - **Index hooks are fire-and-forget.** The funnel does not await or catch them. `markStale()` runs even when no LLM is configured — corpus staleness is not conditional on embeddings being wired up.
 - **The Union never regenerates on its own.** Staleness surfaces only as a badge; a member has to press the button (UNION.md §9).
+- **Deleting orphans, it does not cascade.** A hub you drop leaves its children on the map as
+  their own root (`lib/graph.ts` filters parents by presence), and the move gesture re-files them.
+  The home hub refuses. This is why delete needs no confirmation beyond one tap-to-confirm.
+- **The dash is unassigned.** `dashed` used to mean "private, not yet published"; the gate went and
+  the mark went with it. It is still in the node primitive, spoken by nothing. Whatever claims it
+  next gets the whole vocabulary slot.
 - **Promotion has no route of its own.** `PATCH /nodes/:id` with a `content` body *is* the "make it mine" gesture — `editContent` calls `promoteIfBorrowed` internally.
 - **Frames are frozen at creation.** Pole text is never mutated, and frames dedupe per community on a sorted-lowercase `key`, so two authors coining the same lens share one id and stay comparable.
 - **Marriage is like-with-like only** (D4). Thought⨯Thought inherits the **first-selected** parent's topic when the parents sit under different hubs.

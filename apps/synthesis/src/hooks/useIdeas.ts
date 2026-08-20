@@ -131,7 +131,6 @@ export function useIdeas(userId: string | null) {
 
   const draft = useCallback(async (
     title: string,
-    handle: string,
     visibility: 'public' | 'private' = 'private',
   ) => {
     if (!userId) throw new Error('Sign in required');
@@ -139,7 +138,7 @@ export function useIdeas(userId: string | null) {
     setError(null);
     try {
       const { idea: i, membership: m } = await SynthesisService.createIdea(
-        { title, handle, visibility }, userId,
+        { title, visibility }, userId,
       );
       setIdea(i);
       setMembership(m);
@@ -154,13 +153,13 @@ export function useIdeas(userId: string | null) {
     }
   }, [userId, addToList]);
 
-  const join = useCallback(async (code: string, handle: string) => {
+  const join = useCallback(async (code: string) => {
     if (!userId) throw new Error('Sign in required');
     setLoading(true);
     setError(null);
     try {
       const { idea: i, membership: m } = await SynthesisService.joinIdea(
-        code.trim().toUpperCase(), handle, userId,
+        code.trim().toUpperCase(), userId,
       );
       setIdea(i);
       setMembership(m);

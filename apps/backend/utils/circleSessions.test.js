@@ -27,9 +27,6 @@ function memStore() {
     async findMembership(instanceId, userId) {
       return memberships.find(m => m.instanceId === instanceId && m.userId === userId) || null;
     },
-    async findMembershipByHandle(instanceId, handleLower) {
-      return memberships.find(m => m.instanceId === instanceId && m.handleLower === handleLower) || null;
-    },
     async createMembership(fields) {
       const doc = { ...fields, joinedAt: new Date() };
       memberships.push(doc);
@@ -41,7 +38,7 @@ function memStore() {
     async listCircleSessionInstances(circleId) {
       return instances.filter(i => i.config?.synthesis?.circleId === circleId);
     },
-    async publishedOwnerIds(instanceId) { return published[instanceId] || []; },
+    async authorIds(instanceId) { return published[instanceId] || []; },
     async replierIds(instanceId) { return repliers[instanceId] || []; },
   };
 }
@@ -56,7 +53,7 @@ const CIRCLE = {
   ],
 };
 
-test('createSession stamps the circle and mirrors every member, deduping handles', async () => {
+test('createSession stamps the circle and mirrors every member under their own name', async () => {
   const store = memStore();
   const { instance } = await circleSessions.createSession({
     store, circle: CIRCLE, userId: 'u1', title: 'What holds us',
@@ -70,9 +67,10 @@ test('createSession stamps the circle and mirrors every member, deduping handles
   assert.equal(byUser.u1.role, 'admin', 'the creator drafts it');
   assert.equal(byUser.u2.role, 'member');
   assert.equal(byUser.u1.handle, 'Mara');
-  // The case-clashing username lands on a deduped handle rather than failing
-  // the mirror — per-idea handle uniqueness is case-insensitive.
-  assert.equal(byUser.u3.handle, 'mara2');
+  // Two members whose names differ only in case both keep their own. Handles
+  // stopped being unique per-idea identifiers on 2026-08-20 — a display name
+  // is a display name, and the userId is what anything actually keys off.
+  assert.equal(byUser.u3.handle, 'mara');
 });
 
 test('the mirror is idempotent, and a late circle joiner is healed in on list', async () => {

@@ -57,13 +57,13 @@ function CollaboratorMap({
 
   useEffect(() => {
     let cancelled = false;
-    SynthesisService.collaboratorMap(code, collaborator.handle, userId)
+    SynthesisService.collaboratorMap(code, collaborator.userId, userId)
       .then(({ nodes: list }) => { if (!cancelled) setNodes(list); })
       .catch(err => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load that map');
       });
     return () => { cancelled = true; };
-  }, [code, collaborator.handle, userId]);
+  }, [code, collaborator.userId, userId]);
 
   const thoughts = (nodes ?? []).filter(n => n.kind === 'thought');
 

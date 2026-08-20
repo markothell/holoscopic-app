@@ -5,8 +5,8 @@ const SynMembership = require('../models/SynMembership');
 // The write funnel for Synthesis idea + membership plumbing: drafting an idea
 // (a child Instance of the lazily-created `synthesis` parent — mirrors
 // utils/oasGames.js#createRoomInstance), and joining one (the ≤50-collaborator
-// gate + pseudonymous handle assignment, plan §8). Mirrors the store-injection
-// pattern in utils/synNodes.js so the risky bits — the member cap, handle
+// gate, plan §8). Mirrors the store-injection
+// pattern in utils/synNodes.js so the risky bits — the member cap, code
 // uniqueness, and the public/private join rule — are unit-testable without a
 // live MongoDB. Production always uses `mongoStore`; routes/synthesis.js never
 // touches Instance/SynMembership directly for these operations.
@@ -62,9 +62,6 @@ const mongoStore = {
   async createInstance(fields) { return Instance.create(fields); },
   async countMembers(instanceId) { return SynMembership.countDocuments({ instanceId }); },
   async findMembership(instanceId, userId) { return SynMembership.findOne({ instanceId, userId }); },
-  async findMembershipByHandle(instanceId, handleLower) {
-    return SynMembership.findOne({ instanceId, handleLower });
-  },
   async createMembership(fields) { return SynMembership.create(fields); },
   // The roster. Ordered by join time so the drafter (member #1) reads first.
   async listMembers(instanceId) {
@@ -113,13 +110,10 @@ function toClientMembership(m) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────
-function normHandle(raw) {
-  return String(raw || '').trim().slice(0, HANDLE_MAX);
-}
-
-function validateHandle(handle) {
-  if (!handle) throw new Error('A handle is required');
-  if (handle.length < 2) throw new Error('Handle must be at least 2 characters');
+// The member's display name, capped. Never client-chosen any more (the caller
+// reads it off the account) and never unique — see models/SynMembership.js.
+function normDisplayName(raw) {
+  return String(raw || '').trim().slice(0, HANDLE_MAX) || 'Member';
 }
 
 // Lazily creates/returns the `synthesis` top-level Instance every community is
@@ -153,13 +147,12 @@ async function generateUniqueCode({ store = mongoStore } = {}) {
 
 // Draft an idea — a child Instance of the `synthesis` parent (slug
 // `idea-<code>`) — and seed the drafter as its first collaborator (role
-// 'admin') under their chosen handle. `visibility` defaults to private; a
+// 'admin') under their account name. `visibility` defaults to private; a
 // public idea additionally appears in the browse directory and accepts
 // open joins (D13).
-async function createIdea({ store = mongoStore, userId, handle, title, visibility = 'private' }) {
+async function createIdea({ store = mongoStore, userId, displayName, title, visibility = 'private' }) {
   if (!userId) throw new Error('userId is required');
-  const cleanHandle = normHandle(handle);
-  validateHandle(cleanHandle);
+  const cleanHandle = normDisplayName(displayName);
   const cleanTitle = String(title || '').trim().slice(0, TITLE_MAX);
   if (!cleanTitle) throw new Error('A title is required');
   if (visibility !== 'public' && visibility !== 'private') {
@@ -194,7 +187,6 @@ async function createIdea({ store = mongoStore, userId, handle, title, visibilit
     instanceId: instance.id,
     userId,
     handle: cleanHandle,
-    handleLower: cleanHandle.toLowerCase(),
     role: 'admin',
   });
 
@@ -202,17 +194,14 @@ async function createIdea({ store = mongoStore, userId, handle, title, visibilit
 }
 
 // Join an existing idea by its shareable code. Enforces the ≤50-collaborator
-// gate (plan §8) and per-idea handle uniqueness (case-insensitive).
-// Re-joining (an existing membership) is a no-op that returns the existing
-// membership unchanged — mirrors OaS's joinGame rejoin behavior, except the
-// handle can't be silently reassigned (it's the identity everyone else's
-// links already point at).
+// gate (plan §8). Re-joining is a no-op returning the existing membership
+// unchanged — mirrors OaS's joinGame rejoin behavior.
 //
 // The code is the only credential either way (D13): holding it is what gets a
 // private idea open, and a public idea is additionally discoverable through
 // the browse directory, which hands out the same code. So visibility changes
 // how you FIND an idea, and the join path below stays one path.
-async function joinIdea({ store = mongoStore, code, userId, handle }) {
+async function joinIdea({ store = mongoStore, code, userId, displayName }) {
   if (!userId) throw new Error('userId is required');
   if (!code) throw new Error('An idea code is required');
   const instance = await store.findInstanceBySlug(slugFor(code));
@@ -224,17 +213,11 @@ async function joinIdea({ store = mongoStore, code, userId, handle }) {
   const count = await store.countMembers(instance.id);
   if (count >= MEMBER_CAP) throw new Error('This idea is full');
 
-  const cleanHandle = normHandle(handle);
-  validateHandle(cleanHandle);
-  const clash = await store.findMembershipByHandle(instance.id, cleanHandle.toLowerCase());
-  if (clash) throw new Error('That handle is taken on this idea');
-
   const membership = await store.createMembership({
     id: newId(),
     instanceId: instance.id,
     userId,
-    handle: cleanHandle,
-    handleLower: cleanHandle.toLowerCase(),
+    handle: normDisplayName(displayName),
     role: 'member',
   });
 

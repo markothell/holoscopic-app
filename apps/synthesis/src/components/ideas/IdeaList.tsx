@@ -143,8 +143,8 @@ export default function IdeaList({
   userId: string;
   ideas: MyIdea[];
   onOpen: (code: string) => void;
-  onDraft: (title: string, handle: string, visibility: 'public' | 'private') => Promise<unknown>;
-  onJoin: (code: string, handle: string) => Promise<unknown>;
+  onDraft: (title: string, visibility: 'public' | 'private') => Promise<unknown>;
+  onJoin: (code: string) => Promise<unknown>;
   loading: boolean;
   error: string | null;
   clearError: () => void;
@@ -152,7 +152,6 @@ export default function IdeaList({
   const [panel, setPanel] = useState<Panel>('none');
   const [title, setTitle] = useState('');
   const [code, setCode] = useState('');
-  const [handle, setHandle] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'private'>('private');
 
   const drafted = ideas.filter(i => i.draftedByMe);
@@ -166,14 +165,14 @@ export default function IdeaList({
 
   async function submitDraft() {
     clearError();
-    if (!title.trim() || !handle.trim()) return;
-    await onDraft(title.trim(), handle.trim(), visibility).catch(() => {});
+    if (!title.trim()) return;
+    await onDraft(title.trim(), visibility).catch(() => {});
   }
 
   async function submitJoin(withCode = code) {
     clearError();
-    if (!withCode.trim() || !handle.trim()) return;
-    await onJoin(withCode.trim(), handle.trim()).catch(() => {});
+    if (!withCode.trim()) return;
+    await onJoin(withCode.trim()).catch(() => {});
   }
 
   return (
@@ -247,13 +246,6 @@ export default function IdeaList({
               ))}
             </div>
 
-            <label className="eyebrow mb-2 mt-4 block">Your handle</label>
-            <TextField
-              value={handle}
-              onChange={e => setHandle(e.target.value)}
-              placeholder="how you'll be known here"
-              onKeyDown={e => { if (e.key === 'Enter') submitDraft(); }}
-            />
             <Button variant="own" className="mt-5" onClick={submitDraft} disabled={loading}>
               {loading ? 'Working…' : 'Draft it'}
             </Button>
@@ -268,12 +260,6 @@ export default function IdeaList({
               onChange={e => setCode(e.target.value.toUpperCase())}
               placeholder="DEMO"
               autoCapitalize="characters"
-            />
-            <label className="eyebrow mb-2 mt-4 block">Your handle</label>
-            <TextField
-              value={handle}
-              onChange={e => setHandle(e.target.value)}
-              placeholder="how you'll be known here"
               onKeyDown={e => { if (e.key === 'Enter') submitJoin(); }}
             />
             <Button variant="own" className="mt-5" onClick={() => submitJoin()} disabled={loading}>
@@ -284,15 +270,6 @@ export default function IdeaList({
 
         {panel === 'browse' && (
           <div className="tone-in mt-5">
-            <label className="eyebrow mb-2 block">Your handle</label>
-            <TextField
-              value={handle}
-              onChange={e => setHandle(e.target.value)}
-              placeholder="how you'll be known here"
-            />
-            <p className="mt-1.5 mb-4 text-[0.7rem] text-mist-faint">
-              Pick a handle first — joining takes you straight in.
-            </p>
             <BrowsePanel userId={userId} onJoin={c => submitJoin(c)} />
           </div>
         )}
