@@ -438,18 +438,26 @@ router.get('/me/ideas', async (req, res) => {
     const memberships = await SynMembership.find({ userId }).sort({ joinedAt: -1 });
     const byUser = new Map(memberships.map(m => [m.instanceId, m]));
 
-    // Ideas reachable through a circle, minus the ones already covered.
+    // Which of MY circles hold a seed pointing at which idea. This does two
+    // jobs: it finds ideas a circle opened to me that I have not contributed
+    // to, and it tells the list which of my ideas are already shared, and
+    // where. Only circles I belong to — a share into a room I am not in is
+    // not mine to see.
     const myCircles = await Circle.find({ 'members.userId': userId })
-      .select('seeds.activity seeds.payload.ideaId').lean();
-    const viaCircle = new Set();
+      .select('title urlName seeds.activity seeds.payload.ideaId').lean();
+    const circlesByIdea = new Map();
     for (const c of myCircles) {
       for (const seed of c.seeds || []) {
-        if (seed.activity === 'synthesis' && seed.payload && seed.payload.ideaId
-            && !byUser.has(seed.payload.ideaId)) {
-          viaCircle.add(seed.payload.ideaId);
-        }
+        const ideaId = seed.activity === 'synthesis' && seed.payload && seed.payload.ideaId;
+        if (!ideaId) continue;
+        const held = circlesByIdea.get(ideaId) || [];
+        // A re-nomination is a second seed pointing at the same idea in the
+        // same circle (utils/synthesisActivity.js) — one circle, listed once.
+        if (!held.some(x => x.urlName === c.urlName)) held.push({ title: c.title, urlName: c.urlName });
+        circlesByIdea.set(ideaId, held);
       }
     }
+    const viaCircle = new Set([...circlesByIdea.keys()].filter(id => !byUser.has(id)));
 
     const wantedIds = [...byUser.keys(), ...viaCircle];
     const instances = await Instance.find({ id: { $in: wantedIds } });
@@ -460,8 +468,15 @@ router.get('/me/ideas', async (req, res) => {
         .map(async id => {
           const m = byUser.get(id);
           const instance = byId.get(id);
-          const [collaboratorCount, lastNode] = await Promise.all([
+          const [collaboratorCount, thoughtCount, lastNode] = await Promise.all([
             SynMembership.countDocuments({ instanceId: instance.id }),
+            // How big the map is. Distinct thoughts only: a borrowed node is
+            // somebody else's thought sitting on a second map, and promoting
+            // it keeps `sourceNodeId`, so filtering on that counts each
+            // thought in the idea exactly once. Hubs are labels, not content,
+            // and the home hub every reader gets seeded would otherwise make
+            // merely looking grow the number.
+            SynNode.countDocuments({ instanceId: instance.id, kind: 'thought', sourceNodeId: null }),
             SynNode.findOne({ instanceId: instance.id }).sort({ updatedAt: -1 }).select('updatedAt'),
           ]);
           return {
@@ -470,6 +485,10 @@ router.get('/me/ideas', async (req, res) => {
             // anything in yet — the row is written on my first contribution.
             membership: m ? ideaFunnel.toClientMembership(m) : null,
             collaboratorCount,
+            thoughtCount,
+            // The circles OF MINE this idea has been shared with; empty for a
+            // draft nobody has nominated.
+            circles: circlesByIdea.get(id) || [],
             // 'admin' is the drafter — the one who started the idea.
             draftedByMe: Boolean(m && m.role === 'admin'),
             lastActivityAt: lastNode?.updatedAt ?? instance.createdAt,

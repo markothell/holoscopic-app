@@ -138,6 +138,10 @@ export function useIdeas(userId: string | null) {
         ...i,
         membership: m,
         collaboratorCount: i.collaboratorCount ?? 1,
+        // A just-drafted idea has an empty map and has been shared with
+        // nobody; a just-joined one gets its true numbers on the next load.
+        thoughtCount: 0,
+        circles: [],
         draftedByMe,
         lastActivityAt: i.createdAt,
       },

@@ -29,7 +29,35 @@ function Stat({ children, tone }: { children: React.ReactNode; tone?: string }) 
   );
 }
 
+// How big the map is, said in the app's own noun. Zero gets a phrase rather
+// than a count — a map with nothing on it is a state, not a measurement.
+function mapSize(count: number) {
+  if (count === 0) return 'empty map';
+  return `${count} ${count === 1 ? 'thought' : 'thoughts'}`;
+}
+
+// Sharing a document with a circle IS the grant that opens it to that circle
+// (utils/synthesisActivity.js), so this pill answers the question a row can
+// otherwise only raise: who else is in here. It names the circle when there is
+// one, and counts them when there are several — the title attribute keeps the
+// full list a hover away. Periwinkle is already the colour of "carried in from
+// elsewhere" on the map; a circle is the elsewhere.
+function CirclePill({ circles }: { circles: MyIdea['circles'] }) {
+  if (circles.length === 0) return null;
+  const label = circles.length === 1 ? circles[0].title : `${circles.length} circles`;
+  return (
+    <span
+      className="eyebrow shrink-0 rounded-full border px-2 py-0.5 !text-[0.55rem]"
+      style={{ borderColor: 'var(--borrowed)', color: 'var(--borrowed)' }}
+      title={`Shared with ${circles.map(c => c.title).join(', ')}`}
+    >
+      ◍ {label}
+    </span>
+  );
+}
+
 function IdeaRow({ idea, onOpen }: { idea: MyIdea; onOpen: (code: string) => void }) {
+  const circles = idea.circles ?? [];
   return (
     <button
       type="button"
@@ -39,17 +67,22 @@ function IdeaRow({ idea, onOpen }: { idea: MyIdea; onOpen: (code: string) => voi
     >
       <span className="flex items-start justify-between gap-3">
         <span className="block text-sm leading-snug text-mist">{idea.title}</span>
-        {idea.synthesisReached && (
-          <span
-            className="eyebrow shrink-0 rounded-full border px-2 py-0.5 !text-[0.55rem]"
-            style={{ borderColor: 'var(--join)', color: 'var(--join)' }}
-            title="This group reached Synthesis"
-          >
-            ∪ synthesis
-          </span>
-        )}
+        <span className="flex shrink-0 flex-wrap justify-end gap-1.5">
+          <CirclePill circles={circles} />
+          {idea.synthesisReached && (
+            <span
+              className="eyebrow shrink-0 rounded-full border px-2 py-0.5 !text-[0.55rem]"
+              style={{ borderColor: 'var(--join)', color: 'var(--join)' }}
+              title="This group reached Synthesis"
+            >
+              ∪ synthesis
+            </span>
+          )}
+        </span>
       </span>
       <span className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        <Stat>{mapSize(idea.thoughtCount ?? 0)}</Stat>
+        <Stat tone="var(--line-strong)">·</Stat>
         <Stat>
           {idea.collaboratorCount} {idea.collaboratorCount === 1 ? 'collaborator' : 'collaborators'}
         </Stat>
@@ -59,8 +92,14 @@ function IdeaRow({ idea, onOpen }: { idea: MyIdea; onOpen: (code: string) => voi
         </Stat>
         <Stat tone="var(--line-strong)">·</Stat>
         {/* No membership row yet: a circle opened this to me and I have not
-            added anything. Say what it is rather than showing a blank name. */}
-        <Stat>{idea.membership ? `as ${idea.membership.handle}` : 'shared with your circle'}</Stat>
+            added anything. Say what it is rather than showing a blank name —
+            and when the pill above already names the circle, say the part the
+            pill leaves out, which is that the document is mine to write in. */}
+        <Stat>
+          {idea.membership
+            ? `as ${idea.membership.handle}`
+            : circles.length > 0 ? 'open to you' : 'shared with your circle'}
+        </Stat>
       </span>
     </button>
   );
@@ -186,7 +225,7 @@ export default function IdeaList({
         </h1>
         <p className="mt-3 text-sm text-mist-soft">
           {hasIdeas
-            ? 'An idea is a thought space. Open one to work in its map.'
+            ? 'An idea is a thought space. Open one to work in its map. Share with your circle to explore an idea together, and use the Union tool to synthesize collective thought.'
             : 'An idea is a thought space you draft and invite people into. Start one, or join with a code.'}
         </p>
       </header>

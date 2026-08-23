@@ -87,6 +87,14 @@ export interface MyIdea extends Idea {
    *  anything in yet — the membership row is written on first contribution. */
   membership: Membership | null;
   collaboratorCount: number;
+  /** Distinct thoughts in the idea — how big the map is. Borrowed copies are
+   *  excluded, so one thought counts once however many maps carry it. */
+  thoughtCount: number;
+  /** The circles OF MINE this idea has been shared into. Sharing a document
+   *  with a circle is what opens it to that circle (utils/synthesisActivity.js),
+   *  so this is both "who else can read it" and "where it is being worked on".
+   *  Empty for a draft nobody has nominated. */
+  circles: { title: string; urlName: string }[];
   draftedByMe: boolean;   // I hold the 'admin' role — I started this idea
   lastActivityAt: string;
 }

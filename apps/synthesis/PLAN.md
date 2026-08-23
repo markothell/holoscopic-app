@@ -492,7 +492,13 @@ platform 4002 · game 4003 · synthesis 4004).
 - **D15 — The app's home is the ideas list.** Partially supersedes D7: "map is
   home" now means home *within* an idea. The root surface is the account's
   ideas — drafted and joined — each row carrying its collaborator count,
-  public/private status, and whether the group reached Synthesis.
+  public/private status, and whether the group reached Synthesis. Two more
+  facts landed 2026-08-23, both from `GET /me/ideas`: **how big the map is**
+  (`thoughtCount` — distinct thoughts, so a borrowed copy never counts twice,
+  and an empty map says so in words rather than as a zero) and **which of my
+  circles the idea is shared into** (`circles[]`, drawn as a periwinkle pill
+  beside the ∪ synthesis one). The pill is the row's answer to "who else is in
+  here": sharing with a circle IS the grant that opens the document to it.
 - **D16 — A married node is a "join node."** Renamed from "synthesis node"
   (token `--synthesis` → `--join`, same teal) so the word Synthesis means the
   state a group reaches and nothing else. Set-theory adjacent, beside ∪.
