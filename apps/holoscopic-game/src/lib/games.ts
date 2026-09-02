@@ -30,6 +30,13 @@ export const THRESHOLD_URL =
 // memorial is a row in the platform admin.
 //
 // Set NEXT_PUBLIC_CHORUS_URL=http://localhost:4005 to follow these locally.
+// Circles (see apps/circles, :4007 locally) — the product shell, live at
+// circles.holoscopic.io since 2026-08-17. The homepage's sign-up goes here:
+// a new account belongs in the product, not in the lab's oldest game.
+// Set NEXT_PUBLIC_CIRCLES_URL=http://localhost:4007 to follow it locally.
+export const CIRCLES_URL =
+  process.env.NEXT_PUBLIC_CIRCLES_URL || 'https://circles.holoscopic.io';
+
 export const CHORUS_URL =
   process.env.NEXT_PUBLIC_CHORUS_URL || 'https://chorus.holoscopic.io';
 

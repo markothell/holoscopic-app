@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useInstance } from '@/contexts/InstanceContext';
 import { holonAmount } from '@/lib/strings';
 import { useNotifications, AppNotification } from '@/hooks/useNotifications';
+import { CIRCLES_URL } from '@/lib/games';
 
 function notificationHref(n: AppNotification): string {
   const validRef = n.refId && n.refId !== 'undefined' && n.refId !== 'null';
@@ -153,7 +154,7 @@ export default function UserMenu({ gameLinks }: { gameLinks?: GameLink[] } = {})
           Login
         </button>
         <button
-          onClick={() => router.push('/signup')}
+          onClick={() => { window.location.href = `${CIRCLES_URL}/signup`; }}
           style={{
             fontFamily: 'var(--font-dm-mono), monospace',
             fontSize: '0.62rem',

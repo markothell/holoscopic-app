@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Page, Action, Muted } from '@/components/Shell';
+import { Page, Action, Muted, Quiet } from '@/components/Shell';
 
 // The front door. Signed in, you belong on /circles — the product's home is
 // the circles you're in, not a marketing page. Signed out, the offer in one
@@ -29,10 +29,12 @@ export default function Home() {
           your circles live.
         </p>
         <div className="mt-8 flex items-center gap-5">
-          <Action href="/login">Sign in</Action>
+          <Action href="/signup">Make an account</Action>
+          <Quiet href="/login">Sign in</Quiet>
         </div>
         <p className="mt-6 text-sm text-ink-faint">
-          Circles form by invitation for now — an invitation link is the way in.
+          Circles form by invitation for now — an invitation link is the way in,
+          and an account is what it opens.
         </p>
       </div>
     </Page>

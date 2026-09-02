@@ -4,8 +4,6 @@ import { useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import UserMenu from '@/components/UserMenu';
 import SiteFooter from '@/components/SiteFooter';
-import EmailCapture from '@/components/EmailCapture';
-import GatheringArt from '@/components/GatheringArt';
 import { THRESHOLD_URL } from '@/lib/games';
 import styles from './page.module.css';
 
@@ -42,6 +40,62 @@ function RevealSection({
 // there for equal weight so neither looks like the verdict); the middle
 // section is the threshold itself, in the app's neutral grey. The beam tilts
 // a few degrees — a scale mid-reading — while the fulcrum stays level.
+// Circles: the circle home map, as the app draws it — members on a ring, all
+// equal, what they explored together gathered in the middle, one solo spur
+// pointing outward. Toono palette from apps/circles/DESIGN.md, so the card
+// reads as the product rather than as another lab poster.
+function CircleRingArt() {
+  const cx = 272, cy = 105, r = 56, ring = 68, n = 8;
+  const seats = Array.from({ length: n }, (_, i) => {
+    const a = (-90 + i * (360 / n)) * (Math.PI / 180);
+    return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+  });
+  const shared = [
+    { x: cx - 12, y: cy + 4, r: 15, to: [1, 4, 5, 7] },
+    { x: cx + 15, y: cy - 8, r: 10, to: [0, 2, 3] },
+  ];
+  // Two more circles to the left, empty and clipped by the card's edges: the
+  // crowd a circle exchanges with, suggested rather than drawn in full.
+  const others = [
+    { x: cx - 136, y: cy - 98 },
+    { x: cx - 136, y: cy + 98 },
+  ];
+  return (
+    <svg
+      className={styles.gameCardArt}
+      viewBox="0 0 360 210"
+      aria-hidden
+      preserveAspectRatio="xMaxYMid meet"
+    >
+      {others.map((o, i) => (
+        <circle key={i} cx={o.x} cy={o.y} r={ring + 27} fill="#B49A6E" fillOpacity="0.14" />
+      ))}
+      {/* the circle's reach: a wide, faint second ring that overlaps the others */}
+      <circle cx={cx} cy={cy} r={ring + 14} fill="none" stroke="#B49A6E" strokeOpacity="0.14" strokeWidth="26" />
+      {/* the circle itself */}
+      <circle cx={cx} cy={cy} r={ring} fill="none" stroke="#B49A6E" strokeWidth="2" />
+      {/* edges from seats to what they explored together */}
+      {shared.map((s, si) =>
+        s.to.map(i => (
+          <line
+            key={`${si}-${i}`}
+            x1={seats[i].x} y1={seats[i].y} x2={s.x} y2={s.y}
+            stroke="#B49A6E" strokeOpacity="0.45" strokeWidth="1"
+          />
+        )),
+      )}
+      {/* shared nodes, sized by how much of the circle took part */}
+      {shared.map((s, si) => (
+        <circle key={si} cx={s.x} cy={s.y} r={s.r} fill="#EDE3D0" stroke="#B49A6E" strokeOpacity="0.7" strokeWidth="1.2" />
+      ))}
+      {/* the seats */}
+      {seats.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="9" fill="#FDFAF4" stroke={i === 0 ? '#3A2E20' : '#B49A6E'} strokeWidth={i === 0 ? 1.6 : 1.2} />
+      ))}
+    </svg>
+  );
+}
+
 function ThresholdBeamArt() {
   const dotY = 79;
   return (
@@ -304,16 +358,9 @@ export default function HomePage() {
             Games for seeing and learning as a collective.
           </p>
           <div className={styles.heroCtaRow}>
-            <a
-              href="#invitation"
-              className={`${styles.heroCta} ${styles.heroCtaPrimary}`}
-              onClick={(e) => {
-                e.preventDefault();
-                scrollTo('invitation');
-              }}
-            >
+            <Link href="/circles" className={`${styles.heroCta} ${styles.heroCtaPrimary}`}>
               Take a seat
-            </a>
+            </Link>
             <a
               href="#idea"
               className={styles.heroCta}
@@ -367,19 +414,22 @@ export default function HomePage() {
             they are the instruments a circle plays. All of them are open —
             play them, break them, tell us what you find. The first circles
             pick them up together:{' '}
-            <a
-              href="#invitation"
-              className={styles.inlineLink}
-              onClick={(e) => {
-                e.preventDefault();
-                scrollTo('invitation');
-              }}
-            >
-              save a seat below
-            </a>
+            <Link href="/circles" className={styles.inlineLink}>take a seat</Link>
             .
           </p>
           <div className={styles.gameCardStack}>
+            {/* Circles first: the newest experiment, and the one the others
+                are converging into. It wears the product's own language —
+                serif, warm ground, the ring — because it is the product's
+                door, not another lab poster. By invitation for now, so the
+                card says so. */}
+            <Link href="/circles" className={`${styles.gameCard} ${styles.gameCardCi}`}>
+              <CircleRingArt />
+              <span className={`${styles.gameCardTitle} ${styles.gameCardTitleCi}`}>Circles</span>
+              <span className={`${styles.gameCardSub} ${styles.gameCardSubCi}`}>
+                form a sharing circle, exchange conversations with the crowd
+              </span>
+            </Link>
             {/* Threshold's wordmark has no morpheme seam to split on, so it
                 stays one colour like Chorus's. The two poles live in the art,
                 where they belong — and the sub-line wears the app's neutral
@@ -391,7 +441,7 @@ export default function HomePage() {
                 a game for finding the group&apos;s dividing line
               </span>
               <span className={styles.gameCardMeta}>
-                voice stories &middot; polarity sorting &middot; rounds by mail &middot; circle membership
+                voice stories &middot; polarity sorting &middot; rounds by mail
               </span>
             </a>
             {/* The one card with a single-colour wordmark by precedent. The
@@ -459,70 +509,6 @@ export default function HomePage() {
                 2D map &middot; comments &middot; votes &middot; sequenced rounds
               </span>
             </Link>
-          </div>
-        </RevealSection>
-
-        <div className={styles.divider} />
-
-        {/* ── The Social Model — the pitch, after the instruments: what the
-               instruments are played inside. Circles promoted out of the card
-               stack, so the circle gets the section and the drawing. ────── */}
-        <RevealSection id="model" className={styles.section}>
-          <p className={styles.sectionLabel}>The Social Model</p>
-          <h2 className={styles.sectionHeadline}>
-            <em>Circles.</em>
-          </h2>
-          <p className={styles.sectionBody}>
-            The circle is a social model with ancient roots: four to twelve
-            people, all equal, all facing a common center, gathered to learn
-            as one — record stories, map where everyone stands, find the
-            group&apos;s thresholds, arrive at shared words. What a circle
-            makes, it keeps.
-          </p>
-          <div className={styles.modelFigure}>
-            <GatheringArt className={styles.modelArt} />
-          </div>
-          <p className={styles.sectionBody}>
-            Circles gather too. Members mix across tables the way a World
-            Caf&eacute; runs, trade what their home circles learned, and carry
-            the exchange back. Circles that gather become a collective —
-            itself a circle, and the platform is the outermost one.
-          </p>
-        </RevealSection>
-
-        <div className={styles.divider} />
-
-        {/* ── The Invitation — the one ask on the page. The gathering is
-               sized to the crowd: circles form as seats fill, each runs a
-               cycle, then the circles meet — the event is the recursion
-               demonstrated. (`platform` span keeps old #platform links.) ── */}
-        <RevealSection id="invitation" className={styles.section}>
-          <span id="platform" />
-          <p className={styles.sectionLabel}>The Invitation</p>
-          <h2 className={styles.sectionHeadline}>
-            Be in the first <em>circles.</em>
-          </h2>
-          <p className={styles.sectionBody}>
-            We&apos;re convening the first gathering now, sized to fit the
-            crowd: circles of four to twelve form as seats fill. Each circle
-            runs one cycle together over a few weeks, on its own time —
-            stories, sorting, maps, shared words. Then the circles gather,
-            World Caf&eacute; style, and we all find out what the collective
-            can see.
-          </p>
-
-          <div className={styles.joinBlock}>
-            <h3 className={styles.joinHeading}>Save a seat</h3>
-            <p className={styles.joinBody}>
-              Leave your address. When the seats around you fill, your circle
-              forms and the first round begins — email carries you through the
-              rest.
-            </p>
-            <EmailCapture
-              cta="Save me a seat"
-              sentNote="Seat saved. We'll write when your circle forms."
-              source="first-gathering"
-            />
           </div>
         </RevealSection>
 

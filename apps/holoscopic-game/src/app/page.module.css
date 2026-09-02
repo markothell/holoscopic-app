@@ -321,6 +321,31 @@
   color: var(--ink-light);
   margin-top: 0.15rem;
 }
+/* Circles — the product's own language: Toono ground, serif wordmark,
+   body sans. See apps/circles/DESIGN.md for the palette. */
+.gameCardCi {
+  background: #F7F2E9;
+  border: 1px solid #EDE3D0;
+  min-height: 12.75rem;
+  box-sizing: border-box;
+  justify-content: center;
+}
+
+.gameCardTitleCi {
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  color: #3A2E20;
+}
+
+.gameCardSubCi {
+  font-family: Seravek, "Gill Sans", "Trebuchet MS", system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #6D5E4A;
+}
+
 /* On a Spectrum — its own paper + duotone wordmark */
 .gameCardOas {
   background: #faf6ee;
