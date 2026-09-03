@@ -184,7 +184,7 @@ export default function MapsTransformTheWorldPage() {
         <div className={styles.container}>
           <div className={styles.footerInner}>
             <span className={styles.footerText}>
-              Made by Mo &nbsp;&middot;&nbsp; Open source &nbsp;&middot;&nbsp; Evolving
+              Made by Mark Othell &nbsp;&middot;&nbsp; Open source &nbsp;&middot;&nbsp; Evolving
             </span>
             <Link href="/" className={`${styles.footerText} ${styles.footerLink}`}>
               Holoscopic &rarr;

@@ -245,7 +245,7 @@ export default function ManifestoPage() {
         <div className={styles.container}>
           <div className={styles.footerInner}>
             <span className={styles.footerText}>
-              Made by Mo &nbsp;&middot;&nbsp; Open source &nbsp;&middot;&nbsp;
+              Made by Mark Othell &nbsp;&middot;&nbsp; Open source &nbsp;&middot;&nbsp;
               Evolving
             </span>
             <Link
