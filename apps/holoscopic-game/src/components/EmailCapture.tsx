@@ -12,6 +12,10 @@ import styles from './EmailCapture.module.css';
  * it: the homepage's platform section and the Circles lander. Both write
  * `platform-updates`.
  *
+ * `tone` picks the palette. The default is the site's crimson, which is right
+ * on holoscopic.io; the Circles lander passes 'toono' so the control wears the
+ * product's own ink and ochre instead of a crimson button on a warm serif page.
+ *
  * `source` is a plain string, deliberately. The Circles lander is a Server
  * Component (it has `metadata`), and a function prop crossing that boundary is
  * a 500 — "Functions cannot be passed directly to Client Components". A caller
@@ -24,13 +28,17 @@ export default function EmailCapture({
   sentNote,
   beforeSubmit,
   source,
+  tone = 'site',
 }: {
   cta: string;
   sentNote: string;
   /** Returns an error message to show instead of submitting, or null to go. */
   beforeSubmit?: () => string | null;
   source: string;
+  /** 'site' = holoscopic crimson; 'toono' = the Circles product palette. */
+  tone?: 'site' | 'toono';
 }) {
+  const toned = (base: string) => (tone === 'toono' ? `${base} ${styles.toono}` : base);
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [note, setNote] = useState<string | null>(null);
@@ -60,7 +68,7 @@ export default function EmailCapture({
 
   return (
     <>
-      <form className={styles.captureForm} onSubmit={submit}>
+      <form className={toned(styles.captureForm)} onSubmit={submit}>
         <input
           type="email"
           required
@@ -68,19 +76,19 @@ export default function EmailCapture({
           onChange={e => setEmail(e.target.value)}
           placeholder="you@example.com"
           aria-label="Email address"
-          className={styles.captureInput}
+          className={toned(styles.captureInput)}
           disabled={status === 'sent'}
         />
         <button
           type="submit"
-          className={styles.captureButton}
+          className={toned(styles.captureButton)}
           disabled={status !== 'idle'}
         >
           {status === 'sending' ? 'Sending…' : cta}
         </button>
       </form>
       {note && (
-        <p className={`${styles.captureNote} ${isError ? styles.captureNoteErr : ''}`} role="status">
+        <p className={`${toned(styles.captureNote)} ${isError ? styles.captureNoteErr : ''}`} role="status">
           {note}
         </p>
       )}

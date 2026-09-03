@@ -66,3 +66,46 @@
 .captureNoteErr {
   color: #C83B50;
 }
+
+/* ---- TOONO ----
+   The Circles lander is the product's door and wears the product's palette
+   (apps/circles/src/app/globals.css), so a crimson pill on it reads as a
+   control borrowed from another site. Same control, product colours: ink
+   ground, ochre focus, rope edge. Applied alongside the base classes, so
+   only the colours change. */
+
+.toono.captureInput {
+  font-family: Seravek, "Gill Sans", "Trebuchet MS", system-ui, sans-serif;
+  font-size: 0.95rem;
+  background: #FDFAF4;
+  border-color: #B49A6E;
+  color: #3A2E20;
+}
+
+.toono.captureInput::placeholder { color: #9C8D75; }
+
+.toono.captureInput:focus { border-color: #C08A3E; }
+
+.toono.captureButton {
+  font-family: Seravek, "Gill Sans", "Trebuchet MS", system-ui, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: #FDFAF4;
+  background: #3A2E20;
+  border-radius: 6px;
+}
+
+.toono.captureButton:hover { background: #2C2218; }
+
+.toono.captureNote {
+  font-family: Seravek, "Gill Sans", "Trebuchet MS", system-ui, sans-serif;
+  letter-spacing: 0;
+  font-size: 0.85rem;
+  color: #6D5E4A;
+}
+
+/* Higher specificity than .captureNoteErr, so the error tone is named here
+   too rather than falling back to the site crimson. */
+.toono.captureNoteErr { color: #C08A3E; }

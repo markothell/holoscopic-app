@@ -229,6 +229,112 @@
   display: block;
 }
 
+/* ---- THE PRACTICE ----
+   The method section between the claim and the inventory. Same spec as the
+   pre-circle homepage's "It's a bit like…" list, which is where this register
+   came from: a display-weight move, a serif italic gloss under it. */
+
+.practiceList {
+  list-style: none;
+  padding: 0;
+  margin: 2.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2.75rem;
+}
+
+/* A row per move: figure at the left, the move and its gloss at the right.
+   Three across was the first shape tried and the container is 620px, which
+   left ~185px columns — the glosses broke to three short lines and the
+   figures shrank to thumbnails. Rows use the width the page actually has,
+   and match the rhythm of the card stack below. */
+.practiceItem {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 1.75rem;
+  align-items: center;
+}
+
+.practiceArt {
+  width: 200px;
+  height: auto;
+  display: block;
+}
+
+.practiceText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.practiceTitle {
+  font-family: var(--font-barlow), sans-serif;
+  font-size: clamp(1.4rem, 3.5vw, 2rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.practiceDesc {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 300;
+  font-style: italic;
+  color: var(--ink-light);
+  line-height: 1.65;
+}
+
+/* ---- THE INVITATION ----
+   Four paragraphs of body copy set at the same size with no space between
+   them made paragraph breaks indistinguishable from line breaks, so the whole
+   ask read as one grey block. Three tiers instead: who it is for, the fork,
+   and the line both halves are told. */
+
+.inviteLede {
+  margin-bottom: 2.75rem;
+}
+
+.inviteFork {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2.75rem;
+}
+
+.forkItem {
+  padding-left: 1.25rem;
+  border-left: 2px solid rgba(200, 59, 80, 0.3);
+  font-size: 1.05rem;
+  color: var(--ink-light);
+  line-height: 1.8;
+  font-weight: 300;
+}
+
+/* The lead-in is the fork's label, so it gets its own line and the ink. */
+.roleLead {
+  display: block;
+  font-family: var(--font-barlow), sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.82rem;
+  color: var(--ink);
+  margin-bottom: 0.45rem;
+}
+
+/* What both halves are told — set apart from the fork it resolves. */
+.inviteJoin {
+  max-width: 560px;
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-style: italic;
+  font-size: 1.25rem;
+  font-weight: 300;
+  line-height: 1.7;
+  color: var(--ink-light);
+}
+
 /* ---- THE INSTRUMENTS ---- */
 
 /* MO's lab-notes intro — sectionBody with room before the card stack. */
@@ -518,9 +624,21 @@
   font-weight: 300;
 }
 
+/* The second door, under the form: for a group that already meets. */
+.joinAside {
+  margin-top: 1.5rem;
+  font-size: 0.98rem;
+}
+
 /* The capture form itself lives in components/EmailCapture.module.css. */
 
 /* ---- RESPONSIVE ---- */
+
+@media (max-width: 860px) {
+  .practiceItem { grid-template-columns: 150px 1fr; gap: 1.25rem; }
+  .practiceArt { width: 150px; }
+  .inviteFork { grid-template-columns: 1fr; gap: 1.75rem; }
+}
 
 @media (max-width: 600px) {
   .container { padding: 0 1.5rem; }

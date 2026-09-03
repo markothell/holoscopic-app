@@ -15,14 +15,6 @@
   margin: 0 auto;
 }
 
-.eyebrow {
-  font-family: var(--font-dm-mono), monospace;
-  font-size: var(--text-2xs);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
 /* The wordmark wears the product's serif, as the homepage card does. */
 .title {
   margin-top: 0.75rem;
