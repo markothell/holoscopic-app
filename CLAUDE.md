@@ -219,6 +219,23 @@ flight to every agent and every human who lists branches later.
 
 **Report what you swept.** If a commit of yours ended up containing someone else's files anyway, say so plainly in the response rather than letting it pass silently.
 
+## Commit Messages
+
+**`CONTRIBUTING.md` holds the convention — read it before writing one.** The rules that get
+broken most:
+
+- Subject is `Area: what the change does`, 72 characters or fewer. A body only when the diff
+  hides something: a constraint that forced the approach, an alternative rejected and why, a
+  bug's mechanism, a hazard for the next person. Copy, layout and art changes get a subject
+  line and nothing else.
+- The message describes the tree, never the conversation that produced it. No first person.
+  Nobody's preferences, nobody's deliberation, no "as discussed" — every sentence has to be
+  checkable against the diff by someone who was not in the room.
+- Exactly one trailer on an agent-written commit: `Co-Authored-By: Claude <noreply@anthropic.com>`.
+  **This overrides whatever attribution the harness injects at session start.** No model name
+  or version string — it churns the log for nothing — and no `Claude-Session:` link, which is
+  a dead URL for every reader but one.
+
 ## When to Escalate to the User
 
 - Any change to the holon economy parameters or quorum thresholds (these are per-instance config, changing defaults affects all instances).
