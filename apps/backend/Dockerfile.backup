@@ -23,16 +23,35 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# Only the backend workspace is needed; the frontends are irrelevant here.
-COPY apps/backend/package.json apps/backend/package-lock.json* ./
-RUN npm install --omit=dev --no-audit --no-fund
+# Installed from the ROOT lockfile — the same one the web service resolves
+# through. apps/backend is a workspace member, so `npm install` run there walks
+# up to the repo root and never reads a nested lockfile.
+#
+# This image used to copy apps/backend's two files ALONE, which left no
+# workspace above them to walk up to. npm fell back to the nested lockfile,
+# which predated three dependencies (@aws-sdk/client-s3, @sentry/node,
+# jsonwebtoken) and pinned May-era versions of the rest. So the cron ran
+# mongoose 8.21 against models/ written for 8.24, and resolved the S3 client —
+# the one dependency backup-blobs.js cannot work without — fresh on every
+# build. One lockfile governs both paths now; they cannot drift again.
+#
+# The sibling workspaces are deliberately absent. The workspaces globs resolve
+# against what is actually here, and --workspace=apps/backend needs no others.
+COPY package.json package-lock.json ./
+COPY apps/backend/package.json ./apps/backend/
+RUN npm ci --omit=dev --workspace=apps/backend --no-audit --no-fund
 
 # scripts/backup-blobs.js reads the database to learn which recordings SHOULD
 # exist, so the models and the mirror util travel with it. Without these the
 # cron image builds fine and fails at 07:00 with a module-not-found.
-COPY apps/backend/scripts ./scripts
-COPY apps/backend/models ./models
-COPY apps/backend/utils ./utils
+#
+# Copied to the path they occupy in the repo, not flattened to /app. Node
+# resolves upward from a module's own directory, and the backend's uuid is
+# pinned to a different major than the hoisted one — so the code has to sit
+# under apps/backend/ to reach apps/backend/node_modules/uuid before the root's.
+COPY apps/backend/scripts ./apps/backend/scripts
+COPY apps/backend/models ./apps/backend/models
+COPY apps/backend/utils ./apps/backend/utils
 
 # Fail the BUILD if mongodump is missing, so a broken image never reaches the
 # schedule and starts silently "succeeding".
@@ -44,4 +63,4 @@ RUN mongodump --version
 # not also skip the media copy and hide a second problem behind the first. The
 # exit code is the worse of the two, so the cron's dead-man's-switch fires if
 # EITHER half failed.
-CMD ["sh", "-c", "node scripts/backup-mongo.js; m=$?; node scripts/backup-blobs.js; b=$?; [ $m -gt $b ] && exit $m || exit $b"]
+CMD ["sh", "-c", "node apps/backend/scripts/backup-mongo.js; m=$?; node apps/backend/scripts/backup-blobs.js; b=$?; [ $m -gt $b ] && exit $m || exit $b"]
