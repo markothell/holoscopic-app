@@ -62,7 +62,33 @@ eventually the synthesis surfaces moving in as a package.
 | `src/lib/{auth,types}.ts` | Auth stack copy #5 (M2's `@hs/auth` dedupes them) and the wire types, mirrored from the backend serializers |
 | `src/app/c/[urlName]/new/page.tsx` | The activity builder's creator flow (PRIMITIVES.md §9 S-decisions, 2026-08-20): + on circle home → primitives/templates tabs → four connected dots (shape, prompt, reveal, launch), staged locally and sent as ONE postSeed with `activity: 'gather'` |
 | `src/app/c/[urlName]/activity/[seedId]/page.tsx` | One gather ask, respond + reveal in a single surface (B4 keeps input open past the reveal). Voice-first or text-first story (S1), five stops (S2), free/quadrant grids (S3), tell-then-place (S4), the words chip field with the coin budget (S5), the state line + facilitator's confirm-gated Reveal-now (S19/S20) |
+| `src/components/GatherSurface.tsx` | The gather ask itself, lifted out of the activity page so `/demo` renders the SAME surface. `readOnly` withholds every writing control (compose, edit, reveal-now, reactions) and changes nothing else; it defaults false |
+| `src/components/circleHome.tsx` | The circle home's bands — header, the running-now card, Proposed, the record — lifted out of the home page for the same reason. `basePath` redirects seed links, `readOnly` withholds the backing control; both default to the real behaviour |
+| `src/app/demo/` + `src/lib/demo.ts` | **The public, no-account demo at `/demo`** (see below) |
 | `src/components/gather.tsx` | The reveal pieces: `ResponseRing` (each response at its teller's seat, the shape's visual in the center — prompt+count / mini chart / portrait, S6–S8, S11), `StackChart` (R2), `DotMap` (R3, cluster-sized nodes, no spread ellipse), `Portrait`, `ResponseCard` with the small-ring reaction mark (S14/S17) |
+
+## The public demo (`/demo`)
+
+A no-account sample of the whole product, **rendered client-side from a typed fixture and making
+no backend request of any kind**. It exists because the circle read paths are member-gated
+server-side on purpose — `utils/circles.js` gates the snapshot's extras and participation behind
+`payload.isMember`, and `routes/circles.js`'s responses route calls `assertMember` — and those
+gates are not being loosened for a marketing page. The precedent is Synthesis's
+`src/lib/mock.ts`.
+
+- **`src/lib/demo.ts` is the fixture**, typed against `@/lib/types`. That typing is the whole
+  point: if a wire type moves, the demo stops compiling instead of quietly drifting.
+- **The content is `apps/backend/scripts/seed-gather-demo.js`'s, verbatim** — the Lantern circle,
+  its eight invented people, its five asks, the same word picks and coordinates. Change one,
+  change the other.
+- Everything renders through the app's real components (`CircleMap`, `circleHome.tsx`,
+  `GatherSurface`), passed `basePath="/demo"` and `readOnly`. Nothing is reimplemented.
+- **Read-only, and labelled on every surface** — `app/demo/DemoNotice.tsx` says the people are
+  written rather than collected and carries the way out. Controls that would write are absent,
+  never inert-looking.
+- **No audio, deliberately** (the seed script's rule): a fake blob URL renders as a broken player.
+- Ask 4 is sealed and still running, so its surface shows the state line and nothing else. That
+  is the mechanic, not a hole — sealed serves own-only, and the demo's reader owns nothing.
 
 ## Gotchas
 

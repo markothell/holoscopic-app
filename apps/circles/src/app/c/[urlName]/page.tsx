@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { circlesApi, synthesisApi, ApiError, SYNTHESIS_URL } from '@/services/api';
 import type { Circle, MyIdea } from '@/lib/types';
-import { seedActivityOf } from '@/lib/types';
 import { Page, Band, Card, Action, Muted } from '@/components/Shell';
 import { CircleMap } from '@/components/CircleMap';
+import { CircleHeader, LiveSeedCard, NominationsBand, RecordBand } from '@/components/circleHome';
 
 // The circle home — the product's hero surface. The map IS the page: the circle
 // seen whole, every member, what each has explored alone and together, and
@@ -69,17 +69,10 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
   if (!circle) return <Page><Muted>…</Muted></Page>;
 
   const seed = circle.currentSeed;
-  const record = circle.seeds.filter(s => s.phase === 'revealed' || s.phase === 'skipped');
 
   return (
     <Page>
-      <header className="mb-2">
-        <h1 className="text-3xl leading-tight">{circle.title}</h1>
-        <p className="mt-1 text-sm text-ink-faint">
-          {circle.memberCount} {circle.memberCount === 1 ? 'person' : 'people'}
-          {record.length > 0 && ` · ${record.length} ${record.length === 1 ? 'exploration' : 'explorations'} so far`}
-        </p>
-      </header>
+      <CircleHeader circle={circle} />
 
       {error && circle && <p className="mb-4 text-sm text-ochre">{error}</p>}
 
@@ -102,89 +95,11 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
 
       {/* Every live cycle gets a card — a circle runs up to maxLive at once
           (B1; 1 unless the circle opted into more), so this is a list of
-          one-or-more, never a single slot. Each activity reads its own
-          extras from seedExtras; the flat-merged top level is only the
-          FIRST live seed's. */}
+          one-or-more, never a single slot. */}
       {circle.phase === 'cycle' && circle.isMember && (circle.liveSeedIds ?? (seed ? [seed.id] : []))
         .map(id => circle.seeds.find(s => s.id === id))
         .filter((s): s is NonNullable<typeof s> => Boolean(s))
-        .map(live => {
-          const extras = (circle.seedExtras?.[live.id] ?? {}) as {
-            shares?: { isMine: boolean }[];
-            waitingShareIds?: string[];
-            responses?: unknown[];
-            myResponse?: unknown;
-          };
-          if (seedActivityOf(circle, live) === 'gather') {
-            const mineIn = Boolean(extras.myResponse);
-            const openWall = live.payload.reveal === 'open';
-            const answered = (extras.responses ?? []).length;
-            return (
-              <div key={live.id} className="mt-8">
-                <Card>
-                  <Band>Running now</Band>
-                  <h2 className="text-2xl leading-snug">{live.payload.prompt}</h2>
-                  {live.payload.context && (
-                    <p className="mt-1 text-sm text-ink-soft">{live.payload.context}</p>
-                  )}
-                  <p className="mt-3 text-sm text-ink-soft">
-                    {mineIn
-                      ? openWall
-                        ? `Yours is in — ${answered} of ${circle.memberCount} have answered.`
-                        : 'Yours is in. Waiting on results.'
-                      : openWall
-                        ? `${answered} of ${circle.memberCount} have answered.`
-                        : 'Sealed until everyone has answered.'}
-                  </p>
-                  <div className="mt-4">
-                    <Action href={`/c/${circle.urlName}/activity/${live.id}`}>
-                      {mineIn ? 'See where it stands' : 'Add yours'}
-                    </Action>
-                  </div>
-                </Card>
-              </div>
-            );
-          }
-          const shares = extras.shares ?? circle.shares ?? [];
-          const iTold = shares.some(s => s.isMine);
-          const waiting = (extras.waitingShareIds ?? circle.waitingShareIds)?.length ?? 0;
-          const topicHref = `/c/${circle.urlName}/topic/${live.id}`;
-          return (
-            <div key={live.id} className="mt-8">
-              <Card>
-                <Band>Running now</Band>
-                <h2 className="text-2xl leading-snug">{live.payload.topic}</h2>
-                <p className="mt-1 text-sm text-ink-soft">
-                  {live.payload.poleA} · {live.payload.poleB}
-                </p>
-                {live.phase === 'share' && (
-                  <>
-                    <p className="mt-3 text-sm text-ink-soft">
-                      {iTold
-                        ? 'Your story is in. You can change it while this round is open.'
-                        : 'Tell a time it was one of those two things.'}
-                    </p>
-                    <div className="mt-4">
-                      <Action href={topicHref}>{iTold ? 'Change your story' : 'Tell your story'}</Action>
-                    </div>
-                  </>
-                )}
-                {live.phase === 'rank' && (
-                  <>
-                    <p className="mt-3 text-sm text-ink-soft">
-                      {waiting > 0
-                        ? `${waiting} ${waiting === 1 ? 'story is' : 'stories are'} waiting on you.`
-                        : 'Your sorting is in.'}
-                    </p>
-                    <div className="mt-4">
-                      <Action href={topicHref}>{waiting > 0 ? 'Read and sort' : 'See your sorting'}</Action>
-                    </div>
-                  </>
-                )}
-              </Card>
-            </div>
-          );
-        })}
+        .map(live => <LiveSeedCard key={live.id} circle={circle} live={live} />)}
 
       {!circle.isMember && (
         <p className="mt-8 text-sm text-ink-faint">
@@ -198,106 +113,11 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
         <NominationsBand circle={circle} userId={userId} onChanged={load} />
       )}
 
-      {record.length > 0 && circle.isMember && (
-        <section className="mt-10">
-          <Band>The record</Band>
-          <ul className="space-y-3">
-            {record.map(s => (
-              <li key={s.id}>
-                <Link
-                  href={seedActivityOf(circle, s) === 'gather'
-                    ? `/c/${circle.urlName}/activity/${s.id}`
-                    : `/c/${circle.urlName}/topic/${s.id}`}
-                  className="-mx-3 block rounded-lg px-3 py-2 transition-colors hover:bg-ground-deep"
-                >
-                  <span className="font-[family-name:var(--font-display)] text-lg">
-                    {s.payload.topic}
-                  </span>
-                  <span className="mt-0.5 block text-xs text-ink-faint">
-                    {seedActivityOf(circle, s) === 'gather'
-                      ? ({ story: 'a wall of stories', placement: 'where everyone stands',
-                          'story-placement': 'stories on a line', words: 'a word portrait' }[s.payload.shape ?? 'story'] ?? 'an activity')
-                      : `${s.payload.poleA} · ${s.payload.poleB}`}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {circle.isMember && <RecordBand circle={circle} />}
       {circle.isMember && (
         <SynthesesBand circle={circle} userId={userId} onShared={load} />
       )}
     </Page>
-  );
-}
-
-/**
- * What has been put to the circle and not yet taken up (B3 revised,
- * 2026-08-20: EVERY ask walks through approval — one member must not be able
- * to commit the whole group's attention alone). Unordered by design; backing
- * is a count toward approvalsToStart, not a rank. Synthesis documents keep
- * their own band below — same mechanic, different words.
- */
-function NominationsBand({ circle, userId, onChanged }: {
-  circle: Circle;
-  userId: string;
-  onChanged: () => Promise<void>;
-}) {
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const nominations = (circle.nominations ?? []).filter(s => s.activity !== 'synthesis');
-  const queued = (circle.queue ?? []).filter(s => s.activity !== 'synthesis');
-  if (nominations.length === 0 && queued.length === 0) return null;
-
-  const back = async (seedId: string) => {
-    setBusyId(seedId);
-    try {
-      await circlesApi.supportSeed(circle.id, seedId, userId);
-      await onChanged();
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  return (
-    <section className="mt-10">
-      <Band>Proposed</Band>
-      <ul className="space-y-3">
-        {nominations.map(s => {
-          const more = Math.max(0, (circle.approvalsToStart ?? 3) - s.supporterCount);
-          return (
-            <li key={s.id} className="flex items-baseline justify-between gap-4">
-              <div>
-                <span className="font-[family-name:var(--font-display)] text-lg">{s.payload.topic}</span>
-                <span className="mt-0.5 block text-xs text-ink-faint">
-                  {more === 0 ? 'Ready to start' : `${more} more ${more === 1 ? 'backer' : 'backers'} to start`}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => back(s.id)}
-                disabled={busyId === s.id}
-                aria-pressed={s.iSupport}
-                className="flex-none cursor-pointer rounded-full border px-4 py-1.5 text-sm transition-colors disabled:opacity-50"
-                style={s.iSupport
-                  ? { borderColor: 'var(--ink)', background: 'var(--ink)', color: 'var(--card)' }
-                  : { borderColor: 'var(--rule-strong)', color: 'var(--ink-soft)' }}
-              >
-                {s.iSupport ? 'Backed' : 'Back this'}
-              </button>
-            </li>
-          );
-        })}
-        {queued.map(s => (
-          <li key={s.id} className="flex items-baseline justify-between gap-4">
-            <div>
-              <span className="font-[family-name:var(--font-display)] text-lg">{s.payload.topic}</span>
-              <span className="mt-0.5 block text-xs text-ink-faint">Approved — waiting for a slot</span>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 

@@ -205,12 +205,16 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function CircleMap({ circle, userId }: {
+export function CircleMap({ circle, userId, basePath }: {
   circle: Circle;
   userId: string | null;
+  /** Where a seed's link points. Defaults to the circle's own /c/<urlName>;
+   *  /demo passes its own root so the sample map leads to sample surfaces
+   *  rather than into the member-gated ones. */
+  basePath?: string;
 }) {
   const { members, seeds, participation, liveSeedId } = circle;
-  const base = `/c/${circle.urlName}`;
+  const base = basePath ?? `/c/${circle.urlName}`;
 
   const geo = useMemo(
     () => layout(members, seeds, participation ?? [], liveSeedId, userId),
@@ -305,7 +309,11 @@ export function CircleMap({ circle, userId }: {
             seed={spur.seed}
             label={`${spur.seed.payload.topic} — explored alone`}
           >
-            <title>{spur.seed.payload.topic}{isSession(spur.seed) ? ' · synthesis' : ''}</title>
+            {/* ONE text child, not several: adjacent expressions make React
+                emit separator comments in the server HTML that the client
+                tree does not reproduce, which hydrates as a mismatch the
+                moment this map is rendered on the server (it is, on /demo). */}
+            <title>{`${spur.seed.payload.topic}${isSession(spur.seed) ? ' · synthesis' : ''}`}</title>
             <line
               className="cm-fade cm-hit"
               x1={spur.x1} y1={spur.y1} x2={spur.x2} y2={spur.y2}
@@ -335,9 +343,9 @@ export function CircleMap({ circle, userId }: {
             }
           >
             <title>
-              {node.seed.payload.topic}
-              {isSession(node.seed) ? ' · synthesis' : ''}
-              {node.live ? ' · running now' : node.count != null ? ` · ${node.count} of ${members.length}` : ''}
+              {`${node.seed.payload.topic}`
+                + `${isSession(node.seed) ? ' · synthesis' : ''}`
+                + `${node.live ? ' · running now' : node.count != null ? ` · ${node.count} of ${members.length}` : ''}`}
             </title>
             {node.live && (
               <circle className="cm-pulse" cx={node.x} cy={node.y} r={node.r + 3}

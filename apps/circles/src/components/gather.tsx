@@ -56,7 +56,11 @@ export function ResponseRing({ members, responses, center, selectedUserId, dimme
               style={r && onPickUser ? { cursor: 'pointer' } : undefined}
               opacity={dimmed ? 0.3 : 1}
             >
-              <title>{m.username}{r ? '' : ' — nothing yet'}</title>
+              {/* One text child: adjacent expressions put separator comments
+                  in the server HTML that the client tree does not reproduce,
+                  which hydrates as a mismatch wherever this ring is rendered
+                  on the server (it is, on /demo). */}
+              <title>{`${m.username}${r ? '' : ' — nothing yet'}`}</title>
               <circle
                 cx={x} cy={y} r={13}
                 fill="var(--card)"
