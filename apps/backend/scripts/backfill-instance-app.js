@@ -32,6 +32,11 @@ const WRITE = process.argv.includes('--write');
 // next run.
 const KNOWN = {
   mompod: 'spectrum',
+  // Threshold's production instance. Same shape of problem as mompod: the slug
+  // says nothing, there is no parent, and every rule below therefore read it as
+  // interView — so a run of this script would have quietly un-stamped the one
+  // instance serving threshold.holoscopic.io AND circles.holoscopic.io.
+  circlemo: 'threshold',
 };
 
 function inferApp(inst, parents) {
@@ -40,6 +45,8 @@ function inferApp(inst, parents) {
   const parentSlug = inst.parentInstanceId ? parents.get(inst.parentInstanceId) : null;
   if (parentSlug === 'spectrum' || inst.slug === 'spectrum') return 'spectrum';
   if (parentSlug === 'synthesis' || inst.slug === 'synthesis') return 'synthesis';
+  if (parentSlug === 'threshold' || inst.slug === 'threshold') return 'threshold';
+  if (parentSlug === 'circles' || inst.slug === 'circles') return 'circles';
 
   // Slug conventions, for children whose parent row has gone missing.
   if (/^oas-/i.test(inst.slug)) return 'spectrum';
