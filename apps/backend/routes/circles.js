@@ -22,17 +22,46 @@ const User = require('../models/User');
 // the seed's own module) and the gather activity's verbs (respond/react),
 // since gather is the platform's activity rather than any one app's.
 //
-// There is deliberately NO assertOwnApp gate. resolveInstance never fails,
-// but every read and write here resolves through an (instanceId, key) lookup,
-// so a request that fell through to the default instance finds no circle and
-// 404s cleanly — nothing to misattribute and nothing to pollute. Revisit if a
-// route is ever added whose lookup is not instance-scoped.
+// There IS an own-app gate, below. The instance-scoped lookups make it
+// unnecessary for safety — a request that fell through to the default instance
+// finds no circle and 404s cleanly, with nothing to misattribute and nothing
+// to pollute — but they make every misroute look like a typo. The gate exists
+// to tell the two apart, and it becomes load-bearing the day a route is added
+// whose lookup is not instance-scoped.
 //
 // Mounted behind enforceVerifiedUser: circles are member spaces and every
 // caller has an account (P18 — accounts are Holoscopic accounts).
 
 const router = express.Router();
 const store = circles.mongoStore;
+
+// Which tenants own circles. `threshold` is the instance Threshold has always
+// run on; `circles` is the one circles.holoscopic.io moves to when it stops
+// borrowing Threshold's.
+const CIRCLE_APPS = ['threshold', 'circles'];
+
+// resolveInstance never fails: a request with no x-instance-id, or an
+// unrecognised one, lands on getDefault() — an interView edition. Without this
+// the router then ran against interView, found no circle because every lookup
+// is (instanceId, key)-scoped, and returned a bare "Circle not found" — the
+// same answer a genuine typo gets, so a misrouted deployment was
+// indistinguishable from a wrong address and diagnosable only from the
+// database. Answering here says which of the two it is.
+//
+// The Deepgram callback is mounted as its own router at /api/circles/hooks and
+// never reaches this one — it arrives from Deepgram with none of our headers,
+// so it could not satisfy this check.
+router.use((req, res, next) => {
+  if (!CIRCLE_APPS.includes(req.instance?.app)) {
+    console.warn(
+      `[circles] ${req.method} ${req.originalUrl} resolved to instance `
+      + `${req.instanceId} (app=${req.instance?.app}) — no x-instance-id, or an `
+      + 'unrecognised one, and this instance does not serve circles.',
+    );
+    return res.status(404).json({ error: 'This address does not serve circles' });
+  }
+  next();
+});
 
 function userIdOf(req) {
   return req.verifiedUserId || req.headers['x-user-id'] || null;
