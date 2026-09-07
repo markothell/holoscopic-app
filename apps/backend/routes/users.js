@@ -229,8 +229,12 @@ router.put('/:userId', requireSelf('userId'), async (req, res) => {
   }
 });
 
-// Get user settings
-router.get('/:userId/settings', async (req, res) => {
+// Get user settings. Guarded like the PUT below, and for the same reason: the
+// payload carries `email`, and enforceVerifiedUser waves every GET through
+// (it guards mutations only), so mounting this router behind it protects
+// nothing here. Unguarded, an id was all it took to read an address — and ids
+// are public, e.g. in an OAS game snapshot.
+router.get('/:userId/settings', requireSelf('userId'), async (req, res) => {
   try {
     const { userId } = req.params;
 
