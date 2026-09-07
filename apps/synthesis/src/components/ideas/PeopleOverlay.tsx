@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react';
 import OverlayShell from '@/components/overlays/OverlayShell';
 import ReadonlyMap from '@/components/graph/ReadonlyMap';
 import { SynthesisService } from '@/services/synthesisService';
-import { MOCK_MAX_MEMBERS } from '@/lib/mock';
+import { MOCK_COLLABORATORS, MOCK_MAX_MEMBERS, mockCollaboratorMap } from '@/lib/mock';
 import type { Collaborator, SynNode } from '@/lib/types';
 
-// Who is working on this idea — scoped to the idea, always. There is no
-// global profile in Synthesis: a handle means something *here*, inside one
-// thought space, and the same person in another idea is another handle.
+// Who is working on this idea — scoped to the idea, always. There is no global
+// profile in Synthesis: what a name means here is what that person has put into
+// this one thought space.
 //
 // It also carries the head-count and the invite code, which used to sit in a
 // panel over the map. Both are facts *about the roster* — how full it is, and
@@ -43,12 +43,14 @@ function CollaboratorMap({
   code,
   collaborator,
   userId,
+  useMock,
   onOpenPost,
   onBack,
 }: {
-  code: string;
+  code: string | null;
   collaborator: Collaborator;
   userId: string;
+  useMock: boolean;
   onOpenPost: (nodeId: string) => void;
   onBack: () => void;
 }) {
@@ -56,6 +58,9 @@ function CollaboratorMap({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // The sample idea rebuilds each person's map from what they published in it
+    // — the same shape the server returns, assembled locally (lib/mock.ts).
+    if (useMock || !code) { setNodes(mockCollaboratorMap(collaborator.userId)); return; }
     let cancelled = false;
     SynthesisService.collaboratorMap(code, collaborator.userId, userId)
       .then(({ nodes: list }) => { if (!cancelled) setNodes(list); })
@@ -63,7 +68,7 @@ function CollaboratorMap({
         if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load that map');
       });
     return () => { cancelled = true; };
-  }, [code, collaborator.userId, userId]);
+  }, [code, collaborator.userId, userId, useMock]);
 
   const thoughts = (nodes ?? []).filter(n => n.kind === 'thought');
 
@@ -166,7 +171,8 @@ export default function PeopleOverlay({
   const [open, setOpen] = useState<Collaborator | null>(null);
 
   useEffect(() => {
-    if (useMock || !code) return;
+    if (useMock) { setPeople(MOCK_COLLABORATORS); return; }
+    if (!code) return;
     let cancelled = false;
     SynthesisService.collaborators(code, userId)
       .then(({ collaborators }) => { if (!cancelled) setPeople(collaborators); })
@@ -182,13 +188,14 @@ export default function PeopleOverlay({
       eyebrow={open ? 'Published in this idea' : 'Working on this idea'}
       onClose={onClose}
     >
-      {useMock || !code ? (
+      {!useMock && !code ? (
         <p className="text-sm text-mist-soft">People show up here once you are in a live idea.</p>
       ) : open ? (
         <CollaboratorMap
           code={code}
           collaborator={open}
           userId={userId}
+          useMock={useMock}
           onOpenPost={onOpenPost}
           onBack={() => setOpen(null)}
         />
@@ -201,7 +208,12 @@ export default function PeopleOverlay({
         </>
       ) : (
         <div className="flex flex-col gap-2 pb-4">
-          <RosterHead memberCount={memberCount} code={code} />
+          <RosterHead memberCount={memberCount} code={useMock ? null : code} />
+          {useMock && (
+            <p className="eyebrow mb-2 !text-[0.6rem]" style={{ color: 'var(--mist-faint)' }}>
+              Sample idea &mdash; these seven people are written, not collected.
+            </p>
+          )}
           {people.map(p => (
             <button
               key={p.id}

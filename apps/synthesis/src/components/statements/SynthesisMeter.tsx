@@ -103,8 +103,13 @@ export default function SynthesisMeter({
             </>
           ) : (
             <>
-              <span style={{ color: accent }}>{backing} of {collaboratorCount}</span> collaborators
-              are behind the same words — {remaining} more makes it the group&rsquo;s.
+              <span style={{ color: accent }}>{backing} of {collaboratorCount}</span>{' '}
+              collaborators{' '}
+              {/* The space before "more" is explicit: JSX drops the leading
+                  whitespace of a text run that follows an expression, and the
+                  line renders as "1more" without it. */}
+              are behind the same words &mdash; {remaining}{' '}more makes it the
+              group&rsquo;s.
             </>
           )}
         </p>

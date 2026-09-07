@@ -6,6 +6,9 @@ import SynthesisMeter from './SynthesisMeter';
 import { SynthesisService } from '@/services/synthesisService';
 import { ApiError } from '@/services/api';
 import { synthesisSocket } from '@/services/socket';
+import {
+  mockStatementBoard, mockVoteStatement, mockWithdrawStatement, subscribeMockStatements,
+} from '@/lib/mock';
 import type { Statement, StatementBoard } from '@/lib/types';
 
 // The VOTING surface — the second of the two statement docks. Drafting lives
@@ -19,6 +22,13 @@ import type { Statement, StatementBoard } from '@/lib/types';
 //
 // The meter sits at the TOP, above the statements, because the group's position
 // is the headline and the individual statements are how it got there.
+//
+// The demo runs the same surface against the sample idea's local statement
+// store (lib/mock.ts), which mirrors utils/synStatements.js's arithmetic — the
+// same ceil() bar, the same three-slot budget, the same living measure. Backing
+// a wording there really moves the meter and really can carry the group out of
+// synthesis again, because a screenshot of convergence is not a demonstration
+// of it.
 
 function SlotPips({ used, total }: { used: number; total: number }) {
   return (
@@ -150,7 +160,7 @@ export default function StatementsOverlay({
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    if (useMock) { setLoading(false); return; }
+    if (useMock) { setBoard(mockStatementBoard(userId)); setLoading(false); return; }
     SynthesisService.statements(instanceId, userId)
       .then(setBoard)
       .catch(err => setError(err instanceof Error ? err.message : 'Could not load statements'))
@@ -159,9 +169,10 @@ export default function StatementsOverlay({
 
   useEffect(load, [load]);
 
-  // Someone else voting moves the same meter, so the board follows the room.
+  // Someone else voting moves the same meter, so the board follows the room —
+  // the socket on a live idea, the local store in the demo.
   useEffect(() => {
-    if (useMock) return;
+    if (useMock) return subscribeMockStatements(load);
     const refresh = () => load();
     const offStatement = synthesisSocket.on('statement_upserted', refresh);
     const offSynthesis = synthesisSocket.on('synthesis_changed', refresh);
@@ -189,7 +200,7 @@ export default function StatementsOverlay({
     <OverlayShell title="Synthesis" eyebrow="Where the group stands" onClose={onClose}>
       {loading ? (
         <p className="eyebrow text-mist-faint">Loading…</p>
-      ) : useMock || !board ? (
+      ) : !board ? (
         <p className="text-sm text-mist-soft">
           Statements open up once you are in a live idea.
         </p>
@@ -236,8 +247,12 @@ export default function StatementsOverlay({
                   collaboratorCount={board.collaboratorCount}
                   canSpend={canSpend}
                   busy={busy}
-                  onVote={id => act(() => SynthesisService.voteStatement(instanceId, userId, id))}
-                  onWithdraw={id => act(() => SynthesisService.withdrawStatement(instanceId, userId, id))}
+                  onVote={id => act(async () => (useMock
+                    ? mockVoteStatement(id, userId)
+                    : SynthesisService.voteStatement(instanceId, userId, id)))}
+                  onWithdraw={id => act(async () => (useMock
+                    ? mockWithdrawStatement(id, userId)
+                    : SynthesisService.withdrawStatement(instanceId, userId, id)))}
                 />
               ))}
             </div>
@@ -247,6 +262,12 @@ export default function StatementsOverlay({
             <p className="eyebrow !text-[0.6rem]" style={{ color: 'var(--mist-faint)' }}>
               All {board.slotsTotal} slots are in use. Free one by withdrawing a
               statement or stepping back from one you are behind.
+            </p>
+          )}
+          {useMock && (
+            <p className="eyebrow !text-[0.6rem]" style={{ color: 'var(--mist-faint)' }}>
+              Sample idea &mdash; the people and their statements are written. Your votes
+              here move the meter and are kept for this visit only.
             </p>
           )}
           {error && <p className="text-sm" style={{ color: 'var(--live)' }}>{error}</p>}

@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import OverlayShell from './OverlayShell';
 import { SynthesisService } from '@/services/synthesisService';
 import { ApiError } from '@/services/api';
+import {
+  MOCK_UNION_BRIEF, MOCK_UNION_BRIEF_CITATIONS, MOCK_UNION_FULL,
+  MOCK_UNION_FULL_CITATIONS, MOCK_UNION_GENERATED_AT, mockSubmitStatement,
+} from '@/lib/mock';
 import type { Citation, SynthesisArtifact, SynthesisCache, SynthesisDepth } from '@/lib/types';
 
 // "The Group" — the union view (S1, UNION.md). Replaces
@@ -18,13 +22,13 @@ import type { Citation, SynthesisArtifact, SynthesisCache, SynthesisDepth } from
 // badge), then POST /synthesis/synthesis {depth} streams a (re)generation — the
 // same hand-parsed `text/event-stream` contract the old chat used for /chat
 // (EventSource can't POST; see routes/synthesis.js's STREAMING CONTRACT
-// comment). Mock/demo path (no live community) shows a canned local-only
-// preview on the Synthesize button, never a failed fetch.
-
-const MOCK_BRIEF =
-  'The group leans toward slow, deliberate rituals over spontaneous ones, with a vocal minority pushing back that over-planning kills the point. Ada and Bo’s exchange on habit-vs-ritual is the liveliest thread so far.';
-const MOCK_FULL =
-  `${MOCK_BRIEF}\n\nConsensus: most members treat a ritual as something you commit to before you feel like it.\nTension: a few argue that naming a routine "ritual" is just over-planning.\nVoices: Ada anchors the deliberate side; Bo pushes back hardest.`;
+// comment).
+//
+// Mock/demo path (no live community): the sample idea ships a written Union of
+// its own corpus (lib/mock.ts), already generated, because this surface IS the
+// product's claim and a visitor who lands on "nothing synthesized yet" has been
+// shown an empty box where the argument was meant to be. Refresh and Expand
+// re-serve the same written read locally — no network call, ever.
 
 function timeAgo(iso: string | null): string {
   if (!iso) return '';
@@ -93,6 +97,22 @@ interface DepthState {
 
 const EMPTY_DEPTH: DepthState = { text: '', citations: [], generatedAt: null, streaming: false };
 
+// The sample idea's Union, already generated — see lib/mock.ts. Its citations
+// are real ids in the demo corpus, so every chip opens the thought or the reply
+// it names, exactly as a live one does.
+const MOCK_BRIEF_STATE: DepthState = {
+  text: MOCK_UNION_BRIEF,
+  citations: MOCK_UNION_BRIEF_CITATIONS,
+  generatedAt: MOCK_UNION_GENERATED_AT,
+  streaming: false,
+};
+const MOCK_FULL_STATE: DepthState = {
+  text: MOCK_UNION_FULL,
+  citations: MOCK_UNION_FULL_CITATIONS,
+  generatedAt: MOCK_UNION_GENERATED_AT,
+  streaming: false,
+};
+
 function fromArtifact(a?: SynthesisArtifact): DepthState {
   if (!a) return EMPTY_DEPTH;
   return { text: a.text, citations: a.citations, generatedAt: a.generatedAt, streaming: false };
@@ -128,11 +148,13 @@ function CitationChips({ citations, onOpenPost }: { citations: Citation[]; onOpe
 function StatementComposer({
   instanceId,
   userId,
+  useMock,
   seed,
   onDone,
 }: {
   instanceId: string;
   userId: string;
+  useMock: boolean;
   seed: string;
   onDone: () => void;
 }) {
@@ -146,7 +168,11 @@ function StatementComposer({
     setBusy(true);
     setError(null);
     try {
-      await SynthesisService.submitStatement(instanceId, userId, text.trim());
+      // The demo writes into the sample idea's local statement store, so the
+      // hand-off into the voting surface is the real gesture and not a mime of
+      // one — the statement is on the board on the next screen.
+      if (useMock) mockSubmitStatement(text.trim(), userId, true);
+      else await SynthesisService.submitStatement(instanceId, userId, text.trim());
       onDone();
     } catch (err) {
       // 409 is the slot budget — a rule, not a fault.
@@ -217,7 +243,7 @@ export default function UnionOverlay({
   onStatementSubmitted?: () => void;
 }) {
   const [composing, setComposing] = useState(false);
-  const [brief, setBrief] = useState<DepthState>(EMPTY_DEPTH);
+  const [brief, setBrief] = useState<DepthState>(useMock ? MOCK_BRIEF_STATE : EMPTY_DEPTH);
   const [full, setFull] = useState<DepthState>(EMPTY_DEPTH);
   const [expanded, setExpanded] = useState(false);
   const [stale, setStale] = useState(false);
@@ -255,17 +281,13 @@ export default function UnionOverlay({
     const setter = depth === 'brief' ? setBrief : setFull;
 
     if (useMock) {
-      // No live community (demo mode) — a disabled/preview state rather
-      // than a failed fetch: a canned local-only result, no network call.
+      // No live community (demo mode) — the sample idea's own written read,
+      // served locally with the generation beat left in so the surface behaves
+      // the way it does on a live idea. No network call.
       setter({ text: '', citations: [], generatedAt: null, streaming: true });
       setBusyDepth(depth);
       setTimeout(() => {
-        setter({
-          text: depth === 'brief' ? MOCK_BRIEF : MOCK_FULL,
-          citations: [],
-          generatedAt: new Date().toISOString(),
-          streaming: false,
-        });
+        setter(depth === 'brief' ? MOCK_BRIEF_STATE : MOCK_FULL_STATE);
         setBusyDepth(null);
       }, 350);
       return;
@@ -382,11 +404,12 @@ export default function UnionOverlay({
           {/* The hand-off into the mechanism. Seeded with the union's own
               words so the first act is editing rather than facing a blank
               box — but it is a seed, not a submission. */}
-          {!useMock && !unconfigured && (
+          {!unconfigured && (
             composing ? (
               <StatementComposer
                 instanceId={instanceId}
                 userId={userId}
+                useMock={useMock}
                 seed={brief.text}
                 onDone={() => { setComposing(false); onStatementSubmitted?.(); }}
               />
@@ -417,6 +440,12 @@ export default function UnionOverlay({
                 <p className="mt-3 eyebrow !text-[0.6rem] text-mist-faint">as of {timeAgo(full.generatedAt)}</p>
               )}
             </div>
+          )}
+
+          {useMock && (
+            <p className="eyebrow !text-[0.6rem]" style={{ color: 'var(--mist-faint)' }}>
+              Sample idea &mdash; the people, the thoughts and this read are written, not collected.
+            </p>
           )}
         </div>
       )}

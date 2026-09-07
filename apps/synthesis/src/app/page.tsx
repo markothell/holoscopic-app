@@ -14,7 +14,7 @@ import LoggedOutLanding from '@/components/ideas/LoggedOutLanding';
 import { useIdeas } from '@/hooks/useIdeas';
 import { synthesisSocket } from '@/services/socket';
 import { SynthesisService } from '@/services/synthesisService';
-import { MOCK_COMMUNITY, MOCK_USER_HANDLE, MOCK_USER_ID } from '@/lib/mock';
+import { MOCK_COMMUNITY, MOCK_USER_HANDLE, MOCK_USER_ID, mockSynthesisState, subscribeMockStatements } from '@/lib/mock';
 
 // The `synthesis` PARENT_INSTANCE_ID (services/api.ts) only fronts auth and
 // /synthesis/ideas* (draft/join by code) — a joined idea is its OWN child
@@ -108,7 +108,14 @@ export default function HomePage() {
   // Seed the measure on open, then follow the room. Synthesis is living, so
   // this listens for movement in BOTH directions rather than latching once.
   useEffect(() => {
-    if (useMock) { setInSynthesis(false); return; }
+    // The sample idea has a measure of its own, and it moves: backing a wording
+    // on the statements surface can carry the demo group into synthesis or back
+    // out of it, and the home hub at the centre of the map has to say so.
+    if (useMock) {
+      const read = () => setInSynthesis(mockSynthesisState().inSynthesis);
+      read();
+      return subscribeMockStatements(read);
+    }
     let cancelled = false;
     SynthesisService.statements(instanceId, effectiveUserId)
       .then(board => { if (!cancelled) setInSynthesis(board.inSynthesis); })
