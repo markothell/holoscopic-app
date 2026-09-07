@@ -34,11 +34,22 @@
 
 /* ---- USER MENU ---- */
 
+/* The menu is fixed, so the page's own body copy scrolls under it — most
+   visibly through The Instruments paragraph. It carries its own ground: paper
+   at 0.92 over a blur, the treatment floating controls get elsewhere in the
+   lab. No rule and no shadow, so over the hero, where the ground matches, it
+   stays the bare pair of buttons it has always been. The offsets absorb the
+   padding, leaving the buttons where they were. */
 .userMenuWrapper {
   position: fixed;
-  top: 1.5rem;
-  right: 2.5rem;
+  top: 1.25rem;
+  right: 2rem;
   z-index: 1100;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(247, 244, 239, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 /* ---- HERO ---- */
