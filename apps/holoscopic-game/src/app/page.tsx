@@ -811,14 +811,13 @@ export default function HomePage() {
           <div className={styles.joinBlock}>
             <h3 className={styles.joinHeading}>Save a seat</h3>
             <p className={styles.joinBody}>
-              Leave your address. Circles form at four to twelve people; when
+              Leave your address. Circles form at twelve people; when
               yours is ready, an invitation reaches you with everything you
               need to begin.
             </p>
             <p className={styles.joinBody}>
-              Or look first:{' '}
               <a href={`${CIRCLES_URL}/demo`} className={styles.inlineLink}>
-                a demo circle
+                See a demo circle
               </a>
               {' '}&mdash; one finished conversation, no account needed.
             </p>

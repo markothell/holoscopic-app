@@ -239,7 +239,7 @@ export default function CirclesPage() {
           <p className={styles.invitationTitle}>Be in the first circles</p>
           <p className={styles.invitationBody}>
             We&apos;re convening the first gathering now, sized to fit the
-            crowd: circles of four to twelve form as seats fill. Each circle
+            crowd: circles of twelve form as seats fill. Each circle
             runs one cycle together over a few weeks, on its own time &mdash;
             stories, sorting, maps, shared words. Then the circles gather,
             World Caf&eacute; style, and we all find out what the collective
