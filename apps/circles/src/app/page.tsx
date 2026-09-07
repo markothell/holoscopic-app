@@ -36,12 +36,7 @@ export default function Home() {
         <p className="mt-5 text-sm text-ink-faint">
           <Link href="/demo" className="underline underline-offset-4 hover:text-ink">
             Look around a demo circle
-          </Link>{' '}
-          — eight invented people, one finished conversation, nothing to sign.
-        </p>
-        <p className="mt-6 text-sm text-ink-faint">
-          Circles form by invitation for now — an invitation link is the way in,
-          and an account is what it opens.
+          </Link>
         </p>
       </div>
     </Page>
