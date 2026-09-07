@@ -869,10 +869,13 @@ function HubInner({ view }: { view: HubView }) {
 
           const mapNode = (a: any, pos: { x: number; y: number }, parentNodeId?: string) => {
             const joined = a.participants?.length ?? 0;
+            // People and what they made, never a fraction of capacity: maxEntries is
+            // a seat count, and "0/1 joined" on a settled map holding six answers
+            // reads as a game nobody came to.
             const closing = a.status === 'active' && a.closesAt ? ` · ${timeLeft(a.closesAt)}` : a.status === 'completed' ? ' · settled' : '';
             return {
               id: a.id, type: 'radial' as const, position: { x: pos.x - 74, y: pos.y - 26 },
-              data: { label: a.title, nodeType: 'activity' as const, meta: { urlName: a.urlName, activityType: a.activityType, question: a.mapQuestion, slots: a.maxEntries ? Math.max(0, a.maxEntries - joined) : null, subtitle: a.maxEntries ? `${joined}/${a.maxEntries} joined${closing}` : undefined, topicId: item.id, parentNodeId } },
+              data: { label: a.title, nodeType: 'activity' as const, meta: { urlName: a.urlName, activityType: a.activityType, question: a.mapQuestion, slots: a.maxEntries ? Math.max(0, a.maxEntries - joined) : null, subtitle: joined ? `${joined} people · ${a.entryCount ?? 0} maps${closing}` : undefined, topicId: item.id, parentNodeId } },
             };
           };
 
