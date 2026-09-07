@@ -10,7 +10,7 @@ import { apiFetch } from '@/lib/api';
 // the field: it decides whether the backend hands out an edition number, which
 // config surface the edit page shows, and — for Chorus — whether the instance
 // arrives already provisioned as a working memorial.
-type AppId = 'interview' | 'spectrum' | 'synthesis' | 'chorus' | 'threshold';
+type AppId = 'interview' | 'spectrum' | 'synthesis' | 'chorus' | 'threshold' | 'circles';
 
 const APPS: { id: AppId; label: string; hint: string }[] = [
   { id: 'interview', label: 'interView',
@@ -23,6 +23,8 @@ const APPS: { id: AppId; label: string; hint: string }[] = [
     hint: 'Rooms are created by players in the app. Make one here only to set up a parent instance.' },
   { id: 'threshold', label: 'Threshold',
     hint: 'Where a group’s dividing line falls on a polarity. Circles are created by facilitators in the app — make one here to set up the parent instance. Economy off.' },
+  { id: 'circles', label: 'Circles',
+    hint: 'The parent instance behind circles.holoscopic.io. Circles themselves are made in the app — one instance is all this needs. Give it the domain so a request with no x-instance-id resolves here instead of falling through to the platform default. No game number.' },
 ];
 
 export default function NewInstancePage() {

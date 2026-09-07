@@ -27,8 +27,9 @@ interface MemorialConfig {
 // create form. The picker below is built from this map, so an app missing here
 // is worse than unlisted: the select falls back to its first option, and saving
 // the page rewrites a perfectly good instance's app to 'interview'.
-type AppId = 'interview' | 'spectrum' | 'synthesis' | 'chorus' | 'threshold';
+type AppId = 'interview' | 'spectrum' | 'synthesis' | 'chorus' | 'threshold' | 'circles';
 const APP_LABELS: Record<AppId, string> = {
+  circles: 'Circles',
   interview: 'interView',
   spectrum: 'On a Spectrum',
   synthesis: 'Synthesis',

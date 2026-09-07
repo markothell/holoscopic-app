@@ -8,7 +8,7 @@ const { provisionMemorial } = require('../utils/memorialDefaults');
 
 // Kept in step with the enum on Instance.app by hand, so a bad value is a 400
 // here rather than a Mongoose validation 500 further in.
-const APPS = ['interview', 'spectrum', 'synthesis', 'chorus', 'threshold'];
+const APPS = ['interview', 'spectrum', 'synthesis', 'chorus', 'threshold', 'circles'];
 
 function generateId() {
   return Math.random().toString(36).substring(2, 10);
