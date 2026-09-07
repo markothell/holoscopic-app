@@ -181,12 +181,6 @@
   color: var(--text-muted);
 }
 
-.note {
-  margin-top: 2rem;
-  font-size: var(--text-sm);
-  line-height: 1.6;
-  color: var(--text-muted);
-}
 
 .noteLink {
   color: #C08A3E;

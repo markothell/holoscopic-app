@@ -250,6 +250,12 @@ export default function CirclesPage() {
             forms and the first round begins &mdash; email carries you through
             the rest.
           </p>
+          <p className={styles.invitationBody}>
+            <a href={`${CIRCLES_URL}/demo`} className={styles.noteLink}>
+              See a demo circle
+            </a>
+            {' '}&mdash; one finished conversation, no account needed.
+          </p>
           <EmailCapture
             cta="Save me a seat"
             sentNote="Seat saved. We'll write when your circle forms."
@@ -276,12 +282,6 @@ export default function CirclesPage() {
             </span>
           </Link>
         </div>
-
-        <p className={styles.note}>
-          Circles runs at{' '}
-          <a href={CIRCLES_URL} className={styles.noteLink}>circles.holoscopic.io</a>
-          {' '}&mdash; one Holoscopic account opens every instrument.
-        </p>
 
         <Link href="/" className={styles.back}>&larr; all instruments</Link>
       </div>
