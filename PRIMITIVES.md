@@ -14,7 +14,7 @@ ontology: a pipeline (**Input → Aggregation → Representation**), wiring (**T
 essay doesn't have, §3 names them and they become part of the framework.
 
 Code is ground truth throughout. Sibling docs: `PLATFORM.md` (the plan of record),
-`PLATFORM_NEXT.md` (deferred breaking changes), `apps/*/CLAUDE.md` + `PLAN.md` (per-app design).
+`apps/*/CLAUDE.md` + `PLAN.md` (per-app design).
 
 ---
 

@@ -189,7 +189,7 @@ Allowed origins from `CLIENT_URL` env var (comma-separated) in `apps/backend/.en
 - If you need a stable backend while others are working, run it without the file watcher: `npm run start --workspace=apps/backend`. Leave their `turbo dev` alone; start yours on a spare port (`PORT=4051`) so you are not fighting for `4001`.
 - Frontends are unaffected — Next's dev server hot-reloads per app and does not restart on backend writes.
 
-**There are two Atlas clusters, and two Vercel Blob stores. Dev and production are separated in both** (2026-07-31 — see `PLATFORM_NEXT.md` §1 and §2 for why and how):
+**There are two Atlas clusters, and two Vercel Blob stores. Dev and production are separated in both** (2026-07-31):
 
 | | Cluster host | Database | Blob store | Used by |
 |---|---|---|---|---|

@@ -5,8 +5,7 @@ shared user base, one social spine (circles), and a birth path for tens of futur
 Written 2026-08-10 out of three design sessions (homepage narrative → unification audit → scaling
 model). This is the execution doc; work it milestone by milestone across sessions.
 
-Sibling docs: `PLATFORM_NEXT.md` holds deferred breaking changes we've decided to live with;
-per-app plans live in `apps/*/PLAN.md`. This file is for the work that cuts across the monorepo
+Sibling docs: per-app plans live in `apps/*/PLAN.md`. This file is for the work that cuts across the monorepo
 and is being done *now*, in order.
 
 ---
@@ -639,7 +638,7 @@ true of something already built.
 ## §9 Working across sessions
 
 - **Resume by reading this file.** Milestone status lives here — mark milestones ✅ with a date
-  and a one-line "what actually happened" as they land, the way `PLATFORM_NEXT.md` §1 does.
+  and a one-line "what actually happened" as they land.
   Decisions made mid-build get a P-number here; per-app details go to that app's PLAN.md.
 - **One milestone per session** is the right grain; M2 must not share a session with unrelated
   edits (auth diffs stay readable).

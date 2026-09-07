@@ -67,7 +67,7 @@ const INDEXES = [
   // That is not theoretical about collections generally: the traffic
   // collections below hit exactly this on 2026-08-03 and had to be created
   // ahead of the first write. `users` needs a whole fresh database to be
-  // exposed, which the staging backend in PLATFORM_NEXT.md §4 would be.
+  // exposed, which a staging backend on its own database would be.
   //
   // What it protects: signup (routes/auth.js) is check-then-act —
   // findByEmail, reject if found, else create. This index is the only thing

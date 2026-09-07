@@ -26,7 +26,7 @@ called `chorus`, and a `.vercel/project.json` naming one is a stale link that ma
 `vercel env pull` / `env ls` in this directory fail with "project was either deleted or
 transferred". Repair with `vercel link --yes --project holoscopic-app-chorus`.
 
-**Two blob stores, one per environment** (separated 2026-07-31 — `PLATFORM_NEXT.md` §2):
+**Two blob stores, one per environment** (separated 2026-07-31):
 
 | Environment | Store | Id / host |
 |---|---|---|
