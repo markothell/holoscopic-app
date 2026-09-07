@@ -205,9 +205,9 @@ export default function CirclesPage() {
         <p className={styles.sub}>form a sharing circle, exchange conversations with the crowd</p>
 
         <p className={styles.lede}>
-          Holoscopic builds tools for small groups to think together. Circles is
-          where those tools are played: the room that runs them, and the room
-          that keeps what they make.
+          Holoscopic builds tools for groups to think together. Circles is a
+          place for small groups to meet, share thoughts and author group
+          conversation prompts.
         </p>
 
         <p className={styles.lede}>

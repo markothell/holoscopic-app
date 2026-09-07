@@ -49,8 +49,13 @@
 
 .figureArt {
   display: block;
-  width: 100%;
+  /* Half size, so the beats below it clear the fold. The floor keeps the seat
+     labels legible on a narrow phone, where half a column is unreadable. */
+  width: 50%;
+  min-width: 240px;
+  max-width: 100%;
   height: auto;
+  margin-inline: auto;
 }
 
 /* ── How a circle runs: four beats ────────────────────────────────────── */
