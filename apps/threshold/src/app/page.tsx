@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { Page, Band, Card, Action, Quiet, Muted } from '@/components/Shell';
 import { TideLine, Polarity } from '@/components/TideLine';
@@ -31,6 +32,13 @@ import { TideLine, Polarity } from '@/components/TideLine';
 // a one-off is a session, and "circle" belongs to a group with continuity.
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+
+// The way back out. The homepage card sends people straight here, and until
+// now nothing on this page pointed home again — someone who read the front
+// door and wanted to know who made it had to edit the URL by hand. Chorus's
+// footer answers the same question the same way: a credit line, quiet, at the
+// bottom.
+const HOLOSCOPIC_URL = process.env.NEXT_PUBLIC_HOLOSCOPIC_URL || 'https://holoscopic.io';
 
 /** The standing topics an open session runs on. `key` is the second half of the
  *  `Signup` row's source, so these strings are the shape of the stored data. */
@@ -65,6 +73,20 @@ export default function Home() {
         <Muted>
           The stories the group splits on are its threshold: the actual dividing line, made of the
           specific stories that fell across it. Everyone keeps what the group made.
+        </Muted>
+        {/* The finished thing, before the ask. Until this existed a stranger
+            could read what Threshold does and then only leave an address — the
+            one instrument here with nothing to open. It is a written sample,
+            client-side, and says so on arrival. */}
+        <Muted>
+          One has already run:{' '}
+          <Link
+            href="/demo"
+            className="underline decoration-[var(--rule-strong)] underline-offset-4 hover:text-ink"
+          >
+            eight people on <em>Belonging</em>
+          </Link>
+          , and where their line fell.
         </Muted>
       </div>
 
@@ -108,6 +130,19 @@ export default function Home() {
           with. Open the link and it will say what you are joining.
         </Muted>
       </section>
+
+      <footer className="mt-16 border-t border-[var(--rule)] pt-6">
+        <p className="text-sm text-ink-faint">
+          Threshold, an instrument from{' '}
+          <a
+            href={HOLOSCOPIC_URL}
+            className="underline decoration-[var(--rule-strong)] underline-offset-4 hover:text-ink-soft"
+          >
+            Holoscopic
+          </a>
+          .
+        </p>
+      </footer>
     </Page>
   );
 }

@@ -178,9 +178,15 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function CircleMap({ circle, userId }: { circle: Circle; userId: string | null }) {
+export function CircleMap({ circle, userId, basePath }: {
+  circle: Circle;
+  userId: string | null;
+  /** Where the map's links point. Defaults to the circle's own route; the
+   *  public sample passes `/demo` so its links stay inside the sample. */
+  basePath?: string;
+}) {
   const { members, seeds, participation, liveSeedId } = circle;
-  const base = `/t/${circle.urlName}`;
+  const base = basePath ?? `/t/${circle.urlName}`;
 
   const geo = useMemo(
     () => layout(members, seeds, participation ?? [], liveSeedId, userId),
@@ -270,10 +276,12 @@ export function CircleMap({ circle, userId }: { circle: Circle; userId: string |
                 : `${node.seed.payload.topic} — ${node.count} of ${members.length} told a story`
             }
           >
-            <title>
-              {node.seed.payload.topic}
-              {node.live ? ' · running now' : node.count != null ? ` · ${node.count} of ${members.length}` : ''}
-            </title>
+            {/* ONE text child, built here rather than interpolated as two.
+                React serializes adjacent text children with comment markers
+                the SVG parser drops, so a two-child <title> hydrates as a
+                mismatch — invisible while this map only ever rendered on the
+                client, and immediate the first time a page server-renders it. */}
+            <title>{`${node.seed.payload.topic}${node.live ? ' · running now' : node.count != null ? ` · ${node.count} of ${members.length}` : ''}`}</title>
             {node.live && (
               <circle className="cm-pulse" cx={node.x} cy={node.y} r={node.r + 3}
                 fill="none" stroke="var(--ink-faint)" strokeWidth="1.5" />

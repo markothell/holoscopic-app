@@ -68,7 +68,9 @@ the round may have turned over.
 | `src/app/t/[urlName]/seed` | Post a topic, then the optional story on it — §6.2, D34 |
 | `src/app/t/[urlName]/share` | Tell your story; picking a pole is how you enter it — D22 |
 | `src/app/t/[urlName]/rank` | The queue, then the review screen that owns submit — §6.2, D21 |
-| `src/app/t/[urlName]/cycle/[seedId]` | One cycle's reveal: three groups, reader's cutoff — §6.3 |
+| `src/app/t/[urlName]/cycle/[seedId]` | One cycle's reveal, for a member: session, fetch, error states. The surface itself is `components/CycleReveal.tsx` — §6.3 |
+| `src/components/CycleReveal.tsx` | **The reveal**: three groups, reader's cutoff, attribution. Lifted out of the page so `/demo` renders THIS and not a copy |
+| `src/app/demo/` + `src/lib/demo.ts` | **The public, no-account demo at `/demo`** — see below |
 | `src/app/t/[urlName]/result` | The circle seen whole. A record, never a verdict — §6.3, D25 |
 | `src/components/{Shell,TideLine}.tsx` | The real chrome, and the app's one mark — §9.2 |
 | `src/app/me` | Circles I'm in, and what is waiting on me |
@@ -80,6 +82,32 @@ the round may have turned over.
 | `apps/backend/utils/circleActivities.js` | `register(key, module)`. Requiring `routes/threshold.js` is what registers `'threshold'` |
 | `apps/backend/utils/threshold.js` | **The write funnel** — shares, rankings, the gradient. Never write these collections anywhere else |
 | `apps/backend/routes/threshold.js` | REST at `/api/threshold` |
+
+## The public demo (`/demo`)
+
+One finished cycle a stranger can read, **rendered client-side from a typed fixture and making no
+backend request of any kind**. It exists because every circle read here is member-gated
+server-side (`assertMember` on both result routes and on `listShares`, plus the D9/D17 redaction
+ladder) and none of those gates is being loosened for a marketing page. The precedent is
+`apps/circles/src/app/demo/` and `apps/synthesis/src/lib/mock.ts`.
+
+- **`src/lib/demo.ts` is the fixture**, typed against `@/lib/types`. That typing is the whole
+  point: if a wire type moves, the demo stops compiling instead of quietly drifting.
+- Two surfaces: `/demo` (the circle home — real `CircleMap`, passed `basePath`) and
+  `/demo/cycle/[seedId]` (the reveal — real `CycleReveal`, passed `base`). Nothing is
+  reimplemented, and no gate anywhere was weakened.
+- **Read-only, and controls that would write are absent rather than disabled.** A reveal has none
+  to withhold; the home simply does not draw the support, seed or facilitator bands.
+- **No audio, deliberately** (`seed-gather-demo.js`'s rule): a fake blob URL renders as a broken
+  player. Every share is typed, `audio` is null, and `StoryPlayer` therefore never mounts.
+- Content: *Belonging — by origin / from destination*, one of the front door's three standing
+  polarities, so a reader can read a finished one and then take a seat in the same topic. Eight
+  people, six sorters, a genuine spread — the cutoff control moves the middle from one story to
+  six. Sam told his as *destination* and five of six read it as *origin*; that gap between the
+  teller's claim and the group's reading is what the fixture exists to show.
+- `robots.ts` still disallows everything, `/demo` included. That is the standing decision for the
+  whole domain, not an oversight — but this is the one page here with no personal data and no
+  per-request backend read, so it is the one worth reconsidering.
 
 ## Gotchas
 
