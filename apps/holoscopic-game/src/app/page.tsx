@@ -5,7 +5,7 @@ import Link from 'next/link';
 import UserMenu from '@/components/UserMenu';
 import SiteFooter from '@/components/SiteFooter';
 import EmailCapture from '@/components/EmailCapture';
-import { THRESHOLD_URL } from '@/lib/games';
+import { CIRCLES_URL, THRESHOLD_URL } from '@/lib/games';
 import styles from './page.module.css';
 
 // Sections below the hero start at opacity 0 and are revealed on scroll. The
@@ -814,6 +814,13 @@ export default function HomePage() {
               Leave your address. Circles form at four to twelve people; when
               yours is ready, an invitation reaches you with everything you
               need to begin.
+            </p>
+            <p className={styles.joinBody}>
+              Or look first:{' '}
+              <a href={`${CIRCLES_URL}/demo`} className={styles.inlineLink}>
+                a demo circle
+              </a>
+              {' '}&mdash; one finished conversation, no account needed.
             </p>
             <EmailCapture
               cta="Save me a seat"
