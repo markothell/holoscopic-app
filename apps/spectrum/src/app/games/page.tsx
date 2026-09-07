@@ -8,8 +8,9 @@ import type { Phase, Pulse } from '@/lib/types';
 
 // /games — the public pulse of this deployment: which conversations (game
 // threads) and spectrums are moving. Aggregate by design — topics, themes,
-// codes, and counts; never names. Anyone can look; opening a game still
-// asks for sign-in, same as any room link.
+// codes, and counts; never names. Anyone can look; a finished game opens to
+// read at /games/<code>, while a game still being played asks for sign-in,
+// same as any room link.
 
 const PHASE_WORD: Record<Phase, string> = {
   lobby: 'forming',
@@ -77,7 +78,9 @@ export default function GamesPage() {
                 return (
                   <li key={c.rootGameId}>
                     <Link
-                      href={`/g/${c.latestCode}`}
+                      href={c.latestPhase === 'complete'
+                        ? `/games/${c.latestCode}`
+                        : `/g/${c.latestCode}`}
                       className={`block rounded-2xl border bg-paper-raised px-4 py-3 ${
                         c.live > 0 ? 'border-ink shadow-[var(--shadow-card)]' : 'border-line'
                       }`}

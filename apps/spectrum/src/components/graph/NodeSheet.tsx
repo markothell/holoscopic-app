@@ -33,12 +33,17 @@ export default function NodeSheet({
   onProposeMap,
   onBranchSubtopic,
   onCarry,
+  readOnly = false,
 }: {
   game: Game;
   nominations: Nomination[];
   nomination: Nomination | null;
   userId: string;
   balance: number | null;
+  // Read-only (the public view of a finished game): the sheet keeps who
+  // staked, the locked lens and the door to the reveal, and drops staking,
+  // the slate composer, carrying and proposing outright.
+  readOnly?: boolean;
   onClose: () => void;
   onOpenMap: (mapId: string) => void;
   onProposeMap: (subtopicId: string) => void;
@@ -62,7 +67,7 @@ export default function NodeSheet({
 
   // Rounds 3–4: a revealed map from the previous round is a source of items to
   // carry forward. Its frozen roster (with comments) drives the carry list.
-  const canCarryFrom = nom.kind === 'map' && !!nom.mapState &&
+  const canCarryFrom = !readOnly && nom.kind === 'map' && !!nom.mapState &&
     (nom.mapState.stage === 'done' || nom.mapState.stage === 'closed') &&
     currentRound !== null && currentRound >= 3 && nom.round === currentRound - 1;
   const carryAccent = THEME_ACCENT[(currentRound ?? 2) - 2] ?? 'var(--ink)';
@@ -125,7 +130,7 @@ export default function NodeSheet({
 
       {/* The nominator's own slate — theirs to shape until the map confirms.
           Everyone else just supports (or doesn't) what's proposed. */}
-      {nom.kind === 'map' && nom.frameSlate && nom.status === 'nominated' && (() => {
+      {!readOnly && nom.kind === 'map' && nom.frameSlate && nom.status === 'nominated' && (() => {
         const slate = nom.frameSlate;
         const dims = nom.dimensions ?? 2;
         const openSlots = dims - slate.length;
@@ -267,7 +272,7 @@ export default function NodeSheet({
         </section>
       )}
 
-      {nom.status === 'nominated' && inItsRound && (
+      {!readOnly && nom.status === 'nominated' && inItsRound && (
         <>
           {!myStake ? (
             <Button
@@ -305,14 +310,14 @@ export default function NodeSheet({
       )}
 
       {nom.status === 'confirmed' && nom.kind === 'subtopic' && (
-        currentRound !== null && currentRound >= 2 ? (
+        !readOnly && currentRound !== null && currentRound >= 2 ? (
           <Button
             className="mt-6"
             onClick={() => { onProposeMap(nom.id); onClose(); }}
           >
             Propose a map · ● 1
           </Button>
-        ) : currentRound === 1 ? (
+        ) : !readOnly && currentRound === 1 ? (
           <p className="mt-6 text-center text-sm text-ink-soft">
             In the game — mappable from round 2.
           </p>
@@ -342,7 +347,7 @@ export default function NodeSheet({
       )}
 
       {/* Round 1: branch a deeper subtopic — only confirmed nodes grow. */}
-      {currentRound === 1 && nom.kind === 'subtopic' && nom.status === 'confirmed' && (
+      {!readOnly && currentRound === 1 && nom.kind === 'subtopic' && nom.status === 'confirmed' && (
         <Button
           variant="ghost"
           className="mt-3"

@@ -40,11 +40,16 @@ export default function MapSheet({
   mapId,
   userId,
   onClose,
+  readOnly = false,
 }: {
   code: string;
   game: Game;
   mapId: string;
   userId: string;
+  // Read-only (the public view of a finished game): the reveal and nothing
+  // else. Gathering and ranking are the room's work, and a map still in
+  // either stage shows as unfinished rather than as a surface to act on.
+  readOnly?: boolean;
   onClose: () => void;
 }) {
   const { loading, error, detail, refresh } = useMapDetail(code, mapId);
@@ -62,7 +67,7 @@ export default function MapSheet({
   const theme = game.themes[nom?.themeIndex ?? 0] ?? '';
   const secondsLeft = useCountdown(ms?.stageDeadline ?? null, detail?.serverNow ?? null);
   const isMember = !!nom?.stakes.some(s => s.userId === userId);
-  const canForce = !!nom && (nom.nominatedBy === userId || game.hostId === userId);
+  const canForce = !readOnly && !!nom && (nom.nominatedBy === userId || game.hostId === userId);
   const axes: Axis[] = nom?.dimensions === 2 ? ['x', 'y'] : ['x'];
 
   // Seed drag orders when ranking opens: resume my saved order or shuffle.
@@ -146,6 +151,21 @@ export default function MapSheet({
       )}
     </header>
   );
+
+  // Reading a finished game: only a revealed map has anything to show.
+  if (readOnly && ms.stage !== 'done' && ms.stage !== 'closed') {
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-paper pb-24">
+        {header}
+        <div className="mx-auto w-full max-w-md px-5">
+          <p className="mt-6 text-base text-ink-soft">
+            This map never reached its reveal — it was still {ms.stage === 'gather'
+              ? 'gathering items' : 'being ranked'} when the game ended.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // ── Gather ────────────────────────────────────────────────────────────
   // One job: add items. The lens is already locked — drawn up top as the
@@ -359,7 +379,7 @@ export default function MapSheet({
         ) : (
           <p className="text-base text-ink-soft">This map closed before it could be ranked.</p>
         )}
-        {isMember && complete && myStake && !myStake.returned && (
+        {!readOnly && isMember && complete && myStake && !myStake.returned && (
           <Button
             className="mt-8"
             disabled={busy}
@@ -368,7 +388,7 @@ export default function MapSheet({
             Collect your token · ● 1
           </Button>
         )}
-        {myStake?.returned && (
+        {!readOnly && myStake?.returned && (
           <p className="eyebrow mt-8 text-center" style={{ color: accent }}>token returned ✓</p>
         )}
         {actionError && <p className="mt-3 text-sm text-ax">{actionError}</p>}

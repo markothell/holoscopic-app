@@ -185,6 +185,9 @@ interface GraphProps {
   onProposeMap: (subtopicId: string) => void;
   onBranchSubtopic: (parentSubtopicId: string) => void;
   onCarry?: (source: { mapNom: Nomination; item: MapItem }) => void;
+  // Reading, not playing (the public view of a finished game): the web still
+  // pans and opens, but the node sheet drops every control that would write.
+  readOnly?: boolean;
 }
 
 function GraphInner({
@@ -196,6 +199,7 @@ function GraphInner({
   onProposeMap,
   onBranchSubtopic,
   onCarry,
+  readOnly = false,
 }: GraphProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { nodes, edges } = useMemo(() => buildGraph(game, nominations), [game, nominations]);
@@ -235,6 +239,7 @@ function GraphInner({
         nomination={selected}
         userId={userId}
         balance={balance}
+        readOnly={readOnly}
         onClose={() => setSelectedId(null)}
         onOpenMap={onOpenMap}
         onProposeMap={onProposeMap}
