@@ -49,3 +49,5 @@ apps/backend/migrate-add-urlname.js
 
 # claude code internal
 .claude/worktrees/
+# working notes, not shipped
+docs/
