@@ -25,7 +25,7 @@ export default function ContactPage() {
         <ContactForm />
 
         <Link href="/" className={styles.eyebrow} style={{ display: 'block', marginTop: '3rem' }}>
-          &larr; all activities
+          &larr; all instruments
         </Link>
       </div>
 

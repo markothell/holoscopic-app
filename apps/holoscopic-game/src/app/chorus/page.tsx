@@ -36,7 +36,6 @@ export default function ChorusPage() {
   return (
     <main className={styles.page}>
       <div className={styles.inner}>
-        <p className={styles.eyebrow}>Newest activity</p>
         <h1 className={styles.title}>Chorus</h1>
         <p className={styles.sub}>connecting stories and voices</p>
 
@@ -64,7 +63,7 @@ export default function ChorusPage() {
           </a>
         </div>
 
-        <Link href="/" className={styles.back}>← all activities</Link>
+        <Link href="/" className={styles.back}>← all instruments</Link>
       </div>
 
       <SiteFooter />

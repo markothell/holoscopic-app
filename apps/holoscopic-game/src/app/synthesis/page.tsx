@@ -107,7 +107,6 @@ export default function SynthesisPage() {
   return (
     <main className={styles.page}>
       <div className={styles.inner}>
-        <p className={styles.eyebrow}>Newest game</p>
         <h1 className={styles.title}>
           <span className={styles.synPrefix}>Syn</span>
           <span className={styles.synAccent}>thesis</span>
@@ -115,16 +114,18 @@ export default function SynthesisPage() {
         <p className={styles.sub}>a game for generating collective thought</p>
 
         <p className={styles.lede}>
-          On a Spectrum ran on a clock. Synthesis is the opposite tempo — a
-          game where time to think is a move.
+          The other instruments spread a group across many questions. Synthesis
+          goes the other way: one idea, taken apart together — everyone adds the
+          context behind their own thinking, and the group votes on the
+          statements it can stand behind.
         </p>
 
         <p className={styles.lede}>
           An <strong>idea</strong>{' '}is a thought space you draft and invite people
           into — a question worth a group&apos;s attention. Its title sits at the
           centre of everyone&apos;s map, and the idea becomes whatever its
-          collaborators put underneath it. Up to fifty people, each under a handle
-          that means something inside that one idea.
+          collaborators put underneath it. Up to fifty people, each under the
+          name on their Holoscopic account.
         </p>
 
         <ul className={styles.beats}>
@@ -162,7 +163,7 @@ export default function SynthesisPage() {
             <span className={styles.pathLabel}>02 · Join</span>
             <span className={styles.pathTitle}>Join with a code</span>
             <span className={styles.pathDesc}>
-              Someone sent you five characters. Pick a handle and the idea&apos;s
+              Someone sent you five characters. Enter them and the idea&apos;s
               map opens with its title at the centre.
             </span>
           </a>
@@ -175,7 +176,7 @@ export default function SynthesisPage() {
           learn: publishing, replying, and voting are free.
         </p>
 
-        <Link href="/" className={styles.back}>← all games</Link>
+        <Link href="/" className={styles.back}>← all instruments</Link>
       </div>
 
       <SiteFooter />

@@ -126,7 +126,7 @@ export default function MapSequencePage() {
           building.
         </p>
 
-        <Link href="/" className={styles.back}>← all games</Link>
+        <Link href="/" className={styles.back}>← all instruments</Link>
       </div>
 
       <SiteFooter />

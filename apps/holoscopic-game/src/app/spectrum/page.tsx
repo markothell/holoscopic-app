@@ -26,6 +26,13 @@ export const metadata: Metadata = {
 // §8.)
 
 export default function SpectrumPage() {
+  // Family Myths, finished, at Spectrum's public read-only surface
+  // (/games/<code>): the four maps it revealed, the spectrums it coined, and
+  // the web it grew, with no account and no sign-in wall. The ROOM at
+  // /g/<code> still gates on sign-in, so linking that would land a stranger
+  // on the wall; /games/<code> refuses any game that hasn't completed.
+  const finishedGame = `${SPECTRUM_URL}/games/4UZPA`;
+
   return (
     <main className={styles.page}>
       <div className={styles.inner}>
@@ -69,10 +76,15 @@ export default function SpectrumPage() {
           <a href={SPECTRUM_URL} className={styles.noteLink}>
             spectrum.holoscopic.io
           </a>
-          {' '}— a Holoscopic account is all it takes.
+          . Read{' '}
+          <a href={finishedGame} className={styles.noteLink}>
+            Family Myths
+          </a>
+          , a finished game, without an account — four maps revealed, the
+          spectrums the group coined, the web it grew.
         </p>
 
-        <Link href="/" className={styles.back}>← all games</Link>
+        <Link href="/" className={styles.back}>← all instruments</Link>
       </div>
 
       <SiteFooter />
