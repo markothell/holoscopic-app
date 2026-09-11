@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 //
 // COPY RULE (project-wide): every line says what a thing IS. No "not a…",
 // no "instead of…", no defining by contrast. (The lede's "axes they hadn't
-// chosen" is the lab-notes exception — narrating a finding, per PLATFORM.md
+// chosen" is the lab-notes exception — narrating a finding, per code/docs/plan/PLATFORM.md
 // §8.)
 
 export default function SpectrumPage() {

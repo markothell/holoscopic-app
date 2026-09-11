@@ -12,7 +12,7 @@ interface QuorumConfig { topicSupportThreshold: number; topicWindowHours: number
 interface OasConfig { startingTokens: number; quorum: number; votesPerUser: number; maxPlayers: number; }
 // Chorus — everything the memorial app knows about the person it collects
 // memories for. Held on the Instance rather than in the frontend build so a
-// new memorial is a config change, not a deploy (apps/chorus/PLAN.md §11).
+// new memorial is a config change, not a deploy (code/docs/plan/chorus/PLAN.md §11).
 interface MemorialConfig {
   subjectName: string; shortName: string; subjectPhotoUrl: string; blurb: string; lifespan: string;
   seedRoleTags: string[]; seedExperienceTags: string[];
@@ -536,7 +536,7 @@ const CHORUS_URL = process.env.NEXT_PUBLIC_CHORUS_URL || 'https://chorus.holosco
 // The whole of what makes a Chorus instance a memorial for a particular
 // person. Editing these is how a new memorial gets its subject — no deploy, no
 // migration, because the frontend reads every one of them from GET /config at
-// request time (apps/chorus/PLAN.md §11, D11).
+// request time (code/docs/plan/chorus/PLAN.md §11, D11).
 function MemorialFields({
   memorial, setMemorial, slug, instanceId,
 }: {

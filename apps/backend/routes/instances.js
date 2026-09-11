@@ -168,7 +168,7 @@ router.post('/', async (req, res) => {
     });
 
     if (app === 'chorus') provisionMemorial(instance);
-    // Threshold has no holon economy (apps/threshold/PLAN.md D7) — nothing in
+    // Threshold has no holon economy (code/docs/plan/threshold/PLAN.md D7) — nothing in
     // it is scarce, so there is nothing to stake on. Explore mode is what turns
     // the economy off, same as a Chorus memorial.
     if (app === 'threshold') {

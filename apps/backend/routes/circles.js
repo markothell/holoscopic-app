@@ -1,13 +1,13 @@
 const express = require('express');
 const circles = require('../utils/circles');
-// Requiring gather registers the 'gather' activity module (PRIMITIVES.md §9)
+// Requiring gather registers the 'gather' activity module (code/docs/plan/PRIMITIVES.md §9)
 // before startJobs() arms the tick — same load-order contract as threshold.
 const gather = require('../utils/gather');
 const gatherTranscribe = require('../utils/gatherTranscribe');
 const Circle = require('../models/Circle');
 const User = require('../models/User');
 
-// /api/circles — the ACTIVITY-AGNOSTIC circle surface (PLATFORM.md M8's
+// /api/circles — the ACTIVITY-AGNOSTIC circle surface (code/docs/plan/PLATFORM.md M8's
 // promotion, pulled forward by consumer #2: the circles app at
 // circles.holoscopic.io). Everything here is generic over the activity a
 // circle runs: the snapshot delegates per-activity content to the module's
@@ -137,7 +137,7 @@ async function circleOr404(req, res) {
 // --- seed's own module, so these serve threshold topics and gather asks alike)
 
 // Post an activity/topic into the circle's queue. `activity` names the module
-// for THIS seed (PRIMITIVES.md §9 — a circle runs mixed activities); omitted,
+// for THIS seed (code/docs/plan/PRIMITIVES.md §9 — a circle runs mixed activities); omitted,
 // the seed runs the circle's own. `seedId` edits your own pending seed.
 router.post('/:id/seeds', async (req, res) => {
   try {
@@ -184,7 +184,7 @@ router.post('/:id/seeds/:seedId/advance', async (req, res) => {
   }
 });
 
-// --- Gather verbs (the builder's single-round activity — PRIMITIVES.md §9)
+// --- Gather verbs (the builder's single-round activity — code/docs/plan/PRIMITIVES.md §9)
 
 // Submit or update my response. One per member, upserted; open after the
 // reveal (B4); text-only once closed (B5).

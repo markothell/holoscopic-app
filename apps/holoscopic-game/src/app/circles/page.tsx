@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 //
 // The page keeps the site's warm palette and structure, with the product's
 // own marks standing in for the site crimson: the serif wordmark, the ring,
-// rope and ochre from apps/circles/DESIGN.md.
+// rope and ochre from code/docs/plan/circles/DESIGN.md.
 //
 // COPY RULE (project-wide): every line says what a thing IS. No "not a…",
 // no "instead of…", no defining by contrast.

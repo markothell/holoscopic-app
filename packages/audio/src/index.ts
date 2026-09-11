@@ -8,7 +8,7 @@
 // its own hand-styled visual language and its own voice, so the recorder UI and
 // the player chrome stay in the app and drive `useRecorder` / `usePlayer`.
 //
-// Extracted from apps/chorus (2026-08-05). See apps/threshold/PLAN.md §7.
+// Extracted from apps/chorus (2026-08-05). See code/docs/plan/threshold/PLAN.md §7.
 
 export {
   canRecord,

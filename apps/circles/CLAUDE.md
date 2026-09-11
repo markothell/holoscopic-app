@@ -1,6 +1,6 @@
 # Circles
 
-**The first product, branded Holoscopic** (PLATFORM.md **P18** — read it before working here;
+**The first product, branded Holoscopic** (code/docs/plan/PLATFORM.md **P18** — read it before working here;
 built as "Toyrok" for one day, renamed 2026-08-14). Ships to **circles.holoscopic.io**; local
 dev port **4007**. Circles are the central social unit; this app is where they live. The
 holoscopic.io homepage stays the lab. Accounts are **Holoscopic accounts, said plainly** — the
@@ -24,8 +24,9 @@ take was recorded, uploaded to the dev store and shared, and the stored row carr
 client-timed duration and peaks. Uploads keep the `threshold/<seedId>/` pathname namespace so
 a circle's recordings live in one place whichever front door told them. **The device caveat is
 Threshold's M3b caveat, inherited**: a laptop WebM take exercises none of the Safari/iOS
-MP4/AAC branches — a real iPhone recording is still owed. Playback is native `<audio>` for
-now. **Joining is in**: a signed-in non-member on `/c/[urlName]` sees the shell and a
+MP4/AAC branches — a real iPhone recording on this app's own path is still owed, though the
+mechanism is proven (2026-09-11: recorded on a real iPhone against production in Chorus, and the
+functionality copied here). Playback is native `<audio>` for now. **Joining is in**: a signed-in non-member on `/c/[urlName]` sees the shell and a
 take-a-seat card (the invitation email is the server-side gate — `joinCircle` — and the same
 address becomes the member row's mail address), and `/signup` exists so an invitee without an
 account has a door; both callbackUrl flows carry the same open-redirect guard as `/login`.
@@ -60,7 +61,7 @@ eventually the synthesis surfaces moving in as a package.
 | `src/components/{Shell,Wordmark}.tsx` | Chrome in the Toono language; the wordmark is plain lowercase Seravek (final treatment pending the branding session) |
 | `src/services/api.ts` | All HTTP. Generic circle ops AND gather verbs (respond/react/responses/advance) ride `/api/circles`; Threshold's own verbs stay on `/api/threshold` |
 | `src/lib/{auth,types}.ts` | Auth stack copy #5 (M2's `@hs/auth` dedupes them) and the wire types, mirrored from the backend serializers |
-| `src/app/c/[urlName]/new/page.tsx` | The activity builder's creator flow (PRIMITIVES.md §9 S-decisions, 2026-08-20): + on circle home → primitives/templates tabs → four connected dots (shape, prompt, reveal, launch), staged locally and sent as ONE postSeed with `activity: 'gather'` |
+| `src/app/c/[urlName]/new/page.tsx` | The activity builder's creator flow (code/docs/plan/PRIMITIVES.md §9 S-decisions, 2026-08-20): + on circle home → primitives/templates tabs → four connected dots (shape, prompt, reveal, launch), staged locally and sent as ONE postSeed with `activity: 'gather'` |
 | `src/app/c/[urlName]/activity/[seedId]/page.tsx` | One gather ask, respond + reveal in a single surface (B4 keeps input open past the reveal). Voice-first or text-first story (S1), five stops (S2), free/quadrant grids (S3), tell-then-place (S4), the words chip field with the coin budget (S5), the state line + facilitator's confirm-gated Reveal-now (S19/S20) |
 | `src/components/GatherSurface.tsx` | The gather ask itself, lifted out of the activity page so `/demo` renders the SAME surface. `readOnly` withholds every writing control (compose, edit, reveal-now, reactions) and changes nothing else; it defaults false |
 | `src/components/circleHome.tsx` | The circle home's bands — header, the running-now card, Proposed, the record — lifted out of the home page for the same reason. `basePath` redirects seed links, `readOnly` withholds the backing control; both default to the real behaviour |

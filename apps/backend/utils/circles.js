@@ -8,7 +8,7 @@
 // The machine is generic. Everything activity-specific comes from the module
 // registered in utils/circleActivities.js under Circle.activity.
 //
-// Design: apps/threshold/PLAN.md §3. Three things there are load-bearing here:
+// Design: code/docs/plan/threshold/PLAN.md §3. Three things there are load-bearing here:
 //
 //   §3.3  A phase ends on COMPLETE, DEADLINE, or MANUAL — all three always
 //         live, and any phase's clock may be omitted entirely.
@@ -112,7 +112,7 @@ function deadlineFrom(now, hours) {
 }
 
 // The module that runs a seed's cycle: the seed's own `activity` when set,
-// else the circle's. A circle may hold mixed activities (PRIMITIVES.md §9) —
+// else the circle's. A circle may hold mixed activities (code/docs/plan/PRIMITIVES.md §9) —
 // every seed written before seeds[].activity existed reads null and resolves
 // to the circle's module, exactly as before.
 function modFor(circle, seed = null) {
@@ -123,7 +123,7 @@ function modFor(circle, seed = null) {
 // implicit is what lets a new activity declare its own phase names without
 // touching this file. A seed PAYLOAD carrying the same key overrides the
 // circle's config — the clock is an activity-creation setting for builder
-// seeds (PRIMITIVES.md §9 B2), and payload is already the per-seed home.
+// seeds (code/docs/plan/PRIMITIVES.md §9 B2), and payload is already the per-seed home.
 function hoursForPhase(circle, phase, seed = null) {
   const key = `${phase}Hours`;
   if (seed && seed.payload && seed.payload[key] !== undefined) return seed.payload[key];
@@ -136,7 +136,7 @@ function currentDeadline(circle) {
   return seed ? (seed.phaseDeadline || null) : null;
 }
 
-// How many cycles may run at once (PRIMITIVES.md §9 B1). Undefined on every
+// How many cycles may run at once (code/docs/plan/PRIMITIVES.md §9 B1). Undefined on every
 // circle written before config.maxLive existed — reads as 1, the original
 // one-cycle-at-a-time machine.
 function maxLive(circle) {
@@ -378,7 +378,7 @@ async function addSeed({ store = mongoStore, circleId, userId, payload, seedId =
     // An edit keeps the seed's activity — its own module re-validates.
     mine.payload = await modFor(circle, mine).normalizeSeed(payload, { circle, userId });
   } else {
-    // A seed may run a different activity than the circle's own (PRIMITIVES.md
+    // A seed may run a different activity than the circle's own (code/docs/plan/PRIMITIVES.md
     // §9). Throws on an unregistered key, same as circle creation.
     const key = activity && activity !== circle.activity ? activity : null;
     const mod = activities.get(key || circle.activity);

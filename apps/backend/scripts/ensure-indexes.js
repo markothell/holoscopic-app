@@ -160,8 +160,8 @@ const INDEXES = [
     options: { unique: true } },
   { collection: 'thresholdrankings', name: 'seedId_submittedAt', keys: { seedId: 1, submittedAt: 1 } },
 
-  // --- Primitive content collections (PLATFORM.md P8; first writer is the
-  //     'gather' module, PRIMITIVES.md §9). The unique indexes ARE the
+  // --- Primitive content collections (code/docs/plan/PLATFORM.md P8; first writer is the
+  //     'gather' module, code/docs/plan/PRIMITIVES.md §9). The unique indexes ARE the
   //     cardinality rules: one gather response per member is the shares key,
   //     one placement per (member, target, axis) the placements key — same
   //     correctness argument as thresholdshares above. ---

@@ -1,6 +1,6 @@
 'use client';
 
-// One gather ask, phase-routed (PRIMITIVES.md §9): respond while it runs,
+// One gather ask, phase-routed (code/docs/plan/PRIMITIVES.md §9): respond while it runs,
 // the reveal once it closes — and because input stays open after the reveal
 // (B4), the two are one surface with the compose offered wherever it is still
 // honest. Visibility is all server-side: sealed serves own-only until the

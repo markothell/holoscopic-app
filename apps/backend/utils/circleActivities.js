@@ -7,7 +7,7 @@
 // This is the server-side sibling of packages/activities' REGISTRY, which maps
 // an activity type to its React components. Same idea, opposite end.
 //
-// See apps/threshold/PLAN.md §3.4. Consumer #1 is utils/threshold.js.
+// See code/docs/plan/threshold/PLAN.md §3.4. Consumer #1 is utils/threshold.js.
 
 // Called for hooks a module chose not to implement, so utils/circles.js can
 // call all of them unconditionally rather than guarding every site.

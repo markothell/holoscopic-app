@@ -1,5 +1,5 @@
 // Wire types mirroring apps/backend/models/SynNode.js / SynFrame.js and
-// the utils/synNodes.js toClient() serializer. See apps/synthesis/PLAN.md §4.
+// the utils/synNodes.js toClient() serializer. See code/docs/plan/synthesis/PLAN.md §4.
 
 export type NodeKind = 'topic' | 'thought';
 export type EdgeKind = 'root' | 'child' | 'marriage';

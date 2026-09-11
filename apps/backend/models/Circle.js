@@ -10,7 +10,7 @@ const mongoose = require('mongoose');
 // The whole point is asynchronous participation: a phase ends when everyone
 // finishes, when its deadline passes, or when the author says so, and each
 // transition notifies the people who now have something to do. See
-// apps/threshold/PLAN.md §3 for the design and why this is not an extension of
+// code/docs/plan/threshold/PLAN.md §3 for the design and why this is not an extension of
 // Sequence (global, activity-DAG-shaped, no completion trigger).
 //
 // There is no seeding round and no completion condition (D27, D29). Seeds
@@ -37,7 +37,7 @@ const seedSchema = new mongoose.Schema({
   // Which activity module runs THIS seed's cycle. null = the circle's own
   // `activity` — every seed written before this field existed reads null and
   // behaves exactly as it always did. Set when a circle runs mixed activities
-  // (PRIMITIVES.md §9: a circle holds Threshold topics and single-round
+  // (code/docs/plan/PRIMITIVES.md §9: a circle holds Threshold topics and single-round
   // 'gather' asks side by side), and resolved by utils/circles.js#modFor.
   activity: { type: String, default: null },
 
@@ -133,7 +133,7 @@ const circleSchema = new mongoose.Schema({
 
     advanceOnComplete: { type: Boolean, default: true },
 
-    // How many cycles may run at once (PRIMITIVES.md §9 B1). Default 1
+    // How many cycles may run at once (code/docs/plan/PRIMITIVES.md §9 B1). Default 1
     // preserves the original one-cycle-at-a-time machine for every existing
     // circle — Threshold's D28 — while a builder circle opts into 3.
     maxLive: { type: Number, default: 1, min: 1, max: 10 },

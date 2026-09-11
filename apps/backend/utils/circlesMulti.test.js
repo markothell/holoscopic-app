@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const circles = require('./circles');
 const activities = require('./circleActivities');
 
-// The multi-live and mixed-activity machine (PRIMITIVES.md §9 B1): maxLive
+// The multi-live and mixed-activity machine (code/docs/plan/PRIMITIVES.md §9 B1): maxLive
 // concurrent cycles, per-seed activity modules, and per-seed payload clocks.
 // Same offline memStore pattern as circles.test.js.
 

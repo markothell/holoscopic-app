@@ -24,6 +24,9 @@ integration checks in `scripts/check-circles.js` against a real database.
 the ranking queue and inside the reveal's expanded story. What is left is a real recording on a
 physical iPhone and on Android — Safari takes the MP4/AAC branch, writes no duration metadata and
 spells the `codecs` parameter with a space, and a laptop's WebM take exercises none of the three.
+**The mechanism itself is no longer in doubt** (2026-09-11): that path was recorded successfully on
+a real iPhone against production in Chorus, and the working functionality was copied across. What
+this app owes is a take on its own copy, in the ranking queue, before a cohort is invited.
 **M4, mail, is built**: transition mail with the circle link and `List-Unsubscribe`, per-circle
 mute, `/notifications`, and a real `/me`. What is outstanding there is a real inbox — locally the
 fixture's members carry no address, so nothing can send.

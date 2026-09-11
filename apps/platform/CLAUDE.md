@@ -52,7 +52,7 @@ persists it**. Pasting a URL writes the same field and still works.
   instance, never as "sign in required" — sending an operator to re-authenticate over a problem
   login cannot fix is its own bug.
 - **It does NOT go to the Render backend.** That service has no persistent disk in `render.yaml`,
-  so anything written to its filesystem is gone at the next deploy (apps/chorus/PLAN.md D13).
+  so anything written to its filesystem is gone at the next deploy (code/docs/plan/chorus/PLAN.md D13).
 
 ## Auth
 

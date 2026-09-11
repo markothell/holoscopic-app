@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
-// Vocabulary — the PRIMITIVE participant-extendable shared word set (PLATFORM.md
-// P8, PRIMITIVES.md §4.3): one word in one scope's vocabulary, seeded by a
+// Vocabulary — the PRIMITIVE participant-extendable shared word set (code/docs/plan/PLATFORM.md
+// P8, code/docs/plan/PRIMITIVES.md §4.3): one word in one scope's vocabulary, seeded by a
 // creator and extended by contributors. Generalizes Chorus's MemoryTag; first
 // writer is the 'gather' module (the words shape: pick ≤k / coin ≤j), where the
 // scope is the seed. MemoryTag stays put — migration is opportunistic or never.

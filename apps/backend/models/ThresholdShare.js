@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 // ThresholdShare — one person's story about one seed, on one side of that
 // seed's polarity.
 //
-// This is not an Entry, deliberately (apps/threshold/PLAN.md §5, D8):
+// This is not an Entry, deliberately (code/docs/plan/threshold/PLAN.md §5, D8):
 // Entry.position is {x,y} with both required and Threshold has no 2D position
 // at all, and a share carries audio, a transcript and a pole choice that Entry
 // has none of. Chorus's Memory set the precedent — a product whose

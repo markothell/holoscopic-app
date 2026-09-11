@@ -12,7 +12,7 @@ const User = require('../models/User');
 
 // Threshold — REST surface. Thin wrappers over utils/circles.js (the generic
 // round machine) and utils/threshold.js (the activity: shares, rankings, the
-// gradient). Design in apps/threshold/PLAN.md §8.
+// gradient). Design in code/docs/plan/threshold/PLAN.md §8.
 //
 // Mounted behind resolveInstance + attachVerifiedUser + enforceVerifiedUser:
 // every identity-bearing write carries a verified account token whose sub

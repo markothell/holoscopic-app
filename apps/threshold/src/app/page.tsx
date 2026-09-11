@@ -22,13 +22,13 @@ import { TideLine, Polarity } from '@/components/TideLine';
 // 3. Hand a returning host the way in. Signed in, the one thing this page
 //    offers that no other page does is a new session.
 //
-// The copy is MO's, from PLATFORM.md §8, where the blurb was written for the
+// The copy is MO's, from code/docs/plan/PLATFORM.md §8, where the blurb was written for the
 // homepage card that links here. One edit: it said "everyone records a story",
 // and typing is first-class in this app rather than a fallback (Q3), so the
 // sentence names both. Every other surface offering the recorder offers the
 // textarea in the same breath; the front door should not promise otherwise.
 //
-// The word "session" throughout the offer, never "circle" (PLATFORM.md P15):
+// The word "session" throughout the offer, never "circle" (code/docs/plan/PLATFORM.md P15):
 // a one-off is a session, and "circle" belongs to a group with continuity.
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';

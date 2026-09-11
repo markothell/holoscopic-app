@@ -19,7 +19,7 @@ const crypto = require('crypto');
 // makes "how many people came on Tuesday" answerable and "what did this person
 // do over the last month" structurally unanswerable, which is the trade this
 // platform wants — Chorus memorials in particular are grief contexts with no
-// accounts by design (apps/chorus/PLAN.md D2), and a durable visitor id there
+// accounts by design (code/docs/plan/chorus/PLAN.md D2), and a durable visitor id there
 // would be a promise broken.
 
 const trafficEventSchema = new mongoose.Schema({

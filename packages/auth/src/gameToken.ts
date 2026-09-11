@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import type { NextAuthOptions } from 'next-auth';
 import crypto from 'node:crypto';
 
-// The game-token route handler (PLATFORM.md M2): a short-lived HS256 JWT
+// The game-token route handler (code/docs/plan/PLATFORM.md M2): a short-lived HS256 JWT
 // signed from the verified NextAuth session. The backend
 // (middleware/verifyUser.js) derives the caller's identity from it instead
 // of trusting a client-supplied x-user-id header.

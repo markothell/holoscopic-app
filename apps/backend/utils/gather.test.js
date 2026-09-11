@@ -5,7 +5,7 @@ const circles = require('./circles');
 const activities = require('./circleActivities');
 const gather = require('./gather');
 
-// The builder's single-round activity, end to end and offline (PRIMITIVES.md
+// The builder's single-round activity, end to end and offline (code/docs/plan/PRIMITIVES.md
 // §9): shapes, the two reveal combos, B4's open input, B5's text-only
 // post-close edits, reactions, and the on-read aggregate.
 

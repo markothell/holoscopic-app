@@ -1,4 +1,4 @@
-// @hs/api — the client half of talking to the one backend (PLATFORM.md M2).
+// @hs/api — the client half of talking to the one backend (code/docs/plan/PLATFORM.md M2).
 // Extracted from five near-copies; holoscopic-game's mint-deduping token
 // cache is the canonical one and now serves every app.
 

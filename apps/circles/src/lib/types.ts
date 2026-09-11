@@ -47,7 +47,7 @@ export interface SeedPayload {
 }
 
 // ---------------------------------------------------------------------------
-// Gather — the builder's single-round activity (PRIMITIVES.md §9)
+// Gather — the builder's single-round activity (code/docs/plan/PRIMITIVES.md §9)
 // ---------------------------------------------------------------------------
 
 export type GatherShape = 'story' | 'placement' | 'story-placement' | 'words';

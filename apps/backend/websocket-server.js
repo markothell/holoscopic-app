@@ -542,7 +542,7 @@ function loadAPIRoutes() {
       // happen before startJobs() so the round ticker can never reach a
       // circle holding a synthesis seed whose module is missing.
       require('./utils/synthesisActivity');
-      // Threshold — account holders, no holon economy (apps/threshold/PLAN.md
+      // Threshold — account holders, no holon economy (code/docs/plan/threshold/PLAN.md
       // D6/D7). Requiring this router is ALSO what registers the 'threshold'
       // activity module with utils/circleActivities.js, and it happens here,
       // before startJobs() below — so the circle round ticker can never reach a
@@ -590,7 +590,7 @@ function loadAPIRoutes() {
       );
       // Chorus memorials — the ONLY router mounted without enforceVerifiedUser,
       // because its contributors deliberately have no holoscopic account
-      // (apps/chorus/PLAN.md D2). Anonymous writes are the abuse surface, so
+      // (code/docs/plan/chorus/PLAN.md D2). Anonymous writes are the abuse surface, so
       // it carries its own stricter limiter on top of the global apiLimiter.
       const memorialRoutes = require('./routes/memorial');
       // Fire-and-forget transcription, injected the same way Synthesis injects

@@ -1,6 +1,6 @@
 'use client';
 
-// The gather activity's shared pieces (PRIMITIVES.md §9, S6–S17): the reveal
+// The gather activity's shared pieces (code/docs/plan/PRIMITIVES.md §9, S6–S17): the reveal
 // ring every shape's artifact hangs on, the two placement charts, the word
 // portrait, and the response card. All SVG is hand-written and colored by
 // var(--…) like CircleMap — sky marks what is yours or what is picked, ink

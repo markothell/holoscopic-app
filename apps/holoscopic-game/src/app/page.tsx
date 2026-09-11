@@ -43,7 +43,7 @@ function RevealSection({
 // a few degrees — a scale mid-reading — while the fulcrum stays level.
 // Circles: the circle home map, as the app draws it — members on a ring, all
 // equal, what they explored together gathered in the middle, one solo spur
-// pointing outward. Toono palette from apps/circles/DESIGN.md, so the card
+// pointing outward. Toono palette from code/docs/plan/circles/DESIGN.md, so the card
 // reads as the product rather than as another lab poster.
 function CircleRingArt() {
   const cx = 272, cy = 105, r = 56, ring = 68, n = 8;

@@ -1,5 +1,5 @@
 // Deepgram transcription for gather responses (the builder's single-round
-// circle activities, PRIMITIVES.md §9).
+// circle activities, code/docs/plan/PRIMITIVES.md §9).
 //
 // Third sibling over the same utils/transcribe.js core, after
 // memorialTranscribe and thresholdTranscribe. Still ~30 lines because the only

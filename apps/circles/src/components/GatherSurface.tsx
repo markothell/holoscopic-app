@@ -1,7 +1,7 @@
 'use client';
 
 // The gather ask itself — respond + reveal in ONE surface, because input stays
-// open after the reveal (B4, PRIMITIVES.md §9). Lifted out of
+// open after the reveal (B4, code/docs/plan/PRIMITIVES.md §9). Lifted out of
 // app/c/[urlName]/activity/[seedId]/page.tsx unchanged so that surface has one
 // implementation and two callers: the real page, which loads a circle and its
 // extras over HTTP, and /demo, which hands it a written fixture and no network

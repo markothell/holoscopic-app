@@ -81,7 +81,7 @@ function visitorHashFor({ ip, userAgent, at = new Date(), secret = VISITOR_SECRE
  *
  * The query string is always dropped, and that is a privacy rule rather than
  * tidiness: `/c/<slug>/curate?k=…` carries a Chorus curator key, which is a
- * credential (apps/chorus/PLAN.md D10), and a filtered wall like
+ * credential (code/docs/plan/chorus/PLAN.md D10), and a filtered wall like
  * `?tags=abc,def` is the same page for every purpose this dashboard has.
  */
 function normalizePath(raw) {

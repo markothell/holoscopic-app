@@ -2,7 +2,7 @@ import { apiFetch, apiStream } from './api';
 import type { Collaborator, FrameSpec, Idea, Membership, MyIdea, NodeContent, NodeKind, Statement, StatementBoard, SynthesisCache, SynthesisDepth, SynthesisState, SynFrame, SynNode, SynthesisReply } from '@/lib/types';
 
 // Typed wrappers for the live REST surface (routes/synthesis.js). Matches
-// its two addressing schemes (apps/synthesis/PLAN.md §5):
+// its two addressing schemes (code/docs/plan/synthesis/PLAN.md §5):
 //   - /ideas* is addressed by shareable CODE — you don't have an idea's
 //     instance id until you've drafted or joined it.
 //   - /nodes* and /frames* run against the resolved x-instance-id, exactly

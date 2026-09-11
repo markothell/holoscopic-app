@@ -1,14 +1,14 @@
 const mongoose = require('mongoose');
 
-// Placement — the PRIMITIVE "opinion located against a structure" (PLATFORM.md
-// P8, PRIMITIVES.md §4.3): a position on 1–2 axes, a bucket choice, or a rank
+// Placement — the PRIMITIVE "opinion located against a structure" (code/docs/plan/PLATFORM.md
+// P8, code/docs/plan/PRIMITIVES.md §4.3): a position on 1–2 axes, a bucket choice, or a rank
 // order, keyed so one member holds one placement per (seed, target, axis).
 // First writer is the 'gather' module (kind 'position'); bucket and rank
 // variants arrive with the next activity that needs them.
 //
 // All writes go through the owning primitive funnel (utils/gather.js today).
 // Whether a placement may still change — draft vs committed, frozen at the
-// close (PRIMITIVES.md §9 B5) — is enforced there, never here.
+// close (code/docs/plan/PRIMITIVES.md §9 B5) — is enforced there, never here.
 
 const placementSchema = new mongoose.Schema({
   id: {

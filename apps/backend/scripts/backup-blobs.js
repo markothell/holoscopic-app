@@ -163,7 +163,7 @@ async function main() {
     'audio.url': { $exists: true, $ne: '' },
   }).lean();
 
-  // Gather responses (the primitive Share collection, PRIMITIVES.md §9).
+  // Gather responses (the primitive Share collection, code/docs/plan/PRIMITIVES.md §9).
   // Same rule again: a voice told into a circle activity is not regenerable,
   // and one job answers "is every recording backed up?" for all of them.
   const gatherShares = await Share.find({

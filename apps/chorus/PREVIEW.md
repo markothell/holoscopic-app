@@ -4,7 +4,7 @@ A place to verify a change on a real phone before it reaches `main` — because 
 production branch**, so pushing it *is* the deploy. There is no "try it and see" on production, and
 audio is the one thing in Chorus with no second copy.
 
-Built for the `packages/audio` extraction (`apps/threshold/PLAN.md` M2), which changes a live app
+Built for the `packages/audio` extraction (`code/docs/plan/threshold/PLAN.md` M2), which changes a live app
 and has to be proven on an iPhone: the MP4 branch, the missing duration metadata, and the `codecs`
 parameter spacing that killed the first live iPhone recording are all invisible on a laptop.
 

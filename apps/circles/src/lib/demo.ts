@@ -196,7 +196,7 @@ const seed = (s: {
   order: s.order,
   // null = the circle's own module. The circle IS a gather circle, so every
   // ask here stores null and resolves through seedActivityOf() — the same
-  // path the eyes-on pass caught surfaces skipping (PRIMITIVES.md §9).
+  // path the eyes-on pass caught surfaces skipping (code/docs/plan/PRIMITIVES.md §9).
   activity: null,
   payload: s.payload,
   phase: s.phase,

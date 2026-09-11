@@ -11,7 +11,7 @@ const SWEEP_INTERVAL_MS = 60_000;
 // the lock before the next tick rather than blocking one.
 const SWEEP_LEASE_MS = 55_000;
 
-// Circle round advancement (apps/threshold/PLAN.md §3.5).
+// Circle round advancement (code/docs/plan/threshold/PLAN.md §3.5).
 //
 // This one is NOT an optimization of sweep-on-read, it is the primary path.
 // Circles are asynchronous by design — nobody has the page open, and the phase

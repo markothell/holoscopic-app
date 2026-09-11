@@ -54,7 +54,7 @@ const instanceConfigSchema = new mongoose.Schema({
   // or a frontend build constant. That's deliberate and it's cheap: it means
   // the same deployed frontend can serve any memorial, so the eventual
   // multi-collection version is a routing change, not a data migration
-  // (apps/chorus/PLAN.md §11, D11). Curator edits these in the platform admin
+  // (code/docs/plan/chorus/PLAN.md §11, D11). Curator edits these in the platform admin
   // instance config tab — Chorus ships no admin surface of its own.
   //
   // Chorus runs with `mode: 'explore'` — it is the first app in this repo with

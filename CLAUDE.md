@@ -2,12 +2,32 @@
 
 `main` is the production branch: pushing it deploys the backend (Render) and the frontends (Vercel).
 
+> **The planning docs are not in this repo (moved 2026-09-11).** This repository is public, and the
+> roadmap, milestone status and design decisions were public with it before anyone had asked for
+> them. They now live outside the tree, at **`code/docs/plan/`** — a sibling of this repo, not
+> under version control:
+>
+> | Was | Now |
+> |---|---|
+> | `PLATFORM.md` | `code/docs/plan/PLATFORM.md` — the plan of record, P1–P18 and M1–M8 |
+> | `PRIMITIVES.md` | `code/docs/plan/PRIMITIVES.md` — the primitive catalog, §9 the activity builder |
+> | `apps/threshold/PLAN.md`, `M3B-CHECKLIST.md` | `code/docs/plan/threshold/` |
+> | `apps/chorus/PLAN.md` | `code/docs/plan/chorus/PLAN.md` |
+> | `apps/synthesis/PLAN.md`, `UNION.md` | `code/docs/plan/synthesis/` |
+> | `apps/circles/DESIGN.md` | `code/docs/plan/circles/DESIGN.md` |
+>
+> Every `CLAUDE.md` stays here: they are how you get oriented in this tree, and they describe how
+> the code works rather than what is planned. References throughout the repo were rewritten to the
+> new paths — a citation spelled `code/docs/plan/…` is a real file on this machine, not a dead link.
+> **There is no public-facing roadmap yet**, deliberately: one gets written when there are users to
+> write it for. Do not restore the plan docs to the repo to fix a broken-looking reference.
+
 **Holoscopic is a lab, and every app here is a working prototype of a product.** holoscopic.io is the lab's
 front door; each app runs on its own subdomain. Circles is the current focus and the one the active
 grant applications lead with. The apps (newest first, as on the holoscopic.io homepage):
-- **Circles** — `apps/circles`, the current focus (PLATFORM.md P18): circles as the central social unit, and where the other instruments are converging. Ships to **circles.holoscopic.io branded Holoscopic**, tagline *thinking tools for community*. Built: sign in and `/signup` → my circles (join included) → the circle home map → the full tell/sort/reveal loop with audio recording; generic circle operations ride `/api/circles` (the M8 promotion, landed 2026-08-14). Accounts are Holoscopic accounts, said plainly. **The activity builder's backend landed 2026-08-17** — design and state of record in root **`PRIMITIVES.md`** (§9): the circle machine runs per-seed activity modules and `config.maxLive` concurrent cycles, the single-round `gather` activity (`utils/gather.js`) writes the primitive `Share`/`Placement`/`Vocabulary` collections — all four response shapes including words (pick ≤k / coin ≤j, landed 2026-08-17) — verbs on `/api/circles`, gather audio carries the full transcription + blob-mirror wiring, and **the frontend landed 2026-08-20** — the + → picker → four-dot creator at `/c/[urlName]/new`, respond + reveal per shape at `/c/[urlName]/activity/[seedId]`, built to the S1–S20 design picks (PRIMITIVES.md §9); an eyes-on browser pass is still owed. See the app's `CLAUDE.md` + `DESIGN.md` (Toono, Holoscopic's product design language).
+- **Circles** — `apps/circles`, the current focus (code/docs/plan/PLATFORM.md P18): circles as the central social unit, and where the other instruments are converging. Ships to **circles.holoscopic.io branded Holoscopic**, tagline *thinking tools for community*. Built: sign in and `/signup` → my circles (join included) → the circle home map → the full tell/sort/reveal loop with audio recording; generic circle operations ride `/api/circles` (the M8 promotion, landed 2026-08-14). Accounts are Holoscopic accounts, said plainly. **The activity builder's backend landed 2026-08-17** — design and state of record in **`code/docs/plan/PRIMITIVES.md`** (§9): the circle machine runs per-seed activity modules and `config.maxLive` concurrent cycles, the single-round `gather` activity (`utils/gather.js`) writes the primitive `Share`/`Placement`/`Vocabulary` collections — all four response shapes including words (pick ≤k / coin ≤j, landed 2026-08-17) — verbs on `/api/circles`, gather audio carries the full transcription + blob-mirror wiring, and **the frontend landed 2026-08-20** — the + → picker → four-dot creator at `/c/[urlName]/new`, respond + reveal per shape at `/c/[urlName]/activity/[seedId]`, built to the S1–S20 design picks (code/docs/plan/PRIMITIVES.md §9); an eyes-on browser pass is still owed. See the app's `CLAUDE.md`, and `code/docs/plan/circles/DESIGN.md` (Toono, Holoscopic's product design language).
 - **Threshold** — `apps/threshold`, where a group's dividing line falls on a polarity (backend surface: `apps/backend/routes/threshold.js` + `utils/threshold.js`, on the generic `Circle` layer; see `apps/threshold/CLAUDE.md`). Built through M4 — backend, every participant surface in the tide-line language, audio, and round-transition mail; **M6, the launch pass, is what remains**. Live at threshold.holoscopic.io, on the production backend, since 2026-08-10: its instance is slugged **`circlemo`**, not `threshold`, and the deployed frontend sends that as `x-instance-id`. The only app whose rounds advance on a **background tick** rather than sweep-on-read — nobody has the page open, so a phase transition is what sends the mail that brings people back.
-- **Chorus** — `apps/chorus`, memories about one person, collected from anyone with the link (backend surface: `apps/backend/routes/memorial.js`; see `apps/chorus/CLAUDE.md`). Live at chorus.holoscopic.io (verified serving 2026-08-17). **The only app with no accounts, no holon economy, and a route mounted without `enforceVerifiedUser`** — all three are deliberate, see its `PLAN.md` §10. One deployment serves every memorial: a memorial is `/c/<slug>`, and creating one is a row in the platform admin, not a deploy.
+- **Chorus** — `apps/chorus`, memories about one person, collected from anyone with the link (backend surface: `apps/backend/routes/memorial.js`; see `apps/chorus/CLAUDE.md`). Live at chorus.holoscopic.io (verified serving 2026-08-17). **The only app with no accounts, no holon economy, and a route mounted without `enforceVerifiedUser`** — all three are deliberate, see `code/docs/plan/chorus/PLAN.md` §10. One deployment serves every memorial: a memorial is `/c/<slug>`, and creating one is a row in the platform admin, not a deploy.
 - **Synthesis** — `apps/synthesis`, a networked group blog: everyone grows their own thought map and what people respond to weaves together (backend surface: `apps/backend/routes/synthesis.js`; see `apps/synthesis/CLAUDE.md`). Two reversals landed 2026-08-20 — **the idea is the only privacy boundary** (no per-node publish; writing a thought is what publishing was) and **identity is your account name**, not a per-idea pseudonym. It is also **a circle activity** now (`utils/synthesisActivity.js`): sharing a document with a circle writes an ordinary seed, which is what opens it to that circle's members. On `main` since 2026-07-30 (merge `5903658`, via `pre-launch`; the old `unison-m0-m1-loop` branch is deleted with nothing unmerged); live at synthesis.holoscopic.io — domain, CORS and the shared M2 session all verified 2026-08-17.
 - **On a Spectrum** — `apps/spectrum`, at spectrum.holoscopic.io (backend surface: `apps/backend/routes/oas.js`; see `apps/spectrum/CLAUDE.md`). `routes/spectrum.js`, `models/SpectrumGame.js`, and `utils/spectrumGames.js` are mounted but dormant, and get deleted post-cutover.
 - **interView** — `apps/holoscopic-game`, the production game app at holoscopic.io
@@ -47,6 +67,13 @@ holoscopic/
 ├── package.json           npm workspaces root
 ├── turbo.json             Turborepo pipeline config
 └── render.yaml            Render deploy config (backend only)
+
+../docs/                   NOT in this repo — planning, funding and application material
+├── plan/                  the roadmap and milestone docs moved out on 2026-09-11 (see above)
+├── MASTERPLAN.md          the funding push
+├── BUSINESS.md            the product-and-revenue ladder — governs MASTERPLAN
+├── jobs/JOBS.md           the income search
+└── fundraising/, applications/, essay/, relationships/, video/
 ```
 
 ## Running Locally

@@ -5,7 +5,7 @@
 // gate, the upsert keys, the complete-or-nothing submit rule, the blob host
 // allowlist and the reveal computation all live here.
 //
-// Design: apps/threshold/PLAN.md. The parts that constrain this file:
+// Design: code/docs/plan/threshold/PLAN.md. The parts that constrain this file:
 //
 //   §5.2  A ranking is a whole-set judgment. Drafts save freely; a SUBMIT
 //         requires every share placed, or the agreement denominator silently

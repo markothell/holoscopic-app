@@ -1,7 +1,7 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
-// The ONE auth stack (PLATFORM.md M2). Every account-bearing app exports
+// The ONE auth stack (code/docs/plan/PLATFORM.md M2). Every account-bearing app exports
 // `createAuthOptions()` from its src/lib/auth.ts — five byte-near-identical
 // copies collapsed here, plus the three things the copies all lacked:
 //

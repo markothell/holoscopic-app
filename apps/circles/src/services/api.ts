@@ -5,7 +5,7 @@
 //
 // Same account machinery as the rest of the platform — one global User
 // collection behind one backend, and these are Holoscopic accounts, said
-// plainly (PLATFORM.md P18). Every existing account signs straight in.
+// plainly (code/docs/plan/PLATFORM.md P18). Every existing account signs straight in.
 //
 // The generic circle operations (snapshot, my circles, join) ride
 // /api/circles — the M8 promotion, triggered by this app being the Circle

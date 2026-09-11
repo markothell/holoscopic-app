@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-// Share — the PRIMITIVE voice/text contribution (PLATFORM.md P8, PRIMITIVES.md
+// Share — the PRIMITIVE voice/text contribution (code/docs/plan/PLATFORM.md P8, code/docs/plan/PRIMITIVES.md
 // §4.3): one member's response on one seed, owned by the primitive rather than
 // by any activity. First writer is the 'gather' module (the builder's
 // single-round activities); the next activity that shares this shape writes
@@ -12,7 +12,7 @@ const mongoose = require('mongoose');
 // allowlist, and the post-close editing rules live there, never here.
 //
 // `slot` is the per-activity discriminator inside the unique key, because a
-// unique key IS the cardinality rule (PRIMITIVES.md §4.3): gather's "one
+// unique key IS the cardinality rule (code/docs/plan/PRIMITIVES.md §4.3): gather's "one
 // response per member" is slot '', and an activity wanting one-per-pole would
 // use the pole as the slot.
 
@@ -61,12 +61,12 @@ const shareSchema = new mongoose.Schema({
     text:   { type: String, default: '' },
   },
 
-  // Vocabulary ids this response picked (the words shape, PRIMITIVES.md §9) —
+  // Vocabulary ids this response picked (the words shape, code/docs/plan/PRIMITIVES.md §9) —
   // the application side of the Vocabulary primitive, the same move as
   // Memory's tag arrays. Empty on every other shape.
   wordIds: { type: [String], default: () => [] },
 
-  // Reactions (PRIMITIVES.md §9: free, toggled, no self-react). Ids rather
+  // Reactions (code/docs/plan/PRIMITIVES.md §9: free, toggled, no self-react). Ids rather
   // than a count, so a reaction can be taken back and nobody reacts twice.
   reactedIds: { type: [String], default: () => [] },
 }, {

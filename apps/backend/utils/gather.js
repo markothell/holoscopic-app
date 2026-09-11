@@ -1,4 +1,4 @@
-// gather — the builder's single-round activity (PRIMITIVES.md §9): a prompt,
+// gather — the builder's single-round activity (code/docs/plan/PRIMITIVES.md §9): a prompt,
 // one response per member, one reveal. The activity definition lives entirely
 // in the SEED PAYLOAD — a circle activity built in the picker is a seed, not a
 // deployment — and this one module runs every shape of it.
@@ -166,7 +166,7 @@ const mongoStore = {
 };
 
 // ---------------------------------------------------------------------------
-// Seed shape — the activity definition (PRIMITIVES.md §9's creator flow)
+// Seed shape — the activity definition (code/docs/plan/PRIMITIVES.md §9's creator flow)
 // ---------------------------------------------------------------------------
 
 function normalizeSeed(payload) {
@@ -293,7 +293,7 @@ function seedDone(seed) {
 }
 
 // ---------------------------------------------------------------------------
-// The vocabulary — a words ask's shared word set (PRIMITIVES.md §4.3)
+// The vocabulary — a words ask's shared word set (code/docs/plan/PRIMITIVES.md §4.3)
 // ---------------------------------------------------------------------------
 
 /**

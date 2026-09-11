@@ -1,6 +1,6 @@
 'use client';
 
-// Start an activity — the builder's creator flow (PRIMITIVES.md §9, the
+// Start an activity — the builder's creator flow (code/docs/plan/PRIMITIVES.md §9, the
 // S-decisions): the + on circle home lands here, primitives and templates on
 // separate tabs, then four connected dots — shape, prompt, reveal, launch —
 // each its own view, fill marks the present step. The staged payload lives in
