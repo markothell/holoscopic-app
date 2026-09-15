@@ -1,7 +1,7 @@
-/* Circles landing — the same warm editorial structure as /synthesis and
-   /chorus, with the product's own marks standing in for the site crimson:
-   the serif wordmark, rope (#B49A6E) and ochre (#C08A3E) from
-   apps/circles/DESIGN.md. The app itself starts when you cross over. */
+/* Circles landing — the same warm editorial structure and wordmark type as
+   /synthesis and /chorus, with the product's own marks standing in for the
+   site crimson: rope (#B49A6E) and ochre (#C08A3E) from
+   code/docs/plan/circles/DESIGN.md. The app itself starts when you cross over. */
 
 .page {
   min-height: 100dvh;
@@ -15,22 +15,30 @@
   margin: 0 auto;
 }
 
-/* The wordmark wears the product's serif, as the homepage card does. */
 .title {
   margin-top: 0.75rem;
-  font-family: "Iowan Old Style", Palatino, Georgia, serif;
-  font-weight: 500;
+  font-family: var(--font-barlow), sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
   letter-spacing: -0.01em;
   line-height: 0.95;
-  font-size: clamp(2.6rem, 7vw, 4.2rem);
+  font-size: clamp(2.4rem, 7vw, 4rem);
   color: #3A2E20;
 }
 
+/* The sub-line sits a step above the lede, so it reads as the title's second
+   line rather than as small print. Its two clauses take a line each. */
 .sub {
-  margin-top: 0.6rem;
-  font-family: Seravek, "Gill Sans", "Trebuchet MS", system-ui, sans-serif;
-  font-size: clamp(0.9rem, 2.4vw, 1.05rem);
+  margin-top: 0.9rem;
+  font-family: var(--font-dm-mono), monospace;
+  font-weight: 500;
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  line-height: 1.55;
   color: #6D5E4A;
+}
+
+.sub > span {
+  display: block;
 }
 
 .lede {

@@ -320,9 +320,9 @@ type Card = {
 
 const CARDS: Card[] = [
   // Circles first: the newest experiment, and the one the others are
-  // converging into. It wears the product's own language — serif, warm
-  // ground, the ring — because it is the product's door, not another lab
-  // poster.
+  // converging into. It wears the product's warm ground and ring, with the
+  // same wordmark and mono sub-line type as every other card. The sub-line
+  // breaks at its comma: two clauses, one per line.
   {
     key: 'circles',
     name: 'Circles',
@@ -332,7 +332,7 @@ const CARDS: Card[] = [
     art: <CircleRingArt />,
     title: 'Circles',
     titleClassName: styles.gameCardTitleCi,
-    sub: 'form a sharing circle, exchange conversations with the crowd',
+    sub: <><span>form a sharing circle,</span><span>exchange conversations with the crowd</span></>,
     subClassName: styles.gameCardSubCi,
   },
   // Threshold's wordmark has no morpheme seam to split on, so it stays one

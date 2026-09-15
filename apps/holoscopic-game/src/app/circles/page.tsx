@@ -21,9 +21,10 @@ export const metadata: Metadata = {
 // so the homepage is the lab's inventory and this page is the circle's own
 // door. The card on the homepage points here, like the other instruments'.
 //
-// The page keeps the site's warm palette and structure, with the product's
-// own marks standing in for the site crimson: the serif wordmark, the ring,
-// rope and ochre from code/docs/plan/circles/DESIGN.md.
+// The page keeps the site's warm palette and structure, and the wordmark and
+// sub-line type every lander shares, with the product's own marks standing in
+// for the site crimson: the ring, rope and ochre from
+// code/docs/plan/circles/DESIGN.md.
 //
 // COPY RULE (project-wide): every line says what a thing IS. No "not a…",
 // no "instead of…", no defining by contrast.
@@ -202,20 +203,18 @@ export default function CirclesPage() {
     <main className={styles.page}>
       <div className={styles.inner}>
         <h1 className={styles.title}>Circles</h1>
-        <p className={styles.sub}>form a sharing circle, exchange conversations with the crowd</p>
-
-        <p className={styles.lede}>
-          Holoscopic builds tools for groups to think together. Circles is a
-          place for small groups to meet, share thoughts and author group
-          conversation prompts.
+        <p className={styles.sub}>
+          <span>form a sharing circle,</span>
+          <span>exchange conversations with the crowd</span>
         </p>
 
         <p className={styles.lede}>
-          The circle is a social model with ancient roots: four to twelve
-          people, all equal, all facing a common center, gathered to learn as
-          one &mdash; record stories, map where everyone stands, find the
-          group&apos;s thresholds, arrive at shared words. What a circle makes,
-          it keeps.
+          The circle is a social model with ancient roots: a group of people,
+          all equal, all facing a common center, gathered to share and learn as
+          one. Convene a Holoscopic circle to share regularly, or for a set
+          time around one question. When a conversation strikes a chord, offer
+          it to other circles. Circle by circle, that is how a culture talks to
+          itself.
         </p>
 
         <div className={styles.figure}>
