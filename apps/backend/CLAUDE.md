@@ -93,6 +93,20 @@ model reached production at 07:00 UTC the next morning, with no deploy and nothi
 So: `await mongoose.connect(uri, { autoIndex: false })`, in every script, including throwaways.
 The failure it prevents is invisible while collections are small and expensive exactly once.
 
+## Where a script goes
+
+- **`scripts/`** — tracked. Anything production or operations runs: backups and restore,
+  `ensure-indexes.js`, backfills and one-off migrations, instance setup, `seed-memorial.js`,
+  `verify-ledger.js`, and anything `render.yaml` or an npm script invokes.
+- **`scripts/local/`** — ignored by git, never pushed. Scripts that only ever run against the dev
+  cluster: seeds, integration checks, simulations, demo sets (`seed-threshold-dev.js`,
+  `check-circles.js`, `seed-gather-demo.js`). A new dev-only script goes here.
+
+A script in `local/` sits one directory deeper, so its requires are `../../models/…` and its env
+file is `path.join(__dirname, '..', '..', '.env.local')`. Run it from `apps/backend` as
+`node scripts/local/<name>.js`. A fresh clone has none of them, so a doc that cites one is
+describing this machine.
+
 ## Backups: one bucket, two namespaces
 
 Dev and production have separate clusters, separate database names and separate Blob stores, but
