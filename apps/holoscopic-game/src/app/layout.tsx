@@ -4,7 +4,6 @@ import "./globals.css";
 import { SessionProvider } from "@/components/SessionProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { InstanceProvider } from "@/contexts/InstanceContext";
-import ServiceWorkerRegistration from "@/components/pwa/ServiceWorkerRegistration";
 import InstanceEndedBanner from "@/components/InstanceEndedBanner";
 import Beacon from "@/components/Beacon";
 import VercelAnalytics from "@/components/VercelAnalytics";
@@ -151,7 +150,6 @@ export default function RootLayout({
                   /verify-email and /reset-password carry a live token in it. */}
               <VercelAnalytics />
               {children}
-              <ServiceWorkerRegistration />
             </AuthProvider>
           </InstanceProvider>
         </SessionProvider>

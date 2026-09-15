@@ -105,3 +105,4 @@ Admin routes pass `userId` via `apiFetch({ userId })` which sets the `x-user-id`
 - Use CSS vars for colors (`var(--accent)` etc.), not Tailwind color utilities or raw hex
 - Known debt: many `*.module.css` files and the CreatePanel components still repeat palette values as literal hex instead of the globals.css vars — migrate opportunistically when touching those files, don't boil the ocean
 - `NEXT_PUBLIC_SERVER_URL` must be set in production `.env` for Socket.IO to connect (defaults to `http://localhost:3001`)
+- `public/sw.js` is a retired service worker that clears its caches and unregisters itself. Keep it at that path: browsers that installed the old caching worker only drop it by fetching this one. Nothing registers a worker any more
