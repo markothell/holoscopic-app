@@ -1,0 +1,235 @@
+/* ---- JOIN A GAME CARDS ----
+   One card per game, each wearing its own palette: Synthesis on dark plum
+   with brass/teal, On a Spectrum on its paper/crimson/cobalt, interView on
+   the warm taupe it owns, Map + Sequence on soft emerald. The motif SVG sits
+   behind the type, anchored right. */
+
+.gameCardStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.gameCard {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 2.25rem 2.5rem;
+  background: #d8d3c5;
+  border-radius: 4px;
+  text-decoration: none !important;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.gameCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(15, 13, 11, 0.1);
+  text-decoration: none !important;
+}
+
+.gameCardArt {
+  position: absolute;
+  right: -1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 130%;
+  max-width: 55%;
+  pointer-events: none;
+}
+
+.gameCardTitle {
+  position: relative;
+  font-family: var(--font-barlow), sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  color: var(--ink);
+}
+
+.gameCardAccent {
+  color: var(--accent);
+}
+
+.gameCardSub {
+  position: relative;
+  font-family: var(--font-dm-mono), monospace;
+  font-weight: 500;
+  font-size: clamp(0.62rem, 2.4vw, 1rem);
+  letter-spacing: 0.01em;
+  color: var(--accent);
+}
+
+.gameCardMeta {
+  position: relative;
+  font-family: var(--font-dm-mono), monospace;
+  font-weight: 300;
+  font-size: clamp(0.55rem, 2vw, 0.75rem);
+  letter-spacing: 0.08em;
+  color: var(--ink-light);
+  margin-top: 0.15rem;
+}
+/* Circles — the product's own language: Toono ground, serif wordmark,
+   body sans. See apps/circles/DESIGN.md for the palette. */
+.gameCardCi {
+  background: #F7F2E9;
+  border: 1px solid #EDE3D0;
+  min-height: 12.75rem;
+  box-sizing: border-box;
+  justify-content: center;
+}
+
+.gameCardTitleCi {
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  color: #3A2E20;
+}
+
+.gameCardSubCi {
+  font-family: Seravek, "Gill Sans", "Trebuchet MS", system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #6D5E4A;
+}
+
+/* On a Spectrum — its own paper + duotone wordmark */
+.gameCardOas {
+  background: #faf6ee;
+  border: 1px solid #e5decf;
+}
+
+.oasAx { color: #e0344e; }
+.oasAy { color: #2b49d8; }
+
+.gameCardSubOas {
+  color: #2b49d8;
+}
+
+/* interView keeps the taupe it has always owned */
+.gameCardIv {
+  background: #d8d3c5;
+}
+
+/* Map + Sequence — soft emerald, the sequence-node color */
+.gameCardMs {
+  background: #e4ece6;
+}
+
+.msAccent { color: #0e8f66; }
+
+.gameCardSubMs {
+  color: #0e8f66;
+}
+
+/* Chorus — eau de nil, the pale blue-green of mid-century domestic paintwork
+   that the memorial itself is built on, with the one dial-amber accent. The
+   card wears the app's ground rather than a version of this page's taupe, the
+   same way every other card wears its own. */
+.gameCardCh {
+  background: #e4eae2;
+  border: 1px solid #d5ddd3;
+}
+
+/* The wordmark stays one colour — see the note on the card. The amber lives in
+   the art and the sub-line instead. */
+.gameCardSubCh {
+  color: #8a6f4e;
+}
+
+/* Threshold — the app's own ground, with the neutral threshold grey carrying
+   the sub-line. The teal/rust poles stay in the beam art: putting either on
+   the type would make one end look like the verdict, which is the exact thing
+   the app's palette was built to avoid. */
+.gameCardTh {
+  background: #f6f5f2;
+  border: 1px solid #e4e2dc;
+}
+
+.gameCardSubTh {
+  color: #7c7a76;
+}
+
+/* Synthesis — dark plum, the theme the app itself wears, with brass + teal */
+.gameCardSyn {
+  background: #221e2e;
+}
+
+.gameCardSyn .gameCardTitle {
+  color: #f4efe6;
+}
+
+.gameCardSyn .gameCardMeta {
+  color: rgba(244, 239, 230, 0.55);
+}
+
+/* The wordmark splits on its morphemes, not its syllables: syn- (together)
+   in the brass the art starts from, -thesis (the proposition) in the teal it
+   converges to. Same left-to-right many-into-one reading as ConvergeArt. */
+.synPrefix { color: #e3a548; }
+.synAccent { color: #55c2a8; }
+
+.gameCardSubSyn {
+  color: #55c2a8;
+}
+
+/* ---- DASHBOARD SIGNALS ----
+   Only the dashboard draws these. A card with something waiting sits in a
+   slot so the count can pin to its corner without living inside the link. */
+
+.gameCardSlot {
+  position: relative;
+}
+
+.signalButton {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  z-index: 2;
+  min-width: 1.6rem;
+  height: 1.6rem;
+  padding: 0 0.45rem;
+  border: none;
+  border-radius: 999px;
+  background: #C83B50;
+  color: #fff;
+  font-family: var(--font-dm-mono), monospace;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 13, 11, 0.15);
+  transition: background 0.2s;
+}
+
+.signalButton:hover,
+.signalButton[aria-expanded="true"] {
+  background: #B03248;
+}
+
+.signalList {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0 0 0 1.25rem;
+  border-left: 1px solid #D9D4CC;
+}
+
+.signalItem {
+  display: block;
+  padding: 0.3rem 0;
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.4;
+  color: #0F0D0B !important;
+  text-decoration: none !important;
+  transition: color 0.2s;
+}
+
+.signalItem:hover {
+  color: #C83B50 !important;
+}
