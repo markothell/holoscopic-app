@@ -11,7 +11,7 @@ const notificationSchema = new mongoose.Schema({
     // is that a new activity declares its own phases without touching the
     // machine, and a type derived from the phase name would make each new one
     // fail this enum — invisibly, since utils/notify.js swallows the error.
-    enum: ['topic_confirmed', 'inquiry_linked', 'algorithm_session_ready', 'frame_nominated', 'activity_closed', 'circle_phase'],
+    enum: ['topic_confirmed', 'inquiry_linked', 'algorithm_session_ready', 'frame_nominated', 'activity_closed', 'circle_phase', 'invitation'],
     required: true,
   },
   message: { type: String, required: true },

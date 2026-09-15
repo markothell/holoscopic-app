@@ -141,6 +141,16 @@ const userSchema = new mongoose.Schema({
 
   lastLoginAt: {
     type: Date
+  },
+
+  // When this account last used each app, for ordering the holoscopic.io
+  // dashboard. Written at most hourly per app by middleware/touchLastUsed.js.
+  lastUsed: {
+    circles: { type: Date },
+    threshold: { type: Date },
+    synthesis: { type: Date },
+    spectrum: { type: Date },
+    interview: { type: Date },
   }
 }, { id: false });
 

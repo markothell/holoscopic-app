@@ -365,6 +365,9 @@ app.use('/api', resolveInstance);
 // Verify bearer tokens (signed from the NextAuth session by the game frontend)
 const { attachVerifiedUser } = require('./middleware/verifyUser');
 app.use('/api', attachVerifiedUser);
+// Per-app "last used", for the dashboard's ordering. After attachVerifiedUser,
+// whose token audience is what names the app.
+app.use('/api', require('./middleware/touchLastUsed').touchLastUsed);
 
 // Create server
 const server = http.createServer(app);
@@ -562,6 +565,11 @@ function loadAPIRoutes() {
       // same reasoning as threshold's hooks mount above.
       app.use('/api/circles/hooks', circlesRoutes.hooks);
       app.use('/api/circles', enforceVerifiedUser, circlesRoutes);
+      // Invitations to circles, across every app that runs them, and the
+      // cross-app account reads the holoscopic.io dashboard draws from. Both
+      // after the circle routers, so every activity module is registered.
+      app.use('/api/invites', enforceVerifiedUser, require('./routes/invites'));
+      app.use('/api/me', enforceVerifiedUser, require('./routes/me'));
       // Gather audio, wired like threshold's directly above. The mirror is
       // the SAME mirrorShare — the primitive Share model deliberately mirrors
       // ThresholdShare's audio shape (one wire shape, one validator, one

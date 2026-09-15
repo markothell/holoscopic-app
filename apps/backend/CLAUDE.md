@@ -8,7 +8,11 @@ Express + Socket.IO + Mongoose server. Single entry point: `websocket-server.js`
 |---|---|
 | `websocket-server.js` | Entry point: Express setup, Socket.IO, MongoDB connection, route loading |
 | `middleware/resolveInstance.js` | Attaches `req.instance` / `req.instanceId` to every `/api` request |
-| `middleware/requireAdmin.js` | Checks `x-user-id` header, verifies `role === 'admin'` on `User` doc |
+| `middleware/requireAdmin.js` | Verifies `role === 'admin'` on the `User` doc named by the verified token — never the header |
+| `middleware/verifyUser.js` | `attachVerifiedUser` (token → `req.authedUserId`; normalizes `x-user-id`), `enforceVerifiedUser`, `requireSelf`, `requireVerified` |
+| `middleware/touchLastUsed.js` | Per-app `User.lastUsed`, from the token audience, at most hourly — orders the holoscopic.io dashboard |
+| `utils/invites.js` + `routes/invites.js` | Invitations to circles: host-made links, accepted only by the matching confirmed address |
+| `utils/dashboard.js` + `routes/me.js` | `GET /api/me/dashboard` — what is waiting on the account in each app, `lastUsed`, pending invitation count |
 | `utils/holons.js` | `transact()` and `spend()` — the only way to move Holon balances |
 | `utils/notify.js` | Creates `Notification` documents for a user |
 | `utils/entries.js` | The single write funnel for entries (upsert, vote, clear, seed) + wire serializers `toClient`/`toRedacted` |
@@ -183,7 +187,14 @@ cannot change those in place.
 
 ## Authentication
 
-Most endpoints rely solely on the `x-user-id` request header — there is no JWT verification on regular user endpoints. Only routes that use `requireAdmin` middleware enforce an actual database role check. Never rely on the header value alone for sensitive operations without `requireAdmin`.
+Frontends send a short-lived game token (`Authorization: Bearer`, minted by each app's `/api/auth/game-token`) beside `x-user-id`. `attachVerifiedUser` runs on every `/api` request and sets `req.authedUserId` from a valid token.
+
+**`x-user-id` is a claim, never a credential.** Past `attachVerifiedUser` the header holds the proven id or nothing: a header no token backs, or one naming somebody other than the token, is deleted (the raw claim survives on `req.claimedUserId` so `enforceVerifiedUser` can still 401 a mismatched write). Before 2026-09-15 a bare header was believed on every GET — notifications, joined games, circles, ideas and invitations were readable for any id. With no token secret configured (dev only) the header is left alone.
+
+- New code reads `req.authedUserId`. The header is equivalent after normalization, but the field says what it is.
+- A route whose subject is a path param (`/user/:userId`) needs `requireSelf` — neither middleware can see the param.
+- Circle joins match invitations against the ACCOUNT's confirmed email (`routes/circles.js#accountOf`), never an address in the body.
+- `requireAdmin` still reads the `User` row for the role; a token's `role` claim is advisory.
 
 ## Models and IDs
 

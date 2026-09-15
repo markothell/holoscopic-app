@@ -147,6 +147,16 @@ const INDEXES = [
   // client carry both ids.
   { collection: 'circles', name: 'instanceId_seeds_id', keys: { instanceId: 1, 'seeds.id': 1 } },
 
+  // --- Invitations (utils/invites.js) ---
+  //
+  // tokenHash is the link lookup and must be unique: two invitations sharing a
+  // hash would let one link answer for either. id is the list-page lookup.
+  // email_status is "invitations for me", read by the dashboard on every load.
+  { collection: 'invites', name: 'id_1', keys: { id: 1 }, options: { unique: true } },
+  { collection: 'invites', name: 'tokenHash_1', keys: { tokenHash: 1 }, options: { unique: true } },
+  { collection: 'invites', name: 'circleId_1', keys: { circleId: 1 } },
+  { collection: 'invites', name: 'email_status', keys: { email: 1, status: 1 } },
+
   // --- Threshold. Both unique indexes are correctness, not speed ---
   //
   // seedId_userId_pole IS the share upsert key (D10: one story per pole), and
