@@ -291,7 +291,6 @@ function JoinCard({ circle, userId, onJoined }: {
   userId: string;
   onJoined: () => Promise<void>;
 }) {
-  const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -299,7 +298,7 @@ function JoinCard({ circle, userId, onJoined }: {
     setBusy(true);
     setError(null);
     try {
-      await circlesApi.join(circle.id, userId, email.trim() || undefined);
+      await circlesApi.join(circle.id, userId);
       await onJoined();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'That did not work');
@@ -315,21 +314,13 @@ function JoinCard({ circle, userId, onJoined }: {
           {circle.memberCount === 0
             ? 'This circle is just forming.'
             : `${circle.memberCount} ${circle.memberCount === 1 ? 'person is' : 'people are'} in this circle.`}{' '}
-          If an invitation brought you here, enter the email it went to — that address is also
-          where the circle&rsquo;s mail will reach you.
+          An invitation is matched to your account&rsquo;s email address, which is also where
+          the circle&rsquo;s mail will reach you.
         </Muted>
         <form
           onSubmit={e => { e.preventDefault(); void join(); }}
           className="mt-4 space-y-3"
         >
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="Email your invitation went to"
-            autoComplete="email"
-            className="w-full rounded-lg border border-[var(--rule)] bg-ground/50 p-3 text-[15px] outline-none focus:border-[var(--rule-strong)]"
-          />
           {error && <p className="text-sm text-pole-b">{error}</p>}
           <Action type="submit" disabled={busy}>
             {busy ? 'Taking your seat…' : 'Take your seat'}

@@ -65,15 +65,15 @@ export const circlesApi = {
 
   /**
    * Take a seat. The invitation gate is server-side: when the circle requires
-   * one, the email submitted here must be an address the invitation went to
-   * (utils/circles.js#joinCircle). The email also lands on the member row as
+   * one, the ACCOUNT's confirmed address must be on its invitation list
+   * (routes/circles.js#accountOf). That address also lands on the member row as
    * where this circle's mail reaches you. Joining in week six is the ordinary
    * way in, not an edge case — nothing is withheld for having missed the
    * beginning.
    */
-  join(circleId: string, userId: string, email?: string) {
+  join(circleId: string, userId: string) {
     return apiFetch<{ circle: Circle }>(`/circles/${circleId}/join`, {
-      method: 'POST', body: { email }, userId,
+      method: 'POST', userId,
     });
   },
 

@@ -26,8 +26,36 @@ const router = express.Router();
 
 const store = threshold.mongoStore;
 
+// attachVerifiedUser leaves x-user-id holding the proven id or nothing, so the
+// header fallback only ever matters on a dev server with no token secret.
 function userIdOf(req) {
-  return req.verifiedUserId || req.headers['x-user-id'] || null;
+  return req.authedUserId || req.headers['x-user-id'] || null;
+}
+
+/**
+ * The account's own address and whether it is confirmed.
+ *
+ * An invitation is matched against THIS, never an address in the request body.
+ * The join form used to ask "email your invitation went to" and check whatever
+ * was typed, so knowing one invited address was enough to take that seat.
+ */
+async function accountOf(req) {
+  const id = userIdOf(req);
+  if (!id) return null;
+  return User.findOne({ id }).select('id email emailVerified').lean();
+}
+
+// An invitation-only circle admits a confirmed address only: an unconfirmed one
+// is an address anybody could have typed at signup.
+function unconfirmedForInvitation(res, circle, account) {
+  const alreadyIn = circle.members.some(m => m.userId === account.id);
+  if (!circle.requireInvitation || alreadyIn || account.emailVerified) return false;
+  res.status(403).json({
+    error: 'Confirm your email address first. Invitations are matched to it.',
+    code: 'email_unverified',
+    email: account.email,
+  });
+  return true;
 }
 
 /**
@@ -149,9 +177,12 @@ router.post('/circles/:id/join', async (req, res) => {
   try {
     const circle = await loadCircle(req, res);
     if (!circle) return;
+    const account = await accountOf(req);
+    if (!account) return res.status(401).json({ error: 'Sign in required' });
+    if (unconfirmedForInvitation(res, circle, account)) return;
     const after = await circles.joinCircle({
-      store, circleId: circle.id, userId: userIdOf(req),
-      username: await displayNameFor(req), email: req.body.email || '',
+      store, circleId: circle.id, userId: account.id,
+      username: await displayNameFor(req), email: account.email || '',
     });
     res.json({ circle: circles.toClient(fresh(after, circle), { userId: userIdOf(req) }) });
   } catch (err) {

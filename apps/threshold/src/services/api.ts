@@ -131,9 +131,10 @@ export const thresholdApi = {
     return apiFetch<{ circle: Circle }>('/threshold/circles', { method: 'POST', body, userId });
   },
 
-  join(circleId: string, userId: string, email?: string) {
+  // No address in the body: the server matches invitations to the account's own.
+  join(circleId: string, userId: string) {
     return apiFetch<{ circle: Circle }>(`/threshold/circles/${circleId}/join`, {
-      method: 'POST', body: { email }, userId,
+      method: 'POST', userId,
     });
   },
 
