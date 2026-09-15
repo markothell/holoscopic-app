@@ -48,6 +48,13 @@ export function appForPath(pathname: string): App {
   return 'site';
 }
 
+// An invitation link carries a single-use token in its path. The counters are
+// permanent and readable in the platform admin, so the token never reaches
+// them — every invitation counts as one page. Only this app has the route.
+function redactPath(pathname: string): string {
+  return pathname.replace(/^\/invite\/[^/]+/, '/invite/[token]');
+}
+
 interface Props {
   /**
    * Paths whose link clicks are recorded. Empty everywhere by default.
@@ -164,7 +171,7 @@ export default function Beacon({ clickPaths = [] }: Props) {
     send({
       app: appForPath(pathname),
       type: 'view',
-      path: pathname,
+      path: redactPath(pathname),
       ...(isEntry ? { referrer: entryReferrer() } : {}),
     });
   }, [pathname]);
@@ -187,7 +194,7 @@ export default function Beacon({ clickPaths = [] }: Props) {
       send({
         app: appForPath(pathname || '/'),
         type: 'click',
-        path: pathname || '/',
+        path: redactPath(pathname || '/'),
         target: href,
         // What the link SAID. The wording of a homepage link is the thing
         // being tested; the href alone cannot tell you which wording won.

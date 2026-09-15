@@ -42,6 +42,10 @@ function isCampaignParam(key: string) {
   return key === 'ref' || key.startsWith('utm_');
 }
 
+export function redactPath(pathname: string) {
+  return pathname.replace(/^\/invite\/[^/]+/, '/invite/[token]');
+}
+
 function redact(event: BeforeSendEvent) {
   let url: URL;
   try {
@@ -57,6 +61,10 @@ function redact(event: BeforeSendEvent) {
     if (isCampaignParam(key)) kept.append(key, value);
   });
   url.search = kept.toString();
+  // An invitation link carries its token in the PATH (/invite/<token>), where
+  // the query-string rule above cannot see it. Only this app has that route,
+  // so only this copy of the mirrored file needs the line.
+  url.pathname = redactPath(url.pathname);
   // The fragment never reaches a server and is therefore the other place a
   // token could be hiding. Nothing here uses one; it costs nothing to drop.
   url.hash = '';

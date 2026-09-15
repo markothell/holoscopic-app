@@ -4,7 +4,7 @@ import { NotificationService } from '@/services/notificationService';
 
 export interface AppNotification {
   id: string;
-  type: 'topic_confirmed' | 'inquiry_linked' | 'algorithm_session_ready' | 'frame_nominated' | 'activity_closed';
+  type: 'topic_confirmed' | 'inquiry_linked' | 'algorithm_session_ready' | 'frame_nominated' | 'activity_closed' | 'invitation';
   message: string;
   refType: string | null;
   refId: string | null;

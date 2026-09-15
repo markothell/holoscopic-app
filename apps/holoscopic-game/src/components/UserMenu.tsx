@@ -25,6 +25,7 @@ function notificationHref(n: AppNotification): string {
     return `/frame/${n.refId}`;
   }
   if (n.type === 'activity_closed') return '/interview';
+  if (n.type === 'invitation' && n.refType === 'invite') return '/invitations';
   return '/';
 }
 
@@ -358,6 +359,7 @@ export default function UserMenu({ gameLinks }: { gameLinks?: GameLink[] } = {})
           {[
             { label: 'Profile', path: `/profile/${userId}` },
             { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Invitations', path: '/invitations' },
             { label: 'Settings', path: '/settings' },
           ].map((item) => (
             <button

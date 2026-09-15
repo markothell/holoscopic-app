@@ -14,7 +14,7 @@ export const SYSTEM_PATHS = new Set([
   '', 'a', 'dashboard', 'admin', 'create', 'profile', 'login', 'signup',
   'settings', 'start', 'waitlist', 'essays', 'manifesto', 'sequence',
   'patterns', 'frame', 'play', 'topics', 'inquiry', 'algorithms', 'api',
-  'interview',
+  'interview', 'invite', 'invitations',
 ]);
 
 /**

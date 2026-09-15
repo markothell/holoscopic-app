@@ -48,6 +48,9 @@ export default function robots(): MetadataRoute.Robots {
           '/dashboard/',
           '/profile/',
           '/settings/',
+          // Invitation links are single-use tokens.
+          '/invite/',
+          '/invitations/',
           // Auth routes, some of which are single-use links.
           '/login',
           '/signup',

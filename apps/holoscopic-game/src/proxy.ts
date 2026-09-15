@@ -16,5 +16,8 @@ export const config = {
     // never load. A signed-in visitor skipped straight to the same 404.
     '/create/:path*',
     '/profile/:path*',
+    // Not '/invite/:path*': an invitation link has to render for someone who
+    // has no account yet, so that page handles signed-out itself.
+    '/invitations/:path*',
   ],
 };
