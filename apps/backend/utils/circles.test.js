@@ -12,7 +12,7 @@ const activities = require('./circleActivities');
 //
 // What it CANNOT see is the schema: there is no Mongoose in the loop here, so
 // an enum this file never mentions stays green while every real write fails.
-// scripts/check-circles.js is the standing answer to that.
+// scripts/local/check-circles.js is the standing answer to that.
 function memStore() {
   const rows = [];
   const notifications = [];

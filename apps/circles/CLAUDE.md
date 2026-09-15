@@ -113,8 +113,8 @@ npm run dev:backend   # 4001
 npm run dev:circles    # 4007
 ```
 
-Sign in with any dev account (`node scripts/seed-threshold-dev.js` from `apps/backend` prints
-them), then `node scripts/seed-circles-dev.js` builds this app's three demo circles — `/c/harbor`
+Sign in with any dev account (`node scripts/local/seed-threshold-dev.js` from `apps/backend` prints
+them), then `node scripts/local/seed-circles-dev.js` builds this app's three demo circles — `/c/harbor`
 (the richest map: 9 members, mixed participation, solos, a live rank round), `/c/quay` (mid-share,
 Mara not yet in — the telling flow), `/c/inlet` (invitation-only — the take-a-seat card). Both
 scripts are dev-only and rebuild their own fixtures on every run.

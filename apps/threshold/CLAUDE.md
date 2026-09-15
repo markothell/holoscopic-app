@@ -18,7 +18,7 @@ questions in §13. Read the relevant § before changing behavior it describes. T
 **Built:** the backend through M3a including the topic queue (M1b), and **every participant
 surface** — the circle page, the seed form, the share surface, the ranking queue, the per-cycle
 reveal and the circle-final record — in the tide-line language (§9.2). ~324 backend tests, plus 19
-integration checks in `scripts/check-circles.js` against a real database.
+integration checks in `scripts/local/check-circles.js` against a real database.
 
 **M3b, audio, is built and awaiting a device**: the recorder, the Blob upload route, playback in
 the ranking queue and inside the reveal's expanded story. What is left is a real recording on a
@@ -43,7 +43,7 @@ every circle on production was made by running the funnel from a laptop, so the 
 by anybody invited to a circle and by nobody else. **`/new` also sets the round length** — a day, three days, a week, or no clock at
 all — and it is the only surface that sets one, since nothing edits `config` after creation.
 
-**`node scripts/seed-threshold-dev.js` from `apps/backend` is the fastest way to see any of it.**
+**`node scripts/local/seed-threshold-dev.js` from `apps/backend` is the fastest way to see any of it.**
 It builds a circle holding every state at once — a live cycle mid-sort, a queue with uneven support
 and a promotion, a revealed topic and a skipped one — through the funnels rather than by direct
 writes, which is the point: a circle assembled by hand lands in states the machine never produces
@@ -224,7 +224,7 @@ ladder) and none of those gates is being loosened for a marketing page. The prec
   schema validation never executes — an enum you narrowed or a field you removed stays invisible to
   the whole suite while every real write fails. This is not hypothetical: an early cut of the queue
   (M1b) left the suite fully green with a funnel writing two `phase`/`status` values the schema
-  rejected. Exercise a model change against a real database — `scripts/check-circles.js` is the
+  rejected. Exercise a model change against a real database — `scripts/local/check-circles.js` is the
   standing tool for exactly that, it is dev-only by design, and M1b's four new enum values
   (`idle`, `closed`, `skipped`, `via: 'queue'`) each have a check there naming the schema in the
   failure message.

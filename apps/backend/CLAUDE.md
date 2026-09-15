@@ -178,7 +178,7 @@ can drop it without a chart losing history.
 - Query strings are stripped before storage — `?k=` on a Chorus curate link is a credential — and
   an outbound click is recorded as scheme + host only. The referrer keeps its host and nothing
   else, so a search term cannot arrive with it.
-- `node scripts/seed-traffic.js` writes 30 days of demo rollup rows (`--clear` removes them). It
+- `node scripts/local/seed-traffic.js` writes 30 days of demo rollup rows (`--clear` removes them). It
   refuses production by database name and by `NODE_ENV`.
 
 **`scripts/ensure-indexes.js` specs now take an `options` object** (`unique`, `expireAfterSeconds`).

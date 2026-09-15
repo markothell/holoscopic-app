@@ -151,7 +151,7 @@ curl -s https://whorl-websocket-server.onrender.com/health
 - `mediaBackup: ready` — otherwise recordings have no off-site copy
 - The logs show `⏱️  Circle rounds every 60s` — otherwise circles never advance and no mail is sent
 
-Then, once the frontend exists, the end-to-end check is `scripts/check-circles.js` — but **dev
+Then, once the frontend exists, the end-to-end check is `scripts/local/check-circles.js` — but **dev
 only**; it writes test data and refuses any other database.
 
 ---

@@ -20,7 +20,7 @@ the **dev** cluster and the **dev** blob store. Nothing below creates a second o
 `apps/threshold`. What is left is the table below, the `CLIENT_URL` line, and a push.
 
 A Threshold **instance already exists on the dev cluster** (`slug: threshold`), because the preview
-backend and local development share that database. `node scripts/seed-threshold-dev.js` from
+backend and local development share that database. `node scripts/local/seed-threshold-dev.js` from
 `apps/backend` builds a circle in it holding every state at once.
 
 ## Env vars on that project

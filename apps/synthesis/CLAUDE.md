@@ -103,7 +103,7 @@ the only rows that exist.
 
 The `/ideas/:code` routes address an instance they were handed rather than the resolved one, so
 they use `mayReadIdea`, the same two clauses. Keep the two in step.
-`scripts/check-synthesis-access.js` exercises this against a real database.
+`scripts/local/check-synthesis-access.js` exercises this against a real database.
 
 ## Write funnels
 

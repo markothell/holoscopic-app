@@ -5,7 +5,7 @@
  * NOT A DIAGRAM ABOUT THE PRODUCT. Every mark here is the mark
  * apps/circles/src/components/CircleMap.tsx makes, and the geometry is that
  * component's own `layout()` run over the `harbor` sample circle from
- * apps/backend/scripts/seed-circles-dev.js — nine members, three finished
+ * apps/backend/scripts/local/seed-circles-dev.js — nine members, three finished
  * explorations at 9/9, 5/9 and 2/9, one live topic mid-sort, two solo
  * explorations and two open nominations. Harbor exists to be the map demo;
  * this is that demo, frozen.
