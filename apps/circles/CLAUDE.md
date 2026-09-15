@@ -79,7 +79,7 @@ gates are not being loosened for a marketing page. The precedent is Synthesis's
 
 - **`src/lib/demo.ts` is the fixture**, typed against `@/lib/types`. That typing is the whole
   point: if a wire type moves, the demo stops compiling instead of quietly drifting.
-- **The content is `apps/backend/scripts/seed-gather-demo.js`'s, verbatim** — the Lantern circle,
+- **The content is `apps/backend/scripts/local/seed-gather-demo.js`'s, verbatim** — the Lantern circle,
   its eight invented people, its five asks, the same word picks and coordinates. Change one,
   change the other.
 - Everything renders through the app's real components (`CircleMap`, `circleHome.tsx`,

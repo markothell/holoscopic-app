@@ -24,7 +24,7 @@ import type {
 //
 // SOURCE OF THE CONTENT: written for this file. The eight people are invented,
 // the stories are invented, and the sorting is invented. Tone follows
-// `apps/backend/scripts/seed-gather-demo.js`.
+// `apps/backend/scripts/local/seed-gather-demo.js`.
 //
 // NO AUDIO, on purpose — the same rule that script keeps. Threshold's stories
 // can be recorded, but a fake blob URL renders as a broken player, so every

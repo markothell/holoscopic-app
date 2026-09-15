@@ -17,7 +17,7 @@ import type {
 // the answers are invented, and nothing here is saved anywhere. The demo says
 // so on its own surfaces and keeps the "← leave the sample" way out.
 //
-// SOURCE OF THE CONTENT: apps/backend/scripts/seed-gather-demo.js — the same
+// SOURCE OF THE CONTENT: apps/backend/scripts/local/seed-gather-demo.js — the same
 // Lantern circle, the same prompts, names, answers, word picks and
 // coordinates, copied across verbatim. That script writes the real thing to a
 // dev database for the camera; this file is the same set with no database

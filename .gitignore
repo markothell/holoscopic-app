@@ -46,6 +46,8 @@ next-env.d.ts
 # backend
 apps/backend/server.log
 apps/backend/migrate-add-urlname.js
+# scripts that stay on this machine: demo sets, one-off data fixes
+apps/backend/scripts/local/
 
 # claude code internal
 .claude/worktrees/
