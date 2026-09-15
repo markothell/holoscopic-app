@@ -28,7 +28,9 @@ async function canViewInGame(targetUserId, viewerUserId, instanceId) {
 router.get('/:userId/games', async (req, res) => {
   try {
     const { userId } = req.params;
-    const viewerId = req.headers['x-user-id'] || req.query.viewerId;
+    // The header only, never ?viewerId= — a query string is a claim nobody
+    // checks, and this id decides whether a private map is shown.
+    const viewerId = req.headers['x-user-id'];
 
     const user = await User.findByCustomId(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -124,7 +126,9 @@ router.get('/:userId/games', async (req, res) => {
 router.get('/:userId/game-map', async (req, res) => {
   try {
     const { userId } = req.params;
-    const viewerId = req.headers['x-user-id'] || req.query.viewerId;
+    // The header only, never ?viewerId= — a query string is a claim nobody
+    // checks, and this id decides whether a private map is shown.
+    const viewerId = req.headers['x-user-id'];
     const instanceId = req.instanceId;
 
     const user = await User.findByCustomId(userId);

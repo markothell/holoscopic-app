@@ -8,6 +8,7 @@ const FrameOfReference = require('../models/FrameOfReference');
 const entries = require('../utils/entries');
 const { transact, spend } = require('../utils/holons');
 const { notify } = require('../utils/notify');
+const { requireSelf } = require('../middleware/verifyUser');
 
 // ─── Serialization ────────────────────────────────────────────────────────────
 
@@ -268,7 +269,8 @@ module.exports = function(io) {
   // The instance set comes from membership, exactly as GET /users/:userId/games
   // derives it (routes/users.js:36). `$in` over a denormalized indexed field is
   // the same index scan, just with more than one key.
-  router.get('/user/:userId', async (req, res) => {
+  // Self only: this lists every activity an account has taken part in.
+  router.get('/user/:userId', requireSelf('userId'), async (req, res) => {
     try {
       const { userId } = req.params;
       const memberships = await InstanceMembership.find({ userId }).select('instanceId').lean();

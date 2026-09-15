@@ -25,6 +25,7 @@ require.cache[userPath] = {
 
 const {
   attachVerifiedUser,
+  enforceVerifiedUser,
   requireSelf,
   requireVerified,
   verifyToken,
@@ -102,6 +103,46 @@ test('attachVerifiedUser exposes role as advisory only', async () => {
   await run(attachVerifiedUser, req);
   assert.equal(req.authedUserId, 'u1');
   assert.equal(req.authedRole, 'admin');
+});
+
+// A bare x-user-id used to be believed on every read: /notifications,
+// /instances/mine, /circles/me, /synthesis/me/ideas and more answered for
+// whichever account the header named.
+
+test('attachVerifiedUser strips a bare x-user-id that no token backs', async () => {
+  const req = { headers: { 'x-user-id': 'victim' } };
+  await run(attachVerifiedUser, req);
+  assert.equal(req.headers['x-user-id'], undefined);
+  assert.equal(req.authedUserId, undefined);
+});
+
+test('attachVerifiedUser strips an x-user-id that names someone other than the token', async () => {
+  const req = {
+    headers: { 'x-user-id': 'victim', authorization: `Bearer ${sign({ sub: 'attacker' }, { expiresIn: '5m' })}` },
+  };
+  await run(attachVerifiedUser, req);
+  assert.equal(req.headers['x-user-id'], undefined);
+  assert.equal(req.authedUserId, 'attacker');
+});
+
+test('attachVerifiedUser keeps an x-user-id the token proves', async () => {
+  const req = {
+    headers: { 'x-user-id': 'u1', authorization: `Bearer ${sign({ sub: 'u1' }, { expiresIn: '5m' })}` },
+  };
+  await run(attachVerifiedUser, req);
+  assert.equal(req.headers['x-user-id'], 'u1');
+});
+
+test('a mismatched write is still refused after the header is stripped', async () => {
+  const req = {
+    method: 'POST',
+    body: {},
+    headers: { 'x-user-id': 'victim', authorization: `Bearer ${sign({ sub: 'attacker' }, { expiresIn: '5m' })}` },
+  };
+  await run(attachVerifiedUser, req);
+  const r = await run(enforceVerifiedUser, req);
+  assert.equal(r.status, 401);
+  assert.equal(r.nexted, false);
 });
 
 // ------------------------------------------------------------------ requireSelf

@@ -6,6 +6,7 @@ const Entry = require('../models/Entry');
 const User = require('../models/User');
 const requireEmailVerified = require('../middleware/requireEmailVerified');
 const { cloneActivities } = require('../utils/sequences');
+const { requireSelf } = require('../middleware/verifyUser');
 
 // Positioned-entry count for one activity (a "completed mapping")
 function completedMappings(activityId) {
@@ -194,7 +195,8 @@ router.get('/invitations', async (req, res) => {
 });
 
 // Get sequences for a user (only shows sequences they're enrolled in)
-router.get('/user/:userId', async (req, res) => {
+// Self only: the sequences an account is enrolled in, with its progress.
+router.get('/user/:userId', requireSelf('userId'), async (req, res) => {
   try {
     const { userId } = req.params;
     const sequences = await Sequence.find({

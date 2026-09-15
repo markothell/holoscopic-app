@@ -56,6 +56,27 @@ function attachVerifiedUser(req, _res, next) {
     // observability and the future per-router audience rule.
     if (payload.aud) req.authedAud = String(payload.aud);
   }
+
+  // x-user-id is a CLAIM, never a credential. Past this line the header holds
+  // either the proven id or nothing, so every route that reads it — and there
+  // are dozens, most of them GETs that enforceVerifiedUser never inspects —
+  // reads a verified identity. Before this, a bare header on a read was
+  // believed: anyone could list another account's notifications, circles,
+  // ideas and invitations by naming its id.
+  //
+  // The raw claim is kept on req.claimedUserId so enforceVerifiedUser can still
+  // answer a mismatched write with 401 rather than quietly running it as
+  // nobody. With no secret configured (dev only — production 503s writes) the
+  // header is left alone, matching enforceVerifiedUser's dev passthrough.
+  const claimed = req.headers['x-user-id'];
+  if (claimed !== undefined) {
+    req.claimedUserId = claimed;
+    if (req.authedUserId && String(claimed) === req.authedUserId) {
+      req.headers['x-user-id'] = req.authedUserId;
+    } else if (req.authedUserId || SECRET) {
+      delete req.headers['x-user-id'];
+    }
+  }
   next();
 }
 
@@ -66,7 +87,7 @@ const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 // Bare x-user-id is never trusted for writes on guarded routers.
 function enforceVerifiedUser(req, res, next) {
   if (!MUTATING.has(req.method)) return next();
-  const claimed = req.headers['x-user-id'] || (req.body && req.body.userId);
+  const claimed = req.claimedUserId || req.headers['x-user-id'] || (req.body && req.body.userId);
   if (!claimed) return next(); // identity-free request; route logic decides
 
   if (!SECRET) {
