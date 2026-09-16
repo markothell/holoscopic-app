@@ -61,6 +61,9 @@ eventually the synthesis surfaces moving in as a package.
 | `src/components/{Shell,Wordmark}.tsx` | Chrome in the Toono language; the wordmark is plain lowercase Seravek (final treatment pending the branding session) |
 | `src/services/api.ts` | All HTTP. Generic circle ops AND gather verbs (respond/react/responses/advance) ride `/api/circles`; Threshold's own verbs stay on `/api/threshold` |
 | `src/lib/{auth,types}.ts` | Auth stack copy #5 (M2's `@hs/auth` dedupes them) and the wire types, mirrored from the backend serializers |
+| `src/app/circles/new/page.tsx` | **Start a circle** (2026-09-16): title, who may take a seat, optionally addresses to seat now. Sends `POST /api/circles` — activity `gather`, `mode: 'circle'`, `config.maxLive: 3` — and the circle is born in DRAFT, so a host invites people before anything starts or mails. **Any verified account may host, capped at three open circles** (P15 rung 2 and Q6, both revised 2026-09-16: the platform-admin creator those specified was never built, so until this page the product could not make the thing it is named after) |
+| `src/components/InvitePanel.tsx` | The host's side of invitations, on the circle it belongs to: make a per-address link, copy it once, withdraw a pending one. Rides `/api/invites`, which is NOT instance-scoped — these are the same rows holoscopic.io/invitations reads, so it is a second door onto one list, not a copy |
+| `src/components/CircleActions.tsx` | **The three ways out** (2026-09-16), and they are deliberately not one act: `CircleActions` carries *leave* (any member — the circle stays, and your seat empties if you held it), *close* (host only, terminal, D29) and *delete* (host only, and only while nothing has been put in — offered when no seed has `openedAt`, with the server's refusal shown if it still says no). `VacantSeat` is the other half: an unhosted circle is **inactive, not ended**, and this is the offer to pick the seat up |
 | `src/app/c/[urlName]/new/page.tsx` | The activity builder's creator flow (code/docs/plan/PRIMITIVES.md §9 S-decisions, 2026-08-20): + on circle home → primitives/templates tabs → four connected dots (shape, prompt, reveal, launch), staged locally and sent as ONE postSeed with `activity: 'gather'` |
 | `src/app/c/[urlName]/activity/[seedId]/page.tsx` | One gather ask, respond + reveal in a single surface (B4 keeps input open past the reveal). Voice-first or text-first story (S1), five stops (S2), free/quadrant grids (S3), tell-then-place (S4), the words chip field with the coin budget (S5), the state line + facilitator's confirm-gated Reveal-now (S19/S20) |
 | `src/components/GatherSurface.tsx` | The gather ask itself, lifted out of the activity page so `/demo` renders the SAME surface. `readOnly` withholds every writing control (compose, edit, reveal-now, reactions) and changes nothing else; it defaults false |
@@ -97,6 +100,20 @@ gates are not being loosened for a marketing page. The precedent is Synthesis's
   (P6's one-platform-instance is future work). `/api/circles` has no app gate by design: every
   lookup is instance-scoped, so a wrong value reads as "circle not found", not as an auth error.
 - `NEXTAUTH_SECRET` must equal the backend's `GAME_TOKEN_SECRET` (dev already shares one).
+- **Branch every control on `isHost`, never on `isCreator`.** Hosting is a seat that moves
+  (`Circle.hostId`); `isCreator` is provenance, never changes, and grants nothing. A control wired
+  to `isCreator` keeps working right up until somebody hands off or leaves, and then shows the
+  wrong person the invite panel. `hasHost: false` means the seat is vacant — the circle is
+  inactive rather than ended, so nothing new starts and the queue just fills.
+- **The host limit counts SEATS, not circles created**, and leaving is the ordinary way out from
+  under it (Free holds three; `apps/backend/utils/plans.js`). A 409 with `code: 'host_limit'`
+  carries `limit` and `plan`, so the client never hardcodes either number.
+- **`NEXT_PUBLIC_SITE_URL` is where an invitation link points**, and it is NOT this app: the
+  `/invite/[token]` landing page lives on holoscopic.io (`apps/holoscopic-game`), because an
+  invitation can name a circle in either product and whoever holds the link usually has no
+  account yet. Built from `window.location.origin` it would 404 for every invitee. Dev defaults
+  to `http://localhost:4003`; **the Vercel circles project needs it set to `https://holoscopic.io`**
+  or every link a host makes on production points at localhost.
 - The map's `participation` block is server-redacted (threshold D9/D17); the client never
   receives an identity it may not show. Keep it that way when porting surfaces.
 - Beacon and Vercel Analytics both mounted (2026-08-17, with the deploy): the sixth `Beacon.tsx`

@@ -65,9 +65,15 @@ the header had already been copy-pasted twice.
 
 - `/` — **Overview**: the six all-time platform counters (users, activities, sequences,
   participants, comments, votes) plus shortcuts. It used to redirect to `/instances`.
-- `/users` — roles, active/inactive, one-shot password reset. **You cannot change your own role or
-  status** — on a platform that can have one admin, self-demotion is the fastest way to lock
+- `/users` — roles, **plan**, active/inactive, one-shot password reset. **You cannot change your own
+  role or status** — on a platform that can have one admin, self-demotion is the fastest way to lock
   everybody out. A reset password is shown once in a `prompt()` and stored nowhere.
+  **Plan is the exception to that guard, deliberately** (2026-09-16): it is `free` or `host`
+  (BUSINESS.md §5 — how many circles the account may hold the seat for), and it cannot lock anyone
+  out of anything, so changing your own is allowed. **This IS the provisioning path** until Stripe
+  lands in Stage 1, not a workaround — moving somebody onto Host by hand is the plan of record. An
+  absent plan displays as `free`: the field is missing on every account written before it existed,
+  because a Mongoose default never reaches MongoDB.
 - `/signups` — interest capture (`models/Signup`) grouped by `source` — `first-gathering` is the
   seat list, `platform-updates` the announcements list; a new capture surface mints a new source
   and appears here with no page change. Sources ordered by newest signup; reads the admin-gated

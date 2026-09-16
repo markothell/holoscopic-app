@@ -208,6 +208,36 @@ export interface SeedParticipation {
   iTold: boolean;
 }
 
+/**
+ * An invitation this account has sent. Mirrors
+ * apps/backend/utils/invites.js#toSent.
+ *
+ * The token is deliberately absent: it comes back from create() exactly once
+ * and is never stored or re-readable, so a link can only be shown at the
+ * moment it is made. 'expired' is never stored either — a pending invitation
+ * past its date reads as expired (#statusOf), so nothing has to sweep it.
+ */
+export type InviteStatus = 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired';
+
+export interface SentInvite {
+  id: string;
+  email: string;
+  status: InviteStatus;
+  createdAt: string;
+  expiresAt: string;
+  respondedAt: string | null;
+}
+
+/** One circle this account hosts, with every invitation sent for it.
+ *  Mirrors apps/backend/utils/invites.js#listHosting. */
+export interface HostedCircle {
+  id: string;
+  title: string;
+  app: 'circles' | 'threshold';
+  path: string;
+  invites: SentInvite[];
+}
+
 export interface Circle {
   id: string;
   /** The circle's OWN module — the one a seed with activity null runs. A
@@ -255,7 +285,15 @@ export interface Circle {
   /** Every topic I posted. A member may post more than one: the queue is
    *  filtered by support, not by a one-each rule. */
   mySeedIds: string[];
+  /** Provenance: who made it. Never changes, and grants nothing on its own. */
   isCreator: boolean;
+  /** The SEAT: who may invite, promote, skip, advance, open and close. Hosting
+   *  moves, so every control branches on this and never on `isCreator`. */
+  isHost: boolean;
+  /** False = the seat is vacant, so the circle is INACTIVE rather than ended:
+   *  whatever is live runs out, the queue keeps filling, and nothing new starts
+   *  until a member takes it on. Offer the seat to whoever nominates next. */
+  hasHost: boolean;
   isMember: boolean;
   /** MY mail preference for this circle, never anybody else's (D31). Mail only:
    *  the in-app notification lands either way. */

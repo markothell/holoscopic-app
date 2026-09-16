@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { circlesApi, ApiError } from '@/services/api';
 import type { Circle } from '@/lib/types';
-import { Page, Action, Muted } from '@/components/Shell';
+import { Page, Action, Quiet, Muted } from '@/components/Shell';
 
 // Your circles — the signed-in home. Each row says what that circle is doing
 // right now in its own words; the count of what is waiting on you lives on
@@ -39,15 +39,24 @@ export default function CirclesPage() {
 
   return (
     <Page>
-      <header className="mb-8">
-        <h1 className="text-3xl leading-tight">Your circles</h1>
-        <p className="mt-1 text-sm text-ink-faint">What each one is doing.</p>
+      <header className="mb-8 flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <h1 className="text-3xl leading-tight">Your circles</h1>
+          <p className="mt-1 text-sm text-ink-faint">What each one is doing.</p>
+        </div>
+        <Quiet href="/circles/new">+ Start a circle</Quiet>
       </header>
 
       {error && <p className="mb-6 text-sm text-ochre">{error}</p>}
 
       {circles?.length === 0 ? (
-        <Muted>You are not in a circle yet. One reaches you by invitation, or by its link.</Muted>
+        <div>
+          <Muted>
+            You are not in a circle yet. One reaches you by invitation, or by its link — or you
+            start your own and invite the people.
+          </Muted>
+          <div className="mt-5"><Action href="/circles/new">Start a circle</Action></div>
+        </div>
       ) : (
         <ul className="space-y-4">
           {circles?.map(c => (
@@ -60,9 +69,13 @@ export default function CirclesPage() {
                 <span className="mt-0.5 block text-sm text-ink-faint">
                   {c.memberCount} {c.memberCount === 1 ? 'person' : 'people'}
                   {' · '}
+                  {/* A gather ask carries `prompt`, a Threshold topic carries
+                      `topic` — a circle runs both, so the row reads whichever
+                      this one has. */}
                   {c.phase === 'cycle' && c.currentSeed
-                    ? <>running: {c.currentSeed.payload.topic}</>
-                    : c.phase === 'closed' ? 'closed' : 'open'}
+                    ? <>running: {c.currentSeed.payload.prompt ?? c.currentSeed.payload.topic}</>
+                    : c.phase === 'draft' ? 'a draft — not open yet'
+                      : c.phase === 'closed' ? 'closed' : 'open'}
                 </span>
               </Link>
             </li>

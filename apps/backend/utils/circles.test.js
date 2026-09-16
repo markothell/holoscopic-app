@@ -320,7 +320,7 @@ test('promote beats the support order, and promotions keep their own order (D30)
 
   await assert.rejects(
     () => circles.promoteSeed({ store, circleId: circle.id, seedId: seedFor(circle, 'popular').id, userId: 'u3' }),
-    /Only the circle creator/,
+    /Only the circle host/,
   );
 
   await runLiveCycle(store, circle, state, ['u1', 'u2', 'u3']);
@@ -442,7 +442,7 @@ test('D4: an empty share round reveals empty and moves on', async () => {
   assert.equal(seed.phase, 'revealed', 'nobody shared and nobody sorted, and it still ended');
 });
 
-test('manual advance: creator may, seed author may, another member may not', async () => {
+test('manual advance: host may, seed author may, another member may not', async () => {
   stubActivity();
   const store = memStore();
   const circle = await openCircle(store, { members: 3 });
@@ -457,7 +457,7 @@ test('manual advance: creator may, seed author may, another member may not', asy
   // u3 is a member but neither the creator nor this topic's author.
   await assert.rejects(
     () => circles.advanceCircle({ store, circleId: circle.id, userId: 'u3' }),
-    /creator or this topic's author/,
+    /host or this topic's author/,
   );
   assert.equal(circle.seeds[0].phase, 'rank', 'the rejected call changed nothing');
 
@@ -539,7 +539,7 @@ test('skip reveals what the topic has and moves to the next (D30)', async () => 
 
   await assert.rejects(
     () => circles.skipSeed({ store, circleId: circle.id, userId: 'u2' }),
-    /Only the circle creator/,
+    /Only the circle host/,
   );
 
   await circles.skipSeed({ store, circleId: circle.id, userId: 'u1' });
@@ -565,7 +565,7 @@ test('skipping the last topic leaves the circle idle, not finished', async () =>
   assert.equal(circle.status, 'running');
 });
 
-test('close is the only way a circle ends, and only the creator may (D29)', async () => {
+test('close is the only way a circle ends, and only the host may (D29)', async () => {
   const state = stubActivity();
   const store = memStore();
   const circle = await openCircle(store, { members: 3 });
@@ -576,7 +576,7 @@ test('close is the only way a circle ends, and only the creator may (D29)', asyn
 
   await assert.rejects(
     () => circles.closeCircle({ store, circleId: circle.id, userId: 'u2' }),
-    /Only the circle creator/,
+    /Only the circle host/,
   );
   assert.equal(circle.phase, 'idle');
 
@@ -952,7 +952,7 @@ test('a circle mode may open with its creator\'s first topic already queued', as
   assert.equal(circles.activeSeed(circle).payload.topic, 'opening');
 });
 
-test('only the creator can start, and only once', async () => {
+test('only the host can start, and only once', async () => {
   stubActivity();
   const store = memStore();
   const circle = await circles.createCircle({
@@ -962,7 +962,7 @@ test('only the creator can start, and only once', async () => {
 
   await assert.rejects(
     () => circles.startCircle({ store, circleId: circle.id, userId: 'u2' }),
-    /Only the creator/,
+    /Only the host/,
   );
   await circles.startCircle({ store, circleId: circle.id, userId: 'u1' });
   await assert.rejects(

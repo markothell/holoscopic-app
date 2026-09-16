@@ -104,7 +104,10 @@ async function accountOf(userId) {
 }
 
 /**
- * Make a link. Host only: the person who created the circle.
+ * Make a link. Host only — whoever holds the seat now, which is not
+ * necessarily whoever created the circle (circles.js#hostOf). A circle with a
+ * vacant seat cannot invite anybody, which is the same rule as everything else
+ * a host does: an unhosted circle starts nothing new.
  *
  * An earlier pending link for the same address is revoked, so a re-sent
  * invitation is the only one that works rather than one of several.
@@ -115,8 +118,8 @@ async function createInvite({ userId, circleId, email }) {
 
   const circle = await Circle.findOne({ id: circleId });
   if (!circle) throw new InviteError(404, 'Circle not found');
-  if (circle.createdBy !== userId) {
-    throw new InviteError(403, 'Only the person who started this circle can invite people');
+  if (circles.hostOf(circle) !== userId) {
+    throw new InviteError(403, 'Only this circle\'s host can invite people');
   }
   if (circle.phase === 'closed') throw new InviteError(400, 'This circle has closed');
   if (circle.members.some(m => normalizeEmail(m.email) === address)) {
@@ -317,9 +320,11 @@ async function countPending(userId) {
   return Invite.countDocuments(pendingQuery(account));
 }
 
-/** Circles this account can invite people to, with what it has sent. */
+/** Circles this account can invite people to, with what it has sent.
+ *  Keyed on the SEAT, not on who created it — hosting moves, and the invite
+ *  power moves with it. */
 async function listHosting(userId) {
-  const rows = await Circle.find({ createdBy: userId, phase: { $ne: 'closed' } })
+  const rows = await Circle.find({ ...circles.hostedByQuery(userId), phase: { $ne: 'closed' } })
     .select('id title activity urlName').sort({ updatedAt: -1 }).limit(50).lean();
   const sent = await Invite.find({ circleId: { $in: rows.map(c => c.id) } })
     .sort({ createdAt: -1 }).limit(500);

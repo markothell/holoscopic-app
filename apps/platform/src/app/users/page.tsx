@@ -76,6 +76,19 @@ export default function UsersPage() {
     }
   }
 
+  // An absent plan reads as free — the field is missing on every account
+  // written before it existed, and a Mongoose default never reaches MongoDB.
+  async function togglePlan(target: AdminUser) {
+    const plan = (target.plan ?? 'free') === 'host' ? 'free' : 'host';
+    if (!confirm(`Move ${target.email} to the ${plan === 'host' ? 'Host' : 'Free'} plan?`)) return;
+    try {
+      await AdminApi.setPlan(target.id, plan);
+      setUsers(prev => prev.map(u => (u.id === target.id ? { ...u, plan } : u)));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to update plan');
+    }
+  }
+
   async function toggleActive(target: AdminUser) {
     const isActive = !target.isActive;
     if (!confirm(`${isActive ? 'Activate' : 'Deactivate'} ${target.email}?`)) return;
@@ -145,7 +158,7 @@ export default function UsersPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
-                  {['Name / Email', 'Role', 'Status', 'Last login', 'Joined', 'Actions'].map(h => (
+                  {['Name / Email', 'Role', 'Plan', 'Status', 'Last login', 'Joined', 'Actions'].map(h => (
                     <th key={h} style={{ ...mono, padding: '0.6rem 1rem', textAlign: 'left', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 400 }}>
                       {h}
                     </th>
@@ -155,7 +168,7 @@ export default function UsersPage() {
               <tbody>
                 {shown.length === 0 && (
                   <tr>
-                    <td colSpan={6} style={{ ...mono, padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--ink-light)' }}>
+                    <td colSpan={7} style={{ ...mono, padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--ink-light)' }}>
                       No users found
                     </td>
                   </tr>
@@ -172,6 +185,11 @@ export default function UsersPage() {
                       </td>
                       <td style={{ padding: '0.75rem 1rem' }}>
                         <span style={badge(u.role === 'admin' ? 'on' : 'neutral')}>{u.role}</span>
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem' }}>
+                        <span style={badge((u.plan ?? 'free') === 'host' ? 'on' : 'neutral')}>
+                          {u.plan ?? 'free'}
+                        </span>
                       </td>
                       <td style={{ padding: '0.75rem 1rem' }}>
                         <span style={badge(u.isActive ? 'on' : 'off')}>{u.isActive ? 'Active' : 'Inactive'}</span>
@@ -196,6 +214,10 @@ export default function UsersPage() {
                             style={actionBtn(isSelf)}
                           >
                             {u.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <span style={{ color: 'var(--ink-light)' }}>·</span>
+                          <button onClick={() => togglePlan(u)} style={actionBtn()}>
+                            {(u.plan ?? 'free') === 'host' ? 'To Free' : 'To Host'}
                           </button>
                           <span style={{ color: 'var(--ink-light)' }}>·</span>
                           <button onClick={() => resetPassword(u)} style={actionBtn()}>Reset PW</button>

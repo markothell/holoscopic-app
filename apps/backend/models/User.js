@@ -44,6 +44,31 @@ const userSchema = new mongoose.Schema({
     default: 'user'
   },
 
+  // Which plan this account is on. TWO, deliberately (BUSINESS.md §5, revised
+  // 2026-09-16 down from four): 'free' hosts a few circles, 'host' lifts the
+  // limit and covers what were the Facilitator and Practice/Org tiers.
+  // Self-host is not a plan — the MIT licence is a fact about the substrate,
+  // not a row in a pricing table, and nobody is building self-hosting soon.
+  //
+  // The plan is named for the act it pays for, which is also the billing unit
+  // (§5: price on circles, not seats). `role` is deliberately NOT reused for
+  // this: requireAdmin reads `role`, so a paid tier living there would hand
+  // out admin powers with a subscription.
+  //
+  // Nothing bills against this yet. Stripe is Stage 1 (Oct–Dec) and manual
+  // provisioning is explicitly fine until then; this field is the seam it will
+  // write to.
+  //
+  // A Mongoose default is a Mongoose-layer fiction: every account written
+  // before this field has no `plan` in MongoDB, so NEVER query { plan: 'free' }
+  // — it matches none of them. Read it through utils/plans.js#planOf, which
+  // treats an absent value as free.
+  plan: {
+    type: String,
+    enum: ['free', 'host'],
+    default: 'free'
+  },
+
   // Profile visibility
   profileVisibility: {
     type: String,

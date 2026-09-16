@@ -234,7 +234,7 @@ test('the seed author may advance their own cycle, and only theirs', async () =>
   assert.equal(mine.phase, 'rank');
   await assert.rejects(
     circles.advanceCircle({ store, circleId: circle.id, userId: 'u2', seedId: theirs.id }),
-    /creator or this topic/,
+    /host or this topic/,
   );
 });
 

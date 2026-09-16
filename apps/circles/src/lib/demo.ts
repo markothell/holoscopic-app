@@ -407,6 +407,12 @@ export const DEMO_CIRCLE: Circle = {
   approvalsToStart: 3,
   queue: [NEXT_SEED],
   mySeedIds: [],
+  // The demo's reader owns nothing and hosts nothing — every writing control is
+  // withheld anyway (readOnly), and this keeps the fixture honest about why.
+  isHost: false,
+  // True because Lantern is RUNNING with a live cycle, which an unhosted circle
+  // could not be: the machine opens no new cycle without somebody in the seat.
+  hasHost: true,
   isCreator: false,
   // A member's view, because that is the view worth showing — and the reason
   // this is a fixture rather than a loosened read path.

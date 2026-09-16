@@ -110,6 +110,24 @@ const circleSchema = new mongoose.Schema({
 
   createdBy: { type: String, required: true },
 
+  // Who holds the HOST SEAT: the one who may invite, promote, skip, advance,
+  // open and close. Separate from `createdBy`, which is provenance and never
+  // changes — because hosting MOVES.
+  //
+  // A host who leaves vacates the seat rather than ending the circle (the cap
+  // is on hosting, so the way out from under it is to stop hosting, not to
+  // close a group other people are still in). An unhosted circle is INACTIVE,
+  // not ended: whatever is already live runs out, but nothing new starts until
+  // somebody takes the seat. `phase` stays orthogonal — there is no 'unhosted'
+  // state, only `hostId === null`.
+  //
+  // Null on every circle written before this field existed, which `hostOf()`
+  // reads as `createdBy`. A Mongoose default is a Mongoose-layer fiction
+  // (the Instance.app lesson), so a QUERY for a person's circles must match
+  // both shapes — see hostedByQuery() — until scripts/backfill-circle-host.js
+  // has run against that database.
+  hostId: { type: String, default: null },
+
   // 'single' caps the queue at 1 seed, authored by the creator at creation
   // time. A standalone run of the activity IS a one-seed circle — there is no
   // second code path (PLAN §1, D1) — and it closes itself on that seed's

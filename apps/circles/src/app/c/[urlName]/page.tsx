@@ -8,6 +8,8 @@ import type { Circle, MyIdea } from '@/lib/types';
 import { Page, Band, Card, Action, Muted } from '@/components/Shell';
 import { CircleMap } from '@/components/CircleMap';
 import { CircleHeader, LiveSeedCard, NominationsBand, RecordBand } from '@/components/circleHome';
+import { InvitePanel } from '@/components/InvitePanel';
+import { CircleActions, VacantSeat } from '@/components/CircleActions';
 
 // The circle home — the product's hero surface. The map IS the page: the circle
 // seen whole, every member, what each has explored alone and together, and
@@ -25,6 +27,7 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
 
   const [circle, setCircle] = useState<Circle | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -35,6 +38,21 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
       setError(e instanceof ApiError ? e.message : 'Could not load this circle');
     }
   }, [urlName, userId]);
+
+  // draft → running, the host's own act. Re-reads rather than trusting the
+  // returned circle: opening may already have started the first queued ask,
+  // and the snapshot is what carries that cycle's extras.
+  const openCircle = async () => {
+    if (!circle || !userId || opening) return;
+    setOpening(true);
+    try {
+      await circlesApi.startCircle(circle.id, userId);
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Could not open this circle');
+    }
+    setOpening(false);
+  };
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -109,6 +127,45 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
         </p>
       )}
 
+      {/* A circle is made in draft: named, with nobody in it but its host.
+          Inviting people comes first, and opening is deliberate — so nobody is
+          mailed about a circle that is still being furnished. */}
+      {circle.phase === 'draft' && circle.isHost && (
+        <div className="mt-8">
+          <Card>
+            <Band>Not open yet</Band>
+            <Muted>
+              Invite the people you want in it, then open the circle. Opening starts whatever is
+              first in the queue — or leaves it waiting, if you have not queued anything.
+            </Muted>
+            <div className="mt-4">
+              <Action onClick={openCircle} disabled={opening}>
+                {opening ? 'Opening…' : 'Open this circle'}
+              </Action>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {circle.phase === 'draft' && circle.isMember && !circle.isHost && (
+        <p className="mt-8 text-sm text-ink-faint">
+          Your seat is taken. The circle has not been opened yet.
+        </p>
+      )}
+
+      {/* The host's side of invitations, on the circle they belong to.
+          holoscopic.io/invitations reads the same rows — one list, two doors. */}
+      {/* The seat is empty: the circle is inactive rather than ended, and this
+          is the offer to pick it up. High on the page on purpose — it is the
+          reason nothing is happening. */}
+      {circle.isMember && userId && !circle.hasHost && circle.phase !== 'closed' && (
+        <VacantSeat circle={circle} userId={userId} onChanged={load} />
+      )}
+
+      {circle.isHost && circle.isMember && userId && (
+        <InvitePanel circle={circle} userId={userId} />
+      )}
+
       {circle.isMember && userId && (
         <NominationsBand circle={circle} userId={userId} onChanged={load} />
       )}
@@ -116,6 +173,13 @@ export default function CircleHomePage({ params }: { params: Promise<{ urlName: 
       {circle.isMember && <RecordBand circle={circle} />}
       {circle.isMember && (
         <SynthesesBand circle={circle} userId={userId} onShared={load} />
+      )}
+
+      {/* Leave / close / delete. Last on the page: they are the way out, not
+          the way in, and none of them should sit near a control somebody
+          reaches for every visit. */}
+      {circle.isMember && userId && (
+        <CircleActions circle={circle} userId={userId} onChanged={load} />
       )}
     </Page>
   );

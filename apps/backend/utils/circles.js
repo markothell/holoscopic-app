@@ -207,6 +207,62 @@ function assertOpen(circle) {
 }
 
 // ---------------------------------------------------------------------------
+// The host seat
+// ---------------------------------------------------------------------------
+
+/**
+ * Who holds the seat, or null when it is vacant.
+ *
+ * THREE states, and collapsing any two of them breaks something:
+ *   - a user id  → that person hosts.
+ *   - `''`       → deliberately VACANT. A host who leaves writes this, so
+ *                  "nobody hosts this" is storable rather than inferred.
+ *   - null/absent→ a circle written before hostId existed. Its creator is still
+ *                  its host, which is what makes this change invisible to every
+ *                  circle that already exists — and why absent must NOT read as
+ *                  vacant, or deploying this would strip the controls from
+ *                  every live circle before any backfill ran.
+ */
+function hostOf(circle) {
+  if (circle.hostId === '') return null;
+  return circle.hostId || circle.createdBy || null;
+}
+
+/**
+ * The query for "circles this person hosts". Needed because a Mongoose default
+ * is a Mongoose-layer fiction: `find({ hostId })` runs in the database and
+ * matches no document written before the field existed (the Instance.app
+ * lesson). `{ hostId: null }` is the form that matches an ABSENT field as well
+ * as a null one; a vacated seat is `''` and belongs to nobody, so it is
+ * correctly excluded from both arms.
+ *
+ * Redundant once scripts/backfill-circle-host.js has run against a database,
+ * and harmless to keep after.
+ */
+function hostedByQuery(userId) {
+  return {
+    $or: [
+      { hostId: userId },
+      { hostId: null, createdBy: userId },
+    ],
+  };
+}
+
+/**
+ * Whether anyone has put anything into this circle.
+ *
+ * A seed that merely EXISTS is not content: a queued topic nobody has answered
+ * is a plan, not a record. A cycle that opened counts even if it collected
+ * nothing, because the circle demonstrably ran.
+ */
+async function holdsContributions({ store = mongoStore, circle }) {
+  if (circle.seeds.some(s => s.openedAt)) return true;
+  const ids = circle.seeds.map(s => s.id);
+  if (ids.length === 0) return false;
+  return (await store.countContributions(ids)) > 0;
+}
+
+// ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
 
@@ -236,6 +292,24 @@ const mongoStore = {
   },
   async sendEmail(args) {
     return require('./email').sendEmail(args);
+  },
+  // Every collection a member can put something into, across every activity.
+  // A new activity with its own contribution collection belongs here, or a
+  // circle holding its work will read as empty and become deletable.
+  async countContributions(seedIds) {
+    const counts = await Promise.all([
+      require('../models/Share').countDocuments({ seedId: { $in: seedIds } }),
+      require('../models/Placement').countDocuments({ seedId: { $in: seedIds } }),
+      require('../models/ThresholdShare').countDocuments({ seedId: { $in: seedIds } }),
+      require('../models/ThresholdRanking').countDocuments({ seedId: { $in: seedIds } }),
+    ]);
+    return counts.reduce((a, b) => a + b, 0);
+  },
+  // The invitations go with it: they are rows about a circle that no longer
+  // exists, and one of them still carries a live token.
+  async deleteCircleDoc(id) {
+    await require('../models/Circle').deleteOne({ id });
+    await require('../models/Invite').deleteMany({ circleId: id });
   },
 };
 
@@ -305,6 +379,10 @@ async function createCircle({
     title: title.trim(),
     urlName: slug,
     createdBy,
+    // The creator takes the seat. Written explicitly rather than left to
+    // hostOf()'s fallback, so `find({ hostId })` matches from the first day and
+    // only circles predating the field need hostedByQuery's compatibility arm.
+    hostId: createdBy,
     mode,
     status: 'draft',
     phase: 'draft',
@@ -354,6 +432,97 @@ async function joinCircle({ store = mongoStore, circleId, userId, username, emai
 
   await store.saveCircle(circle);
   return circle;
+}
+
+/**
+ * Leave a circle. Any member, including the one holding the seat.
+ *
+ * Leaving is NOT an ending. The circle goes on without you, and if you were
+ * hosting, the seat is simply vacant: the cap is on hosting, so the way out
+ * from under it is to stop hosting — never to close a group other people are
+ * still in. An unhosted circle runs out whatever is already live and starts
+ * nothing new (see nextTransition) until a member takes the seat.
+ *
+ * The last member out is the one exception, because a circle nobody is in can
+ * never be joined or hosted again: it CLOSES if it holds anything worth
+ * reading, and is DELETED outright if it never collected a thing.
+ */
+async function leaveCircle({ store = mongoStore, circleId, userId, now = new Date() }) {
+  const circle = await store.findCircleById(circleId);
+  if (!circle) throw new Error('Circle not found');
+  assertMember(circle, userId);
+
+  const wasHost = hostOf(circle) === userId;
+  circle.members = circle.members.filter(m => m.userId !== userId);
+
+  if (circle.members.length === 0) {
+    if (!(await holdsContributions({ store, circle }))) {
+      await store.deleteCircleDoc(circle.id);
+      return { circle: null, left: true, closed: false, deleted: true };
+    }
+    if (circle.phase !== 'closed') {
+      const pending = [];
+      for (const seed of liveSeeds(circle)) {
+        await revealSeed({
+          store, mod: modFor(circle, seed), circle, seed, now, pending,
+          via: 'manual', byUserId: userId, as: 'revealed',
+        });
+      }
+      await closeNow({
+        store, mod: modFor(circle), circle, now, pending, via: 'manual', byUserId: userId,
+      });
+    }
+    await store.saveCircle(circle);
+    return { circle, left: true, closed: true, deleted: false };
+  }
+
+  if (wasHost) circle.hostId = '';
+  await store.saveCircle(circle);
+  return { circle, left: true, closed: false, deleted: false, seatVacated: wasHost };
+}
+
+/**
+ * Take a vacant seat. Any member, and only while it is genuinely vacant —
+ * hosting is never moved over somebody's head.
+ *
+ * The PLAN LIMIT is deliberately not checked here: this funnel has no User and
+ * no opinion about billing. The route checks it, which is also the only place
+ * an upgrade prompt makes sense — the moment somebody actually wants the
+ * responsibility.
+ */
+async function claimHost({ store = mongoStore, circleId, userId }) {
+  const circle = await store.findCircleById(circleId);
+  if (!circle) throw new Error('Circle not found');
+  assertOpen(circle);
+  assertMember(circle, userId);
+  if (hostOf(circle)) throw new Error('This circle already has a host');
+
+  circle.hostId = userId;
+  await store.saveCircle(circle);
+  // A circle that has been sitting on a queue starts moving again the moment
+  // there is somebody to host it.
+  return evaluate({ store, circle });
+}
+
+/**
+ * Erase a circle. Host only, and only while it holds nothing anybody put in it.
+ *
+ * The one destructive verb here, so its precondition is strict: no cycle has
+ * ever opened and no contribution row exists. What it is FOR is the circle made
+ * by mistake — a typo in the name, a second attempt — which `close` cannot tidy
+ * up, because a closed circle keeps its urlName forever and that name is unique
+ * per instance. Anything a group actually used gets closed, never deleted.
+ */
+async function deleteCircle({ store = mongoStore, circleId, userId }) {
+  const circle = await store.findCircleById(circleId);
+  if (!circle) throw new Error('Circle not found');
+  if (hostOf(circle) !== userId) throw new Error('Only the circle host can delete this circle');
+  if (await holdsContributions({ store, circle })) {
+    throw new Error('This circle holds what people put into it — close it instead of deleting it');
+  }
+
+  await store.deleteCircleDoc(circle.id);
+  return { deleted: true, id: circle.id };
 }
 
 /**
@@ -502,7 +671,7 @@ async function promoteSeed({ store = mongoStore, circleId, seedId, userId, now =
   const circle = await store.findCircleById(circleId);
   if (!circle) throw new Error('Circle not found');
   assertOpen(circle);
-  if (circle.createdBy !== userId) throw new Error('Only the circle creator can promote a topic');
+  if (hostOf(circle) !== userId) throw new Error('Only the circle host can promote a topic');
 
   const seed = seedById(circle, seedId);
   if (!notStarted(seed)) throw new Error('This topic is no longer waiting');
@@ -529,7 +698,7 @@ async function promoteSeed({ store = mongoStore, circleId, seedId, userId, now =
 async function startCircle({ store = mongoStore, circleId, userId }) {
   const circle = await store.findCircleById(circleId);
   if (!circle) throw new Error('Circle not found');
-  if (circle.createdBy !== userId) throw new Error('Only the creator can start this circle');
+  if (hostOf(circle) !== userId) throw new Error('Only the host can open this circle');
   if (circle.phase !== 'draft') throw new Error('This circle has already started');
 
   const now = new Date();
@@ -561,7 +730,7 @@ async function startCircle({ store = mongoStore, circleId, userId }) {
 async function skipSeed({ store = mongoStore, circleId, userId, seedId = null, now = new Date() }) {
   const circle = await store.findCircleById(circleId);
   if (!circle) throw new Error('Circle not found');
-  if (circle.createdBy !== userId) throw new Error('Only the circle creator can skip a topic');
+  if (hostOf(circle) !== userId) throw new Error('Only the circle host can skip a topic');
 
   const seed = seedId
     ? liveSeeds(circle).find(s => s.id === seedId) || null
@@ -589,7 +758,7 @@ async function skipSeed({ store = mongoStore, circleId, userId, seedId = null, n
 async function closeCircle({ store = mongoStore, circleId, userId, now = new Date() }) {
   const circle = await store.findCircleById(circleId);
   if (!circle) throw new Error('Circle not found');
-  if (circle.createdBy !== userId) throw new Error('Only the circle creator can close this circle');
+  if (hostOf(circle) !== userId) throw new Error('Only the circle host can close this circle');
   if (circle.phase === 'draft') throw new Error('This circle has not started');
   assertOpen(circle);
 
@@ -630,10 +799,13 @@ async function advanceCircle({ store = mongoStore, circleId, userId, seedId = nu
     : activeSeed(circle);
   if (seedId && !seed) throw new Error('That topic is not running');
 
-  const isCreator = circle.createdBy === userId;
+  // The seed's author keeps this control even when the seat is vacant, which is
+  // what stops an unhosted circle from deadlocking on a cycle that has no clock:
+  // whoever asked the question can always move their own question along.
+  const isHost = hostOf(circle) === userId;
   const isSeedAuthor = Boolean(seed && seed.authorId === userId);
-  if (!isCreator && !isSeedAuthor) {
-    throw new Error('Only the circle creator or this topic\'s author can move the group on');
+  if (!isHost && !isSeedAuthor) {
+    throw new Error('Only the circle host or this topic\'s author can move the group on');
   }
 
   return evaluate({ store, circle, force: { via: 'manual', byUserId: userId, seedId: seed ? seed.id : null } });
@@ -660,7 +832,13 @@ async function nextTransition({ store, circle, now }) {
       if (await everyoneDone({ store, circle, seed })) return { seed, via: 'complete', byUserId: null };
     }
   }
-  if (live.length < maxLive(circle)) {
+  // Opening a NEW cycle is the one transition that needs a host. An unhosted
+  // circle is INACTIVE, not ended: whatever is already live still runs out on
+  // its deadline or its completion above, and the queue keeps accumulating —
+  // but nothing new opens until a member takes the seat. Without this gate the
+  // machine would quietly start cycles in a circle nobody is hosting, which is
+  // the opposite of what a vacant seat means.
+  if (hostOf(circle) && live.length < maxLive(circle)) {
     const next = nextInQueue(circle);
     if (next) return { seed: next, start: true, via: 'queue', byUserId: null };
   }
@@ -1025,7 +1203,15 @@ function toClient(circle, { userId = null } = {}) {
     // Every topic this member posted — a member may post more than one, since
     // the queue is filtered by support rather than by a one-each rule.
     mySeedIds: userId ? circle.seeds.filter(s => s.authorId === userId).map(s => s.id) : [],
+    // Provenance: who made it. Never changes, and grants nothing on its own.
     isCreator: userId ? circle.createdBy === userId : false,
+    // The SEAT: who may invite, promote, skip, advance, open and close. Hosting
+    // moves, so this — not isCreator — is what a control should branch on.
+    isHost: userId ? hostOf(circle) === userId : false,
+    // False = the seat is vacant, so this circle is inactive rather than ended:
+    // nothing new will start until a member takes it on. The client offers the
+    // seat to whoever nominates next.
+    hasHost: Boolean(hostOf(circle)),
     isMember: userId ? circle.members.some(m => m.userId === userId) : false,
     // Mine only. Another member's mail preference is theirs.
     myEmailOptOut: userId
@@ -1061,6 +1247,12 @@ function toClientSeed(seed, { userId = null } = {}) {
 module.exports = {
   createCircle,
   joinCircle,
+  leaveCircle,
+  claimHost,
+  deleteCircle,
+  hostOf,
+  hostedByQuery,
+  holdsContributions,
   addSeed,
   supportSeed,
   promoteSeed,

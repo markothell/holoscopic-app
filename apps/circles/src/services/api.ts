@@ -15,7 +15,8 @@
 
 import { ApiError, createApiFetch } from '@hs/api';
 import type {
-  Circle, GatherExtras, GatherResponse, MyRanking, Placement, Pole, Seed, SeedResult, Share, MyIdea,
+  Circle, GatherExtras, GatherResponse, HostedCircle, MyRanking, Placement, Pole, Seed, SeedResult,
+  SentInvite, Share, MyIdea,
 } from '@/lib/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
@@ -41,6 +42,74 @@ export const circlesApi = {
    *  participation rows the circle-home map draws from. */
   getCircle(urlName: string, userId?: string | null) {
     return apiFetch<{ circle: Circle }>(`/circles/${urlName}`, { userId });
+  },
+
+  /**
+   * Start a circle. It is born running `gather` — the + builder's asks are
+   * what this app makes — and in DRAFT: named, with nobody in it but you.
+   * Opening it is a second, deliberate act on the circle page, so a
+   * half-configured circle never mails anybody.
+   *
+   * Any verified account may host, capped at three open circles (P15 rung 2,
+   * revised 2026-09-16). 409 `host_limit` when the cap is reached.
+   */
+  createCircle(
+    userId: string,
+    body: {
+      title: string;
+      urlName?: string;
+      /** Seats these addresses without a link. They still have to match the
+       *  ACCOUNT's confirmed address to get in. */
+      invitedEmails?: string[];
+      /** false = anyone holding the link may take a seat. */
+      requireInvitation?: boolean;
+    },
+  ) {
+    return apiFetch<{ circle: Circle }>('/circles', { method: 'POST', body, userId });
+  },
+
+  /** draft → running. Host only. A circle opened with an empty queue goes IDLE
+   *  rather than waiting for a seeding round: the first ask anybody posts is
+   *  the first cycle, so nothing waits for everybody. */
+  startCircle(circleId: string, userId: string) {
+    return apiFetch<{ circle: Circle }>(`/circles/${circleId}/start`, { method: 'POST', userId });
+  },
+
+  /**
+   * Leave. Any member, including the host — and NOT an ending: the circle goes
+   * on without you, and if you held the seat it is simply vacant. This is the
+   * ordinary way out from under the host limit, since the limit counts seats.
+   *
+   * The last member out is the exception, and the answer says which happened:
+   * `closed` if the circle held anything, `deleted` if it never collected a
+   * thing. `circle` is null when it was deleted.
+   */
+  leaveCircle(circleId: string, userId: string) {
+    return apiFetch<{
+      left: true; closed: boolean; deleted: boolean; seatVacated: boolean; circle: Circle | null;
+    }>(`/circles/${circleId}/leave`, { method: 'POST', userId });
+  },
+
+  /** End it, for everyone. Host only, and the only way a circle finishes (D29)
+   *  — live cycles reveal on the way out rather than being left mid-sort. */
+  closeCircle(circleId: string, userId: string) {
+    return apiFetch<{ circle: Circle }>(`/circles/${circleId}/close`, { method: 'POST', userId });
+  },
+
+  /** Erase it. Host only, and refused the moment anybody has put something in —
+   *  that case is close, not delete. For the circle made by mistake, which
+   *  close cannot tidy up because a closed circle keeps its urlName forever. */
+  deleteCircle(circleId: string, userId: string) {
+    return apiFetch<{ deleted: true; id: string }>(`/circles/${circleId}`, {
+      method: 'DELETE', userId,
+    });
+  },
+
+  /** Take a vacant seat. Any member, only while it is genuinely vacant. 409
+   *  `host_limit` when the taker's own plan is already full — which is the
+   *  honest moment to meet the limit, and where the upgrade is offered. */
+  claimHost(circleId: string, userId: string) {
+    return apiFetch<{ circle: Circle }>(`/circles/${circleId}/host`, { method: 'POST', userId });
   },
 
   /**
@@ -253,5 +322,49 @@ export const SYNTHESIS_URL = process.env.NEXT_PUBLIC_SYNTHESIS_URL || 'http://lo
 export const synthesisApi = {
   myIdeas(userId: string) {
     return apiFetch<{ ideas: MyIdea[] }>('/synthesis/me/ideas', { userId });
+  },
+};
+
+/**
+ * Where an invitation link lands. The landing page lives on holoscopic.io
+ * (`apps/holoscopic-game/src/app/invite/[token]`) rather than here, because an
+ * invitation is cross-app by nature — it can name a circle in this product or
+ * in Threshold — and because whoever holds the link usually has no account
+ * yet, so it has to render before sign-in.
+ *
+ * NOT `window.location.origin`: that is this app's own origin, which serves no
+ * /invite route, and a link built from it 404s for every invitee.
+ */
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:4003';
+
+/**
+ * Invitations to a circle (apps/backend/routes/invites.js).
+ *
+ * Deliberately NOT instance-scoped on the server — an invitation is found by
+ * its token or id, and the circle it names carries its own instanceId — so
+ * these are the same rows holoscopic.io/invitations reads. A link made here
+ * and revoked there is one list, not two.
+ *
+ * There is no invitation mail, by design: `create` returns the token exactly
+ * once and the host sends the link in their own words.
+ */
+export const invitesApi = {
+  /** Circles this account hosts, each with the invitations sent for it. */
+  hosting(userId: string) {
+    return apiFetch<{ circles: HostedCircle[] }>('/invites/hosting', { userId });
+  },
+
+  /** Make a link for one address. An earlier pending link for the same address
+   *  is revoked, so a re-sent invitation is the only one that works. */
+  create(userId: string, circleId: string, email: string) {
+    return apiFetch<{ invite: SentInvite; token: string }>('/invites', {
+      method: 'POST', body: { circleId, email }, userId,
+    });
+  },
+
+  /** Withdraw a pending link. The address comes off the circle's invitation
+   *  list too, so a revoked invitee cannot walk in through the circle page. */
+  revoke(userId: string, inviteId: string) {
+    return apiFetch<{ invite: SentInvite }>(`/invites/${inviteId}`, { method: 'DELETE', userId });
   },
 };

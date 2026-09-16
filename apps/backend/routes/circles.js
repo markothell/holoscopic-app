@@ -70,16 +70,20 @@ function userIdOf(req) {
 }
 
 /**
- * The account's own address and whether it is confirmed.
+ * The account's own address, whether it is confirmed, and what it may host.
  *
  * An invitation is matched against THIS, never an address in the request body.
  * The join form used to ask "email your invitation went to" and check whatever
  * was typed, so knowing one invited address was enough to take that seat.
+ *
+ * `role` and `plan` come along because the host limit reads both (utils/plans.js
+ * — admin is uncapped, and an absent `plan` means free). Selecting neither is
+ * how every account would silently read as free.
  */
 async function accountOf(req) {
   const id = userIdOf(req);
   if (!id) return null;
-  return User.findOne({ id }).select('id email emailVerified').lean();
+  return User.findOne({ id }).select('id email emailVerified role plan').lean();
 }
 
 // An invitation-only circle admits a confirmed address only: an unconfirmed one
@@ -112,6 +116,98 @@ function fail(res, err) {
   if (/Not a member|invitation only|Only the/i.test(message)) return res.status(403).json({ error: message });
   return res.status(400).json({ error: message });
 }
+
+// The machine's write funnels answer with either the circle or { circle },
+// depending on how a transition settled. Threshold's router carries the same
+// helper for the same reason: answering with the pre-write copy means the
+// response to "open this circle" is the circle as it stood before it opened.
+function fresh(result, fallback) {
+  if (!result) return fallback;
+  return result.circle || (result.id ? result : fallback);
+}
+
+// How many circles one account may hold the seat for at once. The numbers live
+// in utils/plans.js and nowhere else; this sits beside its only consumers.
+const { circleLimitFor, planOf } = require('../utils/plans');
+
+/**
+ * How many circles this account still holds the seat for, against what its plan
+ * allows. Two routes ask — starting a circle and taking a vacant seat — and
+ * they must ask identically, or one becomes a way around the other.
+ */
+async function hostingStanding(req, account) {
+  const limit = circleLimitFor(account);
+  const open = await Circle.countDocuments({
+    instanceId: req.instanceId,
+    ...circles.hostedByQuery(account.id),
+    phase: { $ne: 'closed' },
+  });
+  return { limit, open, atLimit: open >= limit };
+}
+
+// 409 rather than 402: nothing has been charged and nothing is owed. The answer
+// names the limit and the plan so the client can offer the upgrade without
+// having to know either number.
+function refuseOverLimit(res, account, standing) {
+  return res.status(409).json({
+    error: `You are hosting ${standing.open} circles already. Leave or close one, or move to the Host plan.`,
+    code: 'host_limit',
+    limit: standing.limit,
+    plan: planOf(account),
+  });
+}
+
+/**
+ * Start a circle. **Any verified account may host** (P15 rung 2, revised
+ * 2026-09-16) — rung 2 read "host-initiated only: MO starts one", and Q6
+ * parked the surface in the platform admin, where it was specified and never
+ * built. So the only circle creation that existed was Threshold's /new, which
+ * hardcodes `activity: 'threshold'` and makes one-off sessions.
+ *
+ * Born running `gather`: the + builder's asks are what this app makes, and a
+ * seed may still name another module per seed, so nothing is closed off.
+ *
+ * Born in DRAFT, deliberately. A circle arrives named, with nobody in it but
+ * its host — opening it is a second act on the circle page. That gap is what
+ * lets a host invite people and watch them take their seats before the machine
+ * starts and before anyone is mailed.
+ */
+router.post('/', async (req, res) => {
+  try {
+    const account = await accountOf(req);
+    if (!account) return res.status(401).json({ error: 'Sign in required' });
+
+    // HOSTING is what a plan limits, and 'closed' is the only ending a circle
+    // has (D29) — so every circle whose seat this account still holds counts,
+    // drafts included. The way out is not always an ending: leaving vacates the
+    // seat and frees the slot while the circle carries on without you.
+    const standing = await hostingStanding(req, account);
+    if (standing.atLimit) return refuseOverLimit(res, account, standing);
+
+    const circle = await circles.createCircle({
+      store,
+      instanceId: req.instanceId,
+      activity: 'gather',
+      title: req.body.title,
+      urlName: req.body.urlName,
+      createdBy: account.id,
+      creatorName: await displayNameFor(req),
+      // The host's own address on their member row — where this circle's mail
+      // reaches them. Taken from the ACCOUNT, never the body.
+      creatorEmail: account.email || '',
+      mode: 'circle',
+      // Three asks may run at once (PRIMITIVES §9 B1). Set at creation because
+      // nothing edits `config` afterwards — there is no route that does.
+      config: { maxLive: 3 },
+      invitedEmails: Array.isArray(req.body.invitedEmails) ? req.body.invitedEmails : [],
+      requireInvitation: req.body.requireInvitation !== false,
+    });
+
+    res.status(201).json({ circle: circles.toClient(circle, { userId: account.id }) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
 
 // Declared before '/:urlName', which would otherwise swallow it — 'me' is a
 // reserved word no circle urlName may claim usefully.
@@ -163,6 +259,97 @@ async function circleOr404(req, res) {
   }
   return circle;
 }
+
+// draft → running. Creator only, enforced in the funnel (so a 403 here comes
+// from `fail`'s /Only the/ arm, not from a check this file repeats).
+//
+// A circle opened with an empty queue goes IDLE rather than waiting for a
+// seeding round: the first ask anybody posts is the first cycle. Nothing waits
+// for everybody.
+router.post('/:id/start', async (req, res) => {
+  try {
+    const circle = await circleOr404(req, res);
+    if (!circle) return;
+    const result = await circles.startCircle({ store, circleId: circle.id, userId: userIdOf(req) });
+    res.json({ circle: circles.toClient(fresh(result, circle), { userId: userIdOf(req) }) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// --- Getting out from under it -------------------------------------------
+//
+// Three different acts, and the whole point is that they are not the same one:
+//   leave  — you go, the circle stays. Vacates the seat if you held it.
+//   close  — the circle ends, for everybody. The host's act, and terminal.
+//   delete — the circle is erased, and only while nobody put anything in it.
+//
+// The cap is on HOSTING, so leaving is the ordinary way out from under it. A
+// host must never have to end other people's circle to get a slot back.
+
+router.post('/:id/leave', async (req, res) => {
+  try {
+    const circle = await circleOr404(req, res);
+    if (!circle) return;
+    const result = await circles.leaveCircle({ store, circleId: circle.id, userId: userIdOf(req) });
+    res.json({
+      left: true,
+      // The last member out: closed if it held anything, erased if it never
+      // collected a thing. Both are reported so the client knows where to go.
+      closed: Boolean(result.closed),
+      deleted: Boolean(result.deleted),
+      seatVacated: Boolean(result.seatVacated),
+      circle: result.circle ? circles.toClient(result.circle, { userId: userIdOf(req) }) : null,
+    });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// The only way a circle finishes (D29). Host only, enforced in the funnel.
+router.post('/:id/close', async (req, res) => {
+  try {
+    const circle = await circleOr404(req, res);
+    if (!circle) return;
+    const after = await circles.closeCircle({ store, circleId: circle.id, userId: userIdOf(req) });
+    res.json({ circle: circles.toClient(fresh(after, circle), { userId: userIdOf(req) }) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Erase it. Refused the moment anybody has put something in — that case is
+// close, not delete. This exists for the circle made by mistake, which close
+// cannot tidy up because a closed circle holds its urlName forever.
+router.delete('/:id', async (req, res) => {
+  try {
+    const circle = await circleOr404(req, res);
+    if (!circle) return;
+    res.json(await circles.deleteCircle({ store, circleId: circle.id, userId: userIdOf(req) }));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// Take a vacant seat. The plan limit is checked HERE and not in the funnel,
+// which has no User and no opinion about billing — and this is the honest
+// moment to meet a limit, when somebody is actually taking on the work.
+router.post('/:id/host', async (req, res) => {
+  try {
+    const circle = await circleOr404(req, res);
+    if (!circle) return;
+    const account = await accountOf(req);
+    if (!account) return res.status(401).json({ error: 'Sign in required' });
+
+    const standing = await hostingStanding(req, account);
+    if (standing.atLimit) return refuseOverLimit(res, account, standing);
+
+    const after = await circles.claimHost({ store, circleId: circle.id, userId: account.id });
+    res.json({ circle: circles.toClient(fresh(after, circle), { userId: account.id }) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
 
 // --- Generic seed verbs (activity-agnostic: the machine validates through the
 // --- seed's own module, so these serve threshold topics and gather asks alike)

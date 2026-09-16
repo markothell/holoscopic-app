@@ -28,6 +28,10 @@ export interface AdminUser {
   name: string;
   email: string;
   role: 'user' | 'admin';
+  /** What the account may host (BUSINESS.md §5): 'free' holds a few circles,
+   *  'host' is uncapped. Absent on every account written before the field —
+   *  read it as 'free', and never filter a query on it. */
+  plan?: 'free' | 'host';
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
@@ -61,6 +65,13 @@ export const AdminApi = {
 
   setRole: (targetId: string, role: 'user' | 'admin') =>
     apiFetch(`/admin/users/${targetId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+
+  // Manual provisioning, and the intended flow rather than a workaround:
+  // Stripe is Stage 1 (BUSINESS.md §4) and until it lands moving somebody onto
+  // Host by hand is the plan of record. Unlike setRole there is no self-change
+  // guard — a plan cannot lock anybody out of anything.
+  setPlan: (targetId: string, plan: 'free' | 'host') =>
+    apiFetch(`/admin/users/${targetId}/plan`, { method: 'PATCH', body: JSON.stringify({ plan }) }),
 
   setActive: (targetId: string, isActive: boolean) =>
     apiFetch(`/admin/users/${targetId}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),

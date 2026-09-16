@@ -6,6 +6,8 @@ const Activity = require('../models/Activity');
 const Sequence = require('../models/Sequence');
 const Instance = require('../models/Instance');
 const { transact } = require('../utils/holons');
+// The valid plan values, from the one file that knows them (utils/plans.js).
+const { PLANS } = require('../utils/plans');
 
 // GET /api/admin/config — public read (topicsActivityId needed by Topics page without auth)
 router.get('/config', async (req, res) => {
@@ -81,7 +83,7 @@ router.get('/users', async (req, res) => {
       : {};
 
     const users = await User.find(query)
-      .select('id name email role isActive lastLoginAt createdAt')
+      .select('id name email role plan isActive lastLoginAt createdAt')
       .limit(200)
       .sort({ createdAt: -1 });
 
@@ -116,6 +118,37 @@ router.patch('/users/:userId/role', async (req, res) => {
   } catch (error) {
     console.error('Error updating user role:', error);
     res.status(500).json({ error: 'Failed to update role' });
+  }
+});
+
+// PATCH /api/admin/users/:userId/plan — set plan ('free' | 'host')
+//
+// This IS the provisioning path. Stripe is Stage 1 (BUSINESS.md §4) and until
+// it lands "manual provisioning is fine" is the plan of record, so an admin
+// moving somebody onto Host by hand is the intended flow, not a workaround.
+//
+// Unlike the role route there is no "cannot change your own" guard: that one
+// exists to stop an admin demoting themselves into lockout on a platform with
+// no second admin, and a plan carries no such risk.
+router.patch('/users/:userId/plan', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { plan } = req.body;
+
+    if (!PLANS.includes(plan)) {
+      return res.status(400).json({ error: 'Invalid plan' });
+    }
+
+    const user = await User.findOne({ id: userId });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    user.plan = plan;
+    await user.save();
+
+    res.json({ success: true, user: { id: user.id, plan: user.plan } });
+  } catch (error) {
+    console.error('Error updating user plan:', error);
+    res.status(500).json({ error: 'Failed to update plan' });
   }
 });
 
